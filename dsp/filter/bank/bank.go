@@ -11,15 +11,17 @@ import (
 // octaveRatio is G = 10^(3/10) per IEC 61260.
 var octaveRatio = math.Pow(10, 0.3)
 
-const defaultOrder = 4
-const defaultLowerFreq = 20.0
-const defaultUpperFreq = 20000.0
+const (
+	defaultOrder     = 4
+	defaultLowerFreq = 20.0
+	defaultUpperFreq = 20000.0
+)
 
 // Band represents one frequency band in a filter bank.
 type Band struct {
-	CenterFreq float64      // center frequency in Hz
-	LowCutoff  float64      // lower -3 dB frequency in Hz
-	HighCutoff float64      // upper -3 dB frequency in Hz
+	CenterFreq float64       // center frequency in Hz
+	LowCutoff  float64       // lower -3 dB frequency in Hz
+	HighCutoff float64       // upper -3 dB frequency in Hz
 	LP         *biquad.Chain // lowpass filter at HighCutoff
 	HP         *biquad.Chain // highpass filter at LowCutoff
 }

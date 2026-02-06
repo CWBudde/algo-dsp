@@ -29,7 +29,6 @@ type OverlapAdd struct {
 	// Scratch buffers
 	inputPadded  []complex128
 	outputPadded []complex128
-	overlap      []float64 // Overlap buffer for successive blocks
 }
 
 // NewOverlapAdd creates a new overlap-add convolver for the given kernel.
@@ -56,7 +55,7 @@ func NewOverlapAdd(kernel []float64, blockSize int) (*OverlapAdd, error) {
 	fftSize := nextPowerOf2(minFFTSize)
 
 	// Create FFT plan
-	plan, err := algofft.NewPlan128(fftSize)
+	plan, err := algofft.NewPlan64(fftSize)
 	if err != nil {
 		return nil, fmt.Errorf("conv: failed to create FFT plan: %w", err)
 	}
@@ -69,7 +68,6 @@ func NewOverlapAdd(kernel []float64, blockSize int) (*OverlapAdd, error) {
 		plan:         plan,
 		inputPadded:  make([]complex128, fftSize),
 		outputPadded: make([]complex128, fftSize),
-		overlap:      make([]float64, kernelLen-1),
 	}
 
 	// Compute kernel FFT
@@ -112,11 +110,6 @@ func (oa *OverlapAdd) Process(input []float64) ([]float64, error) {
 	outputLen := len(input) + oa.kernelLen - 1
 	output := make([]float64, outputLen)
 
-	// Reset overlap buffer
-	for i := range oa.overlap {
-		oa.overlap[i] = 0
-	}
-
 	// Process in blocks
 	numBlocks := (len(input) + oa.blockSize - 1) / oa.blockSize
 
@@ -129,7 +122,7 @@ func (oa *OverlapAdd) Process(input []float64) ([]float64, error) {
 		}
 		blockLen := end - start
 
-		// Zero-pad input block
+		// Zero-pad input block to FFT size
 		for i := range oa.inputPadded {
 			oa.inputPadded[i] = 0
 		}
@@ -154,29 +147,12 @@ func (oa *OverlapAdd) Process(input []float64) ([]float64, error) {
 			return nil, fmt.Errorf("conv: inverse FFT failed: %w", err)
 		}
 
-		// Output starts at block position
-		outStart := start
-
-		// Add overlap from previous block
-		for i := 0; i < len(oa.overlap) && outStart+i < outputLen; i++ {
-			output[outStart+i] += oa.overlap[i]
-		}
-
-		// Add current block output (valid portion: blockLen + kernelLen - 1)
-		validLen := blockLen + oa.kernelLen - 1
-		for i := 0; i < validLen && outStart+i < outputLen; i++ {
-			output[outStart+i] += real(oa.outputPadded[i])
-		}
-
-		// Save overlap for next block
-		// The overlap region is the tail that extends beyond the current block
-		overlapStart := blockLen
-		for i := 0; i < len(oa.overlap); i++ {
-			if overlapStart+i < validLen {
-				oa.overlap[i] = real(oa.outputPadded[overlapStart+i])
-			} else {
-				oa.overlap[i] = 0
-			}
+		// Overlap-add: add the convolution result to the output at position start
+		// The result of convolving a block of length L with kernel of length M
+		// is L + M - 1 samples long. We add all of these samples to the output.
+		resultLen := blockLen + oa.kernelLen - 1
+		for i := 0; i < resultLen && start+i < outputLen; i++ {
+			output[start+i] += real(oa.outputPadded[i])
 		}
 	}
 
@@ -200,11 +176,9 @@ func (oa *OverlapAdd) ProcessTo(output, input []float64) error {
 	return nil
 }
 
-// Reset clears the overlap buffer for processing a new signal.
+// Reset clears internal state (no-op for stateless overlap-add).
 func (oa *OverlapAdd) Reset() {
-	for i := range oa.overlap {
-		oa.overlap[i] = 0
-	}
+	// No persistent state to clear in this implementation
 }
 
 // OverlapAddConvolve performs one-shot overlap-add convolution.

@@ -175,7 +175,7 @@ func NewRational(up, down int, opts ...Option) (*Resampler, error) {
 		taps:       taps,
 		phases:     phases,
 		maxPhaseLn: maxPhaseLn,
-	history:    make([]float64, 0, maxInt(0, maxPhaseLn-1)),
+		history:    make([]float64, 0, maxInt(0, maxPhaseLn-1)),
 	}, nil
 }
 

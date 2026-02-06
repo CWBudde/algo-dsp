@@ -325,7 +325,7 @@ func TestWeighting_OrderAndSections(t *testing.T) {
 		{TypeA, 5, 10}, // 1 second-order HP + 2 first-order LP + 2 first-order HP = 5 sections
 		{TypeB, 4, 8},  // 1 second-order HP + 2 first-order LP + 1 first-order HP = 4 sections
 		{TypeC, 3, 6},  // 1 second-order HP + 2 first-order LP = 3 sections
-		{TypeZ, 1, 2}, // 1 unity section
+		{TypeZ, 1, 2},  // 1 unity section
 	}
 	for _, tt := range tests {
 		chain := New(tt.typ, 48000)
