@@ -35,9 +35,9 @@ import (
 
 // Errors returned by convolution functions.
 var (
-	ErrEmptyInput      = errors.New("conv: empty input")
-	ErrEmptyKernel     = errors.New("conv: empty kernel")
-	ErrLengthMismatch  = errors.New("conv: buffer length mismatch")
+	ErrEmptyInput       = errors.New("conv: empty input")
+	ErrEmptyKernel      = errors.New("conv: empty kernel")
+	ErrLengthMismatch   = errors.New("conv: buffer length mismatch")
 	ErrInvalidBlockSize = errors.New("conv: invalid block size")
 )
 
