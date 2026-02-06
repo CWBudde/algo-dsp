@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a defect in algorithms, numerical behavior, or API behavior.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe what is wrong and what you expected instead.
+      placeholder: A clear and concise bug summary.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Provide minimal reproducible steps or code.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Go version, OS/arch, module version, and relevant settings.
+      placeholder: go1.25, linux/amd64, algo-dsp v0.x.y
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Benchmarks, logs, plots, or related references.
