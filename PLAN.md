@@ -400,6 +400,10 @@ Objectives:
 - Port processing topology from `mfw/legacy/Source/MFFilter.pas` (2641 lines).
 - Provide frequency-response evaluation helpers for runtime verification.
 
+Status:
+
+- Completed on 2026-02-06.
+
 Phase 3 covers **runtime only** — coefficient design (Butterworth, Chebyshev, parametric EQ, etc.) lives in Phase 4 (`dsp/filter/design`).
 
 #### 3.1 Legacy Architecture Reference
@@ -667,17 +671,21 @@ func BilinearTransform(sCoeffs [3]float64, sampleRate float64) [3]float64
 
 #### 4b. Task Breakdown
 
-- [ ] Implement bilinear transform helper: `K = tan(W0 * 0.5)` and frequency pre-warping.
-- [ ] Implement biquad designers: `Lowpass`, `Highpass`, `Bandpass`, `Notch`, `Allpass` (port MFFilter.pas:920–973).
-- [ ] Implement `Peak`, `LowShelf`, `HighShelf` (port MFFilter.pas:868–916).
-- [ ] Implement `ButterworthLP`/`HP` cascaded SOS design (port MFFilter.pas:1277–1513).
-- [ ] Implement `Chebyshev1LP`/`HP` with ripple factors (port MFFilter.pas:1865–2150).
-- [ ] Implement `Chebyshev2LP`/`HP` stopband-ripple variant.
-- [ ] Handle odd-order Butterworth/Chebyshev (final first-order section).
+- [x] Implement bilinear transform helper: `K = tan(W0 * 0.5)` and frequency pre-warping.
+- [x] Implement biquad designers: `Lowpass`, `Highpass`, `Bandpass`, `Notch`, `Allpass` (port MFFilter.pas:920–973).
+- [x] Implement `Peak`, `LowShelf`, `HighShelf` (port MFFilter.pas:868–916).
+- [x] Implement `ButterworthLP`/`HP` cascaded SOS design (port MFFilter.pas:1277–1513).
+- [x] Implement `Chebyshev1LP`/`HP` with ripple factors (port MFFilter.pas:1865–2150).
+- [x] Implement `Chebyshev2LP`/`HP` stopband-ripple variant.
+- [x] Handle odd-order Butterworth/Chebyshev (final first-order section).
 - [ ] Golden vector tests: design at known freq/SR/order, compare coefficients against legacy output.
-- [ ] Integration tests: design -> chain -> frequency response matches expected magnitude curve.
-- [ ] Validate across sample rates: 44100, 48000, 96000, 192000 Hz.
-- [ ] Runnable examples: design a 4th-order Butterworth LP, plot its response.
+- [x] Integration tests: design -> chain -> frequency response matches expected magnitude curve.
+- [x] Validate across sample rates: 44100, 48000, 96000, 192000 Hz.
+- [x] Runnable examples: design a 4th-order Butterworth LP, plot its response.
+
+Notes:
+
+- Chebyshev Type II LP uses a corrected angle term `cos((2i+1)*pi/(2N))`; legacy `TMFDSPChebyshev2LP` omits `pi` in that term.
 
 #### 4c. Exit Criteria
 
@@ -1034,6 +1042,9 @@ Quarter-end success criteria:
 | 0.1     | 2026-02-06 | Codex  | Initial comprehensive `algo-dsp` development plan                                                                                                                                                                                                                                                                                                                                  |
 | 0.2     | 2026-02-06 | Claude | Refined Phase 1 (buffer type in `dsp/buffer`), rewrote Phase 2 (window functions) with full mfw legacy inventory (25+ types, 3 tiers, advanced features), updated architecture and migration sections                                                                                                                                                                              |
 | 0.3     | 2026-02-06 | Claude | Rewrote Phase 3 (filter runtime) with full MFFilter.pas analysis: biquad DF-II-T, cascaded chains, frequency response, FIR runtime, legacy mapping table. Refined Phase 4 (filter design) with per-filter-type legacy source references and API surface. Refined Phase 5 (weighting/banks) with legacy source references. Updated migration section with filter extraction sources |
+| 0.4     | 2026-02-06 | Codex  | Completed Phase 3 implementation checklist (3a-3e), including biquad/FIR runtime validation, added biquad block+response runnable example, and validated tests/race/lint/vet/coverage targets.                                                                                                                                                                                     |
+| 0.5     | 2026-02-06 | Codex  | Started Phase 4 implementation: added `dsp/filter/design` biquad designers (`Lowpass`/`Highpass`/`Bandpass`/`Notch`/`Allpass`/`Peak`/`LowShelf`/`HighShelf`), Butterworth LP/HP cascades with odd-order handling, bilinear helper, tests/examples, and checklist progress updates.                                                                                                 |
+| 0.6     | 2026-02-06 | Codex  | Implemented Chebyshev Type I/II cascade designers in `dsp/filter/design`, added legacy-parity tests for Type I, documented/implemented corrected Type II LP angle term, formatted `dsp/filter/weighting/weighting.go`, and revalidated lint/vet/tests/race/coverage.                                                                                                               |
 
 ---
 
