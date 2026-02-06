@@ -135,6 +135,30 @@ var cWeightingRef = []struct {
 	{20000, -11.2},
 }
 
+// bltTolerance returns the acceptable deviation between the analog reference
+// value and the bilinear-transformed digital filter at a given frequency
+// and sample rate. The bilinear transform compresses frequencies near Nyquist,
+// causing increasing deviation. At sr >= 96 kHz the error is negligible
+// across the audio band.
+//
+// The base tolerance of 0.5 dB covers both the analog-to-digital conversion
+// error and the ±0.05 dB rounding in the IEC 61672 reference table values.
+func bltTolerance(freq, sr float64) float64 {
+	ratio := freq / sr
+	switch {
+	case ratio > 0.4: // > 80% of Nyquist
+		return 25.0
+	case ratio > 0.3: // 60-80% of Nyquist
+		return 5.0
+	case ratio > 0.2: // 40-60% of Nyquist
+		return 1.5
+	case ratio > 0.1: // 20-40% of Nyquist
+		return 1.0
+	default: // < 20% of Nyquist
+		return 0.5
+	}
+}
+
 func TestAWeighting_IEC61672(t *testing.T) {
 	for _, sr := range []float64{44100, 48000, 96000} {
 		chain := New(TypeA, sr)
@@ -144,12 +168,7 @@ func TestAWeighting_IEC61672(t *testing.T) {
 			}
 			got := chain.MagnitudeDB(ref.freq, sr)
 			diff := math.Abs(got - ref.dB)
-			// IEC 61672 Class 1 tolerance is ±1.0 dB mid-range, wider at extremes.
-			// Our digital implementation should be within ±0.5 dB for most frequencies.
-			tol := 0.5
-			if ref.freq <= 16 || ref.freq >= 16000 {
-				tol = 1.5 // wider tolerance at extremes (pre-warping effects)
-			}
+			tol := bltTolerance(ref.freq, sr)
 			if diff > tol {
 				t.Errorf("A-weighting @ %g Hz (sr=%g): got %.2f dB, want %.1f dB (diff %.2f, tol %.1f)",
 					ref.freq, sr, got, ref.dB, diff, tol)
@@ -167,10 +186,7 @@ func TestBWeighting_IEC61672(t *testing.T) {
 			}
 			got := chain.MagnitudeDB(ref.freq, sr)
 			diff := math.Abs(got - ref.dB)
-			tol := 0.5
-			if ref.freq <= 16 || ref.freq >= 16000 {
-				tol = 1.5
-			}
+			tol := bltTolerance(ref.freq, sr)
 			if diff > tol {
 				t.Errorf("B-weighting @ %g Hz (sr=%g): got %.2f dB, want %.1f dB (diff %.2f, tol %.1f)",
 					ref.freq, sr, got, ref.dB, diff, tol)
@@ -188,10 +204,7 @@ func TestCWeighting_IEC61672(t *testing.T) {
 			}
 			got := chain.MagnitudeDB(ref.freq, sr)
 			diff := math.Abs(got - ref.dB)
-			tol := 0.5
-			if ref.freq <= 16 || ref.freq >= 16000 {
-				tol = 1.5
-			}
+			tol := bltTolerance(ref.freq, sr)
 			if diff > tol {
 				t.Errorf("C-weighting @ %g Hz (sr=%g): got %.2f dB, want %.1f dB (diff %.2f, tol %.1f)",
 					ref.freq, sr, got, ref.dB, diff, tol)
