@@ -809,9 +809,9 @@ Objectives:
 
 Tasks:
 
-- [ ] Implement sine/multisine/noise/impulse/sweep generators.
-- [ ] Implement normalize, clip, DC removal, envelope helpers.
-- [ ] Add deterministic seed strategy for reproducibility.
+- [x] Implement sine/multisine/noise/impulse/sweep generators.
+- [x] Implement normalize, clip, DC removal, envelope helpers.
+- [x] Add deterministic seed strategy for reproducibility.
 
 Exit criteria:
 

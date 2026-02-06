@@ -82,15 +82,20 @@ func New(t Type, sampleRate float64) *biquad.Chain {
 
 // newAWeighting builds an A-weighting filter (6th order).
 //
-// Sections:
-//   - 2nd-order HP at f1 = 20.598997 Hz (double pole)
-//   - 2nd-order HP at f5 = 12194.217 Hz (double pole)
-//   - 1st-order HP at f2 = 107.65265 Hz (single pole)
-//   - 1st-order HP at f4 = 737.86223 Hz (single pole)
+// The analog prototype is:
+//
+//	H_A(s) = K_A * s^4 / ((s+ω1)^2 * (s+ω2) * (s+ω4) * (s+ω5)^2)
+//
+// where ω_i = 2*π*f_i. The s^4 numerator yields 4 zeros at DC, distributed:
+//   - 2nd-order HP at f1 (2 zeros at DC, 2 poles)
+//   - 1st-order HP at f2 (1 zero at DC, 1 pole)
+//   - 1st-order HP at f4 (1 zero at DC, 1 pole)
+//   - 1st-order LP at f5 (0 zeros, 1 pole) x2
 func newAWeighting(sr float64) *biquad.Chain {
 	coeffs := []biquad.Coefficients{
 		hpSecondOrder(f1, sr),
-		hpSecondOrder(f5, sr),
+		lpFirstOrder(f5, sr),
+		lpFirstOrder(f5, sr),
 		hpFirstOrder(f2, sr),
 		hpFirstOrder(f4, sr),
 	}
@@ -100,14 +105,19 @@ func newAWeighting(sr float64) *biquad.Chain {
 
 // newBWeighting builds a B-weighting filter (5th order).
 //
+// The analog prototype is:
+//
+//	H_B(s) = K_B * s^3 / ((s+ω1)^2 * (s+ω3) * (s+ω5)^2)
+//
 // Sections:
-//   - 2nd-order HP at f1 = 20.598997 Hz (double pole)
-//   - 2nd-order HP at f5 = 12194.217 Hz (double pole)
-//   - 1st-order HP at f3 = 158.48932 Hz (single pole)
+//   - 2nd-order HP at f1 (2 zeros at DC, 2 poles)
+//   - 1st-order HP at f3 (1 zero at DC, 1 pole)
+//   - 1st-order LP at f5 (0 zeros, 1 pole) x2
 func newBWeighting(sr float64) *biquad.Chain {
 	coeffs := []biquad.Coefficients{
 		hpSecondOrder(f1, sr),
-		hpSecondOrder(f5, sr),
+		lpFirstOrder(f5, sr),
+		lpFirstOrder(f5, sr),
 		hpFirstOrder(f3, sr),
 	}
 	gain := normalizationGain(coeffs, sr)
@@ -116,13 +126,18 @@ func newBWeighting(sr float64) *biquad.Chain {
 
 // newCWeighting builds a C-weighting filter (4th order).
 //
+// The analog prototype is:
+//
+//	H_C(s) = K_C * s^2 / ((s+ω1)^2 * (s+ω5)^2)
+//
 // Sections:
-//   - 2nd-order HP at f1 = 20.598997 Hz (double pole)
-//   - 2nd-order HP at f5 = 12194.217 Hz (double pole)
+//   - 2nd-order HP at f1 (2 zeros at DC, 2 poles)
+//   - 1st-order LP at f5 (0 zeros, 1 pole) x2
 func newCWeighting(sr float64) *biquad.Chain {
 	coeffs := []biquad.Coefficients{
 		hpSecondOrder(f1, sr),
-		hpSecondOrder(f5, sr),
+		lpFirstOrder(f5, sr),
+		lpFirstOrder(f5, sr),
 	}
 	gain := normalizationGain(coeffs, sr)
 	return biquad.NewChain(coeffs, biquad.WithGain(gain))
@@ -133,6 +148,24 @@ func newZWeighting() *biquad.Chain {
 	return biquad.NewChain([]biquad.Coefficients{
 		{B0: 1},
 	})
+}
+
+// lpFirstOrder computes a 1st-order low-pass biquad section for a
+// single pole at frequency f using the bilinear transform.
+//
+// The analog prototype is H(s) = omega / (s + omega).
+// Using K = tan(pi*f/sr):
+//
+//	B0 = K/(1+K), B1 = K/(1+K), B2 = 0
+//	A1 = (K-1)/(K+1), A2 = 0
+func lpFirstOrder(f, sr float64) biquad.Coefficients {
+	k := math.Tan(math.Pi * f / sr)
+	d := 1 + k
+	return biquad.Coefficients{
+		B0: k / d,
+		B1: k / d,
+		A1: (k - 1) / d,
+	}
 }
 
 // hpSecondOrder computes a 2nd-order high-pass biquad section for a
