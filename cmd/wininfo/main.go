@@ -28,8 +28,8 @@ import (
 )
 
 type windowEntry struct {
-	name    string
-	typ     window.Type
+	name     string
+	typ      window.Type
 	hasAlpha bool
 	defAlpha float64
 }
@@ -157,8 +157,14 @@ func resolveEntries(names []string, alphaFlag float64) []resolvedEntry {
 
 func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) {
 	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tw, "Window\tSize\tCoherent Gain\tENBW [bins]\tBW 3dB [bins]\tSidelobe [dB]\t1st Min [bins]\tScallop [dB]\n")
-	fmt.Fprintf(tw, "------\t----\t-------------\t----------\t-------------\t-------------\t--------------\t-----------\n")
+	if _, err := fmt.Fprintf(tw, "Window\tSize\tCoherent Gain\tENBW [bins]\tBW 3dB [bins]\tSidelobe [dB]\t1st Min [bins]\tScallop [dB]\n"); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output header: %v\n", err)
+		return
+	}
+	if _, err := fmt.Fprintf(tw, "------\t----\t-------------\t----------\t-------------\t-------------\t--------------\t-----------\n"); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output header: %v\n", err)
+		return
+	}
 
 	for _, e := range entries {
 		opts := append([]window.Option(nil), baseOpts...)
@@ -174,7 +180,7 @@ func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) 
 			label = fmt.Sprintf("%s (a=%.2f)", e.name, e.alphaOverride)
 		}
 
-		fmt.Fprintf(tw, "%s\t%d\t%.6f\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\n",
+		if _, err := fmt.Fprintf(tw, "%s\t%d\t%.6f\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\n",
 			label,
 			size,
 			a.CoherentGain,
@@ -183,7 +189,12 @@ func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) 
 			a.HighestSidelobedB,
 			a.FirstMinimumBins,
 			a.ScallopLossdB,
-		)
+		); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output row: %v\n", err)
+			return
+		}
 	}
-	tw.Flush()
+	if err := tw.Flush(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "error: failed to flush output: %v\n", err)
+	}
 }

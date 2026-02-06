@@ -438,21 +438,21 @@ Key implementation details:
 
 #### 3.2 Legacy → Go Mapping
 
-| Legacy (Pascal)                            | Go (algo-dsp)                          |
-| ------------------------------------------ | -------------------------------------- |
-| `TMFDSPBiquadIIRFilter.ProcessSample`      | `biquad.Section.ProcessSample`         |
-| `TMFDSPBiquadIIRFilter.FNominator[0..2]`   | `biquad.Coefficients.B0, B1, B2`      |
-| `TMFDSPBiquadIIRFilter.FDenominator[1..2]` | `biquad.Coefficients.A1, A2`          |
-| `TMFDSPBiquadIIRFilter.FState[0..1]`       | `biquad.Section.d0, d1`               |
-| `TMFDSPButterworthFilter.FAB[0..127]`      | `biquad.Chain.sections[i].Coefficients`|
-| `TMFDSPButterworthFilter.FState[0..63]`    | `biquad.Chain.sections[i].d0/d1`      |
-| `TMFDSPButterworthLP.ProcessSample`        | `biquad.Chain.ProcessSample`          |
-| `TMFDSPBiquadIIRFilter.MagnitudeSquared`   | `biquad.Coefficients.MagnitudeSquared`|
-| `TMFDSPBiquadIIRFilter.Phase`              | `biquad.Coefficients.Phase`           |
-| `TMFDSPBiquadIIRFilter.Complex`            | `biquad.Coefficients.Response`        |
-| `TMFDSPBiquadIIRFilter.GetIR`              | `biquad.Section.ImpulseResponse`      |
-| `TMFDSPBiquadIIRFilter.PushStates/Pop`     | `biquad.Section.State/SetState`       |
-| `TMFDSPFreeFilter.ProcessSample`           | (higher-order IIR via Chain, or later)|
+| Legacy (Pascal)                            | Go (algo-dsp)                           |
+| ------------------------------------------ | --------------------------------------- |
+| `TMFDSPBiquadIIRFilter.ProcessSample`      | `biquad.Section.ProcessSample`          |
+| `TMFDSPBiquadIIRFilter.FNominator[0..2]`   | `biquad.Coefficients.B0, B1, B2`        |
+| `TMFDSPBiquadIIRFilter.FDenominator[1..2]` | `biquad.Coefficients.A1, A2`            |
+| `TMFDSPBiquadIIRFilter.FState[0..1]`       | `biquad.Section.d0, d1`                 |
+| `TMFDSPButterworthFilter.FAB[0..127]`      | `biquad.Chain.sections[i].Coefficients` |
+| `TMFDSPButterworthFilter.FState[0..63]`    | `biquad.Chain.sections[i].d0/d1`        |
+| `TMFDSPButterworthLP.ProcessSample`        | `biquad.Chain.ProcessSample`            |
+| `TMFDSPBiquadIIRFilter.MagnitudeSquared`   | `biquad.Coefficients.MagnitudeSquared`  |
+| `TMFDSPBiquadIIRFilter.Phase`              | `biquad.Coefficients.Phase`             |
+| `TMFDSPBiquadIIRFilter.Complex`            | `biquad.Coefficients.Response`          |
+| `TMFDSPBiquadIIRFilter.GetIR`              | `biquad.Section.ImpulseResponse`        |
+| `TMFDSPBiquadIIRFilter.PushStates/Pop`     | `biquad.Section.State/SetState`         |
+| `TMFDSPFreeFilter.ProcessSample`           | (higher-order IIR via Chain, or later)  |
 
 #### 3a. Biquad Section (`dsp/filter/biquad`)
 
@@ -547,51 +547,51 @@ func (f *Filter) MagnitudeDB(freqHz, sampleRate float64) float64
 
 **3a. Biquad Section** (Critical):
 
-- [ ] Define `Coefficients` struct and `Section` type.
-- [ ] Implement `ProcessSample` — Direct Form II Transposed (port from MFFilter.pas:737–743).
-- [ ] Implement `ProcessBlock` and `ProcessBlockTo`.
-- [ ] Implement `Reset`, `State`, `SetState`.
-- [ ] Table-driven tests: known coefficient sets -> expected output sequences.
-- [ ] Property tests: gain=1 passthrough, zero coefficients -> silence.
-- [ ] Benchmarks: `ProcessSample` and `ProcessBlock` at 256/1024/4096 samples.
+- [x] Define `Coefficients` struct and `Section` type.
+- [x] Implement `ProcessSample` — Direct Form II Transposed (port from MFFilter.pas:737–743).
+- [x] Implement `ProcessBlock` and `ProcessBlockTo`.
+- [x] Implement `Reset`, `State`, `SetState`.
+- [x] Table-driven tests: known coefficient sets -> expected output sequences.
+- [x] Property tests: gain=1 passthrough, zero coefficients -> silence.
+- [x] Benchmarks: `ProcessSample` and `ProcessBlock` at 256/1024/4096 samples.
 
 **3b. Cascaded Chain** (Critical):
 
-- [ ] Implement `Chain` with `NewChain`, gain option.
-- [ ] Implement `ProcessSample` cascading through sections (port from MFFilter.pas:1374–1395).
-- [ ] Implement `ProcessBlock`.
-- [ ] Implement `Reset`, `State`/`SetState`, `Order`, `NumSections`, `Section`.
-- [ ] Tests: 2nd/4th/6th order cascades with known coefficients.
-- [ ] Test odd-order chain (first-order final section).
-- [ ] Benchmarks: cascade throughput at various orders (2, 4, 8, 16).
+- [x] Implement `Chain` with `NewChain`, gain option.
+- [x] Implement `ProcessSample` cascading through sections (port from MFFilter.pas:1374–1395).
+- [x] Implement `ProcessBlock`.
+- [x] Implement `Reset`, `State`/`SetState`, `Order`, `NumSections`, `Section`.
+- [x] Tests: 2nd/4th/6th order cascades with known coefficients.
+- [x] Test odd-order chain (first-order final section).
+- [x] Benchmarks: cascade throughput at various orders (2, 4, 8, 16).
 
 **3c. Frequency Response** (High):
 
-- [ ] Implement `Coefficients.Response` (complex H(z) evaluation).
-- [ ] Implement `MagnitudeSquared` closed-form (port from MFFilter.pas:702–708).
-- [ ] Implement `MagnitudeDB` and `Phase` (port from MFFilter.pas:694–717).
-- [ ] Implement `Chain.Response` and `Chain.MagnitudeDB` (product of sections).
-- [ ] Implement `ImpulseResponse` with state save/restore (port from MFFilter.pas:620–639).
-- [ ] Tests: verify against known analytical responses (e.g., unit-gain allpass).
-- [ ] Tests: verify `MagnitudeSquared` matches `|Response|²` within tolerance.
+- [x] Implement `Coefficients.Response` (complex H(z) evaluation).
+- [x] Implement `MagnitudeSquared` closed-form (port from MFFilter.pas:702–708).
+- [x] Implement `MagnitudeDB` and `Phase` (port from MFFilter.pas:694–717).
+- [x] Implement `Chain.Response` and `Chain.MagnitudeDB` (product of sections).
+- [x] Implement `ImpulseResponse` with state save/restore (port from MFFilter.pas:620–639).
+- [x] Tests: verify against known analytical responses (e.g., unit-gain allpass).
+- [x] Tests: verify `MagnitudeSquared` matches `|Response|²` within tolerance.
 
 **3d. FIR Runtime** (Medium):
 
-- [ ] Implement `Filter` with circular-buffer delay line.
-- [ ] Implement `ProcessSample` — direct-form convolution.
-- [ ] Implement `ProcessBlock`, `ProcessBlockTo`.
-- [ ] Implement `Reset`, `Order`, `Coefficients`.
-- [ ] Implement `Response` and `MagnitudeDB`.
-- [ ] Tests: known FIR (e.g., 3-tap moving average, differentiator).
-- [ ] Tests: impulse response matches coefficients.
-- [ ] Benchmarks: FIR processing at various tap counts (8, 32, 128, 512).
+- [x] Implement `Filter` with circular-buffer delay line.
+- [x] Implement `ProcessSample` — direct-form convolution.
+- [x] Implement `ProcessBlock`, `ProcessBlockTo`.
+- [x] Implement `Reset`, `Order`, `Coefficients`.
+- [x] Implement `Response` and `MagnitudeDB`.
+- [x] Tests: known FIR (e.g., 3-tap moving average, differentiator).
+- [x] Tests: impulse response matches coefficients.
+- [x] Benchmarks: FIR processing at various tap counts (8, 32, 128, 512).
 
 **3e. Integration & Documentation**:
 
-- [ ] Runnable examples: create biquad, process block, evaluate frequency response.
-- [ ] Runnable example: cascaded chain.
-- [ ] Ensure `go vet` and `golangci-lint` pass.
-- [ ] Coverage >= 90% for `dsp/filter/biquad`, >= 85% for `dsp/filter/fir`.
+- [x] Runnable examples: create biquad, process block, evaluate frequency response.
+- [x] Runnable example: cascaded chain.
+- [x] Ensure `go vet` and `golangci-lint` pass.
+- [x] Coverage >= 90% for `dsp/filter/biquad`, >= 85% for `dsp/filter/fir`.
 
 #### 3f. Exit Criteria
 
@@ -616,25 +616,25 @@ Source: `MFFilter.pas` lines 868–2150 contain all coefficient calculations.
 
 #### 4.1 Legacy Coefficient Design Reference
 
-| Filter Type     | Legacy Class                     | Lines       | Notes                                                     |
-| --------------- | -------------------------------- | ----------- | --------------------------------------------------------- |
-| Peak (PEQ)      | `TMFDSPPeakFilter`              | 868–878     | Parametric EQ with gain and Q                             |
-| Low Shelf       | `TMFDSPLowShelfFilter`          | 882–897     | Shelving with gain, uses `sqrt(gain)*alpha`               |
-| High Shelf      | `TMFDSPHighShelfFilter`         | 901–916     | Shelving with gain                                        |
-| Lowpass (LP)    | `TMFDSPHighcutFilter`           | 920–931     | Standard biquad LP with Q/bandwidth                       |
-| Highpass (HP)   | `TMFDSPLowcutFilter`            | 935–946     | Standard biquad HP with Q/bandwidth                       |
-| Bandpass        | `TMFDSPBandpass`                | 950–959     | Constant-skirt-gain bandpass                               |
-| Notch           | `TMFDSPNotch`                   | 963–973     | Band-reject filter                                        |
-| Allpass         | `TMFDSPAllpass`                 | (similar)   | Phase-shifting filter                                     |
-| Gain            | `TMFDSPGainFilter`              | 977–984     | Pure gain, b0=gain²                                       |
-| Shape           | `TMFDSPShapeFilter`             | 999–1090    | Parametric with shape control                             |
-| Butterworth LP  | `TMFDSPButterworthLP`           | 1277–1339   | Bilinear-transform SOS cascade, `K=tan(W0/2)`, order 1–64|
-| Butterworth HP  | `TMFDSPButterworthHP`           | 1452–1513   | HP variant with negated b1                                |
-| Critical LP/HP  | `TMFDSPCriticalLP/HP`           | 1613–1750   | First-order only (Butterworth order=1)                    |
-| Chebyshev I LP  | `TMFDSPChebyshev1LP`            | 1895–2032   | Ripple-factor SOS cascade                                 |
-| Chebyshev I HP  | `TMFDSPChebyshev1HP`            | 2106–2150   | HP variant                                                |
-| Chebyshev II LP | `TMFDSPChebyshev2LP`            | (similar)   | Stopband-ripple variant                                   |
-| Chebyshev II HP | `TMFDSPChebyshev2HP`            | (similar)   | HP variant                                                |
+| Filter Type     | Legacy Class            | Lines     | Notes                                                     |
+| --------------- | ----------------------- | --------- | --------------------------------------------------------- |
+| Peak (PEQ)      | `TMFDSPPeakFilter`      | 868–878   | Parametric EQ with gain and Q                             |
+| Low Shelf       | `TMFDSPLowShelfFilter`  | 882–897   | Shelving with gain, uses `sqrt(gain)*alpha`               |
+| High Shelf      | `TMFDSPHighShelfFilter` | 901–916   | Shelving with gain                                        |
+| Lowpass (LP)    | `TMFDSPHighcutFilter`   | 920–931   | Standard biquad LP with Q/bandwidth                       |
+| Highpass (HP)   | `TMFDSPLowcutFilter`    | 935–946   | Standard biquad HP with Q/bandwidth                       |
+| Bandpass        | `TMFDSPBandpass`        | 950–959   | Constant-skirt-gain bandpass                              |
+| Notch           | `TMFDSPNotch`           | 963–973   | Band-reject filter                                        |
+| Allpass         | `TMFDSPAllpass`         | (similar) | Phase-shifting filter                                     |
+| Gain            | `TMFDSPGainFilter`      | 977–984   | Pure gain, b0=gain²                                       |
+| Shape           | `TMFDSPShapeFilter`     | 999–1090  | Parametric with shape control                             |
+| Butterworth LP  | `TMFDSPButterworthLP`   | 1277–1339 | Bilinear-transform SOS cascade, `K=tan(W0/2)`, order 1–64 |
+| Butterworth HP  | `TMFDSPButterworthHP`   | 1452–1513 | HP variant with negated b1                                |
+| Critical LP/HP  | `TMFDSPCriticalLP/HP`   | 1613–1750 | First-order only (Butterworth order=1)                    |
+| Chebyshev I LP  | `TMFDSPChebyshev1LP`    | 1895–2032 | Ripple-factor SOS cascade                                 |
+| Chebyshev I HP  | `TMFDSPChebyshev1HP`    | 2106–2150 | HP variant                                                |
+| Chebyshev II LP | `TMFDSPChebyshev2LP`    | (similar) | Stopband-ripple variant                                   |
+| Chebyshev II HP | `TMFDSPChebyshev2HP`    | (similar) | HP variant                                                |
 
 #### 4a. API Surface (`dsp/filter/design`)
 
@@ -1029,10 +1029,10 @@ Quarter-end success criteria:
 
 ## 14. Revision History
 
-| Version | Date       | Author | Changes                                                                                                                                                                                               |
-| ------- | ---------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.1     | 2026-02-06 | Codex  | Initial comprehensive `algo-dsp` development plan                                                                                                                                                     |
-| 0.2     | 2026-02-06 | Claude | Refined Phase 1 (buffer type in `dsp/buffer`), rewrote Phase 2 (window functions) with full mfw legacy inventory (25+ types, 3 tiers, advanced features), updated architecture and migration sections |
+| Version | Date       | Author | Changes                                                                                                                                                                                                                                                                                                                                                                            |
+| ------- | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.1     | 2026-02-06 | Codex  | Initial comprehensive `algo-dsp` development plan                                                                                                                                                                                                                                                                                                                                  |
+| 0.2     | 2026-02-06 | Claude | Refined Phase 1 (buffer type in `dsp/buffer`), rewrote Phase 2 (window functions) with full mfw legacy inventory (25+ types, 3 tiers, advanced features), updated architecture and migration sections                                                                                                                                                                              |
 | 0.3     | 2026-02-06 | Claude | Rewrote Phase 3 (filter runtime) with full MFFilter.pas analysis: biquad DF-II-T, cascaded chains, frequency response, FIR runtime, legacy mapping table. Refined Phase 4 (filter design) with per-filter-type legacy source references and API surface. Refined Phase 5 (weighting/banks) with legacy source references. Updated migration section with filter extraction sources |
 
 ---
