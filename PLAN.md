@@ -15,15 +15,18 @@ It is intentionally separated from application concerns (`mfw`) and file/contain
 3. Architecture and Package Layout
 4. API Design Principles
 5. Phase Overview
-6. Detailed Phase Plan
-7. Testing and Validation Strategy
-8. Benchmarking and Performance Strategy
-9. Dependency and Versioning Policy
-10. Release Engineering
-11. Migration Plan from `mfw`
-12. Risks and Mitigations
-13. Initial 90-Day Execution Plan
-14. Revision History
+6. Detailed Phase Plan (Phases 0–14)
+
+**Appendices**
+
+A. Testing and Validation Strategy
+B. Benchmarking and Performance Strategy
+C. Dependency and Versioning Policy
+D. Release Engineering
+E. Migration Plan from `mfw`
+F. Risks and Mitigations
+G. Initial 90-Day Execution Plan
+H. Revision History
 
 ---
 
@@ -171,772 +174,538 @@ Total Estimated Duration: ~35 weeks
 
 ## 6. Detailed Phase Plan
 
-### Phase 0: Bootstrap & Governance
+### Phase 0: Bootstrap & Governance (Complete)
 
-Objectives:
+- Initialized Go module `github.com/cwbudde/algo-dsp` with justfile targets (test, lint, format, bench, ci).
+- Set up CI for Go stable + previous stable versions with semantic versioning.
+- Created CONTRIBUTING.md and issue templates for contribution standards.
 
-- Initialize module, lint/test/format pipeline, release automation baseline.
-- Define contribution standards and compatibility policy.
+### Phase 1: Numeric Foundations & Core Utilities (Complete)
 
-Tasks:
+- Added core numeric helpers (clamp, epsilon compare, dB conversions) and functional options pattern.
+- Implemented `dsp/buffer.Buffer` type with `Samples()`, `Resize()`, `Zero()`, `Copy()` methods.
+- Added `dsp/buffer.Pool` with sync.Pool-based reuse for real-time hot paths.
+- Created `internal/testutil` with deterministic random/test signal helpers.
 
-- [x] Create module `github.com/cwbudde/algo-dsp`.
-- [x] Add `justfile` targets (`test`, `lint`, `format`, `bench`, `ci`).
-- [x] Add CI for Go stable + previous stable.
-- [x] Define semantic versioning and support window.
-- [x] Write `CONTRIBUTING.md` and issue templates.
+### Phase 2: Window Functions (Complete)
 
-Exit criteria:
+- Implemented 25+ window types across 3 tiers: essential (Hann, Hamming, Blackman, Kaiser, etc.), extended (Triangle, Welch, Gauss, etc.), and specialized (Albrecht, Lawrey, Burgess).
+- Ported cosine-term coefficient tables from legacy MFWindowFunctionUtils.pas with shared Horner evaluation engine.
+- Added advanced features: slope modes (left/symmetric/right), DC removal, inversion, Bartlett variant, Tukey percentage.
+- Implemented `Metadata` struct with ENBW, sidelobe level, coherent gain, and spectrum correction factors.
 
-- CI green on all default checks.
-- Repo can publish tagged prereleases.
+### Phase 3: Filter Runtime Primitives (Complete - 2026-02-06)
 
-### Phase 1: Numeric Foundations & Core Utilities
+- Implemented `biquad.Section` with Direct Form II Transposed topology (port of MFFilter.pas:737-743).
+- Added `biquad.Chain` for cascading N sections with gain, state save/restore for impulse response.
+- Implemented frequency response evaluation: `Response()`, `MagnitudeSquared()`, `MagnitudeDB()`, `Phase()`.
+- Added `fir.Filter` with circular-buffer delay line for direct-form FIR processing.
+- Coverage: biquad ≥90%, fir ≥85%.
 
-Objectives:
+### Phase 4: Filter Design Toolkit (Complete)
 
-- Provide reusable low-level helpers for DSP packages.
-- Establish a lightweight buffer type for allocation-friendly processing patterns.
+- Implemented biquad coefficient designers: Lowpass, Highpass, Bandpass, Notch, Allpass, Peak, LowShelf, HighShelf.
+- Added Butterworth LP/HP cascade design with bilinear transform and odd-order handling (orders 1-64).
+- Implemented Chebyshev Type I/II LP/HP with ripple factors (corrected angle term for Type II).
+- Validated across sample rates: 44100, 48000, 96000, 192000 Hz. Coverage ≥90%.
 
-#### 1a. Numeric Helpers
+### Phase 5: Filter Banks and Weighting (Complete - 2026-02-06)
 
-Tasks:
+- Implemented A/B/C/Z frequency weighting filters as pre-designed biquad chains (ported from MFDSPWeightingFilters.pas).
+- Added octave and fractional-octave filter bank builders with standard center frequencies/bandwidths.
+- IEC 61672 compliance validation for weighting curves.
+- Coverage: weighting 100%, bank 93%.
 
-- [x] Add core numeric helpers (clamp, epsilon compare, dB conversions).
-- [x] Define shared option/config patterns (functional options base).
-- [x] Add deterministic random/test signal helpers in `internal/testutil`.
+### Phase 6: Spectrum Utilities (Complete)
 
-#### 1b. Buffer Type (`dsp/buffer`)
+- Added magnitude/phase/power extraction helpers for complex FFT output to real arrays.
+- Implemented phase unwrapping and group delay calculations.
+- Added 1/N-octave smoothing and interpolation utilities.
+- Backend-agnostic interfaces integrating cleanly with `algo-fft` outputs.
 
-The legacy `mfw` code passes pointer+size pairs to every processing function. Go slices handle this naturally, but a thin `Buffer` wrapper adds value for real-time hot paths where allocation control matters.
+### Phase 7: Convolution and Correlation (Complete - 2026-02-06)
 
-Design:
+- Implemented direct convolution baseline plus overlap-add and overlap-save FFT-based strategies.
+- Added cross-correlation (direct/FFT/normalized) and auto-correlation functions.
+- Implemented deconvolution with regularization options (naive/regularized/Wiener) and inverse filter generation.
+- Benchmarks show crossover at ~64-128 sample kernels. Coverage 86%.
 
-```go
-package buffer
+### Phase 8: Resampling (Complete)
 
-// Buffer wraps a float64 slice with reuse-friendly semantics.
-// DSP functions accept raw []float64; Buffer bridges via .Samples().
-type Buffer struct { samples []float64 }
+- Implemented polyphase FIR resampler with rational ratio API.
+- Added anti-aliasing defaults and quality modes (low/medium/high).
+- Published quality/performance matrix for standard ratios (44.1k↔48k, 2x, 4x).
 
-func New(length int) *Buffer              // pre-allocate
-func FromSlice(s []float64) *Buffer       // wrap existing data (no copy)
-func (b *Buffer) Samples() []float64      // underlying slice
-func (b *Buffer) Len() int
-func (b *Buffer) Grow(n int)              // ensure capacity >= n, keep data
-func (b *Buffer) Resize(n int)            // set length to n, reuse capacity
-func (b *Buffer) Zero()                   // fill with zeros
-func (b *Buffer) Copy() *Buffer           // deep copy
+### Phase 9: Signal Generation and Utilities (Complete)
 
-// Pool provides sync.Pool-based buffer reuse for hot paths.
-type Pool struct { ... }
-
-func NewPool() *Pool
-func (p *Pool) Get(length int) *Buffer
-func (p *Pool) Put(b *Buffer)
-```
-
-Tasks:
-
-- [x] Implement `dsp/buffer.Buffer` type with `Samples()`, `Resize()`, `Zero()`, `Copy()`.
-- [x] Implement `dsp/buffer.Pool` with `sync.Pool`-based reuse.
-- [x] Add `ZeroRange(start, end)` helper (mirrors mfw `FillWithZeroes`).
-- [x] Ensure all public DSP APIs accept raw `[]float64` — `Buffer` is optional, not required.
-
-Exit criteria:
-
-- Shared helpers adopted by at least two downstream packages.
-- Buffer type validated in window function benchmarks (Phase 2).
-
-### Phase 2: Window Functions
-
-Objectives:
-
-- Deliver comprehensive window functions with coefficients, spectral metadata, and advanced features.
-- Port the full inventory from `mfw/legacy` (`MFWindowFunctions.pas`, `MFWindowFunctionUtils.pas`).
-
-#### 2a. Architecture
-
-- `Type` enum (iota-based) for all window types.
-- Cosine-term windows share a single parametric implementation with coefficient lookup tables.
-- Parametric windows (Kaiser, Gauss, Tukey, Lanczos) use functional options.
-- `Metadata` struct per type: ENBW, highest sidelobe level, coherent gain, spectrum correction factor.
-
-#### 2b. Window Inventory (from mfw legacy)
-
-**Tier 1 — Essential (implement first):**
-
-| Window             | Family     | Cosine Terms | ENBW (bins) | Sidelobe (dB) |
-| ------------------ | ---------- | :----------: | :---------: | :-----------: |
-| Rectangular        | Simple     |      —       |    1.000    |     -13.3     |
-| Hann               | Cosine     |      1       |    1.441    |     -31.5     |
-| Hamming            | Cosine     |      2       |    1.303    |     -42.7     |
-| Blackman           | Cosine     |      3       |    1.644    |     -58.1     |
-| Blackman-Harris 4T | Cosine     |      4       |    1.899    |     -92.0     |
-| FlatTop            | Cosine     |      5       |      —      |       —       |
-| Kaiser             | Parametric |      —       |   varies    |    varies     |
-| Tukey              | Parametric |      —       |   varies    |    varies     |
-
-**Tier 2 — Extended:**
-
-| Window              | Family      | Notes                                            |
-| ------------------- | ----------- | ------------------------------------------------ |
-| Triangle / Bartlett | Simple      | Bartlett variant shifts by half-sample           |
-| Cosine              | Simple      | `sin(0.5 * pi * x)`, ENBW 1.189, sidelobe -23 dB |
-| Welch               | Simple      | Parabolic: `1 - (1 - x)^2`                       |
-| Lanczos             | Parametric  | sinc-based, `alpha` parameter (default 1)        |
-| Gauss               | Parametric  | `exp(-ln2 * ((x-1)*alpha)^2)`, `alpha` parameter |
-| Exact Blackman      | Cosine (3T) | -68.2 dB sidelobe                                |
-| Blackman-Harris 3T  | Cosine (3T) | -70.9 dB sidelobe                                |
-| Blackman-Nuttall    | Cosine (4T) | -98.2 dB sidelobe                                |
-| Nuttall CTD         | Cosine (4T) | continuous 1st derivative                        |
-| Nuttall CFD         | Cosine (4T) | continuous 1st derivative variant                |
-
-**Tier 3 — Specialized:**
-
-| Window           | Family                | Notes                          |
-| ---------------- | --------------------- | ------------------------------ |
-| Albrecht 2T–11T  | Cosine (configurable) | Configurable 2–11 cosine terms |
-| Lawrey 5T        | Cosine (5T)           | 5-term optimized               |
-| Lawrey 6T        | Cosine (6T)           | 6-term optimized               |
-| Burgess Opt 59dB | Cosine (3T)           | Optimized for -59 dB sidelobe  |
-| Burgess Opt 71dB | Cosine (3T)           | Optimized for -71 dB sidelobe  |
-| FreeCosine       | Cosine (user)         | User-defined coefficient array |
-
-#### 2c. API Surface
-
-```go
-package window
-
-// Type identifies a window function.
-type Type int
-
-// Slope controls which edge(s) of the window are tapered.
-type Slope int
-const (
-    SlopeSymmetric Slope = iota  // both edges (default)
-    SlopeLeft                     // taper left edge only
-    SlopeRight                    // taper right edge only
-)
-
-// Metadata holds spectral properties of a window type.
-type Metadata struct {
-    Name                string
-    ENBW                float64 // equivalent noise bandwidth (bins)
-    HighestSidelobe     float64 // dB
-    CoherentGain        float64 // spectrum correction factor
-    CoherentGainSquared float64 // squared spectrum correction factor
-}
-
-// Generate returns window coefficients of the given length.
-func Generate(t Type, length int, opts ...Option) []float64
-
-// Apply multiplies buf in-place by the window. Zero-alloc for standard windows.
-func Apply(t Type, buf []float64, opts ...Option)
-
-// Info returns spectral metadata for a window type.
-func Info(t Type) Metadata
-
-// Options for parametric windows and advanced features.
-func WithAlpha(v float64) Option     // Kaiser beta, Gauss sigma, Tukey ratio, Lanczos alpha
-func WithPeriodic() Option           // DFT-periodic (asymmetric)
-func WithSlope(s Slope) Option       // left / symmetric / right edge tapering
-func WithDCRemoval() Option          // subtract mean after windowing
-func WithInvert() Option             // invert: 1 - w[n]
-func WithBartlett() Option           // half-sample shift (Triangle only)
-func WithCustomCoeffs(c []float64) Option  // user-defined cosine-term coefficients
-```
-
-#### 2d. Advanced Features (ported from mfw legacy)
-
-These features exist in `MFWindowFunctions.pas` and are included from day one:
-
-- **Window slope modes** (`TWindowSlope`): controls which edge(s) get tapered — `SlopeLeft`, `SlopeSymmetric`, `SlopeRight`.
-- **DC removal** (`FZeroDC`): subtract mean after windowing.
-- **Inversion** (`FInvert`): flip window vertically (`1 - w[n]`).
-- **Bartlett variant** (`FBartlett`): half-sample shift for Triangle window.
-- **Tukey percentage** (`FTukey`): edge taper ratio (0.0 = rectangular, 1.0 = Hann).
-- **Correction factors**: spectrum correction factor (`FSpkCorFak`) and squared variant (`FSpkCorFakSq`) computed during coefficient generation and stored in `Metadata`.
-
-#### 2e. Implementation Strategy
-
-The cosine-term window family (Hann through Albrecht) shares a single engine:
-
-1. **Coefficient tables** — ported from `MFWindowFunctionUtils.pas` (lines 22–145) as package-level `var` or `const` arrays.
-2. **Horner evaluation** — evaluate cosine sum using nested multiplication (mirrors legacy `TMFWindowFunctionCosineTerm` approach).
-3. **Parametric windows** — Kaiser uses modified Bessel I0, Gauss uses `exp(-ln2 * ...)`, Tukey is piecewise cosine/flat.
-4. **Simple windows** — Rectangle (no-op), Triangle, Cosine, Welch each have direct formulas.
-
-#### 2f. Task Breakdown
-
-- [x] Define `Type` enum with all window types, `Slope` type, `Metadata` struct, `Option` pattern.
-- [x] Implement cosine-term engine: shared coefficient lookup + Horner evaluation.
-- [x] Port coefficient tables from `MFWindowFunctionUtils.pas` lines 22–145 as package constants.
-- [x] Implement Tier 1 windows: Rectangular, Hann, Hamming, Blackman, Blackman-Harris 4T, FlatTop, Kaiser (with Bessel I0), Tukey.
-- [x] Implement `Generate` and `Apply` with option handling.
-- [x] Implement `Info()` returning ENBW, sidelobe, coherent gain, correction factors per type.
-- [x] Implement advanced features: `WithSlope`, `WithDCRemoval`, `WithInvert`, `WithBartlett`.
-- [x] Implement Tier 2 windows: Triangle/Bartlett, Cosine, Welch, Lanczos, Gauss, Exact Blackman, BH-3T, Blackman-Nuttall, Nuttall CTD, Nuttall CFD.
-- [x] Implement Tier 3 windows: Albrecht (2T–11T), Lawrey 5T/6T, Burgess Opt 59dB/71dB, FreeCosine (`WithCustomCoeffs`).
-- [ ] Golden vector tests against mfw outputs and/or NumPy/SciPy `scipy.signal.windows` references.
-- [x] Benchmarks for `Generate` and `Apply` across sizes (256, 1024, 4096, 16384) with allocs/op tracking.
-- [x] Runnable examples in package documentation.
-
-#### 2g. Exit Criteria
-
-- All Tier 1 + Tier 2 windows implemented and tested.
-- All advanced features (slope modes, DC removal, inversion, Bartlett) implemented and tested.
-- Golden vectors validated (at minimum: Hann, Hamming, Blackman-Harris 4T, Kaiser, FlatTop).
-- Coverage >= 90% in `dsp/window`.
-- Benchmarks present for `Generate` and `Apply`.
-- `Info()` returns correct ENBW, sidelobe, and correction factors for all implemented types.
-- Tier 3 windows implemented (may have lighter test coverage initially).
-
-### Phase 3: Filter Runtime Primitives
-
-Objectives:
-
-- Build runtime processing blocks for IIR (biquad) and FIR filters.
-- Port processing topology from `mfw/legacy/Source/MFFilter.pas` (2641 lines).
-- Provide frequency-response evaluation helpers for runtime verification.
-
-Status:
-
-- Completed on 2026-02-06.
-
-Phase 3 covers **runtime only** — coefficient design (Butterworth, Chebyshev, parametric EQ, etc.) lives in Phase 4 (`dsp/filter/design`).
-
-#### 3.1 Legacy Architecture Reference
-
-The legacy codebase implements filters through a deep class hierarchy rooted at `TMFDSPFilter`. The Go port uses flat, composition-based design instead.
-
-```
-TMFDSPFilter (abstract base: gain, sample rate, abstract ProcessSample)
-├── TMFDSPFrequencyFilter (adds frequency, W0, sinW0)
-│   └── TMFDSPOrderFilter (adds order)
-│       ├── TMFDSPBandwidthFilter (adds bandwidth, alpha)
-│       │   └── TMFDSPBiquadIIRFilter (single 2nd-order section)
-│       │       ├── TMFDSPGainFilter, TMFDSPPeakFilter
-│       │       ├── TMFDSPLowShelfFilter, TMFDSPHighShelfFilter
-│       │       ├── TMFDSPHighcutFilter (LP), TMFDSPLowcutFilter (HP)
-│       │       ├── TMFDSPBandpass, TMFDSPNotch, TMFDSPAllpass
-│       │       └── TMFDSPShapeFilter
-│       ├── TMFDSPButterworthFilter (cascaded SOS, order 1–64)
-│       │   ├── TMFDSPButterworthLP / HP
-│       │   └── TMFDSPCriticalLP / HP
-│       └── TMFDSPChebyshevFilter (cascaded SOS with ripple)
-│           ├── TMFDSPChebyshev1LP / HP
-│           └── TMFDSPChebyshev2LP / HP
-└── TMFDSPFreeFilter (arbitrary-order IIR, dynamic arrays)
-```
-
-Key implementation details:
-
-- **Biquad topology**: Direct Form II Transposed (MFFilter.pas:737–743):
-  `y = b0*x + d0; d0 = b1*x - a1*y + d1; d1 = b2*x - a2*y`
-- **Coefficient naming**: Legacy `FNominator[0..2]` = b0/b1/b2, `FDenominator[1..2]` = a1/a2 (a0 normalized to 1)
-- **Cascaded layout** (Butterworth/Chebyshev): interleaved `FAB[0..127]` with 4 doubles/section (b0,b1,a1,a2), `FState[0..63]` with 2 doubles/section, odd-order final first-order section
-- **Frequency response**: closed-form `MagnitudeSquared`, `Phase`, `Complex` — no FFT required (MFFilter.pas:694–717)
-- **State management**: push/pop state stack for non-destructive preview (MFFilter.pas:719–798)
-- **Impulse response**: feed impulse through ProcessSample with state save/restore (MFFilter.pas:620–639)
-
-#### 3.2 Legacy → Go Mapping
-
-| Legacy (Pascal)                            | Go (algo-dsp)                           |
-| ------------------------------------------ | --------------------------------------- |
-| `TMFDSPBiquadIIRFilter.ProcessSample`      | `biquad.Section.ProcessSample`          |
-| `TMFDSPBiquadIIRFilter.FNominator[0..2]`   | `biquad.Coefficients.B0, B1, B2`        |
-| `TMFDSPBiquadIIRFilter.FDenominator[1..2]` | `biquad.Coefficients.A1, A2`            |
-| `TMFDSPBiquadIIRFilter.FState[0..1]`       | `biquad.Section.d0, d1`                 |
-| `TMFDSPButterworthFilter.FAB[0..127]`      | `biquad.Chain.sections[i].Coefficients` |
-| `TMFDSPButterworthFilter.FState[0..63]`    | `biquad.Chain.sections[i].d0/d1`        |
-| `TMFDSPButterworthLP.ProcessSample`        | `biquad.Chain.ProcessSample`            |
-| `TMFDSPBiquadIIRFilter.MagnitudeSquared`   | `biquad.Coefficients.MagnitudeSquared`  |
-| `TMFDSPBiquadIIRFilter.Phase`              | `biquad.Coefficients.Phase`             |
-| `TMFDSPBiquadIIRFilter.Complex`            | `biquad.Coefficients.Response`          |
-| `TMFDSPBiquadIIRFilter.GetIR`              | `biquad.Section.ImpulseResponse`        |
-| `TMFDSPBiquadIIRFilter.PushStates/Pop`     | `biquad.Section.State/SetState`         |
-| `TMFDSPFreeFilter.ProcessSample`           | (higher-order IIR via Chain, or later)  |
-
-#### 3a. Biquad Section (`dsp/filter/biquad`)
-
-```go
-package biquad
-
-// Coefficients holds transfer function coefficients for a single
-// second-order section. a0 is normalized to 1.
-type Coefficients struct {
-    B0, B1, B2 float64 // feedforward (numerator)
-    A1, A2     float64 // feedback (denominator)
-}
-
-// Section is a single biquad with coefficients and DF-II-T state.
-type Section struct {
-    Coefficients
-    d0, d1 float64 // delay line
-}
-
-func NewSection(c Coefficients) *Section
-func (s *Section) ProcessSample(x float64) float64
-func (s *Section) ProcessBlock(buf []float64)
-func (s *Section) ProcessBlockTo(dst, src []float64)
-func (s *Section) Reset()
-func (s *Section) State() [2]float64
-func (s *Section) SetState(state [2]float64)
-```
-
-#### 3b. Cascaded Chain (`dsp/filter/biquad`)
-
-```go
-// Chain cascades biquad sections in series for higher-order filters.
-type Chain struct {
-    sections []Section
-    gain     float64
-}
-
-type ChainOption func(*chainConfig)
-func WithGain(g float64) ChainOption
-
-func NewChain(coeffs []Coefficients, opts ...ChainOption) *Chain
-func (c *Chain) ProcessSample(x float64) float64
-func (c *Chain) ProcessBlock(buf []float64)
-func (c *Chain) Reset()
-func (c *Chain) Order() int
-func (c *Chain) NumSections() int
-func (c *Chain) Section(i int) *Section
-func (c *Chain) State() [][2]float64
-func (c *Chain) SetState(states [][2]float64)
-```
-
-#### 3c. Frequency Response (`dsp/filter/biquad`)
-
-```go
-func (c *Coefficients) Response(freqHz, sampleRate float64) complex128
-func (c *Coefficients) MagnitudeSquared(freqHz, sampleRate float64) float64
-func (c *Coefficients) MagnitudeDB(freqHz, sampleRate float64) float64
-func (c *Coefficients) Phase(freqHz, sampleRate float64) float64
-
-func (c *Chain) Response(freqHz, sampleRate float64) complex128
-func (c *Chain) MagnitudeDB(freqHz, sampleRate float64) float64
-
-func (s *Section) ImpulseResponse(n int) []float64
-func (c *Chain) ImpulseResponse(n int) []float64
-```
-
-#### 3d. FIR Runtime (`dsp/filter/fir`)
-
-Direct-form FIR filter with circular-buffer delay line. Suitable for short filters (order < ~256). Partitioned/FFT convolution for long FIR is Phase 7 (`dsp/conv`).
-
-```go
-package fir
-
-type Filter struct {
-    coeffs []float64
-    delay  []float64
-    pos    int
-}
-
-func New(coeffs []float64) *Filter
-func (f *Filter) ProcessSample(x float64) float64
-func (f *Filter) ProcessBlock(buf []float64)
-func (f *Filter) ProcessBlockTo(dst, src []float64)
-func (f *Filter) Reset()
-func (f *Filter) Order() int
-func (f *Filter) Coefficients() []float64
-func (f *Filter) Response(freqHz, sampleRate float64) complex128
-func (f *Filter) MagnitudeDB(freqHz, sampleRate float64) float64
-```
-
-#### 3e. Task Breakdown
-
-**3a. Biquad Section** (Critical):
-
-- [x] Define `Coefficients` struct and `Section` type.
-- [x] Implement `ProcessSample` — Direct Form II Transposed (port from MFFilter.pas:737–743).
-- [x] Implement `ProcessBlock` and `ProcessBlockTo`.
-- [x] Implement `Reset`, `State`, `SetState`.
-- [x] Table-driven tests: known coefficient sets -> expected output sequences.
-- [x] Property tests: gain=1 passthrough, zero coefficients -> silence.
-- [x] Benchmarks: `ProcessSample` and `ProcessBlock` at 256/1024/4096 samples.
-
-**3b. Cascaded Chain** (Critical):
-
-- [x] Implement `Chain` with `NewChain`, gain option.
-- [x] Implement `ProcessSample` cascading through sections (port from MFFilter.pas:1374–1395).
-- [x] Implement `ProcessBlock`.
-- [x] Implement `Reset`, `State`/`SetState`, `Order`, `NumSections`, `Section`.
-- [x] Tests: 2nd/4th/6th order cascades with known coefficients.
-- [x] Test odd-order chain (first-order final section).
-- [x] Benchmarks: cascade throughput at various orders (2, 4, 8, 16).
-
-**3c. Frequency Response** (High):
-
-- [x] Implement `Coefficients.Response` (complex H(z) evaluation).
-- [x] Implement `MagnitudeSquared` closed-form (port from MFFilter.pas:702–708).
-- [x] Implement `MagnitudeDB` and `Phase` (port from MFFilter.pas:694–717).
-- [x] Implement `Chain.Response` and `Chain.MagnitudeDB` (product of sections).
-- [x] Implement `ImpulseResponse` with state save/restore (port from MFFilter.pas:620–639).
-- [x] Tests: verify against known analytical responses (e.g., unit-gain allpass).
-- [x] Tests: verify `MagnitudeSquared` matches `|Response|²` within tolerance.
-
-**3d. FIR Runtime** (Medium):
-
-- [x] Implement `Filter` with circular-buffer delay line.
-- [x] Implement `ProcessSample` — direct-form convolution.
-- [x] Implement `ProcessBlock`, `ProcessBlockTo`.
-- [x] Implement `Reset`, `Order`, `Coefficients`.
-- [x] Implement `Response` and `MagnitudeDB`.
-- [x] Tests: known FIR (e.g., 3-tap moving average, differentiator).
-- [x] Tests: impulse response matches coefficients.
-- [x] Benchmarks: FIR processing at various tap counts (8, 32, 128, 512).
-
-**3e. Integration & Documentation**:
-
-- [x] Runnable examples: create biquad, process block, evaluate frequency response.
-- [x] Runnable example: cascaded chain.
-- [x] Ensure `go vet` and `golangci-lint` pass.
-- [x] Coverage >= 90% for `dsp/filter/biquad`, >= 85% for `dsp/filter/fir`.
-
-#### 3f. Exit Criteria
-
-- `biquad.Section.ProcessSample` produces bit-identical output to legacy DF-II-T for same coefficients and input.
-- `biquad.Chain.ProcessSample` correctly cascades N sections, matching legacy Butterworth/Chebyshev processing loop structure.
-- `MagnitudeSquared`, `Phase`, and `Response` match legacy closed-form formulas within 1e-12 tolerance.
-- `ImpulseResponse` uses state save/restore and doesn't modify filter state.
-- FIR direct-form produces correct output for known coefficient/input pairs.
-- All tests pass with race detector (`go test -race`).
-- Benchmarks present for all `ProcessSample`/`ProcessBlock` paths.
-- `go vet` and `golangci-lint` clean.
-- Coverage >= 90% for `dsp/filter/biquad`.
-
-### Phase 4: Filter Design Toolkit
-
-Objectives:
-
-- Provide coefficient calculators that produce `biquad.Coefficients` (and `[]biquad.Coefficients` for cascaded designs) from frequency/gain/Q specs.
-- Port design algorithms from `mfw/legacy/Source/MFFilter.pas` `CalculateCoefficients` methods.
-
-Source: `MFFilter.pas` lines 868–2150 contain all coefficient calculations.
-
-#### 4.1 Legacy Coefficient Design Reference
-
-| Filter Type     | Legacy Class            | Lines     | Notes                                                     |
-| --------------- | ----------------------- | --------- | --------------------------------------------------------- |
-| Peak (PEQ)      | `TMFDSPPeakFilter`      | 868–878   | Parametric EQ with gain and Q                             |
-| Low Shelf       | `TMFDSPLowShelfFilter`  | 882–897   | Shelving with gain, uses `sqrt(gain)*alpha`               |
-| High Shelf      | `TMFDSPHighShelfFilter` | 901–916   | Shelving with gain                                        |
-| Lowpass (LP)    | `TMFDSPHighcutFilter`   | 920–931   | Standard biquad LP with Q/bandwidth                       |
-| Highpass (HP)   | `TMFDSPLowcutFilter`    | 935–946   | Standard biquad HP with Q/bandwidth                       |
-| Bandpass        | `TMFDSPBandpass`        | 950–959   | Constant-skirt-gain bandpass                              |
-| Notch           | `TMFDSPNotch`           | 963–973   | Band-reject filter                                        |
-| Allpass         | `TMFDSPAllpass`         | (similar) | Phase-shifting filter                                     |
-| Gain            | `TMFDSPGainFilter`      | 977–984   | Pure gain, b0=gain²                                       |
-| Shape           | `TMFDSPShapeFilter`     | 999–1090  | Parametric with shape control                             |
-| Butterworth LP  | `TMFDSPButterworthLP`   | 1277–1339 | Bilinear-transform SOS cascade, `K=tan(W0/2)`, order 1–64 |
-| Butterworth HP  | `TMFDSPButterworthHP`   | 1452–1513 | HP variant with negated b1                                |
-| Critical LP/HP  | `TMFDSPCriticalLP/HP`   | 1613–1750 | First-order only (Butterworth order=1)                    |
-| Chebyshev I LP  | `TMFDSPChebyshev1LP`    | 1895–2032 | Ripple-factor SOS cascade                                 |
-| Chebyshev I HP  | `TMFDSPChebyshev1HP`    | 2106–2150 | HP variant                                                |
-| Chebyshev II LP | `TMFDSPChebyshev2LP`    | (similar) | Stopband-ripple variant                                   |
-| Chebyshev II HP | `TMFDSPChebyshev2HP`    | (similar) | HP variant                                                |
-
-#### 4a. API Surface (`dsp/filter/design`)
-
-```go
-package design
-
-import "github.com/cwbudde/algo-dsp/dsp/filter/biquad"
-
-// Biquad coefficient designers — each returns a single biquad.Coefficients.
-func Lowpass(freq, q, sampleRate float64) biquad.Coefficients
-func Highpass(freq, q, sampleRate float64) biquad.Coefficients
-func Bandpass(freq, q, sampleRate float64) biquad.Coefficients
-func Notch(freq, q, sampleRate float64) biquad.Coefficients
-func Allpass(freq, q, sampleRate float64) biquad.Coefficients
-func Peak(freq, gainDB, q, sampleRate float64) biquad.Coefficients
-func LowShelf(freq, gainDB, q, sampleRate float64) biquad.Coefficients
-func HighShelf(freq, gainDB, q, sampleRate float64) biquad.Coefficients
-
-// Cascaded coefficient designers — return []biquad.Coefficients for Chain.
-func ButterworthLP(freq float64, order int, sampleRate float64) []biquad.Coefficients
-func ButterworthHP(freq float64, order int, sampleRate float64) []biquad.Coefficients
-func Chebyshev1LP(freq float64, order int, rippleDB, sampleRate float64) []biquad.Coefficients
-func Chebyshev1HP(freq float64, order int, rippleDB, sampleRate float64) []biquad.Coefficients
-func Chebyshev2LP(freq float64, order int, rippleDB, sampleRate float64) []biquad.Coefficients
-func Chebyshev2HP(freq float64, order int, rippleDB, sampleRate float64) []biquad.Coefficients
-
-// Bilinear transform helpers (internal, but exported for advanced use).
-func BilinearTransform(sCoeffs [3]float64, sampleRate float64) [3]float64
-```
-
-#### 4b. Task Breakdown
-
-- [x] Implement bilinear transform helper: `K = tan(W0 * 0.5)` and frequency pre-warping.
-- [x] Implement biquad designers: `Lowpass`, `Highpass`, `Bandpass`, `Notch`, `Allpass` (port MFFilter.pas:920–973).
-- [x] Implement `Peak`, `LowShelf`, `HighShelf` (port MFFilter.pas:868–916).
-- [x] Implement `ButterworthLP`/`HP` cascaded SOS design (port MFFilter.pas:1277–1513).
-- [x] Implement `Chebyshev1LP`/`HP` with ripple factors (port MFFilter.pas:1865–2150).
-- [x] Implement `Chebyshev2LP`/`HP` stopband-ripple variant.
-- [x] Handle odd-order Butterworth/Chebyshev (final first-order section).
-- [ ] Golden vector tests: design at known freq/SR/order, compare coefficients against legacy output.
-- [x] Integration tests: design -> chain -> frequency response matches expected magnitude curve.
-- [x] Validate across sample rates: 44100, 48000, 96000, 192000 Hz.
-- [x] Runnable examples: design a 4th-order Butterworth LP, plot its response.
-
-Notes:
-
-- Chebyshev Type II LP uses a corrected angle term `cos((2i+1)*pi/(2N))`; legacy `TMFDSPChebyshev2LP` omits `pi` in that term.
-
-#### 4c. Exit Criteria
-
-- All biquad designers produce coefficients matching legacy `CalculateCoefficients` within 1e-12.
-- Butterworth/Chebyshev cascades match legacy `FAB` array output for orders 1–16.
-- Designed filters → frequency response → magnitude at DC, Nyquist, and cutoff match expected values.
-- Coverage >= 90% in `dsp/filter/design`.
-
-### Phase 5: Filter Banks and Weighting
-
-Status:
-
-- **Completed on 2026-02-06.**
-
-Objectives:
-
-- Add application-oriented filter compositions.
-
-Source: `mfw/legacy/Source/DSP/MFDSPWeightingFilters.pas` (A/B/C weighting as cascaded biquads), `MFDSPFractionalOctaveFilter.pas` (octave/fractional-octave banks).
-
-#### 5a. Weighting Filters (`dsp/filter/weighting`)
-
-```go
-package weighting
-
-import "github.com/cwbudde/algo-dsp/dsp/filter/biquad"
-
-type Type int
-const (
-    TypeA Type = iota
-    TypeB
-    TypeC
-    TypeZ // unity (no weighting)
-)
-
-// New returns a biquad.Chain configured for the given weighting curve
-// at the specified sample rate.
-func New(t Type, sampleRate float64) *biquad.Chain
-```
-
-Legacy reference: A-weighting uses 6th-order cascaded biquads, B uses 5th, C uses 4th. Coefficients are fixed per sample rate.
-
-#### 5b. Filter Banks (`dsp/filter/bank`)
-
-```go
-package bank
-
-// Octave builds an octave or fractional-octave filter bank.
-func Octave(fraction int, sampleRate float64, opts ...Option) *Bank
-```
-
-Tasks:
-
-- [x] Implement A/B/C/Z weighting filters as pre-designed biquad chains.
-- [x] Implement octave/fractional-octave filter bank builders.
-- [x] Add convenience wrappers for block processing across all bands.
-- [x] Compliance-oriented validation tests for weighting curves (IEC 61672).
-
-Exit criteria:
-
-- [x] Weighting filter magnitude responses match IEC 61672 tolerances.
-- [x] Octave bank center frequencies and bandwidths match standard definitions.
-- [x] Coverage: weighting 100%, bank 93%.
-
-### Phase 6: Spectrum Utilities
-
-Objectives:
-
-- Provide FFT-adjacent processing independent of FFT implementation.
-
-Tasks:
-
-- [x] Add magnitude/phase/power extraction helpers (complex FFT output -> real arrays).
-- [x] Add phase unwrapping and group delay calculations.
-- [x] Add smoothing/interpolation utilities (1/N-octave smoothing).
-- [x] Define interfaces that integrate cleanly with `algo-fft` outputs.
-
-Exit criteria:
-
-- No FFT implementation duplication; only integration helpers.
-- Smooth integration with `algo-fft` complex output types.
-- Adapter-style spectrum interfaces are backend-agnostic and can be reused for `go-fftw` integration.
-
-### Phase 7: Convolution and Correlation
-
-Status:
-
-- **Completed on 2026-02-06.**
-
-Objectives:
-
-- Support linear/circular convolution and correlation workflows.
-
-Tasks:
-
-- [x] Implement direct convolution baseline.
-- [x] Implement overlap-add and overlap-save strategies (using `algo-fft`).
-- [x] Implement cross-correlation and normalized variants.
-- [x] Add deconvolution with regularization options.
-- [x] Benchmark crossover points: direct vs. OLA vs. OLS by input/kernel size.
-
-Exit criteria:
-
-- [x] Algorithm switches chosen by input size with benchmark-backed thresholds (crossover ~64-128 samples).
-- [x] Comprehensive tests and examples for all convolution methods.
-
-### Phase 8: Resampling
-
-Objectives:
-
-- High-quality sample rate conversion.
-
-Tasks:
-
-- [x] Implement polyphase FIR resampler.
-- [x] Add rational ratio API and convenience wrappers.
-- [x] Add anti-aliasing defaults and quality modes.
-- [x] Validate passband/stopband performance targets.
-
-Source: `mfw/legacy/Source/DSP/MFDSPPolyphaseFilter.pas` (polyphase with FPU/3DNow/SSE variants).
-
-Exit criteria:
-
-- Published quality/performance matrix for standard ratios (44.1k<->48k, 2x, 4x).
-
-### Phase 9: Signal Generation and Utilities
-
-Objectives:
-
-- Generators and common transforms for tests and measurements.
-
-Tasks:
-
-- [x] Implement sine/multisine/noise/impulse/sweep generators.
-- [x] Implement normalize, clip, DC removal, envelope helpers.
-- [x] Add deterministic seed strategy for reproducibility.
-
-Exit criteria:
-
-- Generators usable as fixtures in measure package tests.
+- Implemented generators: sine, multisine, noise (white/pink), impulse, sweep (linear/log).
+- Added signal utilities: normalize, clip, DC removal, envelope helpers.
+- Deterministic seed strategy for reproducibility in tests and measurements.
 
 ### Phase 10: Measurement Kernels (THD)
 
 Objectives:
 
-- Build measurement logic reusable across applications.
+- Build THD/THD+N measurement logic reusable across applications.
+- Port calculation algorithms from `mfw/legacy/Source/MFTotalHarmonicDistortionCalculation.pas`.
 
-Tasks:
+Source: `MFTotalHarmonicDistortionCalculation.pas` (576 lines), `MFTHDData.pas` (2107 lines — data structures for level/log sweep THD).
 
-- [ ] THD/THD+N calculator core.
-- [ ] Fundamental detection strategies.
-- [ ] Harmonic extraction and odd/even summaries.
-- [ ] Noise floor and SINAD utilities.
+#### 10.1 Legacy Algorithm Reference
 
-Exit criteria:
+The legacy implementation calculates distortion from frequency-domain data:
 
-- Accuracy validated with synthetic + recorded reference sets.
+- **Fundamental detection**: Find bin with maximum squared magnitude in search range
+- **Harmonic extraction**: Sum magnitudes at integer multiples of fundamental bin
+- **Capture range**: Window-based bin width for spectral leakage compensation (uses window's first minimum)
+- **Noise calculation**: THD+N minus THD (all energy in range minus harmonic energy)
+
+Key formulas (from MFTotalHarmonicDistortionCalculation.pas):
+- `THD = Σ sqrt(|H_k|²)` for k = 2, 3, ... (harmonics at k × fundamental_bin)
+- `THD+N = Σ sqrt(|X_i|²)` for all bins in evaluation range
+- `Noise = THD+N - THD`
+- `OddHD = Σ sqrt(|H_k|²)` for k = 3, 5, 7, ... (H3, H5, H7, ...)
+- `EvenHD = Σ sqrt(|H_k|²)` for k = 2, 4, 6, ... (H2, H4, H6, ...)
+
+#### 10.2 API Surface (`measure/thd`)
+
+```go
+package thd
+
+// Config holds THD calculation parameters.
+type Config struct {
+    SampleRate        float64
+    FFTSize           int
+    FundamentalFreq   float64    // 0 = auto-detect
+    RangeLowerFreq    float64    // evaluation range lower bound (default 20 Hz)
+    RangeUpperFreq    float64    // evaluation range upper bound (default 20 kHz)
+    CaptureBins       int        // 0 = auto from window, >0 = fixed
+    MaxHarmonics      int        // max harmonics to evaluate (0 = unlimited)
+    RubNBuzzStart     int        // start harmonic for Rub & Buzz (default 10)
+}
+
+// Result holds THD measurement results.
+type Result struct {
+    FundamentalFreq   float64    // detected or specified fundamental
+    FundamentalLevel  float64    // fundamental magnitude (linear)
+    THD               float64    // total harmonic distortion (linear ratio)
+    THDN              float64    // THD+N (linear ratio)
+    THD_dB            float64    // THD in dB
+    THDN_dB           float64    // THD+N in dB
+    OddHD             float64    // odd harmonics sum
+    EvenHD            float64    // even harmonics sum
+    Noise             float64    // noise floor (THDN - THD)
+    RubNBuzz          float64    // high-order harmonics (from RubNBuzzStart)
+    Harmonics         []float64  // individual harmonic levels [H2, H3, H4, ...]
+    SINAD             float64    // signal-to-noise-and-distortion ratio (dB)
+}
+
+// Calculator performs THD analysis on frequency-domain data.
+type Calculator struct { ... }
+
+func NewCalculator(cfg Config) *Calculator
+func (c *Calculator) Calculate(spectrum []complex128) Result
+func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result
+
+// Convenience functions for one-shot analysis.
+func Analyze(spectrum []complex128, cfg Config) Result
+func AnalyzeSignal(signal []float64, cfg Config) Result  // includes windowing + FFT
+```
+
+#### 10.3 Task Breakdown
+
+- [ ] Define `Config` struct with all parameters from legacy (sample rate, FFT size, capture bins, range, flags).
+- [ ] Implement fundamental detection: find max magnitude bin in specified range.
+- [ ] Implement harmonic extraction with configurable capture range.
+- [ ] Implement `GetTHD`: sum of harmonics starting from H2 (port MFTotalHarmonicDistortionCalculation:234–264).
+- [ ] Implement `GetTHDN`: sum of all bins in evaluation range (port MFTotalHarmonicDistortionCalculation:266–285).
+- [ ] Implement `GetOddHD` and `GetEvenHD`: odd/even harmonic summation (port MFTotalHarmonicDistortionCalculation:292–352).
+- [ ] Implement `GetNoise`: THDN - THD.
+- [ ] Implement `GetRubNBuzz`: high-order harmonics from configurable start (port MFTotalHarmonicDistortionCalculation:365–406).
+- [ ] Implement SINAD calculation: 20*log10(fundamental / THDN).
+- [ ] Add window-based capture bin calculation using `window.Info()` first minimum.
+- [ ] Tests with synthetic signals: pure tone (THD ≈ 0), known distortion levels.
+- [ ] Tests with multi-tone signals for harmonic separation accuracy.
+- [ ] Benchmarks for calculation throughput at various FFT sizes.
+- [ ] Runnable examples demonstrating THD measurement workflow.
+
+#### 10.4 Exit Criteria
+
+- THD/THD+N calculations match legacy output within 0.01 dB for same input spectra.
+- Fundamental auto-detection correctly identifies fundamental in presence of harmonics.
+- Odd/even harmonic separation validated with asymmetric distortion test signals.
+- Coverage >= 90% in `measure/thd`.
 
 ### Phase 11: Measurement Kernels (Sweep/IR)
 
 Objectives:
 
-- Log-sweep and impulse-response analysis kernels.
+- Log-sweep generation, deconvolution, and impulse response analysis.
+- Port IR metrics from `mfw/legacy/Source/MFAudioData.pas` (`TMFSchroederData` class).
 
-Tasks:
+Source: `MFAudioData.pas` (TMFSchroederData lines 43–74), log sweep dialogs in `Dialogs/MFDialog*LogSweep*.pas`.
 
-- [ ] Log sweep generation and inverse filter generation.
-- [ ] Deconvolution pipeline.
-- [ ] Harmonic IR separation.
-- [ ] IR metrics (RT60, EDT, C50, C80, D50, center time).
+#### 11.1 Legacy IR Metrics Reference
 
-Exit criteria:
+The legacy `TMFSchroederData` class implements room acoustic metrics:
 
-- Deterministic outputs for fixed settings and fixtures.
+- **RT60**: Reverberation time — time for -60 dB decay (extrapolated from Schroeder integral)
+- **D50 (Definition)**: Ratio of early energy (0–50ms) to total energy
+- **C50, C80 (Clarity)**: 10*log10(early/late) at 50ms and 80ms boundaries
+- **Center Time**: First moment of squared IR (energy centroid)
+
+Schroeder integral: backward integration of squared impulse response.
+
+#### 11.2 API Surface (`measure/sweep`, `measure/ir`)
+
+```go
+package sweep
+
+// LogSweep generates a logarithmic sine sweep and its inverse filter.
+type LogSweep struct {
+    StartFreq   float64
+    EndFreq     float64
+    Duration    float64  // seconds
+    SampleRate  float64
+}
+
+func (s *LogSweep) Generate() []float64
+func (s *LogSweep) InverseFilter() []float64
+func (s *LogSweep) Deconvolve(response []float64) []float64  // returns IR
+func (s *LogSweep) ExtractHarmonicIRs(response []float64, maxHarmonic int) [][]float64
+
+// LinearSweep for comparison/testing.
+type LinearSweep struct { ... }
+```
+
+```go
+package ir
+
+// Metrics holds impulse response analysis results.
+type Metrics struct {
+    RT60        float64  // reverberation time (seconds)
+    EDT         float64  // early decay time (seconds)
+    T20         float64  // RT from -5 to -25 dB
+    T30         float64  // RT from -5 to -35 dB
+    C50         float64  // clarity at 50ms (dB)
+    C80         float64  // clarity at 80ms (dB)
+    D50         float64  // definition at 50ms (ratio 0-1)
+    D80         float64  // definition at 80ms (ratio 0-1)
+    CenterTime  float64  // energy centroid (seconds)
+    PeakIndex   int      // sample index of IR peak
+}
+
+// Analyzer computes IR metrics from impulse response data.
+type Analyzer struct {
+    SampleRate float64
+}
+
+func NewAnalyzer(sampleRate float64) *Analyzer
+func (a *Analyzer) Analyze(ir []float64) Metrics
+func (a *Analyzer) SchroederIntegral(ir []float64) []float64
+func (a *Analyzer) Definition(ir []float64, timeMs float64) float64
+func (a *Analyzer) Clarity(ir []float64, timeMs float64) float64
+func (a *Analyzer) CenterTime(ir []float64) float64
+func (a *Analyzer) RT60(ir []float64) float64
+func (a *Analyzer) FindImpulseStart(ir []float64) int
+```
+
+#### 11.3 Task Breakdown
+
+**Sweep Generation (`measure/sweep`):**
+- [ ] Implement log sweep generation with configurable start/end frequency and duration.
+- [ ] Implement inverse filter generation (time-reversed, amplitude-compensated).
+- [ ] Implement deconvolution pipeline using `dsp/conv` (FFT-based for efficiency).
+- [ ] Implement harmonic IR separation (time-domain windowing of deconvolved response).
+- [ ] Tests with synthetic systems (known IR → sweep response → deconvolved IR matches).
+
+**IR Analysis (`measure/ir`):**
+- [ ] Implement Schroeder backward integration (cumulative sum from end).
+- [ ] Implement RT60 calculation with linear regression on Schroeder curve (port from MFAudioData.pas).
+- [ ] Implement EDT (early decay time) from 0 to -10 dB slope.
+- [ ] Implement T20/T30 from standard ISO 3382 slopes.
+- [ ] Implement Definition `D(t) = ∫₀ᵗ h²(τ)dτ / ∫₀^∞ h²(τ)dτ`.
+- [ ] Implement Clarity `C(t) = 10*log10(∫₀ᵗ h²(τ)dτ / ∫ₜ^∞ h²(τ)dτ)`.
+- [ ] Implement Center Time `Ts = ∫₀^∞ τ·h²(τ)dτ / ∫₀^∞ h²(τ)dτ`.
+- [ ] Implement impulse start detection (first sample above threshold).
+- [ ] Tests with synthetic exponential decay IRs (known RT60).
+- [ ] Benchmarks for Schroeder integration and metric calculation.
+- [ ] Runnable examples for sweep measurement workflow.
+
+#### 11.4 Exit Criteria
+
+- Log sweep deconvolution recovers known IR within -60 dB noise floor.
+- RT60 calculation matches analytical value for exponential decay within 5%.
+- C50/C80/D50 calculations validated against ISO 3382 reference implementations.
+- Harmonic IR separation correctly isolates H2, H3 IRs from nonlinear system response.
+- Coverage >= 85% for both `measure/sweep` and `measure/ir`.
 
 ### Phase 12: Stats Packages
 
 Objectives:
 
-- Add reusable time/frequency statistics.
+- Reusable time-domain and frequency-domain statistics for signal analysis.
+- Port statistics types from `mfw/legacy/Source/MFTypes.pas` and `MFAudioData.pas`.
 
-Tasks:
+Source: `MFTypes.pas` (TMFTimeDomainInfoType, TMFFrequencyDomainInfoType enums), `MFAudioData.pas` (TMFTimeDomainDataInformation class).
 
-- [ ] Time-domain stats (RMS, crest factor, moments, crossings).
-- [ ] Frequency-domain stats (centroid, flatness, bandwidth).
-- [ ] Streaming and block-based variants.
+#### 12.1 Legacy Statistics Reference
 
-Exit criteria:
+**Time-domain info types** (from MFTypes.pas):
+- `titZeroTransitions`: zero crossing count
+- `titDC`, `titDC_dB`: mean value (linear and dB)
+- `titRMS`, `titRMS_dB`: root mean square
+- `titMax`, `titMin`, `titPeak`, `titRange`: amplitude statistics
+- `titCrest`: crest factor (peak/RMS ratio in dB)
+- `titEnergy`, `titPower`: signal energy and power
+- `titM1`–`titM4`: statistical moments (mean, variance, skewness, kurtosis)
+- `titSkew`, `titKurtosis`: higher-order moments
 
-- Stable APIs and doc examples for all major stats.
+**Frequency-domain info types** (from MFTypes.pas):
+- `fitDC`, `fitSum`, `fitMaximum`, `fitMinimum`, `fitAverage`, `fitRange`
+- `fitEnergy`, `fitPower`
+
+#### 12.2 API Surface (`stats/time`, `stats/frequency`)
+
+```go
+package time
+
+// Stats holds time-domain signal statistics.
+type Stats struct {
+    Length          int
+    DC              float64  // mean
+    DC_dB           float64
+    RMS             float64
+    RMS_dB          float64
+    Max             float64
+    MaxPos          int
+    Min             float64
+    MinPos          int
+    Peak            float64  // max(|max|, |min|)
+    Peak_dB         float64
+    Range           float64  // max - min
+    Range_dB        float64
+    CrestFactor     float64  // peak/RMS (linear)
+    CrestFactor_dB  float64
+    Energy          float64  // sum of squares
+    Power           float64  // energy / length
+    ZeroCrossings   int
+    // Higher moments
+    Variance        float64
+    Skewness        float64
+    Kurtosis        float64
+}
+
+// Calculate computes all statistics for the given signal.
+func Calculate(signal []float64) Stats
+
+// Streaming calculator for incremental updates.
+type StreamingStats struct { ... }
+func NewStreamingStats() *StreamingStats
+func (s *StreamingStats) Update(samples []float64)
+func (s *StreamingStats) Result() Stats
+func (s *StreamingStats) Reset()
+
+// Individual stat functions for selective calculation.
+func RMS(signal []float64) float64
+func DC(signal []float64) float64
+func Peak(signal []float64) float64
+func CrestFactor(signal []float64) float64
+func ZeroCrossings(signal []float64) int
+func Moments(signal []float64) (mean, variance, skewness, kurtosis float64)
+```
+
+```go
+package frequency
+
+// Stats holds frequency-domain statistics.
+type Stats struct {
+    BinCount        int
+    DC              float64  // bin 0 magnitude
+    DC_dB           float64
+    Sum             float64  // sum of magnitudes
+    Sum_dB          float64
+    Max             float64
+    MaxBin          int
+    Min             float64
+    MinBin          int
+    Average         float64
+    Average_dB      float64
+    Range           float64
+    Range_dB        float64
+    Energy          float64  // sum of squared magnitudes
+    Power           float64
+    // Spectral shape descriptors
+    Centroid        float64  // spectral centroid (Hz)
+    Spread          float64  // spectral spread
+    Flatness        float64  // spectral flatness (Wiener entropy)
+    Rolloff         float64  // frequency below which X% energy (Hz)
+    Bandwidth       float64  // 3dB bandwidth around peak (Hz)
+}
+
+// Calculate computes statistics from magnitude spectrum.
+func Calculate(magnitude []float64, sampleRate float64) Stats
+func CalculateFromComplex(spectrum []complex128, sampleRate float64) Stats
+
+// Individual spectral descriptors.
+func Centroid(magnitude []float64, sampleRate float64) float64
+func Flatness(magnitude []float64) float64
+func Rolloff(magnitude []float64, sampleRate float64, percent float64) float64
+func Bandwidth(magnitude []float64, sampleRate float64) float64
+```
+
+#### 12.3 Task Breakdown
+
+**Time-domain stats (`stats/time`):**
+- [ ] Implement single-pass statistics: DC, RMS, max, min, peak, range.
+- [ ] Implement crest factor and energy/power calculations.
+- [ ] Implement zero-crossing counter.
+- [ ] Implement higher moments: variance, skewness, kurtosis (Welford's algorithm for numerical stability).
+- [ ] Implement `StreamingStats` for incremental block-based updates.
+- [ ] Tests with known signals (DC, sine, square wave → predictable stats).
+- [ ] Benchmarks for block processing throughput.
+
+**Frequency-domain stats (`stats/frequency`):**
+- [ ] Implement basic spectrum stats: DC, sum, max, min, average, range.
+- [ ] Implement spectral centroid: `Σ(f_i × |X_i|) / Σ|X_i|`.
+- [ ] Implement spectral spread: second moment around centroid.
+- [ ] Implement spectral flatness: `exp(mean(log(|X|))) / mean(|X|)`.
+- [ ] Implement spectral rolloff: frequency below which N% of energy lies.
+- [ ] Implement 3dB bandwidth around spectral peak.
+- [ ] Tests with synthetic spectra (narrowband, broadband, noise).
+- [ ] Benchmarks for spectrum analysis throughput.
+
+#### 12.4 Exit Criteria
+
+- Time-domain stats match legacy `TMFTimeDomainDataInformation` output for same input.
+- Streaming stats produce identical results to block calculation.
+- Spectral descriptors validated against reference implementations (librosa, scipy).
+- Zero-allocation variants available for hot paths.
+- Coverage >= 90% for both `stats/time` and `stats/frequency`.
 
 ### Phase 13: Optimization and SIMD Paths
 
 Objectives:
 
-- Improve hot-path throughput without API churn.
+- Profile-guided optimization of hot paths identified in Phases 1–12.
+- Optional SIMD acceleration behind build tags with scalar fallback.
 
-Tasks:
+Source: `mfw/legacy/Source/MFASM.pas` (hand-optimized x86 assembly), `MFDSPPolyphaseFilter.pas` (FPU/3DNow/SSE variants).
 
-- [ ] Profile-based optimization plan.
-- [ ] Add architecture-specific optional kernels behind build tags.
-- [ ] Keep scalar fallback as correctness source of truth.
-- [ ] Benchmark and verify numerical parity across variants.
+#### 13.1 Optimization Strategy
 
-Exit criteria:
+1. **Profile first**: Use `go test -bench` and `pprof` to identify actual bottlenecks.
+2. **Algorithm-level optimizations**: Loop unrolling, cache-friendly access patterns, reduced allocations.
+3. **SIMD paths**: Optional `amd64` assembly or Go assembly (Plan 9 syntax) for:
+   - Block multiply/add (windowing, filtering)
+   - Dot products (FIR convolution)
+   - Magnitude calculations (complex → real)
+4. **Build tag isolation**: `//go:build !purego` for optimized paths, scalar fallback always available.
+5. **Numerical parity testing**: Optimized path must match scalar reference within epsilon.
 
-- Measurable gains on targeted workloads and no correctness regressions.
+#### 13.2 Candidate Hot Paths
+
+| Package            | Function                    | Priority | Optimization Type       |
+| ------------------ | --------------------------- | -------- | ----------------------- |
+| `dsp/window`       | `Apply`                     | High     | SIMD multiply           |
+| `dsp/filter/biquad`| `ProcessBlock`              | High     | Loop unrolling          |
+| `dsp/filter/fir`   | `ProcessBlock`              | High     | SIMD dot product        |
+| `dsp/conv`         | `directConvolve`            | Medium   | SIMD dot product        |
+| `dsp/resample`     | `Resample`                  | High     | Polyphase optimization  |
+| `stats/time`       | `Calculate`                 | Medium   | SIMD reductions         |
+| `dsp/spectrum`     | `Magnitude`                 | Medium   | SIMD sqrt               |
+
+#### 13.3 Task Breakdown
+
+- [ ] Run comprehensive benchmarks across all packages, identify top 5 hot paths.
+- [ ] Profile memory allocation patterns, eliminate unnecessary allocations.
+- [ ] Implement loop-unrolled scalar variants for biquad and FIR block processing.
+- [ ] Add `internal/simd` package with build-tagged SIMD kernels.
+- [ ] Implement SIMD window application (AVX2 for amd64).
+- [ ] Implement SIMD FIR dot product.
+- [ ] Add numerical parity tests: SIMD vs scalar must match within 1e-14.
+- [ ] Document optimization gains in benchmark comparison table.
+- [ ] Ensure `purego` build tag provides fully functional scalar-only build.
+
+#### 13.4 Exit Criteria
+
+- Top 5 hot paths show measurable improvement (>20% for SIMD paths).
+- All optimized paths pass numerical parity tests against scalar reference.
+- `purego` build passes all tests.
+- No regressions in correctness or API.
+- Optimization gains documented in BENCHMARKS.md.
 
 ### Phase 14: API Stabilization and v1.0
 
 Objectives:
 
-- Freeze public API and publish stable release.
+- Freeze public API surface and publish stable v1.0.0 release.
+- Complete documentation, examples, and migration guides.
 
-Tasks:
+#### 14.1 API Review Checklist
 
-- [ ] Deprecate or remove experimental APIs.
-- [ ] Complete package docs and examples.
-- [ ] Create migration notes for prerelease users.
-- [ ] Tag `v1.0.0` once compatibility guarantees are met.
+- [ ] Review all exported types, functions, and methods for consistency.
+- [ ] Ensure naming follows Go conventions (MixedCaps, no stuttering).
+- [ ] Verify all public functions have doc comments with examples.
+- [ ] Check for unnecessary exported symbols that should be internal.
+- [ ] Validate error types and error wrapping patterns.
+- [ ] Review option patterns for extensibility without breaking changes.
 
-Exit criteria:
+#### 14.2 Documentation Requirements
 
-- API review completed.
-- CI, tests, benchmarks, docs all green.
+- [ ] Package-level doc.go for all public packages.
+- [ ] Runnable examples for all major APIs (`Example_*` functions).
+- [ ] README.md with quick start guide and package overview.
+- [ ] CHANGELOG.md with all changes since v0.1.0.
+- [ ] MIGRATION.md for users upgrading from prerelease versions.
+- [ ] BENCHMARKS.md with performance characteristics and comparisons.
+
+#### 14.3 Task Breakdown
+
+- [ ] Conduct API review with checklist above.
+- [ ] Deprecate any experimental APIs identified during review.
+- [ ] Remove deprecated symbols or move to `internal/`.
+- [ ] Complete all package documentation.
+- [ ] Add comprehensive examples to each package.
+- [ ] Write migration guide for breaking changes since v0.x.
+- [ ] Final test pass: `go test -race ./...`, lint, vet.
+- [ ] Final benchmark pass: no major regressions from v0.x.
+- [ ] Tag `v1.0.0` release.
+
+#### 14.4 Exit Criteria
+
+- All public APIs documented with examples.
+- No `// TODO` or `// FIXME` comments in public code.
+- All tests pass with race detector.
+- Benchmark baselines established and documented.
+- `v1.0.0` tagged and released with full changelog.
+- Go module proxy indexed and importable.
 
 ---
 
-## 7. Testing and Validation Strategy
+## Appendix A: Testing and Validation Strategy
 
-### 7.1 Test Types
+### A.1 Test Types
 
 - Unit tests (table-driven and edge-case heavy).
 - Property-based tests for invariants.
 - Golden vector tests for deterministic algorithm outputs.
 - Integration tests across package boundaries.
 
-### 7.2 Numerical Validation
+### A.2 Numerical Validation
 
 - Define tolerance policy per algorithm category.
 - Compare selected outputs against trusted references (MATLAB/NumPy/known datasets).
 - Track expected floating-point drift across architectures.
 
-### 7.3 Coverage Targets
+### A.3 Coverage Targets
 
 - Project-wide: >= 85% where practical.
 - Core algorithm packages: >= 90%.
 
 ---
 
-## 8. Benchmarking and Performance Strategy
+## Appendix B: Benchmarking and Performance Strategy
 
 - Maintain microbenchmarks for all hot paths.
 - Maintain scenario benchmarks reflecting realistic workloads.
@@ -952,7 +721,7 @@ Key benchmark families:
 
 ---
 
-## 9. Dependency and Versioning Policy
+## Appendix C: Dependency and Versioning Policy
 
 - Keep external dependencies minimal and justified.
 - Prefer pure-Go paths unless CGo brings clear, measured value.
@@ -962,7 +731,7 @@ Key benchmark families:
 
 ---
 
-## 10. Release Engineering
+## Appendix D: Release Engineering
 
 - Conventional commits for changelog generation.
 - Tag-driven releases with generated notes.
@@ -974,9 +743,9 @@ Key benchmark families:
 
 ---
 
-## 11. Migration Plan from `mfw`
+## Appendix E: Migration Plan from `mfw`
 
-### 11.1 Extraction Sequence
+### E.1 Extraction Sequence
 
 1. **Window functions** -> `algo-dsp/dsp/window`
    - Source: `mfw/legacy/Source/MFWindowFunctions.pas` (class hierarchy, 25+ window types)
@@ -993,14 +762,14 @@ Key benchmark families:
 3. Spectrum/conv/resample helpers
 4. Measurement kernels (`pkg/measure/thd`, `pkg/measure/sweep`, `pkg/measure/ir`)
 
-### 11.2 Migration Mechanics
+### E.2 Migration Mechanics
 
 - Keep APIs in `mfw` adapter-friendly during extraction.
 - Move code with tests first; then switch imports.
 - Add compatibility tests in `mfw` to validate behavior parity.
 - Remove duplicated code only after parity checks pass.
 
-### 11.3 Completion Definition
+### E.3 Completion Definition
 
 - `mfw` retains orchestration and app-specific domain logic only.
 - Algorithm-heavy packages imported from `algo-dsp`.
@@ -1008,7 +777,7 @@ Key benchmark families:
 
 ---
 
-## 12. Risks and Mitigations
+## Appendix F: Risks and Mitigations
 
 | Risk                                     | Impact | Mitigation                                            |
 | ---------------------------------------- | ------ | ----------------------------------------------------- |
@@ -1020,7 +789,7 @@ Key benchmark families:
 
 ---
 
-## 13. Initial 90-Day Execution Plan
+## Appendix G: Initial 90-Day Execution Plan
 
 ### Month 1
 
@@ -1045,7 +814,7 @@ Quarter-end success criteria:
 
 ---
 
-## 14. Revision History
+## Appendix H: Revision History
 
 | Version | Date       | Author | Changes                                                                                                                                                                                                                                                                                                                                                                            |
 | ------- | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1057,6 +826,7 @@ Quarter-end success criteria:
 | 0.6     | 2026-02-06 | Codex  | Implemented Chebyshev Type I/II cascade designers in `dsp/filter/design`, added legacy-parity tests for Type I, documented/implemented corrected Type II LP angle term, formatted `dsp/filter/weighting/weighting.go`, and revalidated lint/vet/tests/race/coverage.                                                                                                               |
 | 0.7     | 2026-02-06 | Claude | Completed Phase 5 implementation: validated weighting filters (A/B/C/Z with 100% coverage, IEC 61672 compliance), octave/fractional-octave filter banks (93% coverage), block processing wrappers, and marked all Phase 5 tasks complete.                                                                                                                                           |
 | 0.8     | 2026-02-06 | Claude | Completed Phase 7 implementation: direct convolution, overlap-add/overlap-save (FFT-based), cross-correlation (direct/FFT/normalized), auto-correlation, deconvolution (naive/regularized/Wiener), inverse filter generation. Added benchmarks showing crossover at ~64-128 sample kernels, comprehensive tests, and examples.                                                      |
+| 0.9     | 2026-02-06 | Claude | Compacted Phases 0-9 to summaries. Refined Phases 10-14 with detailed specs from mfw/legacy: Phase 10 (THD) with MFTotalHarmonicDistortionCalculation.pas algorithms; Phase 11 (Sweep/IR) with TMFSchroederData metrics; Phase 12 (Stats) with TMFTimeDomainInfoType/TMFFrequencyDomainInfoType; Phase 13 (SIMD) with optimization strategy; Phase 14 (v1.0) with API review checklist. |
 
 ---
 
