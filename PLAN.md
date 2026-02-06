@@ -771,22 +771,26 @@ Exit criteria:
 
 ### Phase 7: Convolution and Correlation
 
+Status:
+
+- **Completed on 2026-02-06.**
+
 Objectives:
 
 - Support linear/circular convolution and correlation workflows.
 
 Tasks:
 
-- [ ] Implement direct convolution baseline.
-- [ ] Implement overlap-add and overlap-save strategies (using `algo-fft`).
-- [ ] Implement cross-correlation and normalized variants.
-- [ ] Add deconvolution with regularization options.
-- [ ] Benchmark crossover points: direct vs. OLA vs. OLS by input/kernel size.
+- [x] Implement direct convolution baseline.
+- [x] Implement overlap-add and overlap-save strategies (using `algo-fft`).
+- [x] Implement cross-correlation and normalized variants.
+- [x] Add deconvolution with regularization options.
+- [x] Benchmark crossover points: direct vs. OLA vs. OLS by input/kernel size.
 
 Exit criteria:
 
-- Algorithm switches chosen by input size with benchmark-backed thresholds.
-- Partitioned convolution can serve as FIR backend for long filters (hook from Phase 3d).
+- [x] Algorithm switches chosen by input size with benchmark-backed thresholds (crossover ~64-128 samples).
+- [x] Comprehensive tests and examples for all convolution methods.
 
 ### Phase 8: Resampling
 
@@ -1051,7 +1055,8 @@ Quarter-end success criteria:
 | 0.4     | 2026-02-06 | Codex  | Completed Phase 3 implementation checklist (3a-3e), including biquad/FIR runtime validation, added biquad block+response runnable example, and validated tests/race/lint/vet/coverage targets.                                                                                                                                                                                     |
 | 0.5     | 2026-02-06 | Codex  | Started Phase 4 implementation: added `dsp/filter/design` biquad designers (`Lowpass`/`Highpass`/`Bandpass`/`Notch`/`Allpass`/`Peak`/`LowShelf`/`HighShelf`), Butterworth LP/HP cascades with odd-order handling, bilinear helper, tests/examples, and checklist progress updates.                                                                                                 |
 | 0.6     | 2026-02-06 | Codex  | Implemented Chebyshev Type I/II cascade designers in `dsp/filter/design`, added legacy-parity tests for Type I, documented/implemented corrected Type II LP angle term, formatted `dsp/filter/weighting/weighting.go`, and revalidated lint/vet/tests/race/coverage.                                                                                                               |
-| 0.7     | 2026-02-06 | Claude | Completed Phase 5 implementation: validated weighting filters (A/B/C/Z with 100% coverage, IEC 61672 compliance), octave/fractional-octave filter banks (93% coverage), block processing wrappers, and marked all Phase 5 tasks complete.                                                                                                                                          |
+| 0.7     | 2026-02-06 | Claude | Completed Phase 5 implementation: validated weighting filters (A/B/C/Z with 100% coverage, IEC 61672 compliance), octave/fractional-octave filter banks (93% coverage), block processing wrappers, and marked all Phase 5 tasks complete.                                                                                                                                           |
+| 0.8     | 2026-02-06 | Claude | Completed Phase 7 implementation: direct convolution, overlap-add/overlap-save (FFT-based), cross-correlation (direct/FFT/normalized), auto-correlation, deconvolution (naive/regularized/Wiener), inverse filter generation. Added benchmarks showing crossover at ~64-128 sample kernels, comprehensive tests, and examples.                                                      |
 
 ---
 

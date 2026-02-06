@@ -30,7 +30,6 @@ package conv
 
 import (
 	"errors"
-	"math"
 )
 
 // Errors returned by convolution functions.
@@ -201,30 +200,4 @@ func nextPowerOf2(n int) int {
 // isPowerOf2 returns true if n is a power of 2.
 func isPowerOf2(n int) bool {
 	return n > 0 && (n&(n-1)) == 0
-}
-
-// log2 returns floor(log2(n)).
-func log2(n int) int {
-	if n <= 0 {
-		return 0
-	}
-	result := 0
-	for n > 1 {
-		n >>= 1
-		result++
-	}
-	return result
-}
-
-// abs returns the absolute value of x.
-func abs(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
-// cmplxAbs returns the absolute value (magnitude) of a complex number.
-func cmplxAbs(c complex128) float64 {
-	return math.Sqrt(real(c)*real(c) + imag(c)*imag(c))
 }
