@@ -16,11 +16,11 @@ check-formatted:
 
 # Run linters
 lint:
-    golangci-lint run --timeout=2m
+    GOCACHE="${GOCACHE:-/tmp/gocache}" GOMODCACHE="${GOMODCACHE:-/tmp/gomodcache}" GOLANGCI_LINT_CACHE="${GOLANGCI_LINT_CACHE:-/tmp/golangci-lint-cache}" golangci-lint run --timeout=2m ./...
 
 # Run linters with auto-fix
 lint-fix:
-    golangci-lint run --fix --timeout=2m
+    GOCACHE="${GOCACHE:-/tmp/gocache}" GOMODCACHE="${GOMODCACHE:-/tmp/gomodcache}" GOLANGCI_LINT_CACHE="${GOLANGCI_LINT_CACHE:-/tmp/golangci-lint-cache}" golangci-lint run --fix --timeout=2m ./...
 
 # Ensure go.mod is tidy
 check-tidy:
