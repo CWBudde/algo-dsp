@@ -314,20 +314,20 @@ func AnalyzeSignal(signal []float64, cfg Config) Result  // includes windowing +
 
 #### 10.3 Task Breakdown
 
-- [ ] Define `Config` struct with all parameters from legacy (sample rate, FFT size, capture bins, range, flags).
-- [ ] Implement fundamental detection: find max magnitude bin in specified range.
-- [ ] Implement harmonic extraction with configurable capture range.
-- [ ] Implement `GetTHD`: sum of harmonics starting from H2 (port MFTotalHarmonicDistortionCalculation:234–264).
-- [ ] Implement `GetTHDN`: sum of all bins in evaluation range (port MFTotalHarmonicDistortionCalculation:266–285).
-- [ ] Implement `GetOddHD` and `GetEvenHD`: odd/even harmonic summation (port MFTotalHarmonicDistortionCalculation:292–352).
-- [ ] Implement `GetNoise`: THDN - THD.
-- [ ] Implement `GetRubNBuzz`: high-order harmonics from configurable start (port MFTotalHarmonicDistortionCalculation:365–406).
-- [ ] Implement SINAD calculation: 20*log10(fundamental / THDN).
-- [ ] Add window-based capture bin calculation using `window.Info()` first minimum.
-- [ ] Tests with synthetic signals: pure tone (THD ≈ 0), known distortion levels.
+- [x] Define `Config` struct with all parameters from legacy (sample rate, FFT size, capture bins, range, flags).
+- [x] Implement fundamental detection: find max magnitude bin in specified range.
+- [x] Implement harmonic extraction with configurable capture range.
+- [x] Implement `GetTHD`: sum of harmonics starting from H2 (port MFTotalHarmonicDistortionCalculation:234–264).
+- [x] Implement `GetTHDN`: sum of all bins in evaluation range (port MFTotalHarmonicDistortionCalculation:266–285).
+- [x] Implement `GetOddHD` and `GetEvenHD`: odd/even harmonic summation (port MFTotalHarmonicDistortionCalculation:292–352).
+- [x] Implement `GetNoise`: THDN - THD.
+- [x] Implement `GetRubNBuzz`: high-order harmonics from configurable start (port MFTotalHarmonicDistortionCalculation:365–406).
+- [x] Implement SINAD calculation: 20*log10(fundamental / THDN).
+- [x] Add window-based capture bin calculation using window first-minimum estimates.
+- [x] Tests with synthetic signals: pure tone (THD ≈ 0), known distortion levels.
 - [ ] Tests with multi-tone signals for harmonic separation accuracy.
-- [ ] Benchmarks for calculation throughput at various FFT sizes.
-- [ ] Runnable examples demonstrating THD measurement workflow.
+- [x] Benchmarks for calculation throughput at various FFT sizes.
+- [x] Runnable examples demonstrating THD measurement workflow.
 
 #### 10.4 Exit Criteria
 
