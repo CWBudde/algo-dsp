@@ -261,6 +261,7 @@ The legacy implementation calculates distortion from frequency-domain data:
 - **Noise calculation**: THD+N minus THD (all energy in range minus harmonic energy)
 
 Key formulas (from MFTotalHarmonicDistortionCalculation.pas):
+
 - `THD = Σ sqrt(|H_k|²)` for k = 2, 3, ... (harmonics at k × fundamental_bin)
 - `THD+N = Σ sqrt(|X_i|²)` for all bins in evaluation range
 - `Noise = THD+N - THD`
@@ -322,10 +323,10 @@ func AnalyzeSignal(signal []float64, cfg Config) Result  // includes windowing +
 - [x] Implement `GetOddHD` and `GetEvenHD`: odd/even harmonic summation (port MFTotalHarmonicDistortionCalculation:292–352).
 - [x] Implement `GetNoise`: THDN - THD.
 - [x] Implement `GetRubNBuzz`: high-order harmonics from configurable start (port MFTotalHarmonicDistortionCalculation:365–406).
-- [x] Implement SINAD calculation: 20*log10(fundamental / THDN).
+- [x] Implement SINAD calculation: 20\*log10(fundamental / THDN).
 - [x] Add window-based capture bin calculation using window first-minimum estimates.
 - [x] Tests with synthetic signals: pure tone (THD ≈ 0), known distortion levels.
-- [ ] Tests with multi-tone signals for harmonic separation accuracy.
+- [x] Tests with multi-tone signals for harmonic separation accuracy.
 - [x] Benchmarks for calculation throughput at various FFT sizes.
 - [x] Runnable examples demonstrating THD measurement workflow.
 
@@ -351,7 +352,7 @@ The legacy `TMFSchroederData` class implements room acoustic metrics:
 
 - **RT60**: Reverberation time — time for -60 dB decay (extrapolated from Schroeder integral)
 - **D50 (Definition)**: Ratio of early energy (0–50ms) to total energy
-- **C50, C80 (Clarity)**: 10*log10(early/late) at 50ms and 80ms boundaries
+- **C50, C80 (Clarity)**: 10\*log10(early/late) at 50ms and 80ms boundaries
 - **Center Time**: First moment of squared IR (energy centroid)
 
 Schroeder integral: backward integration of squared impulse response.
@@ -413,6 +414,7 @@ func (a *Analyzer) FindImpulseStart(ir []float64) int
 #### 11.3 Task Breakdown
 
 **Sweep Generation (`measure/sweep`):**
+
 - [ ] Implement log sweep generation with configurable start/end frequency and duration.
 - [ ] Implement inverse filter generation (time-reversed, amplitude-compensated).
 - [ ] Implement deconvolution pipeline using `dsp/conv` (FFT-based for efficiency).
@@ -420,6 +422,7 @@ func (a *Analyzer) FindImpulseStart(ir []float64) int
 - [ ] Tests with synthetic systems (known IR → sweep response → deconvolved IR matches).
 
 **IR Analysis (`measure/ir`):**
+
 - [ ] Implement Schroeder backward integration (cumulative sum from end).
 - [ ] Implement RT60 calculation with linear regression on Schroeder curve (port from MFAudioData.pas).
 - [ ] Implement EDT (early decay time) from 0 to -10 dB slope.
@@ -452,6 +455,7 @@ Source: `MFTypes.pas` (TMFTimeDomainInfoType, TMFFrequencyDomainInfoType enums),
 #### 12.1 Legacy Statistics Reference
 
 **Time-domain info types** (from MFTypes.pas):
+
 - `titZeroTransitions`: zero crossing count
 - `titDC`, `titDC_dB`: mean value (linear and dB)
 - `titRMS`, `titRMS_dB`: root mean square
@@ -462,6 +466,7 @@ Source: `MFTypes.pas` (TMFTimeDomainInfoType, TMFFrequencyDomainInfoType enums),
 - `titSkew`, `titKurtosis`: higher-order moments
 
 **Frequency-domain info types** (from MFTypes.pas):
+
 - `fitDC`, `fitSum`, `fitMaximum`, `fitMinimum`, `fitAverage`, `fitRange`
 - `fitEnergy`, `fitPower`
 
@@ -557,6 +562,7 @@ func Bandwidth(magnitude []float64, sampleRate float64) float64
 #### 12.3 Task Breakdown
 
 **Time-domain stats (`stats/time`):**
+
 - [ ] Implement single-pass statistics: DC, RMS, max, min, peak, range.
 - [ ] Implement crest factor and energy/power calculations.
 - [ ] Implement zero-crossing counter.
@@ -566,6 +572,7 @@ func Bandwidth(magnitude []float64, sampleRate float64) float64
 - [ ] Benchmarks for block processing throughput.
 
 **Frequency-domain stats (`stats/frequency`):**
+
 - [ ] Implement basic spectrum stats: DC, sum, max, min, average, range.
 - [ ] Implement spectral centroid: `Σ(f_i × |X_i|) / Σ|X_i|`.
 - [ ] Implement spectral spread: second moment around centroid.
@@ -590,7 +597,7 @@ Objectives:
 - Profile-guided optimization of hot paths identified in Phases 1–12.
 - Optional SIMD acceleration behind build tags with scalar fallback.
 
-Source: `mfw/legacy/Source/MFASM.pas` (hand-optimized x86 assembly), `MFDSPPolyphaseFilter.pas` (FPU/3DNow/SSE variants).
+Source: `mfw/legacy/Source/MFASM.pas` (Pascal declarations), `mfw/legacy/Source/ASM/` (~1.5MB hand-optimized x86/SSE assembly), `MFDSPPolyphaseFilter.pas` (FPU/3DNow/SSE variants).
 
 #### 13.1 Optimization Strategy
 
@@ -605,15 +612,15 @@ Source: `mfw/legacy/Source/MFASM.pas` (hand-optimized x86 assembly), `MFDSPPolyp
 
 #### 13.2 Candidate Hot Paths
 
-| Package            | Function                    | Priority | Optimization Type       |
-| ------------------ | --------------------------- | -------- | ----------------------- |
-| `dsp/window`       | `Apply`                     | High     | SIMD multiply           |
-| `dsp/filter/biquad`| `ProcessBlock`              | High     | Loop unrolling          |
-| `dsp/filter/fir`   | `ProcessBlock`              | High     | SIMD dot product        |
-| `dsp/conv`         | `directConvolve`            | Medium   | SIMD dot product        |
-| `dsp/resample`     | `Resample`                  | High     | Polyphase optimization  |
-| `stats/time`       | `Calculate`                 | Medium   | SIMD reductions         |
-| `dsp/spectrum`     | `Magnitude`                 | Medium   | SIMD sqrt               |
+| Package             | Function         | Priority | Optimization Type      |
+| ------------------- | ---------------- | -------- | ---------------------- |
+| `dsp/window`        | `Apply`          | High     | SIMD multiply          |
+| `dsp/filter/biquad` | `ProcessBlock`   | High     | Loop unrolling         |
+| `dsp/filter/fir`    | `ProcessBlock`   | High     | SIMD dot product       |
+| `dsp/conv`          | `directConvolve` | Medium   | SIMD dot product       |
+| `dsp/resample`      | `Resample`       | High     | Polyphase optimization |
+| `stats/time`        | `Calculate`      | Medium   | SIMD reductions        |
+| `dsp/spectrum`      | `Magnitude`      | Medium   | SIMD sqrt              |
 
 #### 13.3 Task Breakdown
 
@@ -626,14 +633,109 @@ Source: `mfw/legacy/Source/MFASM.pas` (hand-optimized x86 assembly), `MFDSPPolyp
 - [ ] Add numerical parity tests: SIMD vs scalar must match within 1e-14.
 - [ ] Document optimization gains in benchmark comparison table.
 - [ ] Ensure `purego` build tag provides fully functional scalar-only build.
+- [ ] Convert priority legacy ASM routines to Plan 9 assembly (see 13.4).
 
-#### 13.4 Exit Criteria
+#### 13.4 Legacy ASM to Plan 9 Assembly Conversion
+
+The `mfw/legacy/Source/ASM/` directory contains ~1.5MB of hand-optimized x86/SSE assembly. This section defines the conversion strategy for porting DSP-relevant routines to Go's Plan 9 assembly syntax.
+
+##### 13.4.1 Legacy ASM Inventory
+
+| File           | Size  | Description                 | DSP Relevance               |
+| -------------- | ----- | --------------------------- | --------------------------- |
+| `MF-TIME.ASM`  | 247KB | Time-domain FPU processing  | High - block ops, noise gen |
+| `MFS-TIME.ASM` | 148KB | Time-domain SSE2 processing | High - SIMD reference       |
+| `MF-SPEK.ASM`  | 299KB | Spectrum FPU processing     | High - mag, smoothing       |
+| `MFS-SPEK.ASM` | 12KB  | Spectrum SSE helpers        | Medium                      |
+| `MF-SPKB.ASM`  | 196KB | Spectrum processing B       | Medium                      |
+| `MF-WIN.ASM`   | 71KB  | Window functions            | High - all windows          |
+| `MF-TIDE.ASM`  | 25KB  | Biquad/IIR filtering        | High - filter runtime       |
+| `MF-MATH.ASM`  | 71KB  | Math utilities              | Medium - dB, min/max        |
+| `MFS-TRAN.ASM` | 157KB | Requantization SSE2         | Low - I/O focused           |
+| `mf-hada.asm`  | 37KB  | Hadamard transform          | Low                         |
+| `MFS-HADA.ASM` | 37KB  | Hadamard SSE                | Low                         |
+| `MFASM.pas`    | 81KB  | Pascal declarations         | Reference only              |
+
+##### 13.4.2 Priority Conversion Targets
+
+**Tier 1 - Critical Hot Paths** (convert first):
+
+| Function              | Source       | Target Package      | Notes                            |
+| --------------------- | ------------ | ------------------- | -------------------------------- |
+| `tsAddMul`            | MF-TIME.ASM  | `internal/simd`     | Block multiply-add for windowing |
+| `tsIIRfilter`         | MF-TIDE.ASM  | `dsp/filter/biquad` | Biquad cascade processing        |
+| `SqMagWinConvKernel`  | MF-SPEK.ASM  | `dsp/spectrum`      | Spectral smoothing               |
+| `MaxAbsF64`, `MaxF64` | MF-MATH.ASM  | `internal/simd`     | Reduction operations             |
+| `UPDFnoise64_SSE2`    | MFS-TIME.ASM | `dsp/signal`        | TPDF dither/noise                |
+
+**Tier 2 - Window Application**:
+
+| Function          | Source     | Target Package | Notes                       |
+| ----------------- | ---------- | -------------- | --------------------------- |
+| `FenstereDoubles` | MF-WIN.ASM | `dsp/window`   | In-place window application |
+| `HannFenster`     | MF-WIN.ASM | `dsp/window`   | Hann generation kernel      |
+| `KaiBessFenster`  | MF-WIN.ASM | `dsp/window`   | Kaiser-Bessel kernel        |
+| `GaussFenster`    | MF-WIN.ASM | `dsp/window`   | Gaussian window kernel      |
+
+**Tier 3 - Spectral Processing**:
+
+| Function             | Source      | Target Package | Notes                    |
+| -------------------- | ----------- | -------------- | ------------------------ |
+| `MovingAvgOverSqMag` | MF-SPEK.ASM | `dsp/spectrum` | Smoothing                |
+| `ReImWinConvKernel`  | MF-SPEK.ASM | `dsp/conv`     | Complex convolution      |
+| `initLinSlope`       | MF-SPEK.ASM | `dsp/spectrum` | Log/linear interpolation |
+
+**Tier 4 - Noise Generators** (if profiling shows need):
+
+| Function               | Source       | Target Package | Notes                 |
+| ---------------------- | ------------ | -------------- | --------------------- |
+| `PinkNoiseKernel_SSE2` | MFS-TIME.ASM | `dsp/signal`   | Pink noise generation |
+| `GaussNoise64_SSE2`    | MFS-TIME.ASM | `dsp/signal`   | Gaussian noise        |
+
+##### 13.4.3 Plan 9 Assembly Conversion Guidelines
+
+1. **File naming**: `*_amd64.s` for AMD64-specific, `*_arm64.s` for ARM64.
+2. **ABI compliance**: Use Go's ABI0 calling convention (stack-based arguments).
+3. **Function declaration**: Pair `.go` stubs with `.s` implementations:
+   ```go
+   // internal/simd/mulblock_amd64.go
+   //go:noescape
+   func mulBlockAVX2(dst, src []float64, scale float64)
+   ```
+4. **Register usage**: Follow Plan 9 naming (AX, BX, X0-X15 for SSE/AVX).
+5. **Build tags**: Use `//go:build !purego && amd64` for optimized paths.
+6. **Scalar fallback**: Always provide pure Go implementation in `*_generic.go`.
+
+##### 13.4.4 Conversion Process
+
+For each function:
+
+1. **Document original**: Extract algorithm from legacy ASM with inline comments.
+2. **Write Go reference**: Create scalar Go implementation as source of truth.
+3. **Add benchmarks**: Establish baseline performance metrics.
+4. **Convert to Plan 9**: Translate instruction-by-instruction, adapting to Go ABI.
+5. **Numerical parity**: Verify output matches Go reference within epsilon.
+6. **Performance validation**: Ensure SIMD version shows >= 2x improvement.
+
+##### 13.4.5 Conversion Task Checklist
+
+- [ ] Document legacy ASM algorithms for priority Tier 1 functions.
+- [ ] Create `internal/simd/` package skeleton with build tags.
+- [ ] Convert `tsAddMul` → `mulBlockAVX2` (window application).
+- [ ] Convert `MaxAbsF64` → `maxAbsAVX2` (reduction).
+- [ ] Convert `tsIIRfilter` → biquad kernel (if profiling justifies).
+- [ ] Convert `UPDFnoise64_SSE2` → TPDF dither kernel.
+- [ ] Add ARM64 NEON variants for cross-platform optimization.
+- [ ] Validate all conversions against legacy output (golden vectors).
+
+#### 13.6 Exit Criteria
 
 - Top 5 hot paths show measurable improvement (>20% for SIMD paths).
 - All optimized paths pass numerical parity tests against scalar reference.
 - `purego` build passes all tests.
 - No regressions in correctness or API.
 - Optimization gains documented in BENCHMARKS.md.
+- At least Tier 1 legacy ASM conversions completed with validated parity.
 
 ### Phase 14: API Stabilization and v1.0
 
@@ -816,16 +918,16 @@ Quarter-end success criteria:
 
 ## Appendix H: Revision History
 
-| Version | Date       | Author | Changes                                                                                                                                                                                                                                                                                                                                                                            |
-| ------- | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.1     | 2026-02-06 | Codex  | Initial comprehensive `algo-dsp` development plan                                                                                                                                                                                                                                                                                                                                  |
-| 0.2     | 2026-02-06 | Claude | Refined Phase 1 (buffer type in `dsp/buffer`), rewrote Phase 2 (window functions) with full mfw legacy inventory (25+ types, 3 tiers, advanced features), updated architecture and migration sections                                                                                                                                                                              |
-| 0.3     | 2026-02-06 | Claude | Rewrote Phase 3 (filter runtime) with full MFFilter.pas analysis: biquad DF-II-T, cascaded chains, frequency response, FIR runtime, legacy mapping table. Refined Phase 4 (filter design) with per-filter-type legacy source references and API surface. Refined Phase 5 (weighting/banks) with legacy source references. Updated migration section with filter extraction sources |
-| 0.4     | 2026-02-06 | Codex  | Completed Phase 3 implementation checklist (3a-3e), including biquad/FIR runtime validation, added biquad block+response runnable example, and validated tests/race/lint/vet/coverage targets.                                                                                                                                                                                     |
-| 0.5     | 2026-02-06 | Codex  | Started Phase 4 implementation: added `dsp/filter/design` biquad designers (`Lowpass`/`Highpass`/`Bandpass`/`Notch`/`Allpass`/`Peak`/`LowShelf`/`HighShelf`), Butterworth LP/HP cascades with odd-order handling, bilinear helper, tests/examples, and checklist progress updates.                                                                                                 |
-| 0.6     | 2026-02-06 | Codex  | Implemented Chebyshev Type I/II cascade designers in `dsp/filter/design`, added legacy-parity tests for Type I, documented/implemented corrected Type II LP angle term, formatted `dsp/filter/weighting/weighting.go`, and revalidated lint/vet/tests/race/coverage.                                                                                                               |
-| 0.7     | 2026-02-06 | Claude | Completed Phase 5 implementation: validated weighting filters (A/B/C/Z with 100% coverage, IEC 61672 compliance), octave/fractional-octave filter banks (93% coverage), block processing wrappers, and marked all Phase 5 tasks complete.                                                                                                                                           |
-| 0.8     | 2026-02-06 | Claude | Completed Phase 7 implementation: direct convolution, overlap-add/overlap-save (FFT-based), cross-correlation (direct/FFT/normalized), auto-correlation, deconvolution (naive/regularized/Wiener), inverse filter generation. Added benchmarks showing crossover at ~64-128 sample kernels, comprehensive tests, and examples.                                                      |
+| Version | Date       | Author | Changes                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------- | ---------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.1     | 2026-02-06 | Codex  | Initial comprehensive `algo-dsp` development plan                                                                                                                                                                                                                                                                                                                                       |
+| 0.2     | 2026-02-06 | Claude | Refined Phase 1 (buffer type in `dsp/buffer`), rewrote Phase 2 (window functions) with full mfw legacy inventory (25+ types, 3 tiers, advanced features), updated architecture and migration sections                                                                                                                                                                                   |
+| 0.3     | 2026-02-06 | Claude | Rewrote Phase 3 (filter runtime) with full MFFilter.pas analysis: biquad DF-II-T, cascaded chains, frequency response, FIR runtime, legacy mapping table. Refined Phase 4 (filter design) with per-filter-type legacy source references and API surface. Refined Phase 5 (weighting/banks) with legacy source references. Updated migration section with filter extraction sources      |
+| 0.4     | 2026-02-06 | Codex  | Completed Phase 3 implementation checklist (3a-3e), including biquad/FIR runtime validation, added biquad block+response runnable example, and validated tests/race/lint/vet/coverage targets.                                                                                                                                                                                          |
+| 0.5     | 2026-02-06 | Codex  | Started Phase 4 implementation: added `dsp/filter/design` biquad designers (`Lowpass`/`Highpass`/`Bandpass`/`Notch`/`Allpass`/`Peak`/`LowShelf`/`HighShelf`), Butterworth LP/HP cascades with odd-order handling, bilinear helper, tests/examples, and checklist progress updates.                                                                                                      |
+| 0.6     | 2026-02-06 | Codex  | Implemented Chebyshev Type I/II cascade designers in `dsp/filter/design`, added legacy-parity tests for Type I, documented/implemented corrected Type II LP angle term, formatted `dsp/filter/weighting/weighting.go`, and revalidated lint/vet/tests/race/coverage.                                                                                                                    |
+| 0.7     | 2026-02-06 | Claude | Completed Phase 5 implementation: validated weighting filters (A/B/C/Z with 100% coverage, IEC 61672 compliance), octave/fractional-octave filter banks (93% coverage), block processing wrappers, and marked all Phase 5 tasks complete.                                                                                                                                               |
+| 0.8     | 2026-02-06 | Claude | Completed Phase 7 implementation: direct convolution, overlap-add/overlap-save (FFT-based), cross-correlation (direct/FFT/normalized), auto-correlation, deconvolution (naive/regularized/Wiener), inverse filter generation. Added benchmarks showing crossover at ~64-128 sample kernels, comprehensive tests, and examples.                                                          |
 | 0.9     | 2026-02-06 | Claude | Compacted Phases 0-9 to summaries. Refined Phases 10-14 with detailed specs from mfw/legacy: Phase 10 (THD) with MFTotalHarmonicDistortionCalculation.pas algorithms; Phase 11 (Sweep/IR) with TMFSchroederData metrics; Phase 12 (Stats) with TMFTimeDomainInfoType/TMFFrequencyDomainInfoType; Phase 13 (SIMD) with optimization strategy; Phase 14 (v1.0) with API review checklist. |
 
 ---

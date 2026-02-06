@@ -139,3 +139,48 @@ func TestAnalyzeSignalPureToneLowDistortion(t *testing.T) {
 		t.Fatalf("expected near-zero THD, got %g", res.THD)
 	}
 }
+
+func TestCalculateFromMagnitudeMultiToneHarmonicSeparation(t *testing.T) {
+	cfg := Config{
+		SampleRate:      48000,
+		FFTSize:         48000,
+		FundamentalFreq: 1000, // analyze tone A
+		RangeLowerFreq:  20,
+		RangeUpperFreq:  10000,
+		CaptureBins:     0,
+	}
+
+	mag := make([]float64, cfg.FFTSize/2+1)
+
+	// Tone A (fundamental under test) and its harmonics.
+	mag[1000] = 1.0 * 1.0
+	mag[2000] = 0.10 * 0.10 // H2(A)
+	mag[3000] = 0.05 * 0.05 // H3(A)
+
+	// Tone B and its harmonics (must not be counted as A's harmonics).
+	mag[1300] = 0.80 * 0.80
+	mag[2600] = 0.20 * 0.20 // H2(B)
+	mag[3900] = 0.10 * 0.10 // H3(B)
+
+	res := NewCalculator(cfg).CalculateFromMagnitude(mag)
+
+	// THD for tone A should include only H2(A)+H3(A) = 0.15.
+	if math.Abs(res.THD-0.15) > 1e-12 {
+		t.Fatalf("THD mismatch: got %.12f want %.12f", res.THD, 0.15)
+	}
+	if len(res.Harmonics) != 2 {
+		t.Fatalf("harmonic count mismatch: got %d want 2", len(res.Harmonics))
+	}
+
+	// THDN includes all bins except fundamental A.
+	wantTHDN := 0.10 + 0.05 + 0.80 + 0.20 + 0.10
+	if math.Abs(res.THDN-wantTHDN) > 1e-12 {
+		t.Fatalf("THDN mismatch: got %.12f want %.12f", res.THDN, wantTHDN)
+	}
+
+	// Therefore Noise = THDN - THD should be exactly tone B + its harmonics.
+	wantNoise := 0.80 + 0.20 + 0.10
+	if math.Abs(res.Noise-wantNoise) > 1e-12 {
+		t.Fatalf("Noise mismatch: got %.12f want %.12f", res.Noise, wantNoise)
+	}
+}
