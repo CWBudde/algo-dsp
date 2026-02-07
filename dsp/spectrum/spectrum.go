@@ -5,9 +5,34 @@ import (
 	"math"
 	"math/cmplx"
 	"sort"
+	"sync"
 
 	"github.com/cwbudde/algo-vecmath"
 )
+
+// scratchBuf holds pooled scratch memory for complex-to-real unpacking.
+type scratchBuf struct {
+	data []float64
+}
+
+var scratchPool = sync.Pool{
+	New: func() any { return &scratchBuf{} },
+}
+
+func getScratch(n int) (re, im []float64, buf *scratchBuf) {
+	buf = scratchPool.Get().(*scratchBuf)
+	need := 2 * n
+	if cap(buf.data) < need {
+		buf.data = make([]float64, need)
+	} else {
+		buf.data = buf.data[:need]
+	}
+	return buf.data[:n], buf.data[n:need], buf
+}
+
+func putScratch(buf *scratchBuf) {
+	scratchPool.Put(buf)
+}
 
 // ComplexBins is a read-only adapter for complex spectrum outputs.
 //
@@ -30,26 +55,32 @@ func (s SliceBins) At(i int) complex128 { return s[i] }
 // Magnitude returns |X[k]| for each complex spectrum bin.
 //
 // This function uses SIMD-optimized implementations when available (AVX2, SSE2, NEON)
-// for improved performance on large spectrum arrays.
+// for improved performance on large spectrum arrays. Scratch buffers are pooled
+// internally, so in steady state this allocates only the output slice.
 func Magnitude(in []complex128) []float64 {
 	if len(in) == 0 {
 		return nil
 	}
 
-	// Fast path: use SIMD-optimized vecmath implementation
 	out := make([]float64, len(in))
-	re := make([]float64, len(in))
-	im := make([]float64, len(in))
+	re, im, buf := getScratch(len(in))
 
-	// Extract real and imaginary parts into separate slices
 	for i, c := range in {
 		re[i] = real(c)
 		im[i] = imag(c)
 	}
 
-	// Compute magnitude using SIMD when available
 	vecmath.Magnitude(out, re, im)
+	putScratch(buf)
 	return out
+}
+
+// MagnitudeFromParts computes |X[k]| = sqrt(re[k]^2 + im[k]^2) into dst.
+//
+// This is the zero-allocation fast path for callers that already have real and
+// imaginary parts in separate slices. All three slices must have the same length.
+func MagnitudeFromParts(dst, re, im []float64) {
+	vecmath.Magnitude(dst, re, im)
 }
 
 // MagnitudeBins returns |X[k]| for each bin from a [ComplexBins] source.
@@ -67,26 +98,32 @@ func MagnitudeBins(in ComplexBins) []float64 {
 // Power returns |X[k]|^2 for each complex spectrum bin.
 //
 // This function uses SIMD-optimized implementations when available (AVX2, SSE2, NEON)
-// for improved performance on large spectrum arrays.
+// for improved performance on large spectrum arrays. Scratch buffers are pooled
+// internally, so in steady state this allocates only the output slice.
 func Power(in []complex128) []float64 {
 	if len(in) == 0 {
 		return nil
 	}
 
-	// Fast path: use SIMD-optimized vecmath implementation
 	out := make([]float64, len(in))
-	re := make([]float64, len(in))
-	im := make([]float64, len(in))
+	re, im, buf := getScratch(len(in))
 
-	// Extract real and imaginary parts into separate slices
 	for i, c := range in {
 		re[i] = real(c)
 		im[i] = imag(c)
 	}
 
-	// Compute power using SIMD when available
 	vecmath.Power(out, re, im)
+	putScratch(buf)
 	return out
+}
+
+// PowerFromParts computes |X[k]|^2 = re[k]^2 + im[k]^2 into dst.
+//
+// This is the zero-allocation fast path for callers that already have real and
+// imaginary parts in separate slices. All three slices must have the same length.
+func PowerFromParts(dst, re, im []float64) {
+	vecmath.Power(dst, re, im)
 }
 
 // PowerBins returns |X[k]|^2 for each bin from a [ComplexBins] source.

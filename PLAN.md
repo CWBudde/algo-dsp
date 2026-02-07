@@ -507,30 +507,19 @@ Status:
 #### 13.1 Remaining TODOs (must-do)
 
 - [ ] Add a benchmark regression guard (non-blocking at first) that flags large performance regressions compared to baselines in `BENCHMARKS.md`.
-  - [ ] Choose a small, stable benchmark subset that covers the hottest paths.
+  - [x] Choose a small, stable benchmark subset that covers the hottest paths.
   - [ ] Define a regression threshold policy (e.g. ns/op and allocs/op) and document how to update baselines.
-  - [ ] Add a CI-friendly target (e.g. `just bench-ci`) that runs quickly and emits a machine-readable report.
+  - [x] Add a CI-friendly target (e.g. `just bench-ci`) that runs quickly and emits a machine-readable report.
   - [ ] Wire it into CI as advisory output (make it blocking only after v1.0 if desired).
-- [ ] Remove remaining allocation overhead in spectrum helpers caused by unpacking `[]complex128` into temporary buffers.
-  - [ ] Add/extend a zero-allocation fast path that operates on separate real/imag slices (or reuses pooled scratch buffers).
-  - [ ] Wire `dsp/spectrum` to prefer the fast path when inputs allow it.
-  - [ ] Record before/after numbers in `BENCHMARKS.md`.
+- [x] Remove remaining allocation overhead in spectrum helpers caused by unpacking `[]complex128` into temporary buffers.
+  - [x] Add/extend a zero-allocation fast path that operates on separate real/imag slices (or reuses pooled scratch buffers).
+  - [x] Wire `dsp/spectrum` to prefer the fast path when inputs allow it.
+  - [x] Record before/after numbers in `BENCHMARKS.md`.
 - [ ] Re-run the full benchmark suite on at least two representative machines (amd64 AVX2-capable + arm64 NEON) and update `BENCHMARKS.md` (date + Go version).
 
-#### 13.2 Optional: Legacy ASM → Go assembly ports (only if still worth it)
+#### 13.2 Legacy ASM → Go assembly ports
 
-Goal: Port a _small_ set of high-value kernels from `mfw/legacy/Source/ASM/` into Go Plan 9 assembly, guarded by build tags and backed by scalar references.
-
-- [ ] Decide and document the target list (keep it minimal):
-  - [ ] Biquad cascade kernel (only if profiling shows meaningful headroom)
-  - [ ] TPDF dither/noise kernel (if required by downstream apps)
-  - [ ] Any remaining window-generation hot loop that materially impacts real workloads
-- [ ] For each selected target:
-  - [ ] Confirm scalar reference is the source of truth.
-  - [ ] Add golden vectors (generated once from a legacy `mfw` build) + parity tests.
-  - [ ] Implement amd64 (SSE2/AVX2) and arm64 (NEON) variants behind `!purego` tags.
-  - [ ] Add a focused microbenchmark and document the speedup and constraints.
-- [ ] Per-port exit criteria: parity within tolerance + ≥2× speedup in its microbenchmark.
+Moved to [`algo-vecmath/PLAN.md`](../algo-vecmath/PLAN.md) §3.
 
 #### 13.3 Exit Criteria
 

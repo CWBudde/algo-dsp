@@ -47,6 +47,23 @@ These are representative checkpoints from the full benchmark run.
 - `BenchmarkAnalyze`: `5331844 ns/op`, `1155073 B/op`, `1 allocs/op`
 - `BenchmarkRT60`: `3787468 ns/op`, `1155089 B/op`, `1 allocs/op`
 
+### `dsp/spectrum`
+
+Before (3 allocs for re/im unpacking):
+
+- `BenchmarkMagnitude/4K`: `53,000 ns/op`, `98,304 B/op`, `3 allocs/op`
+- `BenchmarkPower/4K`: `43,400 ns/op`, `98,304 B/op`, `3 allocs/op`
+
+After (pooled scratch buffers):
+
+- `BenchmarkMagnitude/4K`: `15,298 ns/op`, `32,916 B/op`, `1 allocs/op` (3.5x faster)
+- `BenchmarkPower/4K`: `17,176 ns/op`, `32,951 B/op`, `1 allocs/op` (2.5x faster)
+
+Zero-allocation fast paths:
+
+- `BenchmarkMagnitudeFromParts/4K`: `2,439 ns/op`, `0 B/op`, `0 allocs/op`
+- `BenchmarkPowerFromParts/4K`: `883 ns/op`, `0 B/op`, `0 allocs/op`
+
 ### `stats/time`
 
 - `BenchmarkCalculate/4096`: `39405 ns/op`, `831.56 MB/s`, `0 allocs/op`

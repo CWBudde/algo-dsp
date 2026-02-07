@@ -145,6 +145,38 @@ func TestSmoothFractionalOctave(t *testing.T) {
 	}
 }
 
+func TestMagnitudeFromParts(t *testing.T) {
+	re := []float64{3, -1, 0}
+	im := []float64{4, -1, 0}
+	dst := make([]float64, 3)
+	MagnitudeFromParts(dst, re, im)
+	if math.Abs(dst[0]-5) > 1e-12 {
+		t.Fatalf("MagnitudeFromParts[0]=%f want=5", dst[0])
+	}
+	if math.Abs(dst[1]-math.Sqrt(2)) > 1e-12 {
+		t.Fatalf("MagnitudeFromParts[1]=%f want=%f", dst[1], math.Sqrt(2))
+	}
+	if math.Abs(dst[2]-0) > 1e-12 {
+		t.Fatalf("MagnitudeFromParts[2]=%f want=0", dst[2])
+	}
+}
+
+func TestPowerFromParts(t *testing.T) {
+	re := []float64{3, -1, 0}
+	im := []float64{4, -1, 0}
+	dst := make([]float64, 3)
+	PowerFromParts(dst, re, im)
+	if math.Abs(dst[0]-25) > 1e-12 {
+		t.Fatalf("PowerFromParts[0]=%f want=25", dst[0])
+	}
+	if math.Abs(dst[1]-2) > 1e-12 {
+		t.Fatalf("PowerFromParts[1]=%f want=2", dst[1])
+	}
+	if math.Abs(dst[2]-0) > 1e-12 {
+		t.Fatalf("PowerFromParts[2]=%f want=0", dst[2])
+	}
+}
+
 func TestSmoothFractionalOctaveErrors(t *testing.T) {
 	if _, err := SmoothFractionalOctave(nil, nil, 3); err == nil {
 		t.Fatalf("expected error for empty")
