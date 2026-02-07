@@ -30,6 +30,8 @@ package conv
 
 import (
 	"errors"
+
+	"github.com/cwbudde/algo-dsp/internal/vecmath"
 )
 
 // Errors returned by convolution functions.
@@ -88,11 +90,36 @@ func DirectTo(dst, a, b []float64) {
 		dst[i] = 0
 	}
 
-	// Standard convolution: y[k] = sum_j(a[j] * b[k-j])
+	// Use SIMD-accelerated path for kernels >= 4 samples
+	const simdThreshold = 4
+	if m >= simdThreshold {
+		directToSIMD(dst, a, b, n, m)
+	} else {
+		directToScalar(dst, a, b, n, m)
+	}
+}
+
+// directToScalar performs scalar convolution for small kernels.
+func directToScalar(dst, a, b []float64, n, m int) {
 	for i := 0; i < n; i++ {
 		for j := 0; j < m; j++ {
 			dst[i+j] += a[i] * b[j]
 		}
+	}
+}
+
+// directToSIMD performs SIMD-accelerated convolution for larger kernels.
+// Uses vecmath operations to vectorize the inner loop.
+func directToSIMD(dst, a, b []float64, n, m int) {
+	// Pre-allocate scratch buffer for scaled kernel
+	temp := make([]float64, m)
+
+	for i := 0; i < n; i++ {
+		// Scale kernel by current input sample: temp = b * a[i]
+		vecmath.ScaleBlock(temp, b, a[i])
+
+		// Accumulate into destination: dst[i:i+m] += temp
+		vecmath.AddBlockInPlace(dst[i:i+m], temp)
 	}
 }
 

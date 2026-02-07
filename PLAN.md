@@ -599,8 +599,12 @@ Comprehensive benchmarks across all packages. Key results:
 
 ##### 13.3.6 Spectrum SIMD
 
-- [ ] Implement `MagnitudeInPlace(dst []float64, re, im []float64)` using AVX2 (re²+im², vsqrt).
-- [ ] Implement `PowerInPlace(dst []float64, re, im []float64)` using AVX2 (re²+im², no sqrt).
+- [x] Implement `Magnitude(dst, re, im []float64)` using AVX2/SSE2/NEON (re²+im², vsqrt).
+- [x] Implement `Power(dst, re, im []float64)` using AVX2/SSE2/NEON (re²+im², no sqrt).
+- [x] Add comprehensive tests for Magnitude and Power operations.
+- [x] Add benchmarks showing performance improvements.
+  - Magnitude: 3.5-10 GB/s throughput (size-dependent, includes sqrt)
+  - Power: 18-100 GB/s throughput (faster, no sqrt operation)
 - [ ] Wire `spectrum.Magnitude` / `spectrum.Power` to use SIMD paths.
 
 ##### 13.3.7 Biquad Scalar Optimization
