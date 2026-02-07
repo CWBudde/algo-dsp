@@ -15,12 +15,6 @@ func TestForceGeneric(t *testing.T) {
 	})
 	defer cpu.ResetDetection()
 
-	// Reset registry cache to force re-initialization
-	registry.Global.Reset()
-
-	// Re-register implementations
-	// (In real usage, this happens automatically via init() functions in init_*.go)
-
 	// Now test - should use generic implementation
 	dst := make([]float64, 10)
 	a := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
@@ -37,6 +31,9 @@ func TestForceGeneric(t *testing.T) {
 
 	// Verify generic was selected
 	entry := registry.Global.Lookup(cpu.DetectFeatures())
+	if entry == nil {
+		t.Fatal("No implementation found in registry")
+	}
 	if entry.Name != "generic" {
 		t.Errorf("Expected generic implementation, got %s", entry.Name)
 	}
@@ -52,9 +49,6 @@ func TestForceAVX2(t *testing.T) {
 	})
 	defer cpu.ResetDetection()
 
-	// Reset to force re-initialization
-	registry.Global.Reset()
-
 	// Test - should use AVX2 implementation
 	dst := make([]float64, 10)
 	a := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
@@ -69,14 +63,17 @@ func TestForceAVX2(t *testing.T) {
 		}
 	}
 
-	// Verify AVX2 was selected (if available on this platform)
+	// Verify AVX2 was selected
 	entry := registry.Global.Lookup(cpu.DetectFeatures())
-	if entry.SIMDLevel == cpu.SIMDAVX2 && entry.Name != "avx2" {
+	if entry == nil {
+		t.Fatal("No implementation found in registry")
+	}
+	if entry.Name != "avx2" {
 		t.Errorf("Expected avx2 implementation, got %s", entry.Name)
 	}
 }
 
-// TestForceSSE2 tests that we can force SSE2 implementation (for MaxAbs)
+// TestForceSSE2 tests that we can force SSE2 implementation
 func TestForceSSE2(t *testing.T) {
 	// Force SSE2 only (no AVX2)
 	cpu.SetForcedFeatures(cpu.Features{
@@ -86,10 +83,21 @@ func TestForceSSE2(t *testing.T) {
 	})
 	defer cpu.ResetDetection()
 
-	// Reset to force re-initialization
-	registry.Global.Reset()
+	// Test AddBlock - should use SSE2 implementation
+	dst := make([]float64, 10)
+	a := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	b := []float64{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
 
-	// Test MaxAbs - should use SSE2 implementation if available
+	AddBlock(dst, a, b)
+
+	for i := range dst {
+		expected := a[i] + b[i]
+		if dst[i] != expected {
+			t.Errorf("AddBlock[%d] = %v, want %v", i, dst[i], expected)
+		}
+	}
+
+	// Test MaxAbs - should use SSE2 implementation
 	x := []float64{-1.5, 2.0, -3.5, 4.0, -5.5}
 	result := MaxAbs(x)
 
@@ -98,11 +106,13 @@ func TestForceSSE2(t *testing.T) {
 		t.Errorf("MaxAbs() = %v, want %v", result, expected)
 	}
 
-	// Verify SSE2 was selected for MaxAbs
+	// Verify SSE2 was selected
 	entry := registry.Global.Lookup(cpu.DetectFeatures())
-	// SSE2 implementation exists for MaxAbs
-	if entry.MaxAbs == nil {
-		t.Error("MaxAbs not available in selected implementation")
+	if entry == nil {
+		t.Fatal("No implementation found in registry")
+	}
+	if entry.Name != "sse2" {
+		t.Errorf("Expected sse2 implementation, got %s", entry.Name)
 	}
 }
 
