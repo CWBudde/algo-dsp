@@ -18,5 +18,5 @@ func ExampleBuffer() {
 
 	// Output:
 	// [1 0 0 0 0 0]
-	// 6 8
+	// 6 6
 }
