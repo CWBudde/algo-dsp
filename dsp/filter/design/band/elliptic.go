@@ -306,7 +306,7 @@ func srem(x, y float64) float64 {
 
 func acde(w complex128, k, tol float64) complex128 {
 	v := landen(k, tol)
-	for i := 0; i < len(v); i++ {
+	for i := range v {
 		v1 := k
 		if i > 0 {
 			v1 = v[i-1]
