@@ -31,7 +31,7 @@ func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffici
 	}
 
 	// Convert dB parameters to linear amplitude scale.
-	G0 := db2Lin(0)
+	G0 := 1.0 // db2Lin(0) is always exactly 1
 	G := db2Lin(gainDB)
 	Gb := db2Lin(gbDB)
 	Gs := db2Lin(gainDB - gbDB)
@@ -290,14 +290,16 @@ func landen(k, tol float64) []float64 {
 	if tol < 1 {
 		// Iterate until the modulus drops below the tolerance.
 		for k > tol {
-			k = math.Pow(k/(1.0+math.Sqrt(1.0-k*k)), 2)
+			t := k / (1.0 + math.Sqrt((1-k)*(1+k)))
+			k = t * t
 			v = append(v, k)
 		}
 	} else {
 		// Fixed number of iterations specified by the caller.
 		M := int(tol)
 		for i := 1; i <= M; i++ {
-			k = math.Pow(k/(1.0+math.Sqrt(1.0-k*k)), 2)
+			t := k / (1.0 + math.Sqrt((1-k)*(1+k)))
+			k = t * t
 			v = append(v, k)
 		}
 	}
@@ -305,11 +307,31 @@ func landen(k, tol float64) []float64 {
 	return v
 }
 
+// landenK computes K from a precomputed Landen sequence using the product formula
+// K(k) = (pi/2) * product(1 + v[i]). The sequence is consumed (mutated in place).
+func landenK(v []float64) float64 {
+	for i := range v {
+		v[i] += 1.0
+	}
+	prod := 1.0
+	for _, x := range v {
+		prod *= x
+	}
+	return prod * math.Pi * 0.5
+}
+
 // ellipk computes the complete elliptic integral of the first kind K(k)
 // and its complement K'(k) = K(k') where k' = sqrt(1 - k^2).
 // Uses the Landen transformation for the general case, with asymptotic
 // approximations near k=0 and k=1 where the transform is ill-conditioned.
 func ellipk(k, tol float64) (float64, float64) {
+	return ellipkReuse(k, tol, nil)
+}
+
+// ellipkReuse is like ellipk but accepts an optional precomputed Landen sequence
+// for k (used for the K half). If vk is nil, it computes the sequence internally.
+// The slice is consumed and must not be reused by the caller.
+func ellipkReuse(k, tol float64, vk []float64) (float64, float64) {
 	kmin := 1e-6
 	kmax := math.Sqrt(1 - kmin*kmin)
 
@@ -320,20 +342,14 @@ func ellipk(k, tol float64) (float64, float64) {
 		K = math.Inf(1)
 	} else if k > kmax {
 		// Asymptotic expansion for k near 1 using the complementary modulus.
-		kp := math.Sqrt(1.0 - k*k)
+		kp := math.Sqrt((1 - k) * (1 + k))
 		L := -math.Log(kp / 4.0)
 		K = L + (L-1)*kp*kp/4.0
 	} else {
-		// Landen product: K(k) = (pi/2) * product(1 + v[i]).
-		v := landen(k, tol)
-		for i := range v {
-			v[i] += 1.0
+		if vk == nil {
+			vk = landen(k, tol)
 		}
-		prod := 1.0
-		for _, x := range v {
-			prod *= x
-		}
-		K = prod * math.Pi * 0.5
+		K = landenK(vk)
 	}
 
 	// Compute K'(k) = K(k') analogously: singularity at k=0,
@@ -344,16 +360,8 @@ func ellipk(k, tol float64) (float64, float64) {
 		L := -math.Log(k / 4.0)
 		Kp = L + (L-1.0)*k*k/4.0
 	} else {
-		kp := math.Sqrt(1.0 - k*k)
-		v := landen(kp, tol)
-		for i := range v {
-			v[i] += 1.0
-		}
-		prod := 1.0
-		for _, x := range v {
-			prod *= x
-		}
-		Kp = prod * math.Pi * 0.5
+		kp := math.Sqrt((1 - k) * (1 + k))
+		Kp = landenK(landen(kp, tol))
 	}
 
 	return K, Kp
@@ -369,14 +377,25 @@ func ellipdeg2(n, k, tol float64) float64 {
 	q := math.Exp(-math.Pi * Kp / K)
 	q1 := math.Pow(q, n)
 
-	// Accumulate the theta-function series for numerator (s1) and denominator (s2).
+	// Accumulate the theta-function series using incremental powers
+	// instead of calling math.Pow each iteration.
+	// q1pow = q1^i, q1sq = q1^(i*i), q1gap = q1^(2i+1) (the step ratio).
 	var s1, s2 float64
+	q1sq := q1        // q1^(1*1) = q1
+	q1pow := q1       // q1^1
+	q1gap := q1       // will become q1^(2i+1) before advancing q1sq
+	q1_2 := q1 * q1   // q1^2, constant factor for incrementing the gap
 	for i := 1; i <= M; i++ {
-		s1 += math.Pow(q1, float64(i*(i+1)))
-		s2 += math.Pow(q1, float64(i*i))
+		s2 += q1sq          // += q1^(i*i)
+		s1 += q1sq * q1pow  // += q1^(i*(i+1))
+		// Advance: q1^((i+1)^2) = q1^(i^2) * q1^(2i+1)
+		q1gap *= q1_2       // q1^(2i+1)
+		q1sq *= q1gap
+		q1pow *= q1         // q1^(i+1)
 	}
 
-	return 4 * math.Sqrt(q1) * math.Pow((1.0+s1)/(1.0+2*s2), 2)
+	r := (1.0 + s1) / (1.0 + 2*s2)
+	return 4 * math.Sqrt(q1) * r * r
 }
 
 // srem computes a symmetric remainder of x modulo y, adjusting the standard
@@ -477,7 +496,7 @@ func ellipdeg(N int, k1, tol float64) float64 {
 
 	// Evaluate sn at the sample points using the complementary modulus kc,
 	// then compute k from the product formula k' = kc^N * prod(w)^4.
-	kc := math.Sqrt(1 - k1*k1)
+	kc := math.Sqrt((1 - k1) * (1 + k1))
 	w := sne(ui, kc, tol)
 	prod := 1.0
 	for _, x := range w {

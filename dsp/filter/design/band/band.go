@@ -135,7 +135,7 @@ func ellipticBWGainDB(gainDB float64) float64 {
 }
 
 func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coefficients, error) {
-	G0 := db2Lin(0)
+	G0 := 1.0 // db2Lin(0) is always exactly 1
 	G := db2Lin(gainDB)
 	Gb := db2Lin(gbDB)
 	if G == 0 || Gb == 0 || G0 == 0 {
@@ -187,7 +187,7 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 }
 
 func chebyshev1BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coefficients, error) {
-	G0 := db2Lin(0)
+	G0 := 1.0 // db2Lin(0) is always exactly 1
 	G := db2Lin(gainDB)
 	Gb := db2Lin(gbDB)
 	if Gb*Gb == G0*G0 {
@@ -240,7 +240,7 @@ func chebyshev1BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 }
 
 func chebyshev2BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coefficients, error) {
-	G0 := db2Lin(0)
+	G0 := 1.0 // db2Lin(0) is always exactly 1
 	G := db2Lin(gainDB)
 	Gb := db2Lin(gbDB)
 	if Gb*Gb == G0*G0 {
@@ -292,6 +292,10 @@ func chebyshev2BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 	return sections, nil
 }
 
+// ln10over20 is the precomputed constant ln(10)/20, used to convert dB to
+// linear scale via exp(db * ln10/20) instead of the slower pow(10, db/20).
+const ln10over20 = 0.11512925464970228 // math.Ln10 / 20.0
+
 func db2Lin(db float64) float64 {
-	return math.Pow(10, db/20.0)
+	return math.Exp(db * ln10over20)
 }
