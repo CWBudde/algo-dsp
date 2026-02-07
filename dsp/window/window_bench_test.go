@@ -39,6 +39,44 @@ func BenchmarkApply(b *testing.B) {
 	}
 }
 
+func BenchmarkApplyCoefficientsInPlace(b *testing.B) {
+	sizes := []int{256, 1024, 4096, 16384}
+	for _, n := range sizes {
+		b.Run(itoa(n), func(b *testing.B) {
+			coeffs := Generate(TypeHann, n)
+			buf := make([]float64, n)
+			for i := range buf {
+				buf[i] = float64(i) * 0.001
+			}
+			b.SetBytes(int64(n * 8))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = ApplyCoefficientsInPlace(buf, coeffs)
+			}
+		})
+	}
+}
+
+func BenchmarkApplyCoefficients(b *testing.B) {
+	sizes := []int{256, 1024, 4096, 16384}
+	for _, n := range sizes {
+		b.Run(itoa(n), func(b *testing.B) {
+			coeffs := Generate(TypeHann, n)
+			buf := make([]float64, n)
+			for i := range buf {
+				buf[i] = float64(i) * 0.001
+			}
+			b.SetBytes(int64(n * 8))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, _ = ApplyCoefficients(buf, coeffs)
+			}
+		})
+	}
+}
+
 func itoa(n int) string {
 	if n == 0 {
 		return "0"

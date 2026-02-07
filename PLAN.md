@@ -348,12 +348,14 @@ func AnalyzeSignal(signal []float64, cfg Config) Result  // includes windowing +
 - Harmonic IR separation correctly isolates linear IR from harmonic distortion IRs.
 - Coverage: sweep 85.4%, ir 86.2%. All tests pass with race detector.
 
-### Phase 12: Stats Packages
+### Phase 12: Stats Packages (Complete - 2026-02-07)
 
-Objectives:
-
-- Reusable time-domain and frequency-domain statistics for signal analysis.
-- Port statistics types from `mfw/legacy/Source/MFTypes.pas` and `MFAudioData.pas`.
+- Implemented `stats/time.Calculate()` with single-pass Welford's algorithm for DC, RMS, max/min with positions, peak, range, crest factor, energy/power, zero crossings, variance, skewness, kurtosis.
+- Added `StreamingStats` for incremental block-based updates producing bit-identical results to `Calculate()`.
+- Added standalone functions: `RMS()`, `DC()`, `Peak()`, `CrestFactor()`, `ZeroCrossings()`, `Moments()`.
+- Implemented `stats/frequency.Calculate()` with spectral centroid, spread, flatness (Wiener entropy), rolloff, and 3dB bandwidth.
+- Added `CalculateFromComplex()` and standalone functions: `Centroid()`, `Flatness()`, `Rolloff()`, `Bandwidth()`.
+- Zero allocations across all functions and benchmarks. Coverage: time 98.0%, frequency 97.8%.
 
 Source: `MFTypes.pas` (TMFTimeDomainInfoType, TMFFrequencyDomainInfoType enums), `MFAudioData.pas` (TMFTimeDomainDataInformation class).
 
@@ -468,24 +470,24 @@ func Bandwidth(magnitude []float64, sampleRate float64) float64
 
 **Time-domain stats (`stats/time`):**
 
-- [ ] Implement single-pass statistics: DC, RMS, max, min, peak, range.
-- [ ] Implement crest factor and energy/power calculations.
-- [ ] Implement zero-crossing counter.
-- [ ] Implement higher moments: variance, skewness, kurtosis (Welford's algorithm for numerical stability).
-- [ ] Implement `StreamingStats` for incremental block-based updates.
-- [ ] Tests with known signals (DC, sine, square wave → predictable stats).
-- [ ] Benchmarks for block processing throughput.
+- [x] Implement single-pass statistics: DC, RMS, max, min, peak, range.
+- [x] Implement crest factor and energy/power calculations.
+- [x] Implement zero-crossing counter.
+- [x] Implement higher moments: variance, skewness, kurtosis (Welford's algorithm for numerical stability).
+- [x] Implement `StreamingStats` for incremental block-based updates.
+- [x] Tests with known signals (DC, sine, square wave → predictable stats).
+- [x] Benchmarks for block processing throughput.
 
 **Frequency-domain stats (`stats/frequency`):**
 
-- [ ] Implement basic spectrum stats: DC, sum, max, min, average, range.
-- [ ] Implement spectral centroid: `Σ(f_i × |X_i|) / Σ|X_i|`.
-- [ ] Implement spectral spread: second moment around centroid.
-- [ ] Implement spectral flatness: `exp(mean(log(|X|))) / mean(|X|)`.
-- [ ] Implement spectral rolloff: frequency below which N% of energy lies.
-- [ ] Implement 3dB bandwidth around spectral peak.
-- [ ] Tests with synthetic spectra (narrowband, broadband, noise).
-- [ ] Benchmarks for spectrum analysis throughput.
+- [x] Implement basic spectrum stats: DC, sum, max, min, average, range.
+- [x] Implement spectral centroid: `Σ(f_i × |X_i|) / Σ|X_i|`.
+- [x] Implement spectral spread: second moment around centroid.
+- [x] Implement spectral flatness: `exp(mean(log(|X|))) / mean(|X|)`.
+- [x] Implement spectral rolloff: frequency below which N% of energy lies.
+- [x] Implement 3dB bandwidth around spectral peak.
+- [x] Tests with synthetic spectra (narrowband, broadband, noise).
+- [x] Benchmarks for spectrum analysis throughput.
 
 #### 12.4 Exit Criteria
 
@@ -527,22 +529,91 @@ Source: `mfw/legacy/Source/MFASM.pas` (Pascal declarations), `mfw/legacy/Source/
 | `stats/time`        | `Calculate`      | Medium   | SIMD reductions        |
 | `dsp/spectrum`      | `Magnitude`      | Medium   | SIMD sqrt              |
 
+#### 13.3 Benchmark Baseline (2026-02-07, i7-1255U, Go 1.24)
+
+Comprehensive benchmarks across all packages. Key results:
+
+| Package / Function | Size | ns/op | MB/s | allocs | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `window/Apply` (Hann) | 4096 | 224,781 | — | 2 | Regenerates coeffs each call |
+| `window/Generate` (Hann) | 4096 | 145,677 | — | 2 | Per-sample trig |
+| `filter/biquad/ProcessBlock` | 4096 | 27,710 | 1,183 | 0 | Already fast, sequential |
+| `filter/fir/ProcessBlock` | 1024×128 taps | 133,093 | 62 | 0 | Circular buffer overhead |
+| `filter/fir/ProcessBlock` | 1024×512 taps | 654,398 | 13 | 0 | O(N×M) dominates |
+| `conv/Direct` | 4096×64 | 244,466 | — | 1 | Inner loop not vectorized |
+| `conv/OverlapAdd` | 16384×256 | 1,054,244 | — | 60 | Heavy allocation per call |
+| `conv/OverlapAddReuse` | 16384×256 | 1,317,175 | — | 1 | Reuse cuts allocs to 1 |
+| `simd/MulBlock` (AVX2) | 4K | 1,568 | 62,708 | 0 | 3.4× vs scalar |
+| `simd/ScaleBlock` (AVX2) | 4K | 1,258 | 52,104 | 0 | 2.9× vs scalar |
+| `simd/AddMulBlock` (AVX2) | 4K | 1,259 | 78,090 | 0 | 3.7× vs scalar |
+
+**Top 5 hot paths identified** (by impact × frequency of use):
+
+1. **`window/Apply`** — regenerates full coefficient array + scalar multiply every call; 2 allocs.
+2. **`filter/fir/ProcessBlock`** — O(N×M) dot product with circular-buffer branch per tap.
+3. **`conv/OverlapAdd`** — 60 allocs/call from FFT temporary buffers.
+4. **`conv/Direct`** — inner loop not SIMD-accelerated; used for short kernels.
+5. **`dsp/spectrum/Magnitude`** — per-element `cmplx.Abs` call (sqrt of re²+im²).
+
 #### 13.3 Task Breakdown
 
-- [ ] Run comprehensive benchmarks across all packages, identify top 5 hot paths.
-- [ ] Profile memory allocation patterns, eliminate unnecessary allocations.
-- [ ] Implement loop-unrolled scalar variants for biquad and FIR block processing.
-- [ ] Add `internal/simd` package with build-tagged SIMD kernels.
-- [ ] Implement SIMD window application (AVX2 for amd64).
-- [ ] Implement SIMD FIR dot product.
-- [ ] Add numerical parity tests: SIMD vs scalar must match within 1e-14.
-- [ ] Document optimization gains in benchmark comparison table.
-- [ ] Ensure `purego` build tag provides fully functional scalar-only build.
-- [ ] Convert priority legacy ASM routines to Plan 9 assembly (see 13.4).
+##### 13.3.1 Completed
+
+- [x] Run comprehensive benchmarks across all packages, identify top 5 hot paths.
+- [x] Add `internal/simd` package with build-tagged SIMD kernels.
+  - AVX2 assembly: MulBlock, MulBlockInPlace, ScaleBlock, ScaleBlockInPlace, AddBlock, AddBlockInPlace, AddMulBlock, MulAddBlock.
+  - Pure Go fallbacks in `mul_generic.go` with `purego` build tag.
+  - Comprehensive tests and benchmarks confirming 2–5× speedup.
+- [x] Add numerical parity tests: SIMD vs scalar match within floating-point epsilon.
+
+##### 13.3.2 Window Optimization (next)
+
+- [ ] Wire `ApplyCoefficientsInPlace` to use `simd.MulBlockInPlace` instead of scalar loop.
+- [ ] Wire `ApplyCoefficients` to use `simd.MulBlock` instead of scalar loop.
+- [ ] Add `ApplyPrecomputed(buf, coeffs)` fast path that skips `Generate` when coeffs are cached.
+- [ ] Benchmark: confirm window apply throughput matches `simd.MulBlockInPlace` (~60 GB/s at 4K).
+
+##### 13.3.3 SIMD Reduction Operations
+
+- [ ] Implement `MaxAbs([]float64) float64` — AVX2 horizontal max-abs reduction.
+- [ ] Implement `Sum([]float64) float64` — AVX2 horizontal sum (for RMS, energy).
+- [ ] Implement `DotProduct(a, b []float64) float64` — AVX2 dot product (for FIR inner loop).
+- [ ] Pure Go fallbacks for all new reductions.
+- [ ] Numerical parity tests for reductions.
+
+##### 13.3.4 FIR Optimization
+
+- [ ] Rewrite `ProcessBlock` to linearize delay line when pos wraps (avoid branch per tap).
+- [ ] Use `simd.DotProduct` for inner convolution loop (requires 13.3.3).
+- [ ] Benchmark: target ≥ 3× improvement for 128+ taps.
+
+##### 13.3.5 Convolution Allocation Reduction
+
+- [ ] Pool FFT scratch buffers in `OverlapAdd` / `OverlapSave` (reduce 60 → ≤ 2 allocs/call).
+- [ ] Pre-allocate accumulator in `DirectTo` (already zero-alloc, but inner loop can use SIMD).
+- [ ] Wire `DirectTo` inner loop to `simd.MulAddBlock` where kernel length ≥ 4.
+
+##### 13.3.6 Spectrum SIMD
+
+- [ ] Implement `MagnitudeInPlace(dst []float64, re, im []float64)` using AVX2 (re²+im², vsqrt).
+- [ ] Implement `PowerInPlace(dst []float64, re, im []float64)` using AVX2 (re²+im², no sqrt).
+- [ ] Wire `spectrum.Magnitude` / `spectrum.Power` to use SIMD paths.
+
+##### 13.3.7 Biquad Scalar Optimization
+
+- [ ] Profile biquad ProcessBlock with pprof to confirm it's register-bound (not memory-bound).
+- [ ] Test manual 2× loop unrolling (process two independent sections in parallel).
+- [ ] If gain < 10%, mark biquad as "already optimal" and skip further work.
+
+##### 13.3.8 Purego Validation & Documentation
+
+- [ ] Ensure `go test -tags purego ./...` passes all tests.
+- [ ] Create `BENCHMARKS.md` with baseline numbers and SIMD vs scalar comparison table.
+- [ ] Update this section with measured gains after each sub-task completes.
 
 #### 13.4 Legacy ASM to Plan 9 Assembly Conversion
 
-The `mfw/legacy/Source/ASM/` directory contains ~1.5MB of hand-optimized x86/SSE assembly. This section defines the conversion strategy for porting DSP-relevant routines to Go's Plan 9 assembly syntax.
+The `../mfw/legacy/Source/ASM/` directory contains ~1.5MB of hand-optimized x86/SSE assembly. This section defines the conversion strategy for porting DSP-relevant routines to Go's Plan 9 assembly syntax.
 
 ##### 13.4.1 Legacy ASM Inventory
 
@@ -625,10 +696,11 @@ For each function:
 ##### 13.4.5 Conversion Task Checklist
 
 - [ ] Document legacy ASM algorithms for priority Tier 1 functions.
-- [ ] Create `internal/simd/` package skeleton with build tags.
-- [ ] Convert `tsAddMul` → `mulBlockAVX2` (window application).
-- [ ] Convert `MaxAbsF64` → `maxAbsAVX2` (reduction).
-- [ ] Convert `tsIIRfilter` → biquad kernel (if profiling justifies).
+- [x] Create `internal/simd/` package skeleton with build tags.
+- [x] Convert `tsAddMul` → `mulBlockAVX2`, `addMulBlockAVX2` (block arithmetic).
+  - Also: `scaleBlockAVX2`, `addBlockAVX2`, `mulAddBlockAVX2` and in-place variants.
+- [ ] Convert `MaxAbsF64` → `maxAbsAVX2` (reduction) — see 13.3.3.
+- [ ] Convert `tsIIRfilter` → biquad kernel (only if profiling justifies — see 13.3.7).
 - [ ] Convert `UPDFnoise64_SSE2` → TPDF dither kernel.
 - [ ] Add ARM64 NEON variants for cross-platform optimization.
 - [ ] Validate all conversions against legacy output (golden vectors).
@@ -835,6 +907,7 @@ Quarter-end success criteria:
 | 0.8     | 2026-02-06 | Claude | Completed Phase 7 implementation: direct convolution, overlap-add/overlap-save (FFT-based), cross-correlation (direct/FFT/normalized), auto-correlation, deconvolution (naive/regularized/Wiener), inverse filter generation. Added benchmarks showing crossover at ~64-128 sample kernels, comprehensive tests, and examples.                                                          |
 | 0.9     | 2026-02-06 | Claude | Compacted Phases 0-9 to summaries. Refined Phases 10-14 with detailed specs from mfw/legacy: Phase 10 (THD) with MFTotalHarmonicDistortionCalculation.pas algorithms; Phase 11 (Sweep/IR) with TMFSchroederData metrics; Phase 12 (Stats) with TMFTimeDomainInfoType/TMFFrequencyDomainInfoType; Phase 13 (SIMD) with optimization strategy; Phase 14 (v1.0) with API review checklist. |
 | 1.0     | 2026-02-06 | Claude | Completed Phase 11: LogSweep/LinearSweep with generate/inverse/deconvolve/harmonic extraction, IR Analyzer with Schroeder integral, RT60/EDT/T20/T30, C50/C80/D50/D80, CenterTime, FindImpulseStart. Coverage: sweep 85.4%, ir 86.2%. All tests pass with race detector.                                                                                                              |
+| 1.1     | 2026-02-07 | Claude | Completed Phase 12: stats/time with single-pass Welford's algorithm (DC, RMS, peak, range, crest factor, energy/power, zero crossings, variance, skewness, kurtosis), StreamingStats with bit-identical results. stats/frequency with spectral centroid, spread, flatness, rolloff, bandwidth. Zero allocations. Coverage: time 98%, freq 97.8%.                                        |
 
 ---
 
