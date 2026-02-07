@@ -62,6 +62,9 @@ type OpEntry struct {
 
 	// MaxAbs returns the maximum absolute value in the slice: max(|x[i]|).
 	MaxAbs func(x []float64) float64
+
+	// Sum returns the sum of all elements in the slice: sum(x[i]).
+	Sum func(x []float64) float64
 }
 
 // OpRegistry manages the registration and lookup of vecmath implementation variants.
