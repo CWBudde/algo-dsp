@@ -10,8 +10,9 @@ import (
 // Filter implements a direct-form FIR filter using a circular-buffer delay line.
 type Filter struct {
 	coeffs []float64
-	delay  []float64
-	pos    int
+	delay  []float64  // circular delay line
+	pos    int        // current write position in delay line
+	linear []float64  // double-sized buffer for block processing optimization
 }
 
 // New creates a FIR filter from the given coefficient slice.
@@ -19,9 +20,11 @@ type Filter struct {
 func New(coeffs []float64) *Filter {
 	c := make([]float64, len(coeffs))
 	copy(c, coeffs)
+	n := len(coeffs)
 	return &Filter{
 		coeffs: c,
-		delay:  make([]float64, len(coeffs)),
+		delay:  make([]float64, n),
+		linear: make([]float64, n*2), // double-sized for efficient block processing
 	}
 }
 
@@ -67,38 +70,24 @@ func (f *Filter) ProcessBlock(buf []float64) {
 		return
 	}
 
-	// Allocate linearized buffer for the delay line.
-	// This allows us to use a fast SIMD dot product without branches per tap.
-	linear := make([]float64, n)
+	// Use double-buffered approach: maintain delay values in both halves
+	// of f.linear to allow contiguous access without branches or copying.
+	for i := range buf {
+		x := buf[i]
 
-	for i, x := range buf {
-		// Store input sample in circular delay line
+		// Store sample in both positions of the double buffer
+		f.linear[f.pos] = x
+		f.linear[f.pos+n] = x
+
+		// Also update the delay line for ProcessSample compatibility
 		f.delay[f.pos] = x
 
-		// Linearize the delay line for convolution without branches.
-		// We need: [x[n], x[n-1], x[n-2], ...] = [delay[pos], delay[pos-1], ...]
-		// Split into two copies to avoid wraparound branches:
-		//   Part 1: delay[pos] down to delay[0]       -> linear[0:pos+1]
-		//   Part 2: delay[n-1] down to delay[pos+1]   -> linear[pos+1:n]
-		len1 := f.pos + 1
-		len2 := n - len1
+		// Compute output using SIMD dot product on contiguous memory.
+		// Read from position that gives us the last n samples in reverse order.
+		start := f.pos + 1
+		buf[i] = vecmath.DotProduct(f.coeffs, f.linear[start:start+n])
 
-		// Copy first part: delay[0:pos+1] -> linear[0:pos+1] (in reverse)
-		for k := 0; k < len1; k++ {
-			linear[k] = f.delay[f.pos-k]
-		}
-
-		// Copy second part: delay[pos+1:n] -> linear[pos+1:n] (in reverse)
-		if len2 > 0 {
-			for k := 0; k < len2; k++ {
-				linear[len1+k] = f.delay[n-1-k]
-			}
-		}
-
-		// Compute output using SIMD dot product
-		buf[i] = vecmath.DotProduct(f.coeffs, linear)
-
-		// Advance circular buffer position
+		// Advance position
 		f.pos++
 		if f.pos >= n {
 			f.pos = 0
@@ -125,33 +114,23 @@ func (f *Filter) ProcessBlockTo(dst, src []float64) {
 		return
 	}
 
-	// Allocate linearized buffer for the delay line.
-	linear := make([]float64, n)
+	// Use double-buffered approach: maintain delay values in both halves
+	// of f.linear to allow contiguous access without branches or copying.
+	for i := range src {
+		x := src[i]
 
-	for i, x := range src {
-		// Store input sample in circular delay line
+		// Store sample in both positions of the double buffer
+		f.linear[f.pos] = x
+		f.linear[f.pos+n] = x
+
+		// Also update the delay line for ProcessSample compatibility
 		f.delay[f.pos] = x
 
-		// Linearize the delay line for convolution without branches.
-		len1 := f.pos + 1
-		len2 := n - len1
+		// Compute output using SIMD dot product on contiguous memory
+		start := f.pos + 1
+		dst[i] = vecmath.DotProduct(f.coeffs, f.linear[start:start+n])
 
-		// Copy first part: delay[pos] down to delay[0]
-		for k := 0; k < len1; k++ {
-			linear[k] = f.delay[f.pos-k]
-		}
-
-		// Copy second part: delay[n-1] down to delay[pos+1]
-		if len2 > 0 {
-			for k := 0; k < len2; k++ {
-				linear[len1+k] = f.delay[n-1-k]
-			}
-		}
-
-		// Compute output using SIMD dot product
-		dst[i] = vecmath.DotProduct(f.coeffs, linear)
-
-		// Advance circular buffer position
+		// Advance position
 		f.pos++
 		if f.pos >= n {
 			f.pos = 0
@@ -163,6 +142,9 @@ func (f *Filter) ProcessBlockTo(dst, src []float64) {
 func (f *Filter) Reset() {
 	for i := range f.delay {
 		f.delay[i] = 0
+	}
+	for i := range f.linear {
+		f.linear[i] = 0
 	}
 	f.pos = 0
 }
