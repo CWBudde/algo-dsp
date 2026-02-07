@@ -2,8 +2,15 @@ package conv
 
 import (
 	"fmt"
+	"sync"
 
 	algofft "github.com/MeKo-Christian/algo-fft"
+)
+
+// Pool of OverlapAdd instances to reduce allocations in one-shot convolutions.
+var (
+	overlapAddPoolsMu sync.RWMutex
+	overlapAddPools   = make(map[int]*sync.Pool) // keyed by FFT size
 )
 
 // OverlapAdd implements FFT-based convolution using the overlap-add method.
@@ -181,14 +188,101 @@ func (oa *OverlapAdd) Reset() {
 	// No persistent state to clear in this implementation
 }
 
+// getOverlapAddPool returns the pool for the given FFT size, creating it if needed.
+func getOverlapAddPool(fftSize int) *sync.Pool {
+	overlapAddPoolsMu.RLock()
+	pool, ok := overlapAddPools[fftSize]
+	overlapAddPoolsMu.RUnlock()
+	if ok {
+		return pool
+	}
+
+	overlapAddPoolsMu.Lock()
+	defer overlapAddPoolsMu.Unlock()
+
+	// Check again in case another goroutine created it
+	if pool, ok := overlapAddPools[fftSize]; ok {
+		return pool
+	}
+
+	pool = &sync.Pool{
+		New: func() any {
+			return &OverlapAdd{}
+		},
+	}
+	overlapAddPools[fftSize] = pool
+	return pool
+}
+
 // OverlapAddConvolve performs one-shot overlap-add convolution.
-// This is a convenience function that creates a temporary OverlapAdd instance.
+// This function uses a pool of OverlapAdd instances to minimize allocations.
 func OverlapAddConvolve(signal, kernel []float64) ([]float64, error) {
-	oa, err := NewOverlapAdd(kernel, 0)
+	if len(kernel) == 0 {
+		return nil, ErrEmptyKernel
+	}
+
+	kernelLen := len(kernel)
+
+	// Determine configuration (same logic as NewOverlapAdd)
+	blockSize := nextPowerOf2(kernelLen)
+	if blockSize < 256 {
+		blockSize = 256
+	}
+
+	minFFTSize := blockSize + kernelLen - 1
+	fftSize := nextPowerOf2(minFFTSize)
+
+	// Get a pooled instance
+	pool := getOverlapAddPool(fftSize)
+	oa := pool.Get().(*OverlapAdd)
+	defer pool.Put(oa)
+
+	// Initialize/reinitialize the instance for this kernel
+	err := initOverlapAdd(oa, kernel, blockSize, fftSize)
 	if err != nil {
 		return nil, err
 	}
+
 	return oa.Process(signal)
+}
+
+// initOverlapAdd initializes or reinitializes an OverlapAdd instance.
+func initOverlapAdd(oa *OverlapAdd, kernel []float64, blockSize, fftSize int) error {
+	kernelLen := len(kernel)
+
+	// Allocate or resize buffers if needed
+	if len(oa.kernelFFT) != fftSize {
+		oa.kernelFFT = make([]complex128, fftSize)
+		oa.inputPadded = make([]complex128, fftSize)
+		oa.outputPadded = make([]complex128, fftSize)
+
+		// Create FFT plan
+		plan, err := algofft.NewPlan64(fftSize)
+		if err != nil {
+			return fmt.Errorf("conv: failed to create FFT plan: %w", err)
+		}
+		oa.plan = plan
+	}
+
+	oa.kernelLen = kernelLen
+	oa.blockSize = blockSize
+	oa.fftSize = fftSize
+
+	// Compute kernel FFT
+	kernelPadded := oa.inputPadded // Reuse inputPadded as temporary
+	for i := range kernelPadded {
+		kernelPadded[i] = 0
+	}
+	for i, v := range kernel {
+		kernelPadded[i] = complex(v, 0)
+	}
+
+	err := oa.plan.Forward(oa.kernelFFT, kernelPadded)
+	if err != nil {
+		return fmt.Errorf("conv: failed to compute kernel FFT: %w", err)
+	}
+
+	return nil
 }
 
 // OverlapAddConvolveTo performs one-shot overlap-add convolution to a pre-allocated buffer.
