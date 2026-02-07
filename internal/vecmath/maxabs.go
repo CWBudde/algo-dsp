@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	maxAbsImpl    func([]float64) float64
+	maxAbsImpl     func([]float64) float64
 	maxAbsInitOnce sync.Once
 )
 

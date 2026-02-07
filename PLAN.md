@@ -579,9 +579,9 @@ Comprehensive benchmarks across all packages. Key results:
 
 ##### 13.3.3 SIMD Reduction Operations
 
-- [x] Implement `MaxAbs([]float64) float64` — AVX2 horizontal max-abs reduction.
+- [x] Implement `MaxAbs([]float64) float64` — AVX2/SSE2/NEON horizontal max-abs reduction.
 - [x] Implement `Sum([]float64) float64` — AVX2/SSE2/NEON horizontal sum (for RMS, energy).
-- [ ] Implement `DotProduct(a, b []float64) float64` — AVX2/SSE2/NEON dot product (for FIR inner loop).
+- [x] Implement `DotProduct(a, b []float64) float64` — AVX2/SSE2/NEON dot product (for FIR inner loop).
 - [x] Pure Go fallbacks for all new reductions.
 - [x] Numerical parity tests for reductions.
 
