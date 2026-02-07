@@ -10,7 +10,9 @@ func BenchmarkSchroederIntegral(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		a.SchroederIntegral(ir)
+		if _, err := a.SchroederIntegral(ir); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -20,7 +22,9 @@ func BenchmarkRT60(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		a.RT60(ir)
+		if _, err := a.RT60(ir); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -30,7 +34,9 @@ func BenchmarkAnalyze(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		a.Analyze(ir)
+		if _, err := a.Analyze(ir); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -40,7 +46,9 @@ func BenchmarkDefinition(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		a.Definition(ir, 50)
+		if _, err := a.Definition(ir, 50); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -50,7 +58,9 @@ func BenchmarkClarity(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		a.Clarity(ir, 80)
+		if _, err := a.Clarity(ir, 80); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -60,7 +70,9 @@ func BenchmarkCenterTime(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		a.CenterTime(ir)
+		if _, err := a.CenterTime(ir); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -70,6 +82,8 @@ func BenchmarkFindImpulseStart(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		a.FindImpulseStart(ir)
+		if _, err := a.FindImpulseStart(ir); err != nil {
+			b.Fatal(err)
+		}
 	}
 }

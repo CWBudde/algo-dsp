@@ -76,7 +76,7 @@ func Chebyshev1LP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 		})
 	}
 	if order%2 != 0 {
-		// Legacy code leaves odd-order Chebyshev first-order as TODO.
+		// Legacy code does not implement odd-order Chebyshev first-order sections.
 		// Use Butterworth first-order section for deterministic behavior.
 		sections = append(sections, butterworthFirstOrderLP(freq, sampleRate))
 	}
@@ -114,7 +114,7 @@ func Chebyshev1HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 		})
 	}
 	if order%2 != 0 {
-		// Legacy code leaves odd-order Chebyshev first-order as TODO.
+		// Legacy code does not implement odd-order Chebyshev first-order sections.
 		// Use Butterworth first-order section for deterministic behavior.
 		sections = append(sections, butterworthFirstOrderHP(freq, sampleRate))
 	}

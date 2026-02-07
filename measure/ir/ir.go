@@ -7,10 +7,10 @@ import (
 
 // Errors returned by IR analysis functions.
 var (
-	ErrEmptyIR          = errors.New("ir: impulse response is empty")
+	ErrEmptyIR           = errors.New("ir: impulse response is empty")
 	ErrInvalidSampleRate = errors.New("ir: sample rate must be positive")
-	ErrInvalidTime      = errors.New("ir: time must be positive")
-	ErrNoDecay          = errors.New("ir: insufficient decay for RT calculation")
+	ErrInvalidTime       = errors.New("ir: time must be positive")
+	ErrNoDecay           = errors.New("ir: insufficient decay for RT calculation")
 )
 
 // Metrics holds impulse response analysis results.

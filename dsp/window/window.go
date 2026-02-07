@@ -2,6 +2,8 @@ package window
 
 import (
 	"math"
+
+	"github.com/cwbudde/algo-dsp/internal/simd"
 )
 
 // Type identifies a window function.
@@ -163,9 +165,7 @@ func Apply(t Type, buf []float64, opts ...Option) {
 	if len(coeffs) != len(buf) {
 		return
 	}
-	for i := range buf {
-		buf[i] *= coeffs[i]
-	}
+	simd.MulBlockInPlace(buf, coeffs)
 }
 
 // Info returns static metadata for a window type.
@@ -248,9 +248,7 @@ func ApplyCoefficients(samples, coeffs []float64) ([]float64, error) {
 		return nil, errMismatchedLength
 	}
 	out := make([]float64, len(samples))
-	for i := range samples {
-		out[i] = samples[i] * coeffs[i]
-	}
+	simd.MulBlock(out, samples, coeffs)
 	return out, nil
 }
 
@@ -259,9 +257,7 @@ func ApplyCoefficientsInPlace(samples, coeffs []float64) error {
 	if len(samples) != len(coeffs) {
 		return errMismatchedLength
 	}
-	for i := range samples {
-		samples[i] *= coeffs[i]
-	}
+	simd.MulBlockInPlace(samples, coeffs)
 	return nil
 }
 

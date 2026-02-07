@@ -47,7 +47,7 @@ func ExampleLogSweep_Deconvolve() {
 	responseLen := len(excitation) + 200
 	response := make([]float64, responseLen)
 	for i, v := range excitation {
-		response[i] += v         // direct path
+		response[i] += v // direct path
 		if i+100 < responseLen {
 			response[i+100] += 0.3 * v // reflection at ~6.25ms
 		}

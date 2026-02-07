@@ -18,17 +18,6 @@ func makeExponentialDecay(sampleRate float64, rt60 float64, durationSec float64)
 	return ir
 }
 
-// makeImpulseWithReflection creates a simple IR: impulse at t=0 + reflection.
-func makeImpulseWithReflection(sampleRate float64, reflectionDelayMs float64, reflectionAmp float64, length int) []float64 {
-	ir := make([]float64, length)
-	ir[0] = 1.0
-	reflSample := int(reflectionDelayMs * 0.001 * sampleRate)
-	if reflSample < length {
-		ir[reflSample] = reflectionAmp
-	}
-	return ir
-}
-
 func TestAnalyzerAnalyze(t *testing.T) {
 	sampleRate := 48000.0
 	rt60 := 1.0 // 1 second RT60
