@@ -615,9 +615,14 @@ Comprehensive benchmarks across all packages. Key results:
 
 ##### 13.3.7 Biquad Scalar Optimization
 
-- [ ] Profile biquad ProcessBlock with pprof to confirm it's register-bound (not memory-bound).
-- [ ] Test manual 2× loop unrolling (process two independent sections in parallel).
-- [ ] If gain < 10%, mark biquad as "already optimal" and skip further work.
+- [x] Profile biquad ProcessBlock with pprof to confirm it's register-bound (not memory-bound).
+  - CPU profile (`/tmp/biquad-prof/cpu-13.3.7.pprof`) shows ~99.7% samples in biquad kernels (`processBlockScalar`, `processBlockUnrolled2`, `ProcessBlockTo`).
+  - Allocation profile shows benchmark/setup and profiling overhead allocations, with zero allocs/op in `BenchmarkProcessBlock*` hot paths.
+- [x] Test manual 2× loop unrolling (process two independent sections in parallel).
+  - Added `processBlockUnrolled2` and promoted it to `Section.ProcessBlock`.
+  - Added scalar reference path (`processBlockScalar`) and benchmarked both.
+  - `BenchmarkProcessBlock/N=4096`: ~15.3-17.5 us/op (unrolled) vs `BenchmarkProcessBlockScalar/N=4096`: ~24.2-34.7 us/op (scalar), i.e. ~1.4-1.7x speedup in representative runs.
+- [x] Evaluate `<10%` gain threshold: gain exceeded 10%, so biquad is **not** marked as "already optimal".
 
 ##### 13.3.8 Purego Validation & Documentation
 
