@@ -1,4 +1,4 @@
-package geq
+package band
 
 import (
 	"math"

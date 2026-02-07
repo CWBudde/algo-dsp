@@ -7,6 +7,16 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
 )
 
+func ExamplePeakCascade() {
+	coeffs, _ := design.PeakCascade(48000, 1000, 0.707, 6.0, 3,
+		design.WithDCGain(1.0), design.WithNyquistGain(1.0))
+	chain := biquad.NewChain(coeffs)
+
+	fmt.Printf("sections=%d order=%d\n", len(coeffs), chain.Order())
+	// Output:
+	// sections=3 order=6
+}
+
 func ExampleButterworthLP() {
 	coeffs := design.ButterworthLP(1000, 4, 48000)
 	chain := biquad.NewChain(coeffs)
