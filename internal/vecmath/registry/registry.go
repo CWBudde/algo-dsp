@@ -1,9 +1,13 @@
-// Package vecmath provides vectorized mathematical operations with SIMD optimizations.
+// Package registry provides the implementation registry for vecmath operations.
 //
 // The registry-based dispatch system allows multiple implementation variants
 // (generic, SSE2, AVX2, NEON, etc.) to coexist. The best implementation for
 // the current CPU is selected automatically at runtime.
-package vecmath
+//
+// Architecture-specific implementations register themselves via init() functions,
+// and the vecmath package uses the registry to select the best implementation
+// at runtime based on detected CPU features.
+package registry
 
 import (
 	"sync"

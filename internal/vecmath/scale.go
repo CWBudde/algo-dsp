@@ -1,30 +1,37 @@
-//go:build amd64
-
 package vecmath
 
 import (
+	"sync"
+
 	"github.com/cwbudde/algo-dsp/internal/cpu"
-	"github.com/cwbudde/algo-dsp/internal/vecmath/arch/amd64/avx2"
-	"github.com/cwbudde/algo-dsp/internal/vecmath/arch/generic"
+	"github.com/cwbudde/algo-dsp/internal/vecmath/registry"
 )
 
-// ScaleBlock multiplies each element by a scalar: dst[i] = src[i] * scale.
-// Slices must have equal length. Panics if lengths differ.
-// Automatically selects the best implementation based on CPU features.
-func ScaleBlock(dst, src []float64, scale float64) {
-	if cpu.HasAVX2() {
-		avx2.ScaleBlock(dst, src, scale)
-	} else {
-		generic.ScaleBlock(dst, src, scale)
+var (
+	scaleBlockImpl        func([]float64, []float64, float64)
+	scaleBlockInPlaceImpl func([]float64, float64)
+	scaleInitOnce         sync.Once
+)
+
+func initScaleOperations() {
+	features := cpu.DetectFeatures()
+	entry := registry.Global.Lookup(features)
+	if entry == nil {
+		panic("vecmath: no scale implementation registered")
 	}
+	if entry.ScaleBlock == nil || entry.ScaleBlockInPlace == nil {
+		panic("vecmath: selected implementation missing scale operations")
+	}
+	scaleBlockImpl = entry.ScaleBlock
+	scaleBlockInPlaceImpl = entry.ScaleBlockInPlace
 }
 
-// ScaleBlockInPlace multiplies each element by a scalar in-place: dst[i] *= scale.
-// Automatically selects the best implementation based on CPU features.
-func ScaleBlockInPlace(dst []float64, scale float64) {
-	if cpu.HasAVX2() {
-		avx2.ScaleBlockInPlace(dst, scale)
-	} else {
-		generic.ScaleBlockInPlace(dst, scale)
-	}
+func ScaleBlock(dst, src []float64, scalar float64) {
+	scaleInitOnce.Do(initScaleOperations)
+	scaleBlockImpl(dst, src, scalar)
+}
+
+func ScaleBlockInPlace(dst []float64, scalar float64) {
+	scaleInitOnce.Do(initScaleOperations)
+	scaleBlockInPlaceImpl(dst, scalar)
 }
