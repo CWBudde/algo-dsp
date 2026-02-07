@@ -5,6 +5,8 @@ import (
 	"math"
 	"math/cmplx"
 	"sort"
+
+	"github.com/cwbudde/algo-dsp/internal/vecmath"
 )
 
 // ComplexBins is a read-only adapter for complex spectrum outputs.
@@ -26,8 +28,28 @@ func (s SliceBins) Len() int { return len(s) }
 func (s SliceBins) At(i int) complex128 { return s[i] }
 
 // Magnitude returns |X[k]| for each complex spectrum bin.
+//
+// This function uses SIMD-optimized implementations when available (AVX2, SSE2, NEON)
+// for improved performance on large spectrum arrays.
 func Magnitude(in []complex128) []float64 {
-	return MagnitudeBins(SliceBins(in))
+	if len(in) == 0 {
+		return nil
+	}
+
+	// Fast path: use SIMD-optimized vecmath implementation
+	out := make([]float64, len(in))
+	re := make([]float64, len(in))
+	im := make([]float64, len(in))
+
+	// Extract real and imaginary parts into separate slices
+	for i, c := range in {
+		re[i] = real(c)
+		im[i] = imag(c)
+	}
+
+	// Compute magnitude using SIMD when available
+	vecmath.Magnitude(out, re, im)
+	return out
 }
 
 // MagnitudeBins returns |X[k]| for each bin from a [ComplexBins] source.
@@ -43,8 +65,28 @@ func MagnitudeBins(in ComplexBins) []float64 {
 }
 
 // Power returns |X[k]|^2 for each complex spectrum bin.
+//
+// This function uses SIMD-optimized implementations when available (AVX2, SSE2, NEON)
+// for improved performance on large spectrum arrays.
 func Power(in []complex128) []float64 {
-	return PowerBins(SliceBins(in))
+	if len(in) == 0 {
+		return nil
+	}
+
+	// Fast path: use SIMD-optimized vecmath implementation
+	out := make([]float64, len(in))
+	re := make([]float64, len(in))
+	im := make([]float64, len(in))
+
+	// Extract real and imaginary parts into separate slices
+	for i, c := range in {
+		re[i] = real(c)
+		im[i] = imag(c)
+	}
+
+	// Compute power using SIMD when available
+	vecmath.Power(out, re, im)
+	return out
 }
 
 // PowerBins returns |X[k]|^2 for each bin from a [ComplexBins] source.
