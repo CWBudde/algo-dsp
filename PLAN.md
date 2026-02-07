@@ -497,289 +497,56 @@ func Bandwidth(magnitude []float64, sampleRate float64) float64
 - Zero-allocation variants available for hot paths.
 - Coverage >= 90% for both `stats/time` and `stats/frequency`.
 
-### Phase 13: Optimization and SIMD Paths
+### Phase 13: Optimization and SIMD Paths (In Progress)
 
-Objectives:
+Status:
 
-- Profile-guided optimization of hot paths identified in Phases 1–12.
-- Optional SIMD acceleration behind build tags with scalar fallback.
+- The core optimization work (SIMD kernels, allocation reduction, and hot-path tuning) is implemented.
+- Remaining work is focused on closing the last allocation/perf gaps and making performance regression detection repeatable.
 
-Source: `mfw/legacy/Source/MFASM.pas` (Pascal declarations), `mfw/legacy/Source/ASM/` (~1.5MB hand-optimized x86/SSE assembly), `MFDSPPolyphaseFilter.pas` (FPU/3DNow/SSE variants).
+#### 13.1 Remaining TODOs (must-do)
 
-#### 13.1 Optimization Strategy
+- [ ] Add a benchmark regression guard (non-blocking at first) that flags large performance regressions compared to baselines in `BENCHMARKS.md`.
+  - [ ] Choose a small, stable benchmark subset that covers the hottest paths.
+  - [ ] Define a regression threshold policy (e.g. ns/op and allocs/op) and document how to update baselines.
+  - [ ] Add a CI-friendly target (e.g. `just bench-ci`) that runs quickly and emits a machine-readable report.
+  - [ ] Wire it into CI as advisory output (make it blocking only after v1.0 if desired).
+- [ ] Remove remaining allocation overhead in spectrum helpers caused by unpacking `[]complex128` into temporary buffers.
+  - [ ] Add/extend a zero-allocation fast path that operates on separate real/imag slices (or reuses pooled scratch buffers).
+  - [ ] Wire `dsp/spectrum` to prefer the fast path when inputs allow it.
+  - [ ] Record before/after numbers in `BENCHMARKS.md`.
+- [ ] Re-run the full benchmark suite on at least two representative machines (amd64 AVX2-capable + arm64 NEON) and update `BENCHMARKS.md` (date + Go version).
 
-1. **Profile first**: Use `go test -bench` and `pprof` to identify actual bottlenecks.
-2. **Algorithm-level optimizations**: Loop unrolling, cache-friendly access patterns, reduced allocations.
-3. **SIMD paths**: Optional `amd64` assembly or Go assembly (Plan 9 syntax) for:
-   - Block multiply/add (windowing, filtering)
-   - Dot products (FIR convolution)
-   - Magnitude calculations (complex → real)
-4. **Build tag isolation**: `//go:build !purego` for optimized paths, scalar fallback always available.
-5. **Numerical parity testing**: Optimized path must match scalar reference within epsilon.
+#### 13.2 Optional: Legacy ASM → Go assembly ports (only if still worth it)
 
-#### 13.2 Candidate Hot Paths
+Goal: Port a _small_ set of high-value kernels from `mfw/legacy/Source/ASM/` into Go Plan 9 assembly, guarded by build tags and backed by scalar references.
 
-| Package             | Function         | Priority | Optimization Type      |
-| ------------------- | ---------------- | -------- | ---------------------- |
-| `dsp/window`        | `Apply`          | High     | SIMD multiply          |
-| `dsp/filter/biquad` | `ProcessBlock`   | High     | Loop unrolling         |
-| `dsp/filter/fir`    | `ProcessBlock`   | High     | SIMD dot product       |
-| `dsp/conv`          | `directConvolve` | Medium   | SIMD dot product       |
-| `dsp/resample`      | `Resample`       | High     | Polyphase optimization |
-| `stats/time`        | `Calculate`      | Medium   | SIMD reductions        |
-| `dsp/spectrum`      | `Magnitude`      | Medium   | SIMD sqrt              |
+- [ ] Decide and document the target list (keep it minimal):
+  - [ ] Biquad cascade kernel (only if profiling shows meaningful headroom)
+  - [ ] TPDF dither/noise kernel (if required by downstream apps)
+  - [ ] Any remaining window-generation hot loop that materially impacts real workloads
+- [ ] For each selected target:
+  - [ ] Confirm scalar reference is the source of truth.
+  - [ ] Add golden vectors (generated once from a legacy `mfw` build) + parity tests.
+  - [ ] Implement amd64 (SSE2/AVX2) and arm64 (NEON) variants behind `!purego` tags.
+  - [ ] Add a focused microbenchmark and document the speedup and constraints.
+- [ ] Per-port exit criteria: parity within tolerance + ≥2× speedup in its microbenchmark.
 
-#### 13.3 Benchmark Baseline (2026-02-07, i7-1255U, Go 1.24)
+#### 13.3 Exit Criteria
 
-Comprehensive benchmarks across all packages. Key results:
+- [ ] No major regressions in allocations/op on the key hot paths.
+- [ ] `go test ./...` and `go test -tags purego ./...` pass.
+- [ ] `BENCHMARKS.md` updated with current baselines and notable changes.
 
-| Package / Function           | Size          | ns/op     | MB/s   | allocs | Notes                        |
-| ---------------------------- | ------------- | --------- | ------ | ------ | ---------------------------- |
-| `window/Apply` (Hann)        | 4096          | 224,781   | —      | 2      | Regenerates coeffs each call |
-| `window/Generate` (Hann)     | 4096          | 145,677   | —      | 2      | Per-sample trig              |
-| `filter/biquad/ProcessBlock` | 4096          | 27,710    | 1,183  | 0      | Already fast, sequential     |
-| `filter/fir/ProcessBlock`    | 1024×128 taps | 133,093   | 62     | 0      | Circular buffer overhead     |
-| `filter/fir/ProcessBlock`    | 1024×512 taps | 654,398   | 13     | 0      | O(N×M) dominates             |
-| `conv/Direct`                | 4096×64       | 244,466   | —      | 1      | Inner loop not vectorized    |
-| `conv/OverlapAdd`            | 16384×256     | 1,054,244 | —      | 60     | Heavy allocation per call    |
-| `conv/OverlapAddReuse`       | 16384×256     | 1,317,175 | —      | 1      | Reuse cuts allocs to 1       |
-| `simd/MulBlock` (AVX2)       | 4K            | 1,568     | 62,708 | 0      | 3.4× vs scalar               |
-| `simd/ScaleBlock` (AVX2)     | 4K            | 1,258     | 52,104 | 0      | 2.9× vs scalar               |
-| `simd/AddMulBlock` (AVX2)    | 4K            | 1,259     | 78,090 | 0      | 3.7× vs scalar               |
+### Phase 14: API Stabilization and v1.0 (In Progress)
 
-**Top 5 hot paths identified** (by impact × frequency of use):
+Remaining TODOs:
 
-1. **`window/Apply`** — regenerates full coefficient array + scalar multiply every call; 2 allocs.
-2. **`filter/fir/ProcessBlock`** — O(N×M) dot product with circular-buffer branch per tap.
-3. **`conv/OverlapAdd`** — 60 allocs/call from FFT temporary buffers.
-4. **`conv/Direct`** — inner loop not SIMD-accelerated; used for short kernels.
-5. **`dsp/spectrum/Magnitude`** — per-element `cmplx.Abs` call (sqrt of re²+im²).
-
-#### 13.3 Task Breakdown
-
-##### 13.3.1 Completed
-
-- [x] Run comprehensive benchmarks across all packages, identify top 5 hot paths.
-- [x] Add `internal/simd` package with build-tagged SIMD kernels.
-  - AVX2 assembly: MulBlock, MulBlockInPlace, ScaleBlock, ScaleBlockInPlace, AddBlock, AddBlockInPlace, AddMulBlock, MulAddBlock.
-  - Pure Go fallbacks in `mul_generic.go` with `purego` build tag.
-  - Comprehensive tests and benchmarks confirming 2–5× speedup.
-- [x] Add numerical parity tests: SIMD vs scalar match within floating-point epsilon.
-
-##### 13.3.2 Window Optimization
-
-- [x] Wire `ApplyCoefficientsInPlace` to use `simd.MulBlockInPlace` instead of scalar loop.
-- [x] Wire `ApplyCoefficients` to use `simd.MulBlock` instead of scalar loop.
-- [x] Wire `Apply` inner multiply to use `simd.MulBlockInPlace`.
-- [x] Add benchmarks for precomputed coefficient paths (`ApplyCoefficientsInPlace`, `ApplyCoefficients`).
-- [x] Verify purego fallback passes all tests.
-  - Precomputed path: 0 allocs, ~3 GB/s at 4K (SIMD) vs Apply's ~170 μs + 2 allocs (dominated by Generate).
-  - `ApplyCoefficients`: 1 alloc (output slice only), ~3 GB/s at 4K.
-  - Users should cache `Generate` output and use `ApplyCoefficientsInPlace` for hot paths.
-
-##### 13.3.3 SIMD Reduction Operations
-
-- [x] Implement `MaxAbs([]float64) float64` — AVX2/SSE2/NEON horizontal max-abs reduction.
-- [x] Implement `Sum([]float64) float64` — AVX2/SSE2/NEON horizontal sum (for RMS, energy).
-- [x] Implement `DotProduct(a, b []float64) float64` — AVX2/SSE2/NEON dot product (for FIR inner loop).
-- [x] Pure Go fallbacks for all new reductions.
-- [x] Numerical parity tests for reductions.
-
-##### 13.3.4 FIR Optimization
-
-- [x] Rewrite `ProcessBlock` to use double-buffered delay line (avoid branch per tap).
-- [x] Use `vecmath.DotProduct` for inner convolution loop (requires 13.3.3).
-- [x] Benchmark: achieved **3.24× improvement for 128 taps**, 2.78× for 512 taps (exceeds ≥ 3× target).
-
-##### 13.3.5 Convolution Allocation Reduction
-
-- [x] Pool FFT scratch buffers in `OverlapAdd` / `OverlapSave` (reduced 60 → **1 alloc/call**, exceeded ≤2 target).
-- [x] Pre-allocate accumulator in `DirectTo` using `sync.Pool` for scratch buffers.
-- [x] Wire `DirectTo` inner loop to `vecmath.ScaleBlock` + `vecmath.AddBlockInPlace` for kernel length ≥ 16.
-- [x] Benchmark: **OverlapAdd/OverlapSave** achieved **60× allocation reduction** with **1.3-2.3× speedup**.
-- [x] Benchmark: **DirectTo** achieved **34-48% speedup** for kernels ≥32 samples with SIMD acceleration.
-
-##### 13.3.6 Spectrum SIMD
-
-- [x] Implement `Magnitude(dst, re, im []float64)` using AVX2/SSE2/NEON (re²+im², vsqrt).
-- [x] Implement `Power(dst, re, im []float64)` using AVX2/SSE2/NEON (re²+im², no sqrt).
-- [x] Add comprehensive tests for Magnitude and Power operations.
-- [x] Add benchmarks showing performance improvements.
-  - vecmath.Magnitude: 3.5-10 GB/s throughput (size-dependent, includes sqrt)
-  - vecmath.Power: 18-100 GB/s throughput (faster, no sqrt operation)
-- [x] Wire `spectrum.Magnitude` / `spectrum.Power` to use SIMD paths.
-  - Integrated SIMD implementations into dsp/spectrum package
-  - Added benchmarks comparing SIMD vs naive implementations
-  - Note: Current integration has allocation overhead from unpacking complex128
-  - Future optimization opportunity: buffer pooling or specialized complex128 SIMD kernels
-
-##### 13.3.7 Biquad Scalar Optimization
-
-- [x] Profile biquad ProcessBlock with pprof to confirm it's register-bound (not memory-bound).
-  - CPU profile (`/tmp/biquad-prof/cpu-13.3.7.pprof`) shows ~99.7% samples in biquad kernels (`processBlockScalar`, `processBlockUnrolled2`, `ProcessBlockTo`).
-  - Allocation profile shows benchmark/setup and profiling overhead allocations, with zero allocs/op in `BenchmarkProcessBlock*` hot paths.
-- [x] Test manual 2× loop unrolling (process two independent sections in parallel).
-  - Added `processBlockUnrolled2` and promoted it to `Section.ProcessBlock`.
-  - Added scalar reference path (`processBlockScalar`) and benchmarked both.
-  - `BenchmarkProcessBlock/N=4096`: ~15.3-17.5 us/op (unrolled) vs `BenchmarkProcessBlockScalar/N=4096`: ~24.2-34.7 us/op (scalar), i.e. ~1.4-1.7x speedup in representative runs.
-- [x] Evaluate `<10%` gain threshold: gain exceeded 10%, so biquad is **not** marked as "already optimal".
-
-##### 13.3.8 Purego Validation & Documentation
-
-- [x] Ensure `go test -tags purego ./...` passes all tests.
-- [x] Create `BENCHMARKS.md` with baseline numbers and SIMD vs scalar comparison table.
-- [x] Update this section with measured gains after each sub-task completes.
-  - `go test -tags purego ./...` now passes after `purego`-specific vecmath registration/import fixes.
-  - SIMD vs scalar (n=4096, `internal/vecmath`): AddBlock 2.61-2.78x, MulBlock 3.36-3.94x, ScaleBlock 1.75-2.58x, AddMulBlock 2.96-4.09x, MaxAbs (AVX2) 3.66x.
-
-#### 13.4 Legacy ASM to Plan 9 Assembly Conversion
-
-The `../mfw/legacy/Source/ASM/` directory contains ~1.5MB of hand-optimized x86/SSE assembly. This section defines the conversion strategy for porting DSP-relevant routines to Go's Plan 9 assembly syntax.
-
-##### 13.4.1 Legacy ASM Inventory
-
-| File           | Size  | Description                 | DSP Relevance               |
-| -------------- | ----- | --------------------------- | --------------------------- |
-| `MF-TIME.ASM`  | 247KB | Time-domain FPU processing  | High - block ops, noise gen |
-| `MFS-TIME.ASM` | 148KB | Time-domain SSE2 processing | High - SIMD reference       |
-| `MF-SPEK.ASM`  | 299KB | Spectrum FPU processing     | High - mag, smoothing       |
-| `MFS-SPEK.ASM` | 12KB  | Spectrum SSE helpers        | Medium                      |
-| `MF-SPKB.ASM`  | 196KB | Spectrum processing B       | Medium                      |
-| `MF-WIN.ASM`   | 71KB  | Window functions            | High - all windows          |
-| `MF-TIDE.ASM`  | 25KB  | Biquad/IIR filtering        | High - filter runtime       |
-| `MF-MATH.ASM`  | 71KB  | Math utilities              | Medium - dB, min/max        |
-| `MFS-TRAN.ASM` | 157KB | Requantization SSE2         | Low - I/O focused           |
-| `mf-hada.asm`  | 37KB  | Hadamard transform          | Low                         |
-| `MFS-HADA.ASM` | 37KB  | Hadamard SSE                | Low                         |
-| `MFASM.pas`    | 81KB  | Pascal declarations         | Reference only              |
-
-##### 13.4.2 Priority Conversion Targets
-
-**Tier 1 - Critical Hot Paths** (convert first):
-
-| Function              | Source       | Target Package      | Notes                            |
-| --------------------- | ------------ | ------------------- | -------------------------------- |
-| `tsAddMul`            | MF-TIME.ASM  | `internal/simd`     | Block multiply-add for windowing |
-| `tsIIRfilter`         | MF-TIDE.ASM  | `dsp/filter/biquad` | Biquad cascade processing        |
-| `SqMagWinConvKernel`  | MF-SPEK.ASM  | `dsp/spectrum`      | Spectral smoothing               |
-| `MaxAbsF64`, `MaxF64` | MF-MATH.ASM  | `internal/simd`     | Reduction operations             |
-| `UPDFnoise64_SSE2`    | MFS-TIME.ASM | `dsp/signal`        | TPDF dither/noise                |
-
-**Tier 2 - Window Application**:
-
-| Function          | Source     | Target Package | Notes                       |
-| ----------------- | ---------- | -------------- | --------------------------- |
-| `FenstereDoubles` | MF-WIN.ASM | `dsp/window`   | In-place window application |
-| `HannFenster`     | MF-WIN.ASM | `dsp/window`   | Hann generation kernel      |
-| `KaiBessFenster`  | MF-WIN.ASM | `dsp/window`   | Kaiser-Bessel kernel        |
-| `GaussFenster`    | MF-WIN.ASM | `dsp/window`   | Gaussian window kernel      |
-
-**Tier 3 - Spectral Processing**:
-
-| Function             | Source      | Target Package | Notes                    |
-| -------------------- | ----------- | -------------- | ------------------------ |
-| `MovingAvgOverSqMag` | MF-SPEK.ASM | `dsp/spectrum` | Smoothing                |
-| `ReImWinConvKernel`  | MF-SPEK.ASM | `dsp/conv`     | Complex convolution      |
-| `initLinSlope`       | MF-SPEK.ASM | `dsp/spectrum` | Log/linear interpolation |
-
-**Tier 4 - Noise Generators** (if profiling shows need):
-
-| Function               | Source       | Target Package | Notes                 |
-| ---------------------- | ------------ | -------------- | --------------------- |
-| `PinkNoiseKernel_SSE2` | MFS-TIME.ASM | `dsp/signal`   | Pink noise generation |
-| `GaussNoise64_SSE2`    | MFS-TIME.ASM | `dsp/signal`   | Gaussian noise        |
-
-##### 13.4.3 Plan 9 Assembly Conversion Guidelines
-
-1. **File naming**: `*_amd64.s` for AMD64-specific, `*_arm64.s` for ARM64.
-2. **ABI compliance**: Use Go's ABI0 calling convention (stack-based arguments).
-3. **Function declaration**: Pair `.go` stubs with `.s` implementations:
-   ```go
-   // internal/simd/mulblock_amd64.go
-   //go:noescape
-   func mulBlockAVX2(dst, src []float64, scale float64)
-   ```
-4. **Register usage**: Follow Plan 9 naming (AX, BX, X0-X15 for SSE/AVX).
-5. **Build tags**: Use `//go:build !purego && amd64` for optimized paths.
-6. **Scalar fallback**: Always provide pure Go implementation in `*_generic.go`.
-
-##### 13.4.4 Conversion Process
-
-For each function:
-
-1. **Document original**: Extract algorithm from legacy ASM with inline comments.
-2. **Write Go reference**: Create scalar Go implementation as source of truth.
-3. **Add benchmarks**: Establish baseline performance metrics.
-4. **Convert to Plan 9**: Translate instruction-by-instruction, adapting to Go ABI.
-5. **Numerical parity**: Verify output matches Go reference within epsilon.
-6. **Performance validation**: Ensure SIMD version shows >= 2x improvement.
-
-##### 13.4.5 Conversion Task Checklist
-
-- [ ] Document legacy ASM algorithms for priority Tier 1 functions.
-- [x] Create `internal/simd/` package skeleton with build tags.
-- [x] Convert `tsAddMul` → `mulBlockAVX2`, `addMulBlockAVX2` (block arithmetic).
-  - Also: `scaleBlockAVX2`, `addBlockAVX2`, `mulAddBlockAVX2` and in-place variants.
-- [x] Convert `MaxAbsF64` → `maxAbsAVX2` (reduction) — see 13.3.3.
-- [ ] Convert `tsIIRfilter` → biquad kernel (only if profiling justifies — see 13.3.7).
-- [ ] Convert `UPDFnoise64_SSE2` → TPDF dither kernel.
-- [ ] Add ARM64 NEON variants for cross-platform optimization.
-- [ ] Validate all conversions against legacy output (golden vectors).
-
-#### 13.6 Exit Criteria
-
-- Top 5 hot paths show measurable improvement (>20% for SIMD paths).
-- All optimized paths pass numerical parity tests against scalar reference.
-- `purego` build passes all tests.
-- No regressions in correctness or API.
-- Optimization gains documented in BENCHMARKS.md.
-- At least Tier 1 legacy ASM conversions completed with validated parity.
-
-### Phase 14: API Stabilization and v1.0
-
-Objectives:
-
-- Freeze public API surface and publish stable v1.0.0 release.
-- Complete documentation, examples, and migration guides.
-
-#### 14.1 API Review Checklist
-
-- [x] Review all exported types, functions, and methods for consistency.
-- [x] Ensure naming follows Go conventions (MixedCaps, no stuttering).
-- [x] Verify all public functions have doc comments with examples.
-- [x] Check for unnecessary exported symbols that should be internal.
-- [x] Validate error types and error wrapping patterns.
-- [x] Review option patterns for extensibility without breaking changes.
-
-#### 14.2 Documentation Requirements
-
-- [x] Package-level doc.go for all public packages.
-- [x] Runnable examples for all major APIs (`Example_*` functions).
-- [x] README.md with quick start guide and package overview.
-- [x] CHANGELOG.md with all changes since v0.1.0.
-- [x] MIGRATION.md for users upgrading from prerelease versions.
-- [x] BENCHMARKS.md with performance characteristics and comparisons.
-
-#### 14.3 Task Breakdown
-
-- [x] Conduct API review with checklist above.
-- [x] Deprecate any experimental APIs identified during review (none identified).
-- [x] Remove deprecated symbols or move to `internal/` (none pending).
-- [x] Complete all package documentation.
-- [x] Add comprehensive examples to each package.
-- [x] Write migration guide for breaking changes since v0.x.
-- [x] Final test pass: `go test -race ./...`, lint, vet.
-- [ ] Final benchmark pass: no major regressions from v0.x.
-- [ ] Tag `v1.0.0` release.
-
-#### 14.4 Exit Criteria
-
-- [x] All public APIs documented with examples.
-- [x] No `// TODO` or `// FIXME` comments in public code.
-- [x] All tests pass with race detector.
-- [x] Benchmark baselines established and documented.
-- [ ] `v1.0.0` tagged and released with full changelog.
-- [ ] Go module proxy indexed and importable.
+- [ ] Final benchmark pass (`just bench`) and confirm no major regressions vs `BENCHMARKS.md`.
+- [ ] Final CI pass locally (`just ci`) including race (`go test -race ./...`).
+- [ ] Confirm `CHANGELOG.md` and `MIGRATION.md` are complete for `v1.0.0`.
+- [ ] Tag and publish `v1.0.0` (git tag + release notes).
+- [ ] Verify Go module proxy indexing (fresh `go get` / import works via `GOPROXY`).
 
 ---
 
