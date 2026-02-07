@@ -34,6 +34,23 @@ func BenchmarkProcessBlock(b *testing.B) {
 	}
 }
 
+func BenchmarkProcessBlockScalar(b *testing.B) {
+	for _, size := range []int{256, 1024, 4096} {
+		b.Run(fmt.Sprintf("N=%d", size), func(b *testing.B) {
+			s := NewSection(benchCoeffs)
+			buf := make([]float64, size)
+			for i := range buf {
+				buf[i] = float64(i) * 0.001
+			}
+			b.SetBytes(int64(size * 8))
+			b.ResetTimer()
+			for range b.N {
+				s.processBlockScalar(buf)
+			}
+		})
+	}
+}
+
 func BenchmarkProcessBlockTo(b *testing.B) {
 	for _, size := range []int{256, 1024, 4096} {
 		b.Run(fmt.Sprintf("N=%d", size), func(b *testing.B) {

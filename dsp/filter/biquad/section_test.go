@@ -137,6 +137,28 @@ func TestProcessBlockTo_MatchesSample(t *testing.T) {
 	}
 }
 
+func TestProcessBlockUnrolled2_MatchesSample(t *testing.T) {
+	c := Coefficients{B0: 0.25, B1: 0.5, B2: 0.25, A1: -0.2, A2: 0.04}
+
+	s1 := NewSection(c)
+	input := []float64{1, 0.5, -0.3, 0.7, 0, -1, 0.2, 0.8, -0.1}
+	ref := make([]float64, len(input))
+	for i, x := range input {
+		ref[i] = s1.ProcessSample(x)
+	}
+
+	s2 := NewSection(c)
+	block := make([]float64, len(input))
+	copy(block, input)
+	s2.processBlockUnrolled2(block)
+
+	for i := range block {
+		if !almostEqual(block[i], ref[i], eps) {
+			t.Errorf("sample %d: processBlockUnrolled2=%.15f, ProcessSample=%.15f", i, block[i], ref[i])
+		}
+	}
+}
+
 func TestProcessSample_ZeroCoefficients(t *testing.T) {
 	// All-zero coefficients should produce silence.
 	s := NewSection(Coefficients{})
