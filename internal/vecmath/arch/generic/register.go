@@ -33,5 +33,9 @@ func init() {
 		MaxAbs:     MaxAbs,
 		Sum:        Sum,
 		DotProduct: DotProduct,
+
+		// Spectrum operations
+		Magnitude: Magnitude,
+		Power:     Power,
 	})
 }
