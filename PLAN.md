@@ -605,9 +605,13 @@ Comprehensive benchmarks across all packages. Key results:
 - [x] Implement `Power(dst, re, im []float64)` using AVX2/SSE2/NEON (re²+im², no sqrt).
 - [x] Add comprehensive tests for Magnitude and Power operations.
 - [x] Add benchmarks showing performance improvements.
-  - Magnitude: 3.5-10 GB/s throughput (size-dependent, includes sqrt)
-  - Power: 18-100 GB/s throughput (faster, no sqrt operation)
-- [ ] Wire `spectrum.Magnitude` / `spectrum.Power` to use SIMD paths.
+  - vecmath.Magnitude: 3.5-10 GB/s throughput (size-dependent, includes sqrt)
+  - vecmath.Power: 18-100 GB/s throughput (faster, no sqrt operation)
+- [x] Wire `spectrum.Magnitude` / `spectrum.Power` to use SIMD paths.
+  - Integrated SIMD implementations into dsp/spectrum package
+  - Added benchmarks comparing SIMD vs naive implementations
+  - Note: Current integration has allocation overhead from unpacking complex128
+  - Future optimization opportunity: buffer pooling or specialized complex128 SIMD kernels
 
 ##### 13.3.7 Biquad Scalar Optimization
 
@@ -617,9 +621,11 @@ Comprehensive benchmarks across all packages. Key results:
 
 ##### 13.3.8 Purego Validation & Documentation
 
-- [ ] Ensure `go test -tags purego ./...` passes all tests.
-- [ ] Create `BENCHMARKS.md` with baseline numbers and SIMD vs scalar comparison table.
-- [ ] Update this section with measured gains after each sub-task completes.
+- [x] Ensure `go test -tags purego ./...` passes all tests.
+- [x] Create `BENCHMARKS.md` with baseline numbers and SIMD vs scalar comparison table.
+- [x] Update this section with measured gains after each sub-task completes.
+  - `go test -tags purego ./...` now passes after `purego`-specific vecmath registration/import fixes.
+  - SIMD vs scalar (n=4096, `internal/vecmath`): AddBlock 2.61-2.78x, MulBlock 3.36-3.94x, ScaleBlock 1.75-2.58x, AddMulBlock 2.96-4.09x, MaxAbs (AVX2) 3.66x.
 
 #### 13.4 Legacy ASM to Plan 9 Assembly Conversion
 

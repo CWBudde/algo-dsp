@@ -57,6 +57,22 @@ These are representative checkpoints from the full benchmark run.
 - `BenchmarkCalculate/fft=4096`: `66574 ns/op`, `246.22 MB/s`, `0 allocs/op`
 - `BenchmarkFlatness/fft=4096`: `38812 ns/op`, `422.34 MB/s`, `0 allocs/op`
 
+## SIMD vs Scalar (internal/vecmath, n=4096)
+
+Command:
+
+```bash
+GOCACHE=/tmp/gocache go test -run '^$' -bench 'Benchmark(AddBlock_Generic_Direct|AddBlock_AVX2_Direct|AddBlock_SSE2_Direct|MulBlock_Generic|MulBlock_AVX2|MulBlock_SSE2|ScaleBlock_Generic|ScaleBlock_AVX2|ScaleBlock_SSE2|AddMulBlock_Generic|AddMulBlock_AVX2|AddMulBlock_SSE2|MaxAbs_Generic|MaxAbs_AVX2)$' -benchmem ./internal/vecmath/arch/generic ./internal/vecmath/arch/amd64/avx2 ./internal/vecmath/arch/amd64/sse2
+```
+
+| Operation   | Generic ns/op | AVX2 ns/op | SSE2 ns/op | AVX2 speedup | SSE2 speedup |
+| ----------- | ------------: | ---------: | ---------: | -----------: | -----------: |
+| AddBlock    |          5564 |       2136 |       2003 |        2.61x |        2.78x |
+| MulBlock    |          6365 |       1615 |       1896 |        3.94x |        3.36x |
+| ScaleBlock  |          3476 |       1346 |       1983 |        2.58x |        1.75x |
+| AddMulBlock |          6829 |       2308 |       1669 |        2.96x |        4.09x |
+| MaxAbs      |          6081 |       1663 |        n/a |        3.66x |          n/a |
+
 ## Notes
 
 - Use this file as the v1.0 baseline reference; future changes should include before/after deltas for affected benchmark families.

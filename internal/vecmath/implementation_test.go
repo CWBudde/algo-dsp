@@ -7,6 +7,15 @@ import (
 	"github.com/cwbudde/algo-dsp/internal/vecmath/registry"
 )
 
+func hasImplementation(name string) bool {
+	for _, entry := range registry.Global.ListEntries() {
+		if entry.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // TestForceGeneric tests that we can force the generic implementation via CPU features
 func TestForceGeneric(t *testing.T) {
 	// Force generic implementation
@@ -41,6 +50,10 @@ func TestForceGeneric(t *testing.T) {
 
 // TestForceAVX2 tests that we can force AVX2 implementation via CPU features
 func TestForceAVX2(t *testing.T) {
+	if !hasImplementation("avx2") {
+		t.Skip("avx2 implementation not registered in this build")
+	}
+
 	// Force AVX2 features
 	cpu.SetForcedFeatures(cpu.Features{
 		HasSSE2:      true,
@@ -75,6 +88,10 @@ func TestForceAVX2(t *testing.T) {
 
 // TestForceSSE2 tests that we can force SSE2 implementation
 func TestForceSSE2(t *testing.T) {
+	if !hasImplementation("sse2") {
+		t.Skip("sse2 implementation not registered in this build")
+	}
+
 	// Force SSE2 only (no AVX2)
 	cpu.SetForcedFeatures(cpu.Features{
 		HasSSE2:      true,
