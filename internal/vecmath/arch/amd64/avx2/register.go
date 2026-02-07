@@ -33,5 +33,6 @@ func init() {
 
 		// Reduction operations
 		MaxAbs: MaxAbs,
+		Sum:    Sum,
 	})
 }
