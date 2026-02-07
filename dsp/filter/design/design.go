@@ -130,7 +130,16 @@ func Allpass(freq, q, sampleRate float64) biquad.Coefficients {
 }
 
 // Peak designs a peaking-EQ biquad with gain in dB.
-func Peak(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
+//
+// Without options, it uses the standard RBJ formula. Supplying WithDCGain
+// and/or WithNyquistGain activates the Orfanidis algorithm which supports
+// prescribed gain at DC and Nyquist. If the Orfanidis constraints cannot be
+// met, it silently falls back to the RBJ formula.
+func Peak(freq, gainDB, q, sampleRate float64, opts ...PeakOption) biquad.Coefficients {
+	return peakWithOpts(freq, gainDB, q, sampleRate, opts)
+}
+
+func peakRBJ(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	w0, ok := normalizedW0(freq, sampleRate)
 	if !ok {
 		return biquad.Coefficients{}
