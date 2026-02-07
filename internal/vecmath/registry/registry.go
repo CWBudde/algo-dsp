@@ -68,6 +68,12 @@ type OpEntry struct {
 
 	// DotProduct returns the dot product of two slices: sum(a[i] * b[i]).
 	DotProduct func(a, b []float64) float64
+
+	// Magnitude computes magnitude from separate real and imaginary parts: dst[i] = sqrt(re[i]^2 + im[i]^2).
+	Magnitude func(dst, re, im []float64)
+
+	// Power computes power (magnitude squared) from separate real and imaginary parts: dst[i] = re[i]^2 + im[i]^2.
+	Power func(dst, re, im []float64)
 }
 
 // OpRegistry manages the registration and lookup of vecmath implementation variants.
