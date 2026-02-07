@@ -1,31 +1,37 @@
-//go:build amd64
-
 package vecmath
 
 import (
+	"sync"
+
 	"github.com/cwbudde/algo-dsp/internal/cpu"
-	"github.com/cwbudde/algo-dsp/internal/vecmath/arch/amd64/avx2"
-	"github.com/cwbudde/algo-dsp/internal/vecmath/arch/generic"
+	"github.com/cwbudde/algo-dsp/internal/vecmath/registry"
 )
 
-// MulBlock performs element-wise multiplication: dst[i] = a[i] * b[i].
-// Slices must have equal length. Panics if lengths differ.
-// Automatically selects the best implementation based on CPU features.
-func MulBlock(dst, a, b []float64) {
-	if cpu.HasAVX2() {
-		avx2.MulBlock(dst, a, b)
-	} else {
-		generic.MulBlock(dst, a, b)
+var (
+	mulBlockImpl        func([]float64, []float64, []float64)
+	mulBlockInPlaceImpl func([]float64, []float64)
+	mulInitOnce         sync.Once
+)
+
+func initMulOperations() {
+	features := cpu.DetectFeatures()
+	entry := registry.Global.Lookup(features)
+	if entry == nil {
+		panic("vecmath: no mul implementation registered")
 	}
+	if entry.MulBlock == nil || entry.MulBlockInPlace == nil {
+		panic("vecmath: selected implementation missing mul operations")
+	}
+	mulBlockImpl = entry.MulBlock
+	mulBlockInPlaceImpl = entry.MulBlockInPlace
 }
 
-// MulBlockInPlace performs in-place element-wise multiplication: dst[i] *= src[i].
-// Slices must have equal length. Panics if lengths differ.
-// Automatically selects the best implementation based on CPU features.
+func MulBlock(dst, a, b []float64) {
+	mulInitOnce.Do(initMulOperations)
+	mulBlockImpl(dst, a, b)
+}
+
 func MulBlockInPlace(dst, src []float64) {
-	if cpu.HasAVX2() {
-		avx2.MulBlockInPlace(dst, src)
-	} else {
-		generic.MulBlockInPlace(dst, src)
-	}
+	mulInitOnce.Do(initMulOperations)
+	mulBlockInPlaceImpl(dst, src)
 }

@@ -1,23 +1,30 @@
-//go:build amd64
-
 package vecmath
 
 import (
+	"sync"
+
 	"github.com/cwbudde/algo-dsp/internal/cpu"
-	"github.com/cwbudde/algo-dsp/internal/vecmath/arch/amd64/avx2"
-	"github.com/cwbudde/algo-dsp/internal/vecmath/arch/amd64/sse2"
-	"github.com/cwbudde/algo-dsp/internal/vecmath/arch/generic"
+	"github.com/cwbudde/algo-dsp/internal/vecmath/registry"
 )
 
-// MaxAbs returns the maximum absolute value in x.
-// Returns 0 for an empty slice.
-// Automatically selects the best implementation based on CPU features.
+var (
+	maxAbsImpl    func([]float64) float64
+	maxAbsInitOnce sync.Once
+)
+
+func initMaxAbsOperation() {
+	features := cpu.DetectFeatures()
+	entry := registry.Global.Lookup(features)
+	if entry == nil {
+		panic("vecmath: no maxabs implementation registered")
+	}
+	if entry.MaxAbs == nil {
+		panic("vecmath: selected implementation missing maxabs operation")
+	}
+	maxAbsImpl = entry.MaxAbs
+}
+
 func MaxAbs(x []float64) float64 {
-	if cpu.HasAVX2() {
-		return avx2.MaxAbs(x)
-	}
-	if cpu.HasSSE2() {
-		return sse2.MaxAbs(x)
-	}
-	return generic.MaxAbs(x)
+	maxAbsInitOnce.Do(initMaxAbsOperation)
+	return maxAbsImpl(x)
 }
