@@ -4,7 +4,7 @@
 
 // func addBlockNEON(dst, a, b []float64)
 // Element-wise add: dst[i] = a[i] + b[i]
-// Uses NEON to process 2 float64 values at once
+// Uses NEON-style paired operations for 2 float64 values
 TEXT ·addBlockNEON(SB), NOSPLIT, $0-72
 	MOVD dst_base+0(FP), R0   // dst.data
 	MOVD a_base+24(FP), R1    // a.data
@@ -20,11 +20,19 @@ TEXT ·addBlockNEON(SB), NOSPLIT, $0-72
 	LSR $1, R3, R4
 
 addblock_neon_loop:
-	VLD1.P 16(R1), [V0.D2]    // Load 2 float64 from a
-	VLD1.P 16(R2), [V1.D2]    // Load 2 float64 from b
-	FADD V1.D2, V0.D2, V0.D2  // V0 = a + b
-	VST1.P [V0.D2], 16(R0)    // Store to dst
+	// Load pair of float64 from a
+	FLDPD (R1), (F0, F1)
+	// Load pair of float64 from b
+	FLDPD (R2), (F2, F3)
+	// Add: F0 = a[0] + b[0], F1 = a[1] + b[1]
+	FADDD F2, F0, F0
+	FADDD F3, F1, F1
+	// Store pair to dst
+	FSTPD (F0, F1), (R0)
 
+	ADD $16, R1
+	ADD $16, R2
+	ADD $16, R0
 	SUBS $1, R4
 	BNE addblock_neon_loop
 
@@ -59,14 +67,14 @@ TEXT ·addBlockInPlaceNEON(SB), NOSPLIT, $0-48
 	LSR $1, R3, R4
 
 addinplace_neon_loop:
-	VLD1.P 16(R0), [V0.D2]    // Load 2 float64 from dst
-	VLD1.P 16(R1), [V1.D2]    // Load 2 float64 from src
-	FADD V1.D2, V0.D2, V0.D2  // V0 = dst + src
+	FLDPD (R0), (F0, F1)      // Load pair from dst
+	FLDPD (R1), (F2, F3)      // Load pair from src
+	FADDD F2, F0, F0          // dst[0] + src[0]
+	FADDD F3, F1, F1          // dst[1] + src[1]
+	FSTPD (F0, F1), (R0)      // Store back to dst
 
-	// Store back (need to rewind R0 since we used post-increment)
-	SUB $16, R0
-	VST1.P [V0.D2], 16(R0)    // Store back to dst
-
+	ADD $16, R0
+	ADD $16, R1
 	SUBS $1, R4
 	BNE addinplace_neon_loop
 

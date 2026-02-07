@@ -10,10 +10,8 @@ import (
 // init registers the NEON-optimized implementations with the vecmath registry.
 //
 // NEON (ARM Advanced SIMD) provides 128-bit SIMD operations and is mandatory
-// on ARMv8 (arm64), so it's available on all arm64 CPUs.
-//
-// Currently only MaxAbs is implemented in NEON. Other operations fall back to
-// generic implementations.
+// on ARMv8 (arm64), so it's available on all arm64 CPUs. NEON processes 2 float64
+// values at once.
 //
 // Priority: 15 (medium-high - ARM's equivalent to AVX/AVX2)
 func init() {
@@ -22,11 +20,19 @@ func init() {
 		SIMDLevel: cpu.SIMDNEON,
 		Priority:  15,
 
+		// Arithmetic operations
+		AddBlock:          AddBlock,
+		AddBlockInPlace:   AddBlockInPlace,
+		MulBlock:          MulBlock,
+		MulBlockInPlace:   MulBlockInPlace,
+		ScaleBlock:        ScaleBlock,
+		ScaleBlockInPlace: ScaleBlockInPlace,
+
+		// Fused operations
+		AddMulBlock: AddMulBlock,
+		MulAddBlock: MulAddBlock,
+
 		// Reduction operations
 		MaxAbs: MaxAbs,
-
-		// Note: Other operations (Add, Mul, Scale, Fused) are not implemented
-		// in NEON yet. The registry will fall back to generic implementations
-		// for those operations on ARM.
 	})
 }
