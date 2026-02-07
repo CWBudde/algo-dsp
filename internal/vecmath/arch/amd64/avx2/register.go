@@ -32,7 +32,8 @@ func init() {
 		MulAddBlock: MulAddBlock,
 
 		// Reduction operations
-		MaxAbs: MaxAbs,
-		Sum:    Sum,
+		MaxAbs:     MaxAbs,
+		Sum:        Sum,
+		DotProduct: DotProduct,
 	})
 }

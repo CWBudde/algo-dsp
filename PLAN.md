@@ -580,10 +580,10 @@ Comprehensive benchmarks across all packages. Key results:
 ##### 13.3.3 SIMD Reduction Operations
 
 - [x] Implement `MaxAbs([]float64) float64` — AVX2 horizontal max-abs reduction.
-- [ ] Implement `Sum([]float64) float64` — AVX2 horizontal sum (for RMS, energy).
-- [ ] Implement `DotProduct(a, b []float64) float64` — AVX2 dot product (for FIR inner loop).
-- [ ] Pure Go fallbacks for all new reductions.
-- [ ] Numerical parity tests for reductions.
+- [x] Implement `Sum([]float64) float64` — AVX2/SSE2/NEON horizontal sum (for RMS, energy).
+- [ ] Implement `DotProduct(a, b []float64) float64` — AVX2/SSE2/NEON dot product (for FIR inner loop).
+- [x] Pure Go fallbacks for all new reductions.
+- [x] Numerical parity tests for reductions.
 
 ##### 13.3.4 FIR Optimization
 
@@ -703,7 +703,7 @@ For each function:
 - [x] Create `internal/simd/` package skeleton with build tags.
 - [x] Convert `tsAddMul` → `mulBlockAVX2`, `addMulBlockAVX2` (block arithmetic).
   - Also: `scaleBlockAVX2`, `addBlockAVX2`, `mulAddBlockAVX2` and in-place variants.
-- [ ] Convert `MaxAbsF64` → `maxAbsAVX2` (reduction) — see 13.3.3.
+- [x] Convert `MaxAbsF64` → `maxAbsAVX2` (reduction) — see 13.3.3.
 - [ ] Convert `tsIIRfilter` → biquad kernel (only if profiling justifies — see 13.3.7).
 - [ ] Convert `UPDFnoise64_SSE2` → TPDF dither kernel.
 - [ ] Add ARM64 NEON variants for cross-platform optimization.

@@ -65,6 +65,9 @@ type OpEntry struct {
 
 	// Sum returns the sum of all elements in the slice: sum(x[i]).
 	Sum func(x []float64) float64
+
+	// DotProduct returns the dot product of two slices: sum(a[i] * b[i]).
+	DotProduct func(a, b []float64) float64
 }
 
 // OpRegistry manages the registration and lookup of vecmath implementation variants.
