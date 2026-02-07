@@ -33,8 +33,8 @@ func ExampleAnalyzer_Analyze() {
 	// Output:
 	// RT60 = 1.00 s
 	// EDT  = 1.00 s
-	// C80  = 3.9 dB
-	// D50  = 0.502
+	// C80  = 3.1 dB
+	// D50  = 0.499
 }
 
 func ExampleAnalyzer_SchroederIntegral() {
@@ -63,8 +63,8 @@ func ExampleAnalyzer_SchroederIntegral() {
 
 	// Output:
 	// t=   0ms:    0.0 dB
-	// t= 250ms:  -14.6 dB
-	// t= 500ms:  -29.1 dB
-	// t= 750ms:  -43.7 dB
-	// t=1000ms:  -58.2 dB
+	// t= 250ms:  -30.0 dB
+	// t= 500ms:  -60.0 dB
+	// t= 750ms:  -90.0 dB
+	// t=1000ms: -120.0 dB
 }

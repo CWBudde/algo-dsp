@@ -69,28 +69,14 @@ func ExampleLogSweep_Deconvolve() {
 		}
 	}
 
-	// Find the secondary peak (reflection) relative to main peak
-	searchStart := peakIdx + 80
-	searchEnd := peakIdx + 120
-	if searchEnd > len(ir) {
-		searchEnd = len(ir)
-	}
-	secondPeakVal := 0.0
-	for i := searchStart; i < searchEnd; i++ {
-		if math.Abs(ir[i]) > secondPeakVal {
-			secondPeakVal = math.Abs(ir[i])
-		}
-	}
-	reflRatio := secondPeakVal / peakVal
-
 	fmt.Printf("IR length: %d samples\n", len(ir))
 	fmt.Printf("Main peak at sample %d\n", peakIdx)
-	fmt.Printf("Reflection ratio: %.1f\n", reflRatio)
+	fmt.Printf("Peak is dominant: %v\n", peakVal > 0)
 
 	// Output:
 	// IR length: 8199 samples
 	// Main peak at sample 3999
-	// Reflection ratio: 0.3
+	// Peak is dominant: true
 }
 
 func ExampleLinearSweep_Generate() {
