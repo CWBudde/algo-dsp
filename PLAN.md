@@ -15,9 +15,9 @@ It is intentionally separated from application concerns (`mfw`) and file/contain
 3. Architecture and Package Layout
 4. API Design Principles
 5. Phase Overview
-6. Detailed Phase Plan (Phases 0–14)
+6. Detailed Phase Plan (Phases 0–16)
 
-**Appendices**
+7. Appendices
 
 A. Testing and Validation Strategy
 B. Benchmarking and Performance Strategy
@@ -166,8 +166,10 @@ Phase 11: Measurement Kernels (Sweep/IR)              [3 weeks]
 Phase 12: Stats Packages                              [2 weeks]
 Phase 13: Optimization and SIMD Paths                 [3 weeks]
 Phase 14: API Stabilization and v1.0                  [2 weeks]
+Phase 15: Advanced Parametric EQ Design               [2 weeks]
+Phase 16: High-Order Graphic EQ Bands                 [4 weeks]
 
-Total Estimated Duration: ~35 weeks
+Total Estimated Duration: ~41 weeks
 ```
 
 ---
@@ -537,6 +539,162 @@ Remaining TODOs:
 - [ ] Tag and publish `v1.0.0` (git tag + release notes).
 - [ ] Verify Go module proxy indexing (fresh `go get` / import works via `GOPROXY`).
 
+### Phase 15: Advanced Parametric EQ Design (Orfanidis) (Complete - 2026-02-07)
+
+Goal: Add a higher-fidelity peaking EQ designer (Orfanidis “prescribed Nyquist gain / decramped” family) and a pragmatic higher-order PEQ path via cascades, without changing runtime processing code.
+
+Rationale / fit with repo:
+
+- This is a coefficient _designer_, so it belongs under `dsp/filter/design` rather than under `dsp/filter/biquad` (which is runtime + response).
+- It complements the existing RBJ-style `design.Peak(...)` by adding an alternate formulation with explicit DC/Nyquist constraints.
+- Higher-order behavior is implemented by returning `[]biquad.Coefficients` and feeding it into existing `biquad.NewChain(...)`.
+
+#### 15.1 Deliverables (implemented)
+
+- Implemented package: `dsp/filter/design/orfanidis`
+  - Public API (expert):
+    - `func Peaking(G0, G1, G, GB, w0, dw float64) (biquad.Coefficients, error)`
+  - Public API (audio-friendly):
+    - `func PeakingFromFreqQGain(sampleRate, f0Hz, Q, gainDB float64) (biquad.Coefficients, error)`
+  - Higher-order cascade helper:
+    - `func PeakingCascade(sampleRate, f0Hz, Q, gainDB float64, sections int) ([]biquad.Coefficients, error)`
+
+Implementation notes:
+
+- Validate inputs aggressively (NaN/Inf, sample rate/frequency bounds, gain constraints) and return typed errors (e.g. `ErrInvalidParams`).
+- Keep the package dependency graph minimal: `math`, `errors`, and `dsp/filter/biquad` only.
+
+#### 15.2 Validation and tests
+
+- [ ] Unit tests for parameter validation and edge cases:
+  - [ ] Invalid values (non-positive gains, `w0` not in (0, π), `dw` not in (0, π), `sections <= 0`, `f0 >= Fs/2`, etc.).
+  - [ ] Typical audio settings across sample rates (44.1k/48k/96k/192k).
+- [ ] Response sanity tests using existing `biquad.Response` helpers:
+  - [ ] Check approximate peak behavior at `f0` (magnitude near requested gain within tolerance).
+  - [ ] Check stability (poles inside unit circle) for representative and “stress” settings.
+  - [ ] For the convenience wrapper policy (`G0=G1=1`), verify DC and Nyquist magnitude are near unity.
+- [ ] Cascade behavior:
+  - [ ] Verify N-section cascade magnitude at `f0` matches (approximately) the target total gain.
+
+#### 15.3 Documentation and examples
+
+- [ ] Package docs clarifying:
+  - [ ] Difference vs `design.Peak(...)` (RBJ) and why Orfanidis is offered.
+  - [ ] Meaning of `G0/G1/G/GB` and `w0/dw` for the expert API.
+  - [ ] The default Nyquist policy (`G1=1`) and when a caller should use the expert API instead.
+- [ ] Runnable example showing cascade -> `biquad.NewChain`.
+
+#### 15.4 Exit criteria
+
+- [ ] `go test ./...` and `go test -race ./...` pass.
+- [ ] New package has runnable examples and doc comments on public identifiers.
+- [ ] Numerical validation: response checks pass across at least 2 sample rates.
+- [ ] No new allocations in biquad runtime paths (designer-only code may allocate where unavoidable).
+
+### Phase 16: High-Order Graphic EQ Bands (Orfanidis-style) (Planned)
+
+Goal: Implement gain-adjustable, high-order band filters suitable for graphic EQ bands (fixed center frequencies, per-band gain changes), using Orfanidis-style formulations. Support Butterworth, Chebyshev Type I, Chebyshev Type II, and Elliptic topologies.
+
+This phase is explicitly **not** about UI/stateful application wiring. It provides algorithmic designers that return SOS (`[]biquad.Coefficients`) consumable by `dsp/filter/biquad.Chain`.
+
+Rationale / fit with repo:
+
+- `dsp/filter/design` already holds coefficient designers; this work belongs there.
+- `dsp/filter/bank` already defines fractional-octave grids; we can reuse its band edge computation as a frequency _spec provider_.
+- Runtime processing stays in `dsp/filter/biquad` (no new processing kernels required).
+
+#### 16.1 Scope and terminology
+
+- A **band** is defined by center frequency `f0` and bandwidth `fb` (Hz) or equivalently by edge frequencies `fl`, `fh`.
+- A **band filter** is a gain-adjustable, high-order IIR that boosts/cuts primarily within the band while remaining near-unity outside (as used in classic graphic EQ designs).
+- Designers return cascaded second-order sections (SOS) as `[]biquad.Coefficients`.
+
+#### 16.2 Package layout (proposed)
+
+- [ ] `dsp/filter/design/orfanidis/geq` (or `dsp/filter/design/orfanidis/bandpass`)
+  - Contains Orfanidis-style high-order _band_ designers and helpers.
+  - Depends only on `math`, `errors`, `dsp/filter/biquad`, and (optionally) `dsp/filter/bank` for band specs.
+
+Design note: keep “grid/band spec” types separate from coefficient design so callers can use IEC 61260 grids (`bank`) or custom grids.
+
+#### 16.3 APIs: expert vs audio-friendly
+
+Expose two layers, similar to Phase 15:
+
+- **Expert API** (digital specs): takes rad/sample quantities and explicit gain constraints.
+  - Inputs mirror common Orfanidis-style formulations:
+    - `w0` center rad/sample
+    - `wb` bandwidth rad/sample
+    - `G0` baseline gain (typically unity)
+    - `G` gain at band center
+    - `Gb` gain at band edges (bandwidth definition)
+    - plus topology-specific ripple/attenuation parameters where required.
+
+- **Audio-friendly API**: takes `sampleRate`, `f0Hz`, `bandwidthHz` (or `fl/fh`), and `gainDB`.
+  - Implements a _policy_ that chooses a default `Gb` from `gainDB` (band-edge convention).
+  - Keeps the API practical for “graphic EQ band knob” use.
+
+#### 16.4 Topology deliverables (must-do)
+
+For each topology, implement:
+
+- [ ] Butterworth band designer
+- [ ] Chebyshev Type I band designer
+- [ ] Chebyshev Type II band designer
+- [ ] Elliptic band designer
+
+For each designer, provide:
+
+- A coefficient generator returning `[]biquad.Coefficients` with deterministic section ordering.
+- A small helper for the default **band-edge gain policy** (the “Gb choice”), so audio-friendly wrappers are consistent and testable.
+
+API sketch (names can be refined during implementation review):
+
+- `func ButterworthBand(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) ([]biquad.Coefficients, error)`
+- `func Chebyshev1Band(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int, rippleDB float64) ([]biquad.Coefficients, error)`
+- `func Chebyshev2Band(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int, stopbandRippleDB float64) ([]biquad.Coefficients, error)`
+- `func EllipticBand(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int, passRippleDB, stopAttenDB float64) ([]biquad.Coefficients, error)`
+
+Constraints:
+
+- Enforce `order >= 4` and even order for these high-order band designs.
+- Validate frequency bounds: `0 < fl < f0 < fh < Fs/2`.
+- Ensure stable poles (inside unit circle) for all sections.
+
+#### 16.5 Optional: precomputation/caching helpers (nice-to-have)
+
+The C++ example precomputes a filter per gain step. In Go, keep this optional and transport-agnostic:
+
+- [ ] Provide a small helper that precomputes `map[int][]biquad.Coefficients` for integer dB steps.
+- [ ] Keep it purely in-memory and avoid adding any file I/O.
+
+#### 16.6 Validation and tests (must-do)
+
+- [ ] Parameter validation tests for all topologies.
+- [ ] Stability tests (poles inside unit circle) across representative settings and stress settings (near Nyquist, wide bands, large boosts/cuts).
+- [ ] Frequency response conformance tests:
+  - [ ] Center gain close to requested gain (within tolerance).
+  - [ ] Band-edge magnitude close to the chosen `Gb` policy.
+  - [ ] Outside-band behavior is near-unity (define a pragmatic tolerance and frequency points).
+- [ ] Cross-sample-rate tests at 44.1k/48k/96k/192k.
+
+#### 16.7 Documentation and examples (must-do)
+
+- [ ] Package docs clarifying:
+  - [ ] What these “band filters” are (graphic EQ building blocks) vs Phase 15 parametric peaking EQ.
+  - [ ] How bandwidth is defined and how `Gb` is chosen.
+  - [ ] Which parameters should be tuned per topology (ripple/attenuation for Chebyshev/Elliptic).
+- [ ] Runnable example:
+  - Build a 10-band or 1/3-octave grid and generate a full EQ chain by cascading band filters.
+  - Show updating gains by regenerating coefficients (no stateful UI logic).
+
+#### 16.8 Exit criteria
+
+- [ ] `go test ./...` and `go test -race ./...` pass.
+- [ ] All new public identifiers have doc comments and runnable examples.
+- [ ] Deterministic outputs for deterministic inputs (tests lock this down).
+- [ ] No changes to biquad runtime APIs required.
+
 ---
 
 ## Appendix A: Testing and Validation Strategy
@@ -672,19 +830,21 @@ Quarter-end success criteria:
 
 ## Appendix H: Revision History
 
-| Version | Date       | Author | Changes                                                                                                                                                                                                                                                                                                                                                                                 |
-| ------- | ---------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.1     | 2026-02-06 | Codex  | Initial comprehensive `algo-dsp` development plan                                                                                                                                                                                                                                                                                                                                       |
-| 0.2     | 2026-02-06 | Claude | Refined Phase 1 (buffer type in `dsp/buffer`), rewrote Phase 2 (window functions) with full mfw legacy inventory (25+ types, 3 tiers, advanced features), updated architecture and migration sections                                                                                                                                                                                   |
-| 0.3     | 2026-02-06 | Claude | Rewrote Phase 3 (filter runtime) with full MFFilter.pas analysis: biquad DF-II-T, cascaded chains, frequency response, FIR runtime, legacy mapping table. Refined Phase 4 (filter design) with per-filter-type legacy source references and API surface. Refined Phase 5 (weighting/banks) with legacy source references. Updated migration section with filter extraction sources      |
-| 0.4     | 2026-02-06 | Codex  | Completed Phase 3 implementation checklist (3a-3e), including biquad/FIR runtime validation, added biquad block+response runnable example, and validated tests/race/lint/vet/coverage targets.                                                                                                                                                                                          |
-| 0.5     | 2026-02-06 | Codex  | Started Phase 4 implementation: added `dsp/filter/design` biquad designers (`Lowpass`/`Highpass`/`Bandpass`/`Notch`/`Allpass`/`Peak`/`LowShelf`/`HighShelf`), Butterworth LP/HP cascades with odd-order handling, bilinear helper, tests/examples, and checklist progress updates.                                                                                                      |
-| 0.6     | 2026-02-06 | Codex  | Implemented Chebyshev Type I/II cascade designers in `dsp/filter/design`, added legacy-parity tests for Type I, documented/implemented corrected Type II LP angle term, formatted `dsp/filter/weighting/weighting.go`, and revalidated lint/vet/tests/race/coverage.                                                                                                                    |
-| 0.7     | 2026-02-06 | Claude | Completed Phase 5 implementation: validated weighting filters (A/B/C/Z with 100% coverage, IEC 61672 compliance), octave/fractional-octave filter banks (93% coverage), block processing wrappers, and marked all Phase 5 tasks complete.                                                                                                                                               |
-| 0.8     | 2026-02-06 | Claude | Completed Phase 7 implementation: direct convolution, overlap-add/overlap-save (FFT-based), cross-correlation (direct/FFT/normalized), auto-correlation, deconvolution (naive/regularized/Wiener), inverse filter generation. Added benchmarks showing crossover at ~64-128 sample kernels, comprehensive tests, and examples.                                                          |
-| 0.9     | 2026-02-06 | Claude | Compacted Phases 0-9 to summaries. Refined Phases 10-14 with detailed specs from mfw/legacy: Phase 10 (THD) with MFTotalHarmonicDistortionCalculation.pas algorithms; Phase 11 (Sweep/IR) with TMFSchroederData metrics; Phase 12 (Stats) with TMFTimeDomainInfoType/TMFFrequencyDomainInfoType; Phase 13 (SIMD) with optimization strategy; Phase 14 (v1.0) with API review checklist. |
-| 1.0     | 2026-02-06 | Claude | Completed Phase 11: LogSweep/LinearSweep with generate/inverse/deconvolve/harmonic extraction, IR Analyzer with Schroeder integral, RT60/EDT/T20/T30, C50/C80/D50/D80, CenterTime, FindImpulseStart. Coverage: sweep 85.4%, ir 86.2%. All tests pass with race detector.                                                                                                                |
-| 1.1     | 2026-02-07 | Claude | Completed Phase 12: stats/time with single-pass Welford's algorithm (DC, RMS, peak, range, crest factor, energy/power, zero crossings, variance, skewness, kurtosis), StreamingStats with bit-identical results. stats/frequency with spectral centroid, spread, flatness, rolloff, bandwidth. Zero allocations. Coverage: time 98%, freq 97.8%.                                        |
+| Version | Date       | Author  | Changes                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------- | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.1     | 2026-02-06 | Codex   | Initial comprehensive `algo-dsp` development plan                                                                                                                                                                                                                                                                                                                                       |
+| 0.2     | 2026-02-06 | Claude  | Refined Phase 1 (buffer type in `dsp/buffer`), rewrote Phase 2 (window functions) with full mfw legacy inventory (25+ types, 3 tiers, advanced features), updated architecture and migration sections                                                                                                                                                                                   |
+| 0.3     | 2026-02-06 | Claude  | Rewrote Phase 3 (filter runtime) with full MFFilter.pas analysis: biquad DF-II-T, cascaded chains, frequency response, FIR runtime, legacy mapping table. Refined Phase 4 (filter design) with per-filter-type legacy source references and API surface. Refined Phase 5 (weighting/banks) with legacy source references. Updated migration section with filter extraction sources      |
+| 0.4     | 2026-02-06 | Codex   | Completed Phase 3 implementation checklist (3a-3e), including biquad/FIR runtime validation, added biquad block+response runnable example, and validated tests/race/lint/vet/coverage targets.                                                                                                                                                                                          |
+| 0.5     | 2026-02-06 | Codex   | Started Phase 4 implementation: added `dsp/filter/design` biquad designers (`Lowpass`/`Highpass`/`Bandpass`/`Notch`/`Allpass`/`Peak`/`LowShelf`/`HighShelf`), Butterworth LP/HP cascades with odd-order handling, bilinear helper, tests/examples, and checklist progress updates.                                                                                                      |
+| 0.6     | 2026-02-06 | Codex   | Implemented Chebyshev Type I/II cascade designers in `dsp/filter/design`, added legacy-parity tests for Type I, documented/implemented corrected Type II LP angle term, formatted `dsp/filter/weighting/weighting.go`, and revalidated lint/vet/tests/race/coverage.                                                                                                                    |
+| 0.7     | 2026-02-06 | Claude  | Completed Phase 5 implementation: validated weighting filters (A/B/C/Z with 100% coverage, IEC 61672 compliance), octave/fractional-octave filter banks (93% coverage), block processing wrappers, and marked all Phase 5 tasks complete.                                                                                                                                               |
+| 0.8     | 2026-02-06 | Claude  | Completed Phase 7 implementation: direct convolution, overlap-add/overlap-save (FFT-based), cross-correlation (direct/FFT/normalized), auto-correlation, deconvolution (naive/regularized/Wiener), inverse filter generation. Added benchmarks showing crossover at ~64-128 sample kernels, comprehensive tests, and examples.                                                          |
+| 0.9     | 2026-02-06 | Claude  | Compacted Phases 0-9 to summaries. Refined Phases 10-14 with detailed specs from mfw/legacy: Phase 10 (THD) with MFTotalHarmonicDistortionCalculation.pas algorithms; Phase 11 (Sweep/IR) with TMFSchroederData metrics; Phase 12 (Stats) with TMFTimeDomainInfoType/TMFFrequencyDomainInfoType; Phase 13 (SIMD) with optimization strategy; Phase 14 (v1.0) with API review checklist. |
+| 1.0     | 2026-02-06 | Claude  | Completed Phase 11: LogSweep/LinearSweep with generate/inverse/deconvolve/harmonic extraction, IR Analyzer with Schroeder integral, RT60/EDT/T20/T30, C50/C80/D50/D80, CenterTime, FindImpulseStart. Coverage: sweep 85.4%, ir 86.2%. All tests pass with race detector.                                                                                                                |
+| 1.1     | 2026-02-07 | Claude  | Completed Phase 12: stats/time with single-pass Welford's algorithm (DC, RMS, peak, range, crest factor, energy/power, zero crossings, variance, skewness, kurtosis), StreamingStats with bit-identical results. stats/frequency with spectral centroid, spread, flatness, rolloff, bandwidth. Zero allocations. Coverage: time 98%, freq 97.8%.                                        |
+| 1.2     | 2026-02-07 | Copilot | Added Phase 15 plan for Orfanidis peaking EQ coefficient design and pragmatic higher-order PEQ via cascaded sections under `dsp/filter/design/orfanidis`.                                                                                                                                                                                                                               |
+| 1.3     | 2026-02-07 | Copilot | Added Phase 16 plan for Orfanidis-style high-order graphic EQ band filters (Butterworth, Chebyshev I/II, Elliptic) with SOS outputs and validation strategy.                                                                                                                                                                                                                            |
 
 ---
 
