@@ -45,4 +45,3 @@ func BenchmarkAddBlockRef(b *testing.B) {
 		})
 	}
 }
-

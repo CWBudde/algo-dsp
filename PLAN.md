@@ -533,19 +533,19 @@ Source: `mfw/legacy/Source/MFASM.pas` (Pascal declarations), `mfw/legacy/Source/
 
 Comprehensive benchmarks across all packages. Key results:
 
-| Package / Function | Size | ns/op | MB/s | allocs | Notes |
-| --- | --- | --- | --- | --- | --- |
-| `window/Apply` (Hann) | 4096 | 224,781 | — | 2 | Regenerates coeffs each call |
-| `window/Generate` (Hann) | 4096 | 145,677 | — | 2 | Per-sample trig |
-| `filter/biquad/ProcessBlock` | 4096 | 27,710 | 1,183 | 0 | Already fast, sequential |
-| `filter/fir/ProcessBlock` | 1024×128 taps | 133,093 | 62 | 0 | Circular buffer overhead |
-| `filter/fir/ProcessBlock` | 1024×512 taps | 654,398 | 13 | 0 | O(N×M) dominates |
-| `conv/Direct` | 4096×64 | 244,466 | — | 1 | Inner loop not vectorized |
-| `conv/OverlapAdd` | 16384×256 | 1,054,244 | — | 60 | Heavy allocation per call |
-| `conv/OverlapAddReuse` | 16384×256 | 1,317,175 | — | 1 | Reuse cuts allocs to 1 |
-| `simd/MulBlock` (AVX2) | 4K | 1,568 | 62,708 | 0 | 3.4× vs scalar |
-| `simd/ScaleBlock` (AVX2) | 4K | 1,258 | 52,104 | 0 | 2.9× vs scalar |
-| `simd/AddMulBlock` (AVX2) | 4K | 1,259 | 78,090 | 0 | 3.7× vs scalar |
+| Package / Function           | Size          | ns/op     | MB/s   | allocs | Notes                        |
+| ---------------------------- | ------------- | --------- | ------ | ------ | ---------------------------- |
+| `window/Apply` (Hann)        | 4096          | 224,781   | —      | 2      | Regenerates coeffs each call |
+| `window/Generate` (Hann)     | 4096          | 145,677   | —      | 2      | Per-sample trig              |
+| `filter/biquad/ProcessBlock` | 4096          | 27,710    | 1,183  | 0      | Already fast, sequential     |
+| `filter/fir/ProcessBlock`    | 1024×128 taps | 133,093   | 62     | 0      | Circular buffer overhead     |
+| `filter/fir/ProcessBlock`    | 1024×512 taps | 654,398   | 13     | 0      | O(N×M) dominates             |
+| `conv/Direct`                | 4096×64       | 244,466   | —      | 1      | Inner loop not vectorized    |
+| `conv/OverlapAdd`            | 16384×256     | 1,054,244 | —      | 60     | Heavy allocation per call    |
+| `conv/OverlapAddReuse`       | 16384×256     | 1,317,175 | —      | 1      | Reuse cuts allocs to 1       |
+| `simd/MulBlock` (AVX2)       | 4K            | 1,568     | 62,708 | 0      | 3.4× vs scalar               |
+| `simd/ScaleBlock` (AVX2)     | 4K            | 1,258     | 52,104 | 0      | 2.9× vs scalar               |
+| `simd/AddMulBlock` (AVX2)    | 4K            | 1,259     | 78,090 | 0      | 3.7× vs scalar               |
 
 **Top 5 hot paths identified** (by impact × frequency of use):
 
@@ -910,7 +910,7 @@ Quarter-end success criteria:
 | 0.7     | 2026-02-06 | Claude | Completed Phase 5 implementation: validated weighting filters (A/B/C/Z with 100% coverage, IEC 61672 compliance), octave/fractional-octave filter banks (93% coverage), block processing wrappers, and marked all Phase 5 tasks complete.                                                                                                                                               |
 | 0.8     | 2026-02-06 | Claude | Completed Phase 7 implementation: direct convolution, overlap-add/overlap-save (FFT-based), cross-correlation (direct/FFT/normalized), auto-correlation, deconvolution (naive/regularized/Wiener), inverse filter generation. Added benchmarks showing crossover at ~64-128 sample kernels, comprehensive tests, and examples.                                                          |
 | 0.9     | 2026-02-06 | Claude | Compacted Phases 0-9 to summaries. Refined Phases 10-14 with detailed specs from mfw/legacy: Phase 10 (THD) with MFTotalHarmonicDistortionCalculation.pas algorithms; Phase 11 (Sweep/IR) with TMFSchroederData metrics; Phase 12 (Stats) with TMFTimeDomainInfoType/TMFFrequencyDomainInfoType; Phase 13 (SIMD) with optimization strategy; Phase 14 (v1.0) with API review checklist. |
-| 1.0     | 2026-02-06 | Claude | Completed Phase 11: LogSweep/LinearSweep with generate/inverse/deconvolve/harmonic extraction, IR Analyzer with Schroeder integral, RT60/EDT/T20/T30, C50/C80/D50/D80, CenterTime, FindImpulseStart. Coverage: sweep 85.4%, ir 86.2%. All tests pass with race detector.                                                                                                              |
+| 1.0     | 2026-02-06 | Claude | Completed Phase 11: LogSweep/LinearSweep with generate/inverse/deconvolve/harmonic extraction, IR Analyzer with Schroeder integral, RT60/EDT/T20/T30, C50/C80/D50/D80, CenterTime, FindImpulseStart. Coverage: sweep 85.4%, ir 86.2%. All tests pass with race detector.                                                                                                                |
 | 1.1     | 2026-02-07 | Claude | Completed Phase 12: stats/time with single-pass Welford's algorithm (DC, RMS, peak, range, crest factor, energy/power, zero crossings, variance, skewness, kurtosis), StreamingStats with bit-identical results. stats/frequency with spectral centroid, spread, flatness, rolloff, bandwidth. Zero allocations. Coverage: time 98%, freq 97.8%.                                        |
 
 ---

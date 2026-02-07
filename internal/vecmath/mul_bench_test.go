@@ -69,4 +69,3 @@ func BenchmarkMulBlockInPlace(b *testing.B) {
 		})
 	}
 }
-
