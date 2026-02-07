@@ -44,6 +44,12 @@ test-coverage:
 bench:
     go test -run=^$ -bench=. -benchmem ./...
 
+# Run CI benchmark subset (fast, machine-readable) covering hottest paths
+bench-ci:
+    go test -run='^$' -bench='BenchmarkProcessSample$|BenchmarkProcessBlock/N=1024$' -benchmem -count=1 ./dsp/filter/biquad/
+    go test -run='^$' -bench='Benchmark(Magnitude|Power)/(4K|16K)$' -benchmem -count=1 ./dsp/spectrum/
+    go test -run='^$' -bench='BenchmarkCalculate/4096$' -benchmem -count=1 ./stats/time/ ./stats/frequency/
+
 # Run all checks (formatting, linting, tests, tidiness)
 ci: check-formatted test lint check-tidy
 

@@ -63,6 +63,70 @@ func BenchmarkPower(b *testing.B) {
 	}
 }
 
+func BenchmarkMagnitudeFromParts(b *testing.B) {
+	sizes := []struct {
+		name string
+		size int
+	}{
+		{"64", 64},
+		{"256", 256},
+		{"1K", 1024},
+		{"4K", 4096},
+		{"16K", 16384},
+	}
+
+	for _, tc := range sizes {
+		b.Run(tc.name, func(b *testing.B) {
+			re := make([]float64, tc.size)
+			im := make([]float64, tc.size)
+			dst := make([]float64, tc.size)
+			for i := range re {
+				re[i] = float64(i) / 10.0
+				im[i] = float64(tc.size-i) / 10.0
+			}
+
+			b.SetBytes(int64(tc.size * 16)) // re+im = 16 bytes per element
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				MagnitudeFromParts(dst, re, im)
+			}
+		})
+	}
+}
+
+func BenchmarkPowerFromParts(b *testing.B) {
+	sizes := []struct {
+		name string
+		size int
+	}{
+		{"64", 64},
+		{"256", 256},
+		{"1K", 1024},
+		{"4K", 4096},
+		{"16K", 16384},
+	}
+
+	for _, tc := range sizes {
+		b.Run(tc.name, func(b *testing.B) {
+			re := make([]float64, tc.size)
+			im := make([]float64, tc.size)
+			dst := make([]float64, tc.size)
+			for i := range re {
+				re[i] = float64(i) / 10.0
+				im[i] = float64(tc.size-i) / 10.0
+			}
+
+			b.SetBytes(int64(tc.size * 16)) // re+im = 16 bytes per element
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				PowerFromParts(dst, re, im)
+			}
+		})
+	}
+}
+
 // Benchmark the old implementation for comparison
 func magnitudeNaive(in []complex128) []float64 {
 	if len(in) == 0 {
