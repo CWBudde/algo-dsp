@@ -8,9 +8,7 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
 )
 
-var (
-	ErrInvalidParams = errors.New("orfanidis: invalid parameters")
-)
+var ErrInvalidParams = errors.New("orfanidis: invalid parameters")
 
 // Peaking designs an Orfanidis-style peaking EQ (prescribed Nyquist gain).
 //

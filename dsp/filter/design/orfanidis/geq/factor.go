@@ -147,14 +147,30 @@ func polyRootsDurandKerner(coeff []complex128) ([]complex128, error) {
 		norm[i] = coeff[i] / lead
 	}
 
-	roots := make([]complex128, n)
-	radius := 1.0
-	for i := 0; i < n; i++ {
-		angle := 2 * math.Pi * float64(i) / float64(n)
-		roots[i] = complex(radius*math.Cos(angle), radius*math.Sin(angle))
+	// Cauchy bound: all roots lie within |z| <= max(1, sum|a_i|).
+	// Use it to set the initial guess radius.
+	radius := 0.0
+	for i := 1; i <= n; i++ {
+		if r := cmplx.Abs(norm[i]); r > radius {
+			radius = r
+		}
+	}
+	if radius < 1 {
+		radius = 1
 	}
 
-	for iter := 0; iter < 200; iter++ {
+	// Spread initial guesses on a circle with slight asymmetry to break
+	// symmetry for palindromic polynomials.
+	roots := make([]complex128, n)
+	for i := 0; i < n; i++ {
+		angle := 2*math.Pi*float64(i)/float64(n) + 0.3
+		r := radius * (1 + 0.1*float64(i)/float64(n))
+		roots[i] = complex(r*math.Cos(angle), r*math.Sin(angle))
+	}
+
+	const maxIter = 500
+	const tol = 1e-12
+	for iter := 0; iter < maxIter; iter++ {
 		maxDelta := 0.0
 		for i := 0; i < n; i++ {
 			den := complex(1, 0)
@@ -164,8 +180,10 @@ func polyRootsDurandKerner(coeff []complex128) ([]complex128, error) {
 				}
 				den *= roots[i] - roots[j]
 			}
-			if den == 0 {
-				return nil, ErrInvalidParams
+			if cmplx.Abs(den) == 0 {
+				// Perturb to escape collision.
+				roots[i] += complex(1e-10, 1e-10)
+				continue
 			}
 			f := polyEval(norm, roots[i])
 			delta := f / den
@@ -174,9 +192,22 @@ func polyRootsDurandKerner(coeff []complex128) ([]complex128, error) {
 				maxDelta = d
 			}
 		}
-		if maxDelta < 1e-12 {
+		if maxDelta < tol {
 			return roots, nil
 		}
+	}
+
+	// Convergence not reached by delta alone.
+	// Accept if all residuals are small relative to the polynomial's scale.
+	maxResidual := 0.0
+	for _, r := range roots {
+		res := cmplx.Abs(polyEval(norm, r))
+		if res > maxResidual {
+			maxResidual = res
+		}
+	}
+	if maxResidual < 1e-6 {
+		return roots, nil
 	}
 	return nil, ErrInvalidParams
 }

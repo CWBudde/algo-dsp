@@ -78,6 +78,25 @@ func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffici
 	foSections := blt(aSections, w0)
 	out := make([]biquad.Coefficients, 0, len(foSections)*2)
 	for _, s := range foSections {
+		// Detect gain-only or first/second-order sections that don't need
+		// 4th-order root-finding. These arise from the zeroth-order gain
+		// section (even order) or first-order section (odd order).
+		if isZero(s.b[1]) && isZero(s.b[2]) && isZero(s.b[3]) && isZero(s.b[4]) &&
+			isZero(s.a[1]) && isZero(s.a[2]) && isZero(s.a[3]) && isZero(s.a[4]) {
+			// Gain-only: single passthrough biquad with gain.
+			gain := s.b[0] / s.a[0]
+			out = append(out, biquad.Coefficients{B0: gain, B1: 0, B2: 0, A1: 0, A2: 0})
+			continue
+		}
+		if isZero(s.b[3]) && isZero(s.b[4]) && isZero(s.a[3]) && isZero(s.a[4]) {
+			// Second-order section: directly map to a single biquad.
+			a0 := s.a[0]
+			out = append(out, biquad.Coefficients{
+				B0: s.b[0] / a0, B1: s.b[1] / a0, B2: s.b[2] / a0,
+				A1: s.a[1] / a0, A2: s.a[2] / a0,
+			})
+			continue
+		}
 		biquads, err := splitFOSection(s.b, s.a)
 		if err != nil {
 			return nil, err
@@ -202,7 +221,7 @@ func isZero(v float64) bool {
 func landen(k, tol float64) []float64 {
 	var v []float64
 	if k == 0 || k == 1.0 {
-		v = append(v, k)
+		return []float64{k}
 	}
 	if tol < 1 {
 		for k > tol {
