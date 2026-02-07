@@ -6,12 +6,11 @@ import (
 	"testing"
 
 	"github.com/cwbudde/algo-dsp/internal/cpu"
-	"github.com/cwbudde/algo-dsp/internal/vecmath/registry"
-
 	// Import amd64-specific implementations
-	_ "github.com/cwbudde/algo-dsp/internal/vecmath/arch/generic"
 	_ "github.com/cwbudde/algo-dsp/internal/vecmath/arch/amd64/avx2"
 	_ "github.com/cwbudde/algo-dsp/internal/vecmath/arch/amd64/sse2"
+	_ "github.com/cwbudde/algo-dsp/internal/vecmath/arch/generic"
+	"github.com/cwbudde/algo-dsp/internal/vecmath/registry"
 )
 
 // TestRegistryIntegration_AMD64 verifies implementations register on amd64.

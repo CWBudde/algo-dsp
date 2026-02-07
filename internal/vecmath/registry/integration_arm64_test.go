@@ -6,11 +6,10 @@ import (
 	"testing"
 
 	"github.com/cwbudde/algo-dsp/internal/cpu"
-	"github.com/cwbudde/algo-dsp/internal/vecmath/registry"
-
 	// Import arm64-specific implementations
-	_ "github.com/cwbudde/algo-dsp/internal/vecmath/arch/generic"
 	_ "github.com/cwbudde/algo-dsp/internal/vecmath/arch/arm64/neon"
+	_ "github.com/cwbudde/algo-dsp/internal/vecmath/arch/generic"
+	"github.com/cwbudde/algo-dsp/internal/vecmath/registry"
 )
 
 // TestRegistryIntegration_ARM64 verifies implementations register on arm64.
