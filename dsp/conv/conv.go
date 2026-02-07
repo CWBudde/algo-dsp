@@ -30,6 +30,7 @@ package conv
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/cwbudde/algo-dsp/internal/vecmath"
 )
@@ -41,6 +42,14 @@ var (
 	ErrLengthMismatch   = errors.New("conv: buffer length mismatch")
 	ErrInvalidBlockSize = errors.New("conv: invalid block size")
 )
+
+// Pool of scratch buffers for DirectTo SIMD optimization.
+var scratchPool = sync.Pool{
+	New: func() any {
+		buf := make([]float64, 1024) // Initial capacity
+		return &buf
+	},
+}
 
 // Mode specifies the output mode for convolution and correlation.
 type Mode int
@@ -90,8 +99,9 @@ func DirectTo(dst, a, b []float64) {
 		dst[i] = 0
 	}
 
-	// Use SIMD-accelerated path for kernels >= 4 samples
-	const simdThreshold = 4
+	// Use SIMD-accelerated path for larger kernels where the overhead is worthwhile.
+	// Threshold determined by benchmarking - SIMD wins for kernels >= 16 samples.
+	const simdThreshold = 16
 	if m >= simdThreshold {
 		directToSIMD(dst, a, b, n, m)
 	} else {
@@ -111,8 +121,17 @@ func directToScalar(dst, a, b []float64, n, m int) {
 // directToSIMD performs SIMD-accelerated convolution for larger kernels.
 // Uses vecmath operations to vectorize the inner loop.
 func directToSIMD(dst, a, b []float64, n, m int) {
-	// Pre-allocate scratch buffer for scaled kernel
-	temp := make([]float64, m)
+	// Get scratch buffer from pool
+	bufPtr := scratchPool.Get().(*[]float64)
+	defer scratchPool.Put(bufPtr)
+
+	// Ensure scratch buffer is large enough
+	temp := *bufPtr
+	if cap(temp) < m {
+		temp = make([]float64, m)
+		*bufPtr = temp
+	}
+	temp = temp[:m]
 
 	for i := 0; i < n; i++ {
 		// Scale kernel by current input sample: temp = b * a[i]

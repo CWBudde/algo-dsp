@@ -10,9 +10,9 @@ import (
 // Filter implements a direct-form FIR filter using a circular-buffer delay line.
 type Filter struct {
 	coeffs []float64
-	delay  []float64  // circular delay line
-	pos    int        // current write position in delay line
-	linear []float64  // double-sized buffer for block processing optimization
+	delay  []float64 // circular delay line
+	pos    int       // current write position in delay line
+	linear []float64 // double-sized buffer for block processing optimization
 }
 
 // New creates a FIR filter from the given coefficient slice.

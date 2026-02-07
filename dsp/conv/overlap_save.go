@@ -2,8 +2,15 @@ package conv
 
 import (
 	"fmt"
+	"sync"
 
 	algofft "github.com/MeKo-Christian/algo-fft"
+)
+
+// Pool of OverlapSave instances to reduce allocations in one-shot convolutions.
+var (
+	overlapSavePoolsMu sync.RWMutex
+	overlapSavePools   = make(map[int]*sync.Pool) // keyed by FFT size
 )
 
 // OverlapSave implements FFT-based convolution using the overlap-save method.
@@ -271,11 +278,103 @@ func (os *OverlapSave) Reset() {
 	}
 }
 
+// getOverlapSavePool returns the pool for the given FFT size, creating it if needed.
+func getOverlapSavePool(fftSize int) *sync.Pool {
+	overlapSavePoolsMu.RLock()
+	pool, ok := overlapSavePools[fftSize]
+	overlapSavePoolsMu.RUnlock()
+	if ok {
+		return pool
+	}
+
+	overlapSavePoolsMu.Lock()
+	defer overlapSavePoolsMu.Unlock()
+
+	// Check again in case another goroutine created it
+	if pool, ok := overlapSavePools[fftSize]; ok {
+		return pool
+	}
+
+	pool = &sync.Pool{
+		New: func() any {
+			return &OverlapSave{}
+		},
+	}
+	overlapSavePools[fftSize] = pool
+	return pool
+}
+
 // OverlapSaveConvolve performs one-shot overlap-save convolution.
+// This function uses a pool of OverlapSave instances to minimize allocations.
 func OverlapSaveConvolve(signal, kernel []float64) ([]float64, error) {
-	os, err := NewOverlapSave(kernel, 0)
+	if len(kernel) == 0 {
+		return nil, ErrEmptyKernel
+	}
+
+	kernelLen := len(kernel)
+
+	// Determine configuration (same logic as NewOverlapSave)
+	fftSize := nextPowerOf2(2 * kernelLen)
+	if fftSize < 256 {
+		fftSize = 256
+	}
+
+	// Get a pooled instance
+	pool := getOverlapSavePool(fftSize)
+	os := pool.Get().(*OverlapSave)
+	defer pool.Put(os)
+
+	// Initialize/reinitialize the instance for this kernel
+	err := initOverlapSave(os, kernel, fftSize)
 	if err != nil {
 		return nil, err
 	}
+
 	return os.Process(signal)
+}
+
+// initOverlapSave initializes or reinitializes an OverlapSave instance.
+func initOverlapSave(os *OverlapSave, kernel []float64, fftSize int) error {
+	kernelLen := len(kernel)
+	stepSize := fftSize - kernelLen + 1
+
+	// Allocate or resize buffers if needed
+	if len(os.kernelFFT) != fftSize {
+		os.kernelFFT = make([]complex128, fftSize)
+		os.inputBuffer = make([]complex128, fftSize)
+		os.outputBuffer = make([]complex128, fftSize)
+		os.history = make([]float64, kernelLen-1)
+
+		// Create FFT plan
+		plan, err := algofft.NewPlan64(fftSize)
+		if err != nil {
+			return fmt.Errorf("conv: failed to create FFT plan: %w", err)
+		}
+		os.plan = plan
+	} else {
+		// Resize history if kernel length changed
+		if len(os.history) != kernelLen-1 {
+			os.history = make([]float64, kernelLen-1)
+		}
+	}
+
+	os.kernelLen = kernelLen
+	os.fftSize = fftSize
+	os.stepSize = stepSize
+
+	// Compute kernel FFT
+	kernelPadded := os.inputBuffer // Reuse inputBuffer as temporary
+	for i := range kernelPadded {
+		kernelPadded[i] = 0
+	}
+	for i, v := range kernel {
+		kernelPadded[i] = complex(v, 0)
+	}
+
+	err := os.plan.Forward(os.kernelFFT, kernelPadded)
+	if err != nil {
+		return fmt.Errorf("conv: failed to compute kernel FFT: %w", err)
+	}
+
+	return nil
 }
