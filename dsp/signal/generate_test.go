@@ -67,6 +67,144 @@ func TestSetSeed(t *testing.T) {
 	}
 }
 
+func TestPinkNoiseDeterministic(t *testing.T) {
+	g1 := NewGeneratorWithOptions(nil, WithSeed(42))
+	g2 := NewGeneratorWithOptions(nil, WithSeed(42))
+
+	n1, err := g1.PinkNoise(1, 128)
+	if err != nil {
+		t.Fatalf("PinkNoise() error = %v", err)
+	}
+	n2, err := g2.PinkNoise(1, 128)
+	if err != nil {
+		t.Fatalf("PinkNoise() error = %v", err)
+	}
+
+	for i := range n1 {
+		if n1[i] != n2[i] {
+			t.Fatalf("pink noise mismatch at %d: %v != %v", i, n1[i], n2[i])
+		}
+	}
+}
+
+func TestPinkNoiseLength(t *testing.T) {
+	g := NewGeneratorWithOptions(nil, WithSeed(1))
+	out, err := g.PinkNoise(1, 256)
+	if err != nil {
+		t.Fatalf("PinkNoise() error = %v", err)
+	}
+	if len(out) != 256 {
+		t.Fatalf("len = %d, want 256", len(out))
+	}
+}
+
+func TestPinkNoiseBounded(t *testing.T) {
+	g := NewGeneratorWithOptions(nil, WithSeed(7))
+	amp := 0.5
+	out, err := g.PinkNoise(amp, 10000)
+	if err != nil {
+		t.Fatalf("PinkNoise() error = %v", err)
+	}
+
+	// Sum of all 5 band weights ≈ 1.0, so theoretical max is amplitude * 1.0.
+	// Allow a small margin for floating-point accumulation.
+	limit := amp * 1.1
+	for i, v := range out {
+		if v > limit || v < -limit {
+			t.Fatalf("sample[%d] = %v exceeds limit ±%v", i, v, limit)
+		}
+	}
+}
+
+func TestPinkNoiseDifferentSeeds(t *testing.T) {
+	g1 := NewGeneratorWithOptions(nil, WithSeed(1))
+	g2 := NewGeneratorWithOptions(nil, WithSeed(2))
+
+	n1, err := g1.PinkNoise(1, 64)
+	if err != nil {
+		t.Fatalf("PinkNoise() error = %v", err)
+	}
+	n2, err := g2.PinkNoise(1, 64)
+	if err != nil {
+		t.Fatalf("PinkNoise() error = %v", err)
+	}
+
+	same := true
+	for i := range n1 {
+		if n1[i] != n2[i] {
+			same = false
+			break
+		}
+	}
+	if same {
+		t.Fatal("expected different seeds to produce different pink noise")
+	}
+}
+
+func TestPinkNoiseSpectralSlope(t *testing.T) {
+	// Generate a long pink noise signal and verify approximate -3 dB/octave slope.
+	g := NewGeneratorWithOptions(
+		[]core.ProcessorOption{core.WithSampleRate(48000)},
+		WithSeed(42),
+	)
+	n := 1 << 16 // 65536 samples
+	out, err := g.PinkNoise(1, n)
+	if err != nil {
+		t.Fatalf("PinkNoise() error = %v", err)
+	}
+
+	// Compute average power in octave bands using sampled DFT bins.
+	// We sample a fixed number of bins per band to keep the test fast.
+	sr := 48000.0
+	bands := []float64{500, 1000, 2000, 4000}
+	powers := make([]float64, len(bands))
+	const binsPerBand = 8
+
+	for bi, fc := range bands {
+		loK := int(fc / math.Sqrt2 * float64(n) / sr)
+		hiK := int(fc * math.Sqrt2 * float64(n) / sr)
+		if loK < 1 {
+			loK = 1
+		}
+		if hiK >= n/2 {
+			hiK = n/2 - 1
+		}
+
+		step := max((hiK-loK)/binsPerBand, 1)
+
+		power := 0.0
+		count := 0
+		for k := loK; k <= hiK; k += step {
+			re, im := 0.0, 0.0
+			freq := 2 * math.Pi * float64(k) / float64(n)
+			for i, v := range out {
+				re += v * math.Cos(freq*float64(i))
+				im -= v * math.Sin(freq*float64(i))
+			}
+			power += re*re + im*im
+			count++
+		}
+		if count > 0 {
+			powers[bi] = power / float64(count)
+		}
+	}
+
+	// Check slope between adjacent octave bands.
+	// Pink noise: -3 dB/octave → power ratio ≈ 0.5 per octave.
+	// Allow wide tolerance since this is stochastic.
+	for i := 0; i < len(powers)-1; i++ {
+		if powers[i] == 0 || powers[i+1] == 0 {
+			continue
+		}
+		ratioDb := 10 * math.Log10(powers[i+1]/powers[i])
+		// Expect roughly -3 dB, allow ±5 dB tolerance for stochastic signal.
+		if ratioDb > 2 || ratioDb < -8 {
+			t.Errorf("octave slope from %.0f to %.0f Hz: %.1f dB (want ≈ -3 dB)",
+				bands[i], bands[i+1], ratioDb)
+		}
+	}
+}
+
 func TestNormalize(t *testing.T) {
 	out, err := Normalize([]float64{-0.5, 1.0, -0.25}, 0.5)
 	if err != nil {

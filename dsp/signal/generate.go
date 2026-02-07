@@ -177,6 +177,46 @@ func (g *Generator) WhiteNoise(amplitude float64, samples int) ([]float64, error
 	return out, nil
 }
 
+// PinkNoise generates deterministic pink noise (1/f spectrum) using the
+// Voss-McCartney algorithm with 5 contribution bands. The output approximates
+// a -3 dB/octave spectral slope.
+func (g *Generator) PinkNoise(amplitude float64, samples int) ([]float64, error) {
+	if samples <= 0 {
+		return nil, fmt.Errorf("noise samples must be > 0: %d", samples)
+	}
+	if amplitude < 0 {
+		return nil, fmt.Errorf("noise amplitude must be >= 0: %f", amplitude)
+	}
+
+	// Band weights and cumulative probability thresholds from Voss-McCartney.
+	pA := [5]float64{0.23980, 0.18727, 0.16380, 0.194685, 0.214463}
+	pSUM := [5]float64{0.00198, 0.01478, 0.06378, 0.23378, 0.91578}
+
+	rng := rand.New(rand.NewSource(g.seed))
+	var contributions [5]float64
+	out := make([]float64, samples)
+
+	for i := range out {
+		ur1 := rng.Float64()
+		ur2 := rng.Float64()
+		val := ur2*2 - 1
+
+		for b := range 5 {
+			if ur1 <= pSUM[b] {
+				contributions[b] = val * pA[b]
+				break
+			}
+		}
+
+		sum := 0.0
+		for _, c := range contributions {
+			sum += c
+		}
+		out[i] = sum * amplitude
+	}
+	return out, nil
+}
+
 // Normalize scales data to target peak amplitude and returns a new slice.
 func Normalize(data []float64, targetPeak float64) ([]float64, error) {
 	if targetPeak < 0 {

@@ -24,6 +24,24 @@ func ExampleGenerator_Sine() {
 	// 0 1 0 -1 0
 }
 
+func ExampleGenerator_PinkNoise() {
+	g := signal.NewGeneratorWithOptions(nil, signal.WithSeed(42))
+	x, err := g.PinkNoise(1, 5)
+	if err != nil {
+		panic(err)
+	}
+	for _, v := range x {
+		fmt.Printf("%.6f\n", v)
+	}
+
+	// Output:
+	// -0.186154
+	// -0.124895
+	// -0.163161
+	// -0.087830
+	// 0.024519
+}
+
 func ExampleNormalize() {
 	x, err := signal.Normalize([]float64{-0.5, 0.25, 1}, 0.8)
 	if err != nil {
