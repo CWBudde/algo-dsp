@@ -144,129 +144,85 @@ func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffici
 // This combines the LP-to-BP frequency transformation with the bilinear z-transform.
 func blt(aSections []soSection, w0 float64) []foSection {
 	c0 := math.Cos(w0)
-	K := len(aSections)
+	degenerate := isZero(math.Abs(c0) - 1)
+	c0c0 := c0 * c0
 
-	// Allocate storage for the 5-tap (fourth-order) digital coefficients
-	// and the intermediate 3-tap bilinear-transformed lowpass coefficients.
-	B := make([][5]float64, K)
-	A := make([][5]float64, K)
-	Bhat := make([][3]float64, K)
-	Ahat := make([][3]float64, K)
+	out := make([]foSection, len(aSections))
+	for j, s := range aSections {
+		b0, b1, b2 := s.b0, s.b1, s.b2
+		a0, a1, a2 := s.a0, s.a1, s.a2
 
-	// Extract analog prototype coefficients into parallel arrays
-	// for batch processing across all sections.
-	B0 := make([]float64, K)
-	B1 := make([]float64, K)
-	B2 := make([]float64, K)
-	A0 := make([]float64, K)
-	A1 := make([]float64, K)
-	A2 := make([]float64, K)
-	for i := 0; i < K; i++ {
-		B0[i] = aSections[i].b0
-		B1[i] = aSections[i].b1
-		B2[i] = aSections[i].b2
-		A0[i] = aSections[i].a0
-		A1[i] = aSections[i].a1
-		A2[i] = aSections[i].a2
-	}
+		// Classify and transform each section based on its order.
+		hasFirst := !isZero(b1) || !isZero(a1)
+		hasSecond := !isZero(b2) || !isZero(a2)
 
-	// Process zeroth-order (gain-only) sections: no frequency-dependent terms,
-	// just a scalar gain ratio passed through unchanged.
-	var zths []int
-	for i := range B0 {
-		if isZero(B1[i]) && isZero(A1[i]) && isZero(B2[i]) && isZero(A2[i]) {
-			zths = append(zths, i)
+		// Intermediate bilinear-transformed lowpass coefficients.
+		var bh, ah [3]float64
+
+		if !hasFirst && !hasSecond {
+			// Zeroth-order (gain-only): scalar gain ratio.
+			bh[0] = b0 / a0
+			ah[0] = 1
+		} else if !hasSecond {
+			// First-order: bilinear transform s -> (z-1)/(z+1).
+			D := a0 + a1
+			bh[0] = (b0 + b1) / D
+			bh[1] = (b0 - b1) / D
+			ah[0] = 1
+			ah[1] = (a0 - a1) / D
+		} else {
+			// Second-order: bilinear transform normalized at z=1.
+			D := a0 + a1 + a2
+			bh[0] = (b0 + b1 + b2) / D
+			bh[1] = 2 * (b0 - b2) / D
+			bh[2] = (b0 - b1 + b2) / D
+			ah[0] = 1
+			ah[1] = 2 * (a0 - a2) / D
+			ah[2] = (a0 - a1 + a2) / D
 		}
-	}
-	for _, j := range zths {
-		Bhat[j][0] = B0[j] / A0[j]
-		Ahat[j][0] = 1
-		B[j][0] = Bhat[j][0]
-		A[j][0] = 1
-	}
 
-	// Process first-order sections: apply the bilinear transform s -> (z-1)/(z+1)
-	// then the LP-to-BP mapping to produce a second-order digital section.
-	var fths []int
-	for i := range B0 {
-		if (!isZero(B1[i]) || !isZero(A1[i])) && isZero(B2[i]) && isZero(A2[i]) {
-			fths = append(fths, i)
+		// Edge case: when w0 is at DC or Nyquist the bandpass transform
+		// degenerates; use direct lowpass coefficients with sign correction.
+		if degenerate {
+			out[j].b = [5]float64{bh[0], bh[1] * c0, bh[2]}
+			out[j].a = [5]float64{ah[0], ah[1] * c0, ah[2]}
+			continue
 		}
-	}
-	for _, j := range fths {
-		// Bilinear transform of the first-order analog section.
-		D := A0[j] + A1[j]
-		Bhat[j][0] = (B0[j] + B1[j]) / D
-		Bhat[j][1] = (B0[j] - B1[j]) / D
-		Ahat[j][0] = 1
-		Ahat[j][1] = (A0[j] - A1[j]) / D
 
-		// LP-to-BP frequency mapping using cos(w0) to shift the
-		// response from lowpass to bandpass centered at w0.
-		B[j][0] = Bhat[j][0]
-		B[j][1] = c0 * (Bhat[j][1] - Bhat[j][0])
-		B[j][2] = -Bhat[j][1]
-		A[j][0] = 1
-		A[j][1] = c0 * (Ahat[j][1] - 1)
-		A[j][2] = -Ahat[j][1]
-	}
-
-	// Process second-order sections: bilinear transform followed by LP-to-BP
-	// mapping produces a fourth-order digital section (5 coefficients each).
-	var sths []int
-	for i := range B0 {
-		if !isZero(B2[i]) || !isZero(A2[i]) {
-			sths = append(sths, i)
+		// LP-to-BP frequency mapping via cos(w0).
+		if !hasFirst && !hasSecond {
+			// Gain-only passthrough.
+			out[j].b[0] = bh[0]
+			out[j].a[0] = 1
+		} else if !hasSecond {
+			// First-order -> second-order bandpass.
+			out[j].b = [5]float64{
+				bh[0],
+				c0 * (bh[1] - bh[0]),
+				-bh[1],
+			}
+			out[j].a = [5]float64{
+				1,
+				c0 * (ah[1] - 1),
+				-ah[1],
+			}
+		} else {
+			// Second-order -> fourth-order bandpass.
+			out[j].b = [5]float64{
+				bh[0],
+				c0 * (bh[1] - 2*bh[0]),
+				(bh[0]-bh[1]+bh[2])*c0c0 - bh[1],
+				c0 * (bh[1] - 2*bh[2]),
+				bh[2],
+			}
+			out[j].a = [5]float64{
+				1,
+				c0 * (ah[1] - 2),
+				(1-ah[1]+ah[2])*c0c0 - ah[1],
+				c0 * (ah[1] - 2*ah[2]),
+				ah[2],
+			}
 		}
-	}
-	for _, j := range sths {
-		// Bilinear transform of the second-order analog section.
-		// D normalizes by the sum of denominator coefficients at z=1.
-		D := A0[j] + A1[j] + A2[j]
-		Bhat[j][0] = (B0[j] + B1[j] + B2[j]) / D
-		Bhat[j][1] = 2 * (B0[j] - B2[j]) / D
-		Bhat[j][2] = (B0[j] - B1[j] + B2[j]) / D
-		Ahat[j][0] = 1
-		Ahat[j][1] = 2 * (A0[j] - A2[j]) / D
-		Ahat[j][2] = (A0[j] - A1[j] + A2[j]) / D
-
-		// LP-to-BP mapping: each second-order lowpass coefficient produces
-		// a fourth-order bandpass section via the cos(w0) frequency warping.
-		B[j][0] = Bhat[j][0]
-		B[j][1] = c0 * (Bhat[j][1] - 2*Bhat[j][0])
-		B[j][2] = (Bhat[j][0]-Bhat[j][1]+Bhat[j][2])*c0*c0 - Bhat[j][1]
-		B[j][3] = c0 * (Bhat[j][1] - 2*Bhat[j][2])
-		B[j][4] = Bhat[j][2]
-
-		A[j][0] = 1
-		A[j][1] = c0 * (Ahat[j][1] - 2)
-		A[j][2] = (1-Ahat[j][1]+Ahat[j][2])*c0*c0 - Ahat[j][1]
-		A[j][3] = c0 * (Ahat[j][1] - 2*Ahat[j][2])
-		A[j][4] = Ahat[j][2]
-	}
-
-	// Edge case: when w0 is at DC (c0=1) or Nyquist (c0=-1) the bandpass
-	// transform degenerates; fall back to direct lowpass coefficients
-	// with sign correction on the odd-order terms.
-	if isZero(math.Abs(c0) - 1) {
-		for i := range Bhat {
-			B[i][0] = Bhat[i][0]
-			B[i][1] = Bhat[i][1]
-			B[i][2] = Bhat[i][2]
-			A[i][0] = Ahat[i][0]
-			A[i][1] = Ahat[i][1]
-			A[i][2] = Ahat[i][2]
-			B[i][3], B[i][4] = 0, 0
-			A[i][3], A[i][4] = 0, 0
-			B[i][1] *= c0
-			A[i][1] *= c0
-		}
-	}
-
-	// Pack the coefficient arrays into foSection structs for return.
-	out := make([]foSection, 0, len(B))
-	for i := range B {
-		out = append(out, foSection{b: B[i], a: A[i]})
 	}
 
 	return out
@@ -308,14 +264,11 @@ func landen(k, tol float64) []float64 {
 }
 
 // landenK computes K from a precomputed Landen sequence using the product formula
-// K(k) = (pi/2) * product(1 + v[i]). The sequence is consumed (mutated in place).
+// K(k) = (pi/2) * product(1 + v[i]). The sequence is not modified.
 func landenK(v []float64) float64 {
-	for i := range v {
-		v[i] += 1.0
-	}
 	prod := 1.0
 	for _, x := range v {
-		prod *= x
+		prod *= 1.0 + x
 	}
 	return prod * math.Pi * 0.5
 }
@@ -429,8 +382,9 @@ func acde(w complex128, k, tol float64) complex128 {
 
 	// At the bottom of the Landen chain, k ~ 0 so cd ~ cos;
 	// recover the argument via acos and normalize to the period rectangle.
+	// Reuse the already-computed Landen sequence for K to avoid redundant work.
 	u := 2.0 / math.Pi * cmplx.Acos(w)
-	K, Kp := ellipk(k, tol)
+	K, Kp := ellipkReuse(k, tol, v)
 
 	return complex(srem(real(u), 4), 0) + complex(0, 1)*complex(srem(imag(u), 2*(Kp/K)), 0)
 }
