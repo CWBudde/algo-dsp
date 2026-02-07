@@ -22,6 +22,7 @@ func ButterworthBand(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) (
 		return passthroughSections(), nil
 	}
 	gb := butterworthBWGainDB(gainDB)
+
 	return butterworthBandRad(w0, wb, gainDB, gb, order)
 }
 
@@ -38,6 +39,7 @@ func Chebyshev1Band(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) ([
 		return passthroughSections(), nil
 	}
 	gb := chebyshev1BWGainDB(gainDB)
+
 	return chebyshev1BandRad(w0, wb, gainDB, gb, order)
 }
 
@@ -77,15 +79,15 @@ func bandParams(sampleRate, f0Hz, bandwidthHz float64, order int) (float64, floa
 	if sampleRate <= 0 || f0Hz <= 0 || bandwidthHz <= 0 {
 		return 0, 0, ErrInvalidParams
 	}
-	if f0Hz >= sampleRate/2 {
+	if f0Hz >= sampleRate*0.5 {
 		return 0, 0, ErrInvalidParams
 	}
 	if order <= 2 || order%2 != 0 {
 		return 0, 0, ErrInvalidParams
 	}
-	fl := f0Hz - bandwidthHz/2
-	fh := f0Hz + bandwidthHz/2
-	if fl <= 0 || fh >= sampleRate/2 {
+	fl := f0Hz - bandwidthHz*0.5
+	fh := f0Hz + bandwidthHz*0.5
+	if fl <= 0 || fh >= sampleRate*0.5 {
 		return 0, 0, ErrInvalidParams
 	}
 
@@ -153,7 +155,7 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 	L := order / 2
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1) / float64(order)
-		si := math.Sin(math.Pi * ui / 2.0)
+		si := math.Sin(math.Pi * ui * 0.5)
 		Di := beta*beta + 2*si*beta + 1
 		if Di == 0 {
 			return nil, ErrInvalidParams
@@ -198,15 +200,15 @@ func chebyshev1BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 	beta := math.Pow(G/e+Gb*math.Sqrt(1+math.Pow(e, -2.0)), 1.0/float64(order))
 	A := 0.5 * (alfa - 1.0/alfa)
 	B := 0.5 * (beta - g0*g0*(1/beta))
-	tb := math.Tan(wb / 2)
+	tb := math.Tan(wb * 0.5)
 	c0 := math.Cos(w0)
 
 	sections := make([]biquad.Coefficients, 0, order)
 	L := order / 2
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1.0) / float64(order)
-		ci := math.Cos(math.Pi * ui / 2.0)
-		si := math.Sin(math.Pi * ui / 2.0)
+		ci := math.Cos(math.Pi * ui * 0.5)
+		si := math.Sin(math.Pi * ui * 0.5)
 		Di := (A*A+ci*ci)*tb*tb + 2.0*A*si*tb + 1
 		if Di == 0 {
 			return nil, ErrInvalidParams
@@ -249,17 +251,17 @@ func chebyshev2BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 	g := math.Pow(G, 1.0/float64(order))
 	eu := math.Pow(e+math.Sqrt(1+e*e), 1.0/float64(order))
 	ew := math.Pow(G0*e+Gb*math.Sqrt(1+e*e), 1.0/float64(order))
-	A := (eu - 1.0/eu) / 2.0
-	B := (ew - g*g/ew) / 2.0
-	tb := math.Tan(wb / 2)
+	A := (eu - 1.0/eu) * 0.5
+	B := (ew - g*g/ew) * 0.5
+	tb := math.Tan(wb * 0.5)
 	c0 := math.Cos(w0)
 
 	sections := make([]biquad.Coefficients, 0, order)
 	L := order / 2
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1.0) / float64(order)
-		ci := math.Cos(math.Pi * ui / 2.0)
-		si := math.Sin(math.Pi * ui / 2.0)
+		ci := math.Cos(math.Pi * ui * 0.5)
+		si := math.Sin(math.Pi * ui * 0.5)
 		Di := tb*tb + 2*A*si*tb + A*A + ci*ci
 		if Di == 0 {
 			return nil, ErrInvalidParams
