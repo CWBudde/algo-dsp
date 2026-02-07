@@ -4,7 +4,7 @@ import (
 	"math"
 	"math/cmplx"
 
-	"github.com/cwbudde/algo-dsp/internal/vecmath"
+	"github.com/cwbudde/algo-vecmath"
 )
 
 // Filter implements a direct-form FIR filter using a circular-buffer delay line.

@@ -6,7 +6,7 @@ import (
 	"math/cmplx"
 	"sort"
 
-	"github.com/cwbudde/algo-dsp/internal/vecmath"
+	"github.com/cwbudde/algo-vecmath"
 )
 
 // ComplexBins is a read-only adapter for complex spectrum outputs.

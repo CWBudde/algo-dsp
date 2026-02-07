@@ -32,7 +32,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/cwbudde/algo-dsp/internal/vecmath"
+	"github.com/cwbudde/algo-vecmath"
 )
 
 // Errors returned by convolution functions.

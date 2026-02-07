@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	archregistry "github.com/cwbudde/algo-dsp/dsp/filter/biquad/internal/arch/registry"
-	"github.com/cwbudde/algo-dsp/internal/cpu"
+	"github.com/cwbudde/algo-vecmath/cpu"
 )
 
 // Coefficients holds the transfer function coefficients for a single
