@@ -37,6 +37,7 @@ desktop.ini
 .env
 .env.local
 .history/
+.tmp/
 
 # AI agents
 .claude/

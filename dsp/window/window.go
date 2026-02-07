@@ -3,7 +3,7 @@ package window
 import (
 	"math"
 
-	"github.com/cwbudde/algo-dsp/internal/simd"
+	"github.com/cwbudde/algo-dsp/internal/vecmath"
 )
 
 // Type identifies a window function.
@@ -165,7 +165,7 @@ func Apply(t Type, buf []float64, opts ...Option) {
 	if len(coeffs) != len(buf) {
 		return
 	}
-	simd.MulBlockInPlace(buf, coeffs)
+	vecmath.MulBlockInPlace(buf, coeffs)
 }
 
 // Info returns static metadata for a window type.
@@ -248,7 +248,7 @@ func ApplyCoefficients(samples, coeffs []float64) ([]float64, error) {
 		return nil, errMismatchedLength
 	}
 	out := make([]float64, len(samples))
-	simd.MulBlock(out, samples, coeffs)
+	vecmath.MulBlock(out, samples, coeffs)
 	return out, nil
 }
 
@@ -257,7 +257,7 @@ func ApplyCoefficientsInPlace(samples, coeffs []float64) error {
 	if len(samples) != len(coeffs) {
 		return errMismatchedLength
 	}
-	simd.MulBlockInPlace(samples, coeffs)
+	vecmath.MulBlockInPlace(samples, coeffs)
 	return nil
 }
 

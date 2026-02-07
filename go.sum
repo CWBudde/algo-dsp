@@ -2,3 +2,5 @@ github.com/MeKo-Christian/algo-fft v0.6.6 h1:oQg68D6PQKDxgnxbsWI9jDOsG40ie1vT9Q2
 github.com/MeKo-Christian/algo-fft v0.6.6/go.mod h1:kOyncsY00JWPZZrmtRo4+1AckmOzvVhTqvQP7CE1ylI=
 golang.org/x/sys v0.39.0 h1:CvCKL8MeisomCi6qNZ+wbb0DN9E5AATixKsvNtMoMFk=
 golang.org/x/sys v0.39.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
+golang.org/x/sys v0.40.0 h1:DBZZqJ2Rkml6QMQsZywtnjnnGvHza6BTfYFWY9kjEWQ=
+golang.org/x/sys v0.40.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=

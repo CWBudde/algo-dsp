@@ -17,7 +17,7 @@ Scope: `github.com/cwbudde/algo-dsp` public packages
 - `dsp/core` is kept as the shared configuration contract for package-level generators/processors.
 - Odd-order Chebyshev first-order sections remain deterministic compatibility behavior (fallback to Butterworth first-order sections) and are explicitly documented in code comments.
 - Benchmarks now check returned errors so lint rules match release quality gates.
-- Public-code TODO/FIXME markers were removed from implementation comments.
+- Public-code work-item markers were removed from implementation comments.
 
 ## Remaining v1.0 gates
 

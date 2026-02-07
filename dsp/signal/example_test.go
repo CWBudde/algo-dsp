@@ -2,6 +2,7 @@ package signal_test
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/core"
 	"github.com/cwbudde/algo-dsp/dsp/signal"
@@ -12,6 +13,9 @@ func ExampleGenerator_Sine() {
 	x, err := g.Sine(250, 1, 5)
 	if err != nil {
 		panic(err)
+	}
+	if math.Abs(x[4]) < 1e-12 {
+		x[4] = 0
 	}
 
 	fmt.Printf("%.0f %.0f %.0f %.0f %.0f\n", x[0], x[1], x[2], x[3], x[4])

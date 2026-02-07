@@ -1,4 +1,4 @@
-// Package simd contains optional internal SIMD kernels and dispatch helpers.
+// Package vecmath contains optional internal vector math kernels and dispatch helpers.
 //
 // This package provides SIMD-optimized implementations of common DSP operations
 // with pure Go fallbacks for portability. The optimized paths are automatically
@@ -27,6 +27,9 @@
 //   - AddMulBlock: dst[i] = (a[i] + b[i]) * scale (mix with gain)
 //   - MulAddBlock: dst[i] = a[i] * b[i] + c[i] (FMA pattern)
 //
+// Reduction:
+//   - MaxAbs: maximum absolute value in a slice
+//
 // All operations have zero allocations and are safe for concurrent use
 // (different goroutines may operate on different slices).
 //
@@ -34,4 +37,4 @@
 //
 // On AMD64 with AVX2, these operations achieve 2-5x speedup over scalar Go code,
 // processing 4 float64 values per SIMD instruction.
-package simd
+package vecmath

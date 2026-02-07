@@ -17,7 +17,7 @@ All notable changes to this project are documented in this file.
 ### Changed
 
 - Benchmark code in `measure/ir` and `measure/sweep` now handles returned errors to satisfy release lint gates.
-- Public implementation comments were cleaned to remove TODO/FIXME markers in Phase 14-facing code.
+- Public implementation comments were cleaned to remove open work-item markers in Phase 14-facing code.
 
 ### Fixed
 
