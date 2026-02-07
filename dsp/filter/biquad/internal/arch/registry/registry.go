@@ -3,7 +3,7 @@ package registry
 import (
 	"sync"
 
-	"github.com/cwbudde/algo-dsp/internal/cpu"
+	"github.com/cwbudde/algo-vecmath/cpu"
 )
 
 // Coefficients are biquad transfer coefficients (a0 normalized to 1).

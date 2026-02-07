@@ -3,7 +3,7 @@ package registry
 import (
 	"testing"
 
-	"github.com/cwbudde/algo-dsp/internal/cpu"
+	"github.com/cwbudde/algo-vecmath/cpu"
 )
 
 func TestRegistryLookupPrefersHigherPriority(t *testing.T) {

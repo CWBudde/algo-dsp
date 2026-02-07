@@ -4,7 +4,7 @@ package avx2
 
 import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad/internal/arch/registry"
-	"github.com/cwbudde/algo-dsp/internal/cpu"
+	"github.com/cwbudde/algo-vecmath/cpu"
 )
 
 func init() {

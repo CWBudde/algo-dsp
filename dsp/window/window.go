@@ -3,7 +3,7 @@ package window
 import (
 	"math"
 
-	"github.com/cwbudde/algo-dsp/internal/vecmath"
+	"github.com/cwbudde/algo-vecmath"
 )
 
 // Type identifies a window function.
