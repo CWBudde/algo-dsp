@@ -48,7 +48,6 @@ func BenchmarkAddMulBlockRef(b *testing.B) {
 	}
 }
 
-
 func BenchmarkMulAddBlock(b *testing.B) {
 	for _, tc := range benchSizes {
 		b.Run(tc.name, func(b *testing.B) {

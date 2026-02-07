@@ -63,4 +63,3 @@ func BenchmarkScaleBlockInPlace(b *testing.B) {
 		})
 	}
 }
-

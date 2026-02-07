@@ -11,6 +11,56 @@ import (
 	"sync"
 )
 
+// SIMDLevel represents a SIMD instruction set extension level.
+// Higher numeric values generally indicate more advanced SIMD capabilities,
+// but levels are not strictly comparable across architectures (e.g., AVX2 vs NEON).
+type SIMDLevel int
+
+const (
+	// SIMDNone indicates no SIMD optimization (pure Go fallback).
+	SIMDNone SIMDLevel = iota
+
+	// SIMDSSE2 indicates x86-64 SSE2 (baseline for amd64).
+	SIMDSSE2
+
+	// SIMDAVX indicates x86-64 AVX (Advanced Vector Extensions).
+	SIMDAVX
+
+	// SIMDAVX2 indicates x86-64 AVX2 (256-bit integer operations).
+	SIMDAVX2
+
+	// SIMDAVX512 indicates x86-64 AVX-512 (512-bit vectors, future).
+	SIMDAVX512
+
+	// SIMDNEON indicates ARM NEON / Advanced SIMD.
+	SIMDNEON
+
+	// SIMDSVELTE indicates ARM SVE (Scalable Vector Extension, future).
+	SIMDSVELTE
+)
+
+// String returns a human-readable name for the SIMD level.
+func (s SIMDLevel) String() string {
+	switch s {
+	case SIMDNone:
+		return "None"
+	case SIMDSSE2:
+		return "SSE2"
+	case SIMDAVX:
+		return "AVX"
+	case SIMDAVX2:
+		return "AVX2"
+	case SIMDAVX512:
+		return "AVX-512"
+	case SIMDNEON:
+		return "NEON"
+	case SIMDSVELTE:
+		return "SVE"
+	default:
+		return "Unknown"
+	}
+}
+
 // Features describes CPU capabilities relevant to DSP kernel selection.
 type Features struct {
 	// x86/amd64 SIMD features
@@ -104,4 +154,32 @@ func ResetDetection() {
 	detectOnce = sync.Once{}
 	detectedFeatures = Features{}
 	detectMutex.Unlock()
+}
+
+// Supports returns true if the given CPU features support the specified SIMD level.
+// This function is used by the vecmath registry to determine implementation compatibility.
+func Supports(features Features, level SIMDLevel) bool {
+	if features.ForceGeneric {
+		return level == SIMDNone
+	}
+
+	switch level {
+	case SIMDNone:
+		return true
+	case SIMDSSE2:
+		return features.HasSSE2
+	case SIMDAVX:
+		return features.HasAVX
+	case SIMDAVX2:
+		return features.HasAVX2
+	case SIMDAVX512:
+		return features.HasAVX512
+	case SIMDNEON:
+		return features.HasNEON
+	case SIMDSVELTE:
+		// SVE not yet supported
+		return false
+	default:
+		return false
+	}
 }
