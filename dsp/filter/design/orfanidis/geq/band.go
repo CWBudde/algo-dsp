@@ -7,9 +7,7 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
 
-var (
-	ErrInvalidParams = errors.New("orfanidis/geq: invalid parameters")
-)
+var ErrInvalidParams = errors.New("orfanidis/geq: invalid parameters")
 
 // ButterworthBand designs a high-order Butterworth band filter for graphic EQ.
 //
