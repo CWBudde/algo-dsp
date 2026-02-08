@@ -14,11 +14,9 @@ func TestButterworthBand_Boost(t *testing.T) {
 	testBandDesign(t, "Butterworth +12dB", ButterworthBand, 1000, 500, 12, 4, 0.5)
 }
 
-
 func TestButterworthBand_Cut(t *testing.T) {
 	testBandDesign(t, "Butterworth -12dB", ButterworthBand, 1000, 500, -12, 4, 0.5)
 }
-
 
 func TestButterworthBand_ZeroGain(t *testing.T) {
 	sections, err := ButterworthBand(testSR, 1000, 500, 0, 4)
@@ -33,7 +31,6 @@ func TestButterworthBand_ZeroGain(t *testing.T) {
 		t.Errorf("zero gain: center mag = %v dB, expected 0", mag)
 	}
 }
-
 
 func TestButterworthBand_BoostCutInversion(t *testing.T) {
 	boost, err := ButterworthBand(testSR, 1000, 500, 12, 4)
@@ -60,7 +57,6 @@ func TestButterworthBand_BoostCutInversion(t *testing.T) {
 // Numerical stress tests
 // ============================================================
 
-
 func TestButterworthBand_VariousOrders(t *testing.T) {
 	for _, order := range []int{4, 6, 8, 10, 12} {
 		t.Run(orderName(order), func(t *testing.T) {
@@ -77,7 +73,6 @@ func TestButterworthBand_VariousOrders(t *testing.T) {
 	}
 }
 
-
 func TestButterworthBand_ExtremeGains(t *testing.T) {
 	for _, gainDB := range []float64{-30, -20, -6, -1, 1, 6, 20, 30} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -93,7 +88,6 @@ func TestButterworthBand_ExtremeGains(t *testing.T) {
 		})
 	}
 }
-
 
 func TestButterworthBand_VariousFrequencies(t *testing.T) {
 	for _, f0 := range []float64{63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000} {
@@ -115,7 +109,6 @@ func TestButterworthBand_VariousFrequencies(t *testing.T) {
 	}
 }
 
-
 func TestButterworthBand_SmallGain(t *testing.T) {
 	sections, err := ButterworthBand(testSR, 1000, 500, 0.1, 4)
 	if err != nil {
@@ -129,7 +122,6 @@ func TestButterworthBand_SmallGain(t *testing.T) {
 		}
 	}
 }
-
 
 func TestButterworthBand_HighOrder_Stability(t *testing.T) {
 	for _, order := range []int{4, 6, 8, 10, 12, 14, 16} {
@@ -152,7 +144,6 @@ func TestButterworthBand_HighOrder_Stability(t *testing.T) {
 	}
 }
 
-
 func TestButterworthBand_NarrowBandwidth(t *testing.T) {
 	sections, err := ButterworthBand(testSR, 1000, 50, 12, 4)
 	if err != nil {
@@ -169,7 +160,6 @@ func TestButterworthBand_NarrowBandwidth(t *testing.T) {
 	}
 }
 
-
 func TestButterworthBand_WideBandwidth(t *testing.T) {
 	sections, err := ButterworthBand(testSR, 5000, 8000, 6, 4)
 	if err != nil {
@@ -181,7 +171,6 @@ func TestButterworthBand_WideBandwidth(t *testing.T) {
 		t.Errorf("wide band: center = %.4f dB, expected ~6", centerMag)
 	}
 }
-
 
 func TestButterworthBand_CoefficientConsistency(t *testing.T) {
 	f0 := 1000.0
@@ -205,5 +194,3 @@ func TestButterworthBand_CoefficientConsistency(t *testing.T) {
 // ============================================================
 // All designers: error handling
 // ============================================================
-
-

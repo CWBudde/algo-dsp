@@ -34,7 +34,6 @@ func TestChebyshev2LowShelf_InvalidParams(t *testing.T) {
 	}
 }
 
-
 func TestChebyshev2HighShelf_InvalidParams(t *testing.T) {
 	_, err := Chebyshev2HighShelf(0, 1000, 6, 0.5, 2)
 	if err == nil {
@@ -49,7 +48,6 @@ func TestChebyshev2HighShelf_InvalidParams(t *testing.T) {
 // ============================================================
 // Chebyshev Type II: passthrough at zero gain
 // ============================================================
-
 
 func TestChebyshev2LowShelf_ZeroGain(t *testing.T) {
 	sections, err := Chebyshev2LowShelf(testSR, 1000, 0, 0.5, 4)
@@ -68,7 +66,6 @@ func TestChebyshev2LowShelf_ZeroGain(t *testing.T) {
 // ============================================================
 // Chebyshev Type II: section count (same as Butterworth/Cheby1)
 // ============================================================
-
 
 func TestChebyshev2LowShelf_SectionCount(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 7, 8} {
@@ -89,7 +86,6 @@ func TestChebyshev2LowShelf_SectionCount(t *testing.T) {
 // Chebyshev Type II: DC and Nyquist gain accuracy
 // ============================================================
 
-
 func TestChebyshev2LowShelf_DCGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12, 20} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -104,7 +100,6 @@ func TestChebyshev2LowShelf_DCGain(t *testing.T) {
 		})
 	}
 }
-
 
 func TestChebyshev2LowShelf_NyquistGain(t *testing.T) {
 	// Chebyshev II has equiripple in the stopband (flat region).
@@ -124,7 +119,6 @@ func TestChebyshev2LowShelf_NyquistGain(t *testing.T) {
 	}
 }
 
-
 func TestChebyshev2HighShelf_NyquistGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12, 20} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -139,7 +133,6 @@ func TestChebyshev2HighShelf_NyquistGain(t *testing.T) {
 		})
 	}
 }
-
 
 func TestChebyshev2HighShelf_DCGain(t *testing.T) {
 	// DC should be near 0 dB for high-shelf, bounded by ripple.
@@ -162,7 +155,6 @@ func TestChebyshev2HighShelf_DCGain(t *testing.T) {
 // Chebyshev Type II: pole stability
 // ============================================================
 
-
 func TestChebyshev2LowShelf_Stability(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
 		t.Run(orderName(M), func(t *testing.T) {
@@ -174,7 +166,6 @@ func TestChebyshev2LowShelf_Stability(t *testing.T) {
 		})
 	}
 }
-
 
 func TestChebyshev2HighShelf_Stability(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
@@ -191,7 +182,6 @@ func TestChebyshev2HighShelf_Stability(t *testing.T) {
 // ============================================================
 // Chebyshev Type II: order sweep
 // ============================================================
-
 
 func TestChebyshev2LowShelf_VariousOrders(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
@@ -218,7 +208,6 @@ func TestChebyshev2LowShelf_VariousOrders(t *testing.T) {
 // Chebyshev Type II: stopband ripple bounded by rippleDB
 // ============================================================
 
-
 func TestChebyshev2LowShelf_StopbandRipple(t *testing.T) {
 	// For a low-shelf boost, the "stopband" (flat region) is the high-frequency
 	// portion above the cutoff. The ripple there should be bounded by rippleDB.
@@ -236,7 +225,6 @@ func TestChebyshev2LowShelf_StopbandRipple(t *testing.T) {
 		}
 	}
 }
-
 
 func TestChebyshev2HighShelf_StopbandRipple(t *testing.T) {
 	// For a high-shelf boost, the stopband is the low-frequency portion below cutoff.
@@ -258,7 +246,6 @@ func TestChebyshev2HighShelf_StopbandRipple(t *testing.T) {
 // Chebyshev Type II: extreme gains
 // ============================================================
 
-
 func TestChebyshev2LowShelf_ExtremeGains(t *testing.T) {
 	for _, gainDB := range []float64{-30, -20, -6, -1, 1, 6, 20, 30} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -278,7 +265,6 @@ func TestChebyshev2LowShelf_ExtremeGains(t *testing.T) {
 // ============================================================
 // Chebyshev Type II: various ripple values
 // ============================================================
-
 
 func TestChebyshev2LowShelf_VariousRipple(t *testing.T) {
 	ripples := []float64{0.1, 0.25, 0.5, 1.0, 2.0, 3.0}
@@ -306,7 +292,6 @@ func TestChebyshev2LowShelf_VariousRipple(t *testing.T) {
 // Chebyshev Type II: frequency sweep
 // ============================================================
 
-
 func TestChebyshev2LowShelf_VariousFrequencies(t *testing.T) {
 	for _, freq := range []float64{100, 300, 500, 1000, 2000, 5000, 10000} {
 		t.Run(freqName(freq), func(t *testing.T) {
@@ -322,7 +307,6 @@ func TestChebyshev2LowShelf_VariousFrequencies(t *testing.T) {
 		})
 	}
 }
-
 
 func TestChebyshev2HighShelf_VariousFrequencies(t *testing.T) {
 	for _, freq := range []float64{100, 300, 500, 1000, 2000, 5000, 10000} {
@@ -343,7 +327,6 @@ func TestChebyshev2HighShelf_VariousFrequencies(t *testing.T) {
 // ============================================================
 // Chebyshev Type II: boost/cut inversion
 // ============================================================
-
 
 func TestChebyshev2LowShelf_BoostCutInversion(t *testing.T) {
 	boost, err := Chebyshev2LowShelf(testSR, 1000, 12, 0.5, 6)
@@ -378,7 +361,6 @@ func TestChebyshev2LowShelf_BoostCutInversion(t *testing.T) {
 	}
 }
 
-
 func TestChebyshev2HighShelf_BoostCutInversion(t *testing.T) {
 	boost, err := Chebyshev2HighShelf(testSR, 1000, 12, 0.5, 6)
 	if err != nil {
@@ -403,7 +385,6 @@ func TestChebyshev2HighShelf_BoostCutInversion(t *testing.T) {
 // ============================================================
 // Chebyshev Type II: monotonic shelf region
 // ============================================================
-
 
 func TestChebyshev2LowShelf_MonotonicShelfRegion(t *testing.T) {
 	// Chebyshev II should be monotonic in the passband (shelf region).
@@ -430,7 +411,6 @@ func TestChebyshev2LowShelf_MonotonicShelfRegion(t *testing.T) {
 // Chebyshev Type II: flat stopband verification
 // ============================================================
 
-
 func TestChebyshev2_FlatStopband(t *testing.T) {
 	// Chebyshev II should have a well-controlled stopband (flat region).
 	// The maximum deviation in the stopband should be bounded by rippleDB.
@@ -456,5 +436,3 @@ func TestChebyshev2_FlatStopband(t *testing.T) {
 		t.Errorf("stopband max deviation = %.4f dB, exceeds ripple bound %.1f dB", maxDev, rippleDB)
 	}
 }
-
-

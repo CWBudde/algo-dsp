@@ -13,7 +13,7 @@
     <main class="app">
       <header class="hero">
         <h1>algo-dsp Web Demo</h1>
-        <p>Step synthesizer (pure tones + decay) with realtime 3-band EQ.</p>
+        <p>Step synthesizer (pure tones + decay) with realtime 5-node EQ.</p>
       </header>
 
       <section class="panel transport">
@@ -41,12 +41,7 @@
         <h2>EQ</h2>
         <canvas id="eq-canvas" height="400" aria-label="Interactive EQ graph"></canvas>
         <div class="eq-meta">
-          <p id="eq-readout">Low 100 Hz / 0.0 dB, Mid 1000 Hz / 0.0 dB, High 6000 Hz / 0.0 dB</p>
-          <label>
-            Mid Q
-            <input id="mid-q" type="range" min="0.2" max="8" step="0.1" value="1.2" />
-            <span id="mid-q-value">1.2</span>
-          </label>
+          <p id="eq-readout">Hover a node for details.</p>
           <label>
             Master
             <input id="master" type="range" min="0" max="1" step="0.01" value="0.75" />

@@ -857,8 +857,8 @@ _Possible approaches:_
 #### 17.5 Future: Elliptic shelving filters
 
 - [ ] Implement elliptic shelving filters once Chebyshev II is working.
-  The elliptic case also has transmission zeros, so it will face similar challenges
-  to Chebyshev II. The elliptic function machinery already exists in `band/elliptic.go`.
+      The elliptic case also has transmission zeros, so it will face similar challenges
+      to Chebyshev II. The elliptic function machinery already exists in `band/elliptic.go`.
 
 #### 17.6 Exit criteria
 

@@ -22,14 +22,22 @@ const state = {
   scheduler: null,
   steps: [],
   eqUI: null,
+  hoverInfo: null,
   eqParams: {
-    lowFreq: 100,
+    hpFreq: 40,
+    hpQ: 0.707,
+    lowFreq: 120,
     lowGain: 0,
+    lowQ: 0.707,
     midFreq: 1000,
     midGain: 0,
-    highFreq: 6000,
-    highGain: 0,
     midQ: 1.2,
+    highFreq: 5000,
+    highGain: 0,
+    highQ: 0.707,
+    lpFreq: 12000,
+    lpGain: 0,
+    lpQ: 0.707,
     master: 0.75,
   },
   dsp: {
@@ -49,8 +57,6 @@ const el = {
   steps: document.getElementById("steps"),
   eqCanvas: document.getElementById("eq-canvas"),
   eqReadout: document.getElementById("eq-readout"),
-  midQ: document.getElementById("mid-q"),
-  midQValue: document.getElementById("mid-q-value"),
   master: document.getElementById("master"),
   masterValue: document.getElementById("master-value"),
 };
@@ -94,9 +100,7 @@ async function ensureDSP(sampleRate) {
   if (state.dsp.ready) {
     if (Math.abs(state.dsp.sampleRate - sampleRate) > 1) {
       const initErr = state.dsp.api.init(sampleRate);
-      if (typeof initErr === "string" && initErr.length > 0) {
-        throw new Error(initErr);
-      }
+      if (typeof initErr === "string" && initErr.length > 0) throw new Error(initErr);
       state.dsp.sampleRate = sampleRate;
       syncTransportToDSP();
       syncStepsToDSP();
@@ -105,9 +109,7 @@ async function ensureDSP(sampleRate) {
     }
     return;
   }
-  if (typeof Go === "undefined") {
-    throw new Error("wasm_exec.js missing. Build wasm assets first.");
-  }
+  if (typeof Go === "undefined") throw new Error("wasm_exec.js missing. Build wasm assets first.");
 
   const go = new Go();
   let result;
@@ -125,9 +127,7 @@ async function ensureDSP(sampleRate) {
   if (!api) throw new Error("AlgoDSPDemo API not found after wasm init");
 
   const initErr = api.init(sampleRate);
-  if (typeof initErr === "string" && initErr.length > 0) {
-    throw new Error(initErr);
-  }
+  if (typeof initErr === "string" && initErr.length > 0) throw new Error(initErr);
 
   state.dsp.ready = true;
   state.dsp.api = api;
@@ -165,13 +165,20 @@ async function setupAudio() {
 }
 
 function updateEQText() {
-  const p = state.eqParams;
-  el.midQValue.textContent = p.midQ.toFixed(1);
-  el.masterValue.textContent = p.master.toFixed(2);
-  el.eqReadout.textContent =
-    `Low ${Math.round(p.lowFreq)} Hz / ${p.lowGain.toFixed(1)} dB, ` +
-    `Mid ${Math.round(p.midFreq)} Hz / ${p.midGain.toFixed(1)} dB, ` +
-    `High ${Math.round(p.highFreq)} Hz / ${p.highGain.toFixed(1)} dB`;
+  el.masterValue.textContent = state.eqParams.master.toFixed(2);
+
+  const h = state.hoverInfo;
+  if (!h) {
+    el.eqReadout.textContent = "Hover a node for details. Shift + wheel adjusts that node Q.";
+    return;
+  }
+
+  if (h.key === "hp" || h.key === "lp") {
+    el.eqReadout.textContent = `${h.label}: ${Math.round(h.freq)} Hz, Q ${h.q.toFixed(2)}${h.key === "lp" ? `, ${h.gain.toFixed(1)} dB` : ""}`;
+    return;
+  }
+
+  el.eqReadout.textContent = `${h.label}: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, Q ${h.q.toFixed(2)}`;
 }
 
 function stepDurationSeconds() {
@@ -210,9 +217,7 @@ function syncStepsToDSP() {
 function syncEQToDSP() {
   if (!state.dsp.ready || !state.dsp.api) return;
   const err = state.dsp.api.setEQ(state.eqParams);
-  if (typeof err === "string" && err.length > 0) {
-    console.error("setEQ failed", err);
-  }
+  if (typeof err === "string" && err.length > 0) console.error("setEQ failed", err);
 }
 
 function startSequencer() {
@@ -248,6 +253,10 @@ function initEQCanvas() {
       syncEQToDSP();
       updateEQText();
     },
+    onHover: (info) => {
+      state.hoverInfo = info;
+      updateEQText();
+    },
     getSampleRate: () => state.audioCtx?.sampleRate ?? 48000,
     getResponseDB: (freqs) => {
       if (!state.dsp.ready || !state.dsp.api) return null;
@@ -276,10 +285,6 @@ function bindEvents() {
       el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
       syncTransportToDSP();
     });
-  });
-
-  el.midQ.addEventListener("input", () => {
-    state.eqUI.setParams({ midQ: Number(el.midQ.value) });
   });
 
   el.master.addEventListener("input", () => {

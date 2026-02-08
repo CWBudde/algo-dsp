@@ -3,6 +3,7 @@
   const FREQ_MAX = 20000;
   const GAIN_MIN = -18;
   const GAIN_MAX = 18;
+  const EDGE_Q = 1 / Math.sqrt(2);
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -23,6 +24,34 @@
     const numPow = numRe * numRe + numIm * numIm;
     const denPow = denRe * denRe + denIm * denIm;
     return Math.sqrt(Math.max(1e-20, numPow / Math.max(1e-20, denPow)));
+  }
+
+  function lowpassCoeffs(freq, q, sampleRate) {
+    const w0 = (2 * Math.PI * freq) / sampleRate;
+    const alpha = Math.sin(w0) / (2 * q);
+    const cosw0 = Math.cos(w0);
+    return {
+      b0: (1 - cosw0) / 2,
+      b1: 1 - cosw0,
+      b2: (1 - cosw0) / 2,
+      a0: 1 + alpha,
+      a1: -2 * cosw0,
+      a2: 1 - alpha,
+    };
+  }
+
+  function highpassCoeffs(freq, q, sampleRate) {
+    const w0 = (2 * Math.PI * freq) / sampleRate;
+    const alpha = Math.sin(w0) / (2 * q);
+    const cosw0 = Math.cos(w0);
+    return {
+      b0: (1 + cosw0) / 2,
+      b1: -(1 + cosw0),
+      b2: (1 + cosw0) / 2,
+      a0: 1 + alpha,
+      a1: -2 * cosw0,
+      a2: 1 - alpha,
+    };
   }
 
   function peakingCoeffs(freq, gainDB, q, sampleRate) {
@@ -79,21 +108,26 @@
       this.canvas = canvas;
       this.ctx = canvas.getContext("2d");
       this.onChange = options.onChange || (() => {});
+      this.onHover = options.onHover || (() => {});
       this.getSampleRate = options.getSampleRate || (() => 48000);
       this.getResponseDB = options.getResponseDB || null;
       this.params = {
-        lowFreq: 100,
+        hpFreq: 40,
+        lowFreq: 120,
         lowGain: 0,
         midFreq: 1000,
         midGain: 0,
-        highFreq: 6000,
+        highFreq: 5000,
         highGain: 0,
+        lpFreq: 12000,
+        lpGain: 0,
         midQ: 1.2,
         master: 0.75,
         ...(options.initialParams || {}),
       };
       this.nodes = [];
       this.activeNode = null;
+      this.hoverNode = null;
       this.cssWidth = 0;
       this.cssHeight = 0;
 
@@ -106,26 +140,31 @@
       const emit = opts.emit !== false;
       Object.assign(this.params, partial);
       this.constrainOrder();
-      this.draw();
       if (emit) this.onChange({ ...this.params });
-    }
-
-    getParams() {
-      return { ...this.params };
+      this.draw();
     }
 
     constrainOrder() {
+      this.params.hpFreq = clamp(this.params.hpFreq, FREQ_MIN, FREQ_MAX);
       this.params.lowFreq = clamp(this.params.lowFreq, FREQ_MIN, FREQ_MAX);
       this.params.midFreq = clamp(this.params.midFreq, FREQ_MIN, FREQ_MAX);
       this.params.highFreq = clamp(this.params.highFreq, FREQ_MIN, FREQ_MAX);
+      this.params.lpFreq = clamp(this.params.lpFreq, FREQ_MIN, FREQ_MAX);
 
-      this.params.midFreq = clamp(this.params.midFreq, this.params.lowFreq * 1.25, FREQ_MAX);
-      this.params.highFreq = clamp(this.params.highFreq, this.params.midFreq * 1.25, FREQ_MAX);
-      this.params.lowFreq = clamp(this.params.lowFreq, FREQ_MIN, this.params.midFreq / 1.25);
+      this.params.lowFreq = clamp(this.params.lowFreq, this.params.hpFreq * 1.15, FREQ_MAX);
+      this.params.midFreq = clamp(this.params.midFreq, this.params.lowFreq * 1.15, FREQ_MAX);
+      this.params.highFreq = clamp(this.params.highFreq, this.params.midFreq * 1.15, FREQ_MAX);
+      this.params.lpFreq = clamp(this.params.lpFreq, this.params.highFreq * 1.15, FREQ_MAX);
+
+      this.params.hpFreq = clamp(this.params.hpFreq, FREQ_MIN, this.params.lowFreq / 1.15);
+      this.params.lowFreq = clamp(this.params.lowFreq, this.params.hpFreq * 1.15, this.params.midFreq / 1.15);
+      this.params.midFreq = clamp(this.params.midFreq, this.params.lowFreq * 1.15, this.params.highFreq / 1.15);
+      this.params.highFreq = clamp(this.params.highFreq, this.params.midFreq * 1.15, this.params.lpFreq / 1.15);
 
       this.params.lowGain = clamp(this.params.lowGain, GAIN_MIN, GAIN_MAX);
       this.params.midGain = clamp(this.params.midGain, GAIN_MIN, GAIN_MAX);
       this.params.highGain = clamp(this.params.highGain, GAIN_MIN, GAIN_MAX);
+      this.params.lpGain = clamp(this.params.lpGain, GAIN_MIN, GAIN_MAX);
       this.params.midQ = clamp(this.params.midQ, 0.2, 8);
       this.params.master = clamp(this.params.master, 0, 1);
     }
@@ -166,16 +205,25 @@
       return GAIN_MIN + t * (GAIN_MAX - GAIN_MIN);
     }
 
-    eqMagnitude(freq) {
+    filterMagnitude(key, freq) {
       const p = this.params;
       const sampleRate = this.getSampleRate();
-      const low = lowShelfCoeffs(p.lowFreq, p.lowGain, sampleRate);
-      const mid = peakingCoeffs(p.midFreq, p.midGain, p.midQ, sampleRate);
-      const high = highShelfCoeffs(p.highFreq, p.highGain, sampleRate);
+      if (key === "hp") return biquadMagnitudeAt(freq, sampleRate, highpassCoeffs(p.hpFreq, EDGE_Q, sampleRate));
+      if (key === "low") return biquadMagnitudeAt(freq, sampleRate, lowShelfCoeffs(p.lowFreq, p.lowGain, sampleRate));
+      if (key === "mid") return biquadMagnitudeAt(freq, sampleRate, peakingCoeffs(p.midFreq, p.midGain, p.midQ, sampleRate));
+      if (key === "high") return biquadMagnitudeAt(freq, sampleRate, highShelfCoeffs(p.highFreq, p.highGain, sampleRate));
+      const lpMag = biquadMagnitudeAt(freq, sampleRate, lowpassCoeffs(p.lpFreq, EDGE_Q, sampleRate));
+      return lpMag * Math.pow(10, p.lpGain / 20);
+    }
+
+    eqMagnitude(freq) {
       return (
-        biquadMagnitudeAt(freq, sampleRate, low) *
-        biquadMagnitudeAt(freq, sampleRate, mid) *
-        biquadMagnitudeAt(freq, sampleRate, high)
+        this.filterMagnitude("hp", freq) *
+        this.filterMagnitude("low", freq) *
+        this.filterMagnitude("mid", freq) *
+        this.filterMagnitude("high", freq) *
+        this.filterMagnitude("lp", freq) *
+        this.params.master
       );
     }
 
@@ -186,7 +234,11 @@
           return response;
         }
       }
-      return freqs.map((freq) => 20 * Math.log10(Math.max(1e-6, this.eqMagnitude(freq) * this.params.master)));
+      return freqs.map((freq) => 20 * Math.log10(Math.max(1e-6, this.eqMagnitude(freq))));
+    }
+
+    computeSingleFilterDB(key, freqs) {
+      return freqs.map((freq) => 20 * Math.log10(Math.max(1e-6, this.filterMagnitude(key, freq))));
     }
 
     resize() {
@@ -233,14 +285,10 @@
 
       ctx.lineWidth = 1;
       ctx.strokeStyle = "#ece1d2";
-      minors.forEach((f) => {
-        drawV(xAt(f), b.top, b.bottom);
-      });
+      minors.forEach((f) => drawV(xAt(f), b.top, b.bottom));
 
       ctx.strokeStyle = "#d4c6b2";
-      majors.forEach((f) => {
-        drawV(xAt(f), b.top, b.bottom);
-      });
+      majors.forEach((f) => drawV(xAt(f), b.top, b.bottom));
 
       [-18, -12, -6, 0, 6, 12, 18].forEach((g) => {
         const y = b.bottom - ((g - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
@@ -280,6 +328,49 @@
       ctx.textAlign = "left";
     }
 
+    drawCurve(ctx, b, responseDB, color, width) {
+      const n = responseDB.length;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(b.left, b.top, b.right - b.left, b.bottom - b.top);
+      ctx.clip();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      for (let i = 0; i < n; i += 1) {
+        const t = i / (n - 1);
+        const db = responseDB[i];
+        const x = b.left + t * (b.right - b.left);
+        const y = b.bottom - ((clamp(db, GAIN_MIN, GAIN_MAX) - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    nodeDescriptors() {
+      const p = this.params;
+      const yZero = this.gainToY(0);
+      return [
+        { key: "hp", label: "Highpass", x: this.freqToX(p.hpFreq), y: yZero, color: "#8a4f1f" },
+        { key: "low", label: "Low Shelf", x: this.freqToX(p.lowFreq), y: this.gainToY(p.lowGain), color: "#c24d2c" },
+        { key: "mid", label: "Peak", x: this.freqToX(p.midFreq), y: this.gainToY(p.midGain), color: "#225d7d" },
+        { key: "high", label: "High Shelf", x: this.freqToX(p.highFreq), y: this.gainToY(p.highGain), color: "#3b7d44" },
+        { key: "lp", label: "Lowpass", x: this.freqToX(p.lpFreq), y: this.gainToY(p.lpGain), color: "#6a4aa5" },
+      ];
+    }
+
+    hoverInfoForKey(key) {
+      const p = this.params;
+      if (key === "hp") return { key, label: "Highpass", freq: p.hpFreq, gain: 0 };
+      if (key === "low") return { key, label: "Low Shelf", freq: p.lowFreq, gain: p.lowGain };
+      if (key === "mid") return { key, label: "Peak", freq: p.midFreq, gain: p.midGain };
+      if (key === "high") return { key, label: "High Shelf", freq: p.highFreq, gain: p.highGain };
+      if (key === "lp") return { key, label: "Lowpass", freq: p.lpFreq, gain: p.lpGain };
+      return null;
+    }
+
     draw() {
       const w = this.cssWidth;
       const h = this.cssHeight;
@@ -298,28 +389,25 @@
         const t = i / (samples - 1);
         freqs[i] = Math.pow(10, Math.log10(FREQ_MIN) + t * (Math.log10(FREQ_MAX) - Math.log10(FREQ_MIN)));
       }
-      const responseDB = this.computeResponseDB(freqs);
 
-      ctx.strokeStyle = "#225d7d";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (let i = 0; i < samples; i += 1) {
-        const t = i / (samples - 1);
-        const db = responseDB[i];
-        const x = b.left + t * (b.right - b.left);
-        const y = b.bottom - ((clamp(db, GAIN_MIN - 6, GAIN_MAX + 6) - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+      const focusKey = this.activeNode || this.hoverNode;
+      if (focusKey) {
+        const singleDB = this.computeSingleFilterDB(focusKey, freqs);
+        const focusColor = {
+          hp: "138,79,31",
+          low: "194,77,44",
+          mid: "34,93,125",
+          high: "59,125,68",
+          lp: "106,74,165",
+        }[focusKey];
+        const color = this.activeNode ? `rgba(${focusColor}, 0.72)` : `rgba(${focusColor}, 0.28)`;
+        this.drawCurve(ctx, b, singleDB, color, this.activeNode ? 2.5 : 2);
       }
-      ctx.stroke();
 
-      const p = this.params;
-      this.nodes = [
-        { key: "low", x: this.freqToX(p.lowFreq), y: this.gainToY(p.lowGain), color: "#c24d2c" },
-        { key: "mid", x: this.freqToX(p.midFreq), y: this.gainToY(p.midGain), color: "#225d7d" },
-        { key: "high", x: this.freqToX(p.highFreq), y: this.gainToY(p.highGain), color: "#3b7d44" },
-      ];
+      const responseDB = this.computeResponseDB(freqs);
+      this.drawCurve(ctx, b, responseDB, "#225d7d", 2.4);
 
+      this.nodes = this.nodeDescriptors();
       this.nodes.forEach((n) => {
         ctx.fillStyle = n.color;
         ctx.beginPath();
@@ -352,19 +440,25 @@
     dragNode(node, x, y) {
       const gain = clamp(this.yToGain(y), GAIN_MIN, GAIN_MAX);
 
-      if (node.key === "low") {
-        this.params.lowFreq = clamp(this.xToFreq(x), FREQ_MIN, this.params.midFreq / 1.25);
+      if (node.key === "hp") {
+        this.params.hpFreq = clamp(this.xToFreq(x), FREQ_MIN, this.params.lowFreq / 1.15);
+      } else if (node.key === "low") {
+        this.params.lowFreq = clamp(this.xToFreq(x), this.params.hpFreq * 1.15, this.params.midFreq / 1.15);
         this.params.lowGain = gain;
       } else if (node.key === "mid") {
-        this.params.midFreq = clamp(this.xToFreq(x), this.params.lowFreq * 1.25, this.params.highFreq / 1.25);
+        this.params.midFreq = clamp(this.xToFreq(x), this.params.lowFreq * 1.15, this.params.highFreq / 1.15);
         this.params.midGain = gain;
-      } else {
-        this.params.highFreq = clamp(this.xToFreq(x), this.params.midFreq * 1.25, FREQ_MAX);
+      } else if (node.key === "high") {
+        this.params.highFreq = clamp(this.xToFreq(x), this.params.midFreq * 1.15, this.params.lpFreq / 1.15);
         this.params.highGain = gain;
+      } else {
+        this.params.lpFreq = clamp(this.xToFreq(x), this.params.highFreq * 1.15, FREQ_MAX);
+        this.params.lpGain = gain;
       }
 
-      this.draw();
+      this.onHover(this.hoverInfoForKey(node.key));
       this.onChange({ ...this.params });
+      this.draw();
     }
 
     bindEvents() {
@@ -373,7 +467,10 @@
         const node = this.nodeAt(p.x, p.y);
         if (!node) return;
         this.activeNode = node.key;
+        this.hoverNode = node.key;
+        this.onHover(this.hoverInfoForKey(node.key));
         this.canvas.setPointerCapture(ev.pointerId);
+        this.draw();
       });
 
       this.canvas.addEventListener("pointermove", (ev) => {
@@ -383,19 +480,33 @@
           if (node) this.dragNode(node, p.x, p.y);
           return;
         }
+
         const hover = this.nodeAt(p.x, p.y);
+        const newKey = hover ? hover.key : null;
+        if (newKey !== this.hoverNode) {
+          this.hoverNode = newKey;
+          this.onHover(this.hoverInfoForKey(newKey));
+          this.draw();
+        }
         this.canvas.style.cursor = hover ? "grab" : "crosshair";
       });
 
       const release = () => {
         this.activeNode = null;
-        this.canvas.style.cursor = "crosshair";
+        this.canvas.style.cursor = this.hoverNode ? "grab" : "crosshair";
+        this.draw();
       };
 
       this.canvas.addEventListener("pointerup", release);
       this.canvas.addEventListener("pointercancel", release);
       this.canvas.addEventListener("pointerleave", () => {
-        if (!this.activeNode) this.canvas.style.cursor = "crosshair";
+        this.activeNode = null;
+        if (this.hoverNode !== null) {
+          this.hoverNode = null;
+          this.onHover(null);
+          this.draw();
+        }
+        this.canvas.style.cursor = "crosshair";
       });
 
       window.addEventListener("resize", () => this.resize());

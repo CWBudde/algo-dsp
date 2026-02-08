@@ -1,9 +1,10 @@
 package band
 
 import (
-	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	"math"
 	"testing"
+
+	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
 
 // ============================================================
@@ -24,7 +25,6 @@ func TestBandParams_Valid(t *testing.T) {
 		t.Errorf("wb = %v, expected %v", wb, expectWb)
 	}
 }
-
 
 func TestBandParams_Errors(t *testing.T) {
 	tests := []struct {
@@ -51,7 +51,6 @@ func TestBandParams_Errors(t *testing.T) {
 		})
 	}
 }
-
 
 func TestBWGainDB_Functions(t *testing.T) {
 	if !almostEqual(butterworthBWGainDB(6), 3, 1e-12) {
@@ -83,7 +82,6 @@ func TestBWGainDB_Functions(t *testing.T) {
 	}
 }
 
-
 func TestPassthroughSections(t *testing.T) {
 	s := passthroughSections()
 	if len(s) != 1 {
@@ -93,7 +91,6 @@ func TestPassthroughSections(t *testing.T) {
 		t.Errorf("passthrough section not unity: %+v", s[0])
 	}
 }
-
 
 func TestDb2Lin(t *testing.T) {
 	if !almostEqual(db2Lin(0), 1.0, 1e-12) {
@@ -146,5 +143,3 @@ func testBandDesign(t *testing.T, name string, designFn func(float64, float64, f
 		}
 	}
 }
-
-

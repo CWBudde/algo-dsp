@@ -1,8 +1,9 @@
 package pass
 
 import (
+	"math"
+
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
-	"github.com/cwbudde/algo-dsp/dsp/filter/design"
 )
 
 // ButterworthLP designs a lowpass Butterworth cascade.
@@ -17,7 +18,7 @@ func ButterworthLP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 	n2 := order / 2
 	for i := n2 - 1; i >= 0; i-- {
 		q := butterworthQ(order, i)
-		sections = append(sections, design.Lowpass(freq, q, sampleRate))
+		sections = append(sections, lowpassRBJ(freq, q, sampleRate))
 	}
 	if order%2 != 0 {
 		sections = append(sections, butterworthFirstOrderLP(freq, sampleRate))
@@ -37,10 +38,74 @@ func ButterworthHP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 	n2 := order / 2
 	for i := n2 - 1; i >= 0; i-- {
 		q := butterworthQ(order, i)
-		sections = append(sections, design.Highpass(freq, q, sampleRate))
+		sections = append(sections, highpassRBJ(freq, q, sampleRate))
 	}
 	if order%2 != 0 {
 		sections = append(sections, butterworthFirstOrderHP(freq, sampleRate))
 	}
 	return sections
+}
+
+// lowpassRBJ designs a lowpass biquad using the RBJ cookbook formula.
+func lowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
+	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+		return biquad.Coefficients{}
+	}
+	if q <= 0 {
+		q = 1 / math.Sqrt2
+	}
+	w0 := 2 * math.Pi * freq / sampleRate
+	cw := math.Cos(w0)
+	sw := math.Sin(w0)
+	alpha := sw / (2 * q)
+
+	b0 := (1 - cw) / 2
+	b1 := 1 - cw
+	b2 := (1 - cw) / 2
+	a0 := 1 + alpha
+	a1 := -2 * cw
+	a2 := 1 - alpha
+
+	if a0 == 0 {
+		return biquad.Coefficients{}
+	}
+	return biquad.Coefficients{
+		B0: b0 / a0,
+		B1: b1 / a0,
+		B2: b2 / a0,
+		A1: a1 / a0,
+		A2: a2 / a0,
+	}
+}
+
+// highpassRBJ designs a highpass biquad using the RBJ cookbook formula.
+func highpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
+	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+		return biquad.Coefficients{}
+	}
+	if q <= 0 {
+		q = 1 / math.Sqrt2
+	}
+	w0 := 2 * math.Pi * freq / sampleRate
+	cw := math.Cos(w0)
+	sw := math.Sin(w0)
+	alpha := sw / (2 * q)
+
+	b0 := (1 + cw) / 2
+	b1 := -(1 + cw)
+	b2 := (1 + cw) / 2
+	a0 := 1 + alpha
+	a1 := -2 * cw
+	a2 := 1 - alpha
+
+	if a0 == 0 {
+		return biquad.Coefficients{}
+	}
+	return biquad.Coefficients{
+		B0: b0 / a0,
+		B1: b1 / a0,
+		B2: b2 / a0,
+		A1: a1 / a0,
+		A2: a2 / a0,
+	}
 }

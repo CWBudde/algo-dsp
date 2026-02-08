@@ -430,3 +430,35 @@ func correctedCheby2HP(freq float64, order int, ripple float64, sampleRate float
 	}
 	return out
 }
+
+// butterworthFirstOrderLP and butterworthFirstOrderHP are test helpers
+// used by legacy test reference implementations
+func butterworthFirstOrderLP(freq, sampleRate float64) biquad.Coefficients {
+	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+		return biquad.Coefficients{}
+	}
+	k := math.Tan(math.Pi * freq / sampleRate)
+	norm := 1 / (1 + k)
+	return biquad.Coefficients{
+		B0: k * norm,
+		B1: k * norm,
+		B2: 0,
+		A1: (k - 1) * norm,
+		A2: 0,
+	}
+}
+
+func butterworthFirstOrderHP(freq, sampleRate float64) biquad.Coefficients {
+	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+		return biquad.Coefficients{}
+	}
+	k := math.Tan(math.Pi * freq / sampleRate)
+	norm := 1 / (1 + k)
+	return biquad.Coefficients{
+		B0: norm,
+		B1: -norm,
+		B2: 0,
+		A1: (k - 1) * norm,
+		A2: 0,
+	}
+}
