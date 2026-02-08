@@ -24,6 +24,14 @@
     highshelf: "High Shelf",
     lowshelf: "Low Shelf",
   };
+  const FAMILY_OPTIONS = ["rbj", "butterworth", "chebyshev1", "chebyshev2", "elliptic"];
+  const FAMILY_LABELS = {
+    rbj: "RBJ",
+    butterworth: "Butterworth",
+    chebyshev1: "Chebyshev 1",
+    chebyshev2: "Chebyshev 2",
+    elliptic: "Elliptic",
+  };
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -181,22 +189,27 @@
       this.getResponseDB = options.getResponseDB || null;
       this.getSpectrumDB = options.getSpectrumDB || null;
       this.params = {
+        hpFamily: "rbj",
         hpType: "highpass",
         hpFreq: 40,
         hpGain: 0,
         hpQ: 0.707,
+        lowFamily: "rbj",
         lowType: "lowshelf",
         lowFreq: 120,
         lowGain: 0,
         lowQ: 0.707,
+        midFamily: "rbj",
         midType: "peak",
         midFreq: 1000,
         midGain: 0,
         midQ: 1.2,
+        highFamily: "rbj",
         highType: "highshelf",
         highFreq: 5000,
         highGain: 0,
         highQ: 0.707,
+        lpFamily: "rbj",
         lpType: "lowpass",
         lpFreq: 12000,
         lpGain: 0,
@@ -248,6 +261,11 @@
       this.params.midType = this.normalizeTypeForKey("mid", this.params.midType);
       this.params.highType = this.normalizeTypeForKey("high", this.params.highType);
       this.params.lpType = this.normalizeTypeForKey("lp", this.params.lpType);
+      this.params.hpFamily = this.normalizeFamilyForKeyType("hp", this.params.hpType, this.params.hpFamily);
+      this.params.lowFamily = this.normalizeFamilyForKeyType("low", this.params.lowType, this.params.lowFamily);
+      this.params.midFamily = this.normalizeFamilyForKeyType("mid", this.params.midType, this.params.midFamily);
+      this.params.highFamily = this.normalizeFamilyForKeyType("high", this.params.highType, this.params.highFamily);
+      this.params.lpFamily = this.normalizeFamilyForKeyType("lp", this.params.lpType, this.params.lpFamily);
       this.params.master = clamp(this.params.master, 0, 1);
     }
 
@@ -257,6 +275,15 @@
       if (key === "mid") return "midType";
       if (key === "high") return "highType";
       if (key === "lp") return "lpType";
+      return null;
+    }
+
+    familyFieldForKey(key) {
+      if (key === "hp") return "hpFamily";
+      if (key === "low") return "lowFamily";
+      if (key === "mid") return "midFamily";
+      if (key === "high") return "highFamily";
+      if (key === "lp") return "lpFamily";
       return null;
     }
 
@@ -272,12 +299,43 @@
       return this.normalizeTypeForKey(key, this.params[field]);
     }
 
+    normalizeFamily(value) {
+      if (FAMILY_OPTIONS.includes(value)) return value;
+      return "rbj";
+    }
+
+    supportsFamilyForType(type, family) {
+      if (family === "rbj") return true;
+      if (family === "elliptic") return type === "bandpass";
+      if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2") {
+        return type === "highpass" || type === "lowpass" || type === "bandpass" || type === "lowshelf" || type === "highshelf";
+      }
+      return false;
+    }
+
+    normalizeFamilyForKeyType(key, type, family) {
+      const normalized = this.normalizeFamily(family);
+      if (this.supportsFamilyForType(type, normalized)) return normalized;
+      return "rbj";
+    }
+
+    familyForKey(key) {
+      const familyField = this.familyFieldForKey(key);
+      if (!familyField) return "rbj";
+      return this.normalizeFamilyForKeyType(key, this.typeForKey(key), this.params[familyField]);
+    }
+
+    familyLabel(family) {
+      return FAMILY_LABELS[family] || family;
+    }
+
     typeLabel(type) {
       return TYPE_LABELS[type] || type;
     }
 
-    typeUsesGainInCoeffs(type) {
-      return type === "peak" || type === "lowshelf" || type === "highshelf";
+    typeUsesGainInCoeffs(family, type) {
+      if (type === "peak" || type === "lowshelf" || type === "highshelf") return true;
+      return type === "bandpass" && family !== "rbj";
     }
 
     labelForKey(key) {
@@ -335,7 +393,8 @@
       const p = this.params;
       const sampleRate = this.getSampleRate();
       const type = this.typeForKey(key);
-      const typeHasEmbeddedGain = this.typeUsesGainInCoeffs(type);
+      const family = this.familyForKey(key);
+      const typeHasEmbeddedGain = this.typeUsesGainInCoeffs(family, type);
       if (key === "hp") {
         const hpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.hpFreq, 0, p.hpQ, sampleRate));
         return hpMag * Math.pow(10, p.hpGain / 20);
@@ -561,11 +620,11 @@
 
     hoverInfoForKey(key) {
       const p = this.params;
-      if (key === "hp") return { key, label: this.labelForKey("hp"), type: this.typeForKey("hp"), freq: p.hpFreq, gain: p.hpGain, q: p.hpQ };
-      if (key === "low") return { key, label: this.labelForKey("low"), type: this.typeForKey("low"), freq: p.lowFreq, gain: p.lowGain, q: p.lowQ };
-      if (key === "mid") return { key, label: this.labelForKey("mid"), type: this.typeForKey("mid"), freq: p.midFreq, gain: p.midGain, q: p.midQ };
-      if (key === "high") return { key, label: this.labelForKey("high"), type: this.typeForKey("high"), freq: p.highFreq, gain: p.highGain, q: p.highQ };
-      if (key === "lp") return { key, label: this.labelForKey("lp"), type: this.typeForKey("lp"), freq: p.lpFreq, gain: p.lpGain, q: p.lpQ };
+      if (key === "hp") return { key, label: this.labelForKey("hp"), type: this.typeForKey("hp"), family: this.familyForKey("hp"), freq: p.hpFreq, gain: p.hpGain, q: p.hpQ };
+      if (key === "low") return { key, label: this.labelForKey("low"), type: this.typeForKey("low"), family: this.familyForKey("low"), freq: p.lowFreq, gain: p.lowGain, q: p.lowQ };
+      if (key === "mid") return { key, label: this.labelForKey("mid"), type: this.typeForKey("mid"), family: this.familyForKey("mid"), freq: p.midFreq, gain: p.midGain, q: p.midQ };
+      if (key === "high") return { key, label: this.labelForKey("high"), type: this.typeForKey("high"), family: this.familyForKey("high"), freq: p.highFreq, gain: p.highGain, q: p.highQ };
+      if (key === "lp") return { key, label: this.labelForKey("lp"), type: this.typeForKey("lp"), family: this.familyForKey("lp"), freq: p.lpFreq, gain: p.lpGain, q: p.lpQ };
       return null;
     }
 
@@ -589,11 +648,16 @@
     renderContextMenu(key) {
       const menu = this.contextMenu;
       const selected = this.typeForKey(key);
+      const selectedFamily = this.familyForKey(key);
       menu.innerHTML = "";
       const title = document.createElement("div");
       title.className = "eq-context-menu-title";
-      title.textContent = "Filter Type";
+      title.textContent = "Filter";
       menu.appendChild(title);
+      const typeHeader = document.createElement("div");
+      typeHeader.className = "eq-context-menu-section";
+      typeHeader.textContent = "Type";
+      menu.appendChild(typeHeader);
       for (const type of NODE_TYPE_OPTIONS[key] || []) {
         const button = document.createElement("button");
         button.type = "button";
@@ -602,8 +666,35 @@
         button.textContent = this.typeLabel(type);
         button.addEventListener("click", () => {
           const field = this.typeFieldForKey(key);
+          const familyField = this.familyFieldForKey(key);
           if (!field) return;
           this.params[field] = type;
+          if (familyField) {
+            this.params[familyField] = this.normalizeFamilyForKeyType(key, type, this.params[familyField]);
+          }
+          this.hideContextMenu();
+          this.onHover(this.hoverInfoForKey(key));
+          this.onChange({ ...this.params });
+          this.draw();
+        });
+        menu.appendChild(button);
+      }
+      const familyHeader = document.createElement("div");
+      familyHeader.className = "eq-context-menu-section";
+      familyHeader.textContent = "Design";
+      menu.appendChild(familyHeader);
+      const currentType = this.typeForKey(key);
+      for (const family of FAMILY_OPTIONS) {
+        if (!this.supportsFamilyForType(currentType, family)) continue;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "eq-context-menu-item";
+        if (family === selectedFamily) button.classList.add("is-active");
+        button.textContent = this.familyLabel(family);
+        button.addEventListener("click", () => {
+          const field = this.familyFieldForKey(key);
+          if (!field) return;
+          this.params[field] = family;
           this.hideContextMenu();
           this.onHover(this.hoverInfoForKey(key));
           this.onChange({ ...this.params });

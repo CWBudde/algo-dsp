@@ -356,6 +356,14 @@ button.active {
   padding: 0.2rem 0.4rem 0.3rem;
 }
 
+.eq-context-menu-section {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 0.45rem 0.4rem 0.2rem;
+}
+
 .eq-context-menu-item {
   display: block;
   width: 100%;
