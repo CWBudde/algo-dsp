@@ -29,7 +29,16 @@
   <body>
     <main class="app">
       <header class="hero">
-        <h1>algo-dsp Web Demo</h1>
+        <div class="hero-top">
+          <h1>algo-dsp Web Demo</h1>
+          <label class="theme-switch" title="Theme follows system until toggled">
+            <span>Dark</span>
+            <input id="theme-toggle" type="checkbox" role="switch" aria-label="Toggle dark mode" />
+            <span class="track" aria-hidden="true">
+              <span class="thumb"></span>
+            </span>
+          </label>
+        </div>
         <p>Step synthesizer (pure tones + decay) with realtime 5-node EQ.</p>
       </header>
 
@@ -62,14 +71,6 @@
               <option value="triangle">Triangle</option>
               <option value="saw">Saw</option>
               <option value="square">Square</option>
-            </select>
-          </label>
-          <label>
-            Theme
-            <select id="theme">
-              <option value="system" selected>System</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
             </select>
           </label>
         </div>
