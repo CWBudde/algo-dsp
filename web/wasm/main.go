@@ -79,29 +79,34 @@ func main() {
 		}
 		p := args[0]
 		err := engine.SetEQ(webdemo.EQParams{
-			HPFamily:   p.Get("hpFamily").String(),
-			HPType:     p.Get("hpType").String(),
-			HPFreq:     p.Get("hpFreq").Float(),
-			HPGain:     p.Get("hpGain").Float(),
-			HPQ:        p.Get("hpQ").Float(),
-			LowFamily:  p.Get("lowFamily").String(),
-			LowType:    p.Get("lowType").String(),
-			LowFreq:    p.Get("lowFreq").Float(),
-			LowGain:    p.Get("lowGain").Float(),
-			LowQ:       p.Get("lowQ").Float(),
-			MidFamily:  p.Get("midFamily").String(),
-			MidType:    p.Get("midType").String(),
-			MidFreq:    p.Get("midFreq").Float(),
-			MidGain:    p.Get("midGain").Float(),
-			MidQ:       p.Get("midQ").Float(),
-			HighFamily: p.Get("highFamily").String(),
-			HighType:   p.Get("highType").String(),
-			HighFreq:   p.Get("highFreq").Float(),
-			HighGain:   p.Get("highGain").Float(),
-			HighQ:      p.Get("highQ").Float(),
-			LPFamily:   p.Get("lpFamily").String(),
-			LPType:     p.Get("lpType").String(),
-			LPFreq:     p.Get("lpFreq").Float(),
+				HPFamily:   p.Get("hpFamily").String(),
+				HPType:     p.Get("hpType").String(),
+				HPOrder:    p.Get("hpOrder").Int(),
+				HPFreq:     p.Get("hpFreq").Float(),
+				HPGain:     p.Get("hpGain").Float(),
+				HPQ:        p.Get("hpQ").Float(),
+				LowFamily:  p.Get("lowFamily").String(),
+				LowType:    p.Get("lowType").String(),
+				LowOrder:   p.Get("lowOrder").Int(),
+				LowFreq:    p.Get("lowFreq").Float(),
+				LowGain:    p.Get("lowGain").Float(),
+				LowQ:       p.Get("lowQ").Float(),
+				MidFamily:  p.Get("midFamily").String(),
+				MidType:    p.Get("midType").String(),
+				MidOrder:   p.Get("midOrder").Int(),
+				MidFreq:    p.Get("midFreq").Float(),
+				MidGain:    p.Get("midGain").Float(),
+				MidQ:       p.Get("midQ").Float(),
+				HighFamily: p.Get("highFamily").String(),
+				HighType:   p.Get("highType").String(),
+				HighOrder:  p.Get("highOrder").Int(),
+				HighFreq:   p.Get("highFreq").Float(),
+				HighGain:   p.Get("highGain").Float(),
+				HighQ:      p.Get("highQ").Float(),
+				LPFamily:   p.Get("lpFamily").String(),
+				LPType:     p.Get("lpType").String(),
+				LPOrder:    p.Get("lpOrder").Int(),
+				LPFreq:     p.Get("lpFreq").Float(),
 			LPGain:     p.Get("lpGain").Float(),
 			LPQ:        p.Get("lpQ").Float(),
 			Master:     p.Get("master").Float(),
@@ -150,6 +155,22 @@ func main() {
 			ReleaseMs:    p.Get("releaseMs").Float(),
 			MakeupGainDB: p.Get("makeupGainDB").Float(),
 			AutoMakeup:   p.Get("autoMakeup").Bool(),
+		})
+		if err != nil {
+			return err.Error()
+		}
+		return js.Null()
+	}))
+
+	api.Set("setLimiter", export(func(args []js.Value) any {
+		if engine == nil || len(args) < 1 {
+			return js.Null()
+		}
+		p := args[0]
+		err := engine.SetLimiter(webdemo.LimiterParams{
+			Enabled:   p.Get("enabled").Bool(),
+			Threshold: p.Get("threshold").Float(),
+			Release:   p.Get("release").Float(),
 		})
 		if err != nil {
 			return err.Error()
