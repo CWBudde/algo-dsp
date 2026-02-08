@@ -337,6 +337,48 @@ button.active {
   touch-action: none;
 }
 
+.eq-context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 160px;
+  padding: 0.4rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.eq-context-menu-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 0.2rem 0.4rem 0.3rem;
+}
+
+.eq-context-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 7px;
+  padding: 0.42rem 0.55rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.eq-context-menu-item:hover {
+  background: rgba(194, 77, 44, 0.1);
+}
+
+.eq-context-menu-item.is-active {
+  background: rgba(34, 93, 125, 0.16);
+  font-weight: 600;
+}
+
 .eq-meta {
   display: grid;
   grid-template-columns: 1fr;
