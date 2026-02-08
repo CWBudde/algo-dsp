@@ -56,3 +56,8 @@ ci: check-formatted test lint check-tidy
 # Clean build artifacts
 clean:
     rm -f coverage.out coverage.html
+
+# Run the local web demo server
+web-demo port="8787":
+    @echo "Serving web demo at http://localhost:{{port}}"
+    python3 -m http.server {{port}} -d web

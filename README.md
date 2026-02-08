@@ -112,6 +112,7 @@ Related repositories: [`algo-fft`](https://github.com/cwbudde/algo-fft) (FFT bac
 - [API_REVIEW.md](API_REVIEW.md) -- API review notes
 - [MIGRATION.md](MIGRATION.md) -- migration guide from mfw
 - [CONTRIBUTING.md](CONTRIBUTING.md) -- contribution guidelines
+- [Web demo](web/) -- GitHub Pages step synthesizer + EQ response chart
 
 ## License
 
