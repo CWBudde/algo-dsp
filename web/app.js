@@ -113,8 +113,9 @@ const el = {
 const THEME_STORAGE_KEY = "algo-dsp-theme";
 const THEME_MODES = ["system", "light", "dark"];
 
-function getThemeIconMarkup(mode) {
-  if (mode === "light") {
+function getThemeIconMarkup(mode, resolvedMode = mode) {
+  const effectiveMode = mode === "system" ? resolvedMode : mode;
+  if (effectiveMode === "light") {
     return `
       <circle cx="12" cy="12" r="5"></circle>
       <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -127,7 +128,7 @@ function getThemeIconMarkup(mode) {
       <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
     `;
   }
-  if (mode === "dark") {
+  if (effectiveMode === "dark") {
     return `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
   }
   return `
@@ -143,9 +144,11 @@ function updateThemeToggleButton(mode) {
   const label = el.themeToggle.querySelector(".theme-toggle-label");
   const labels = { system: "Auto", light: "Light", dark: "Dark" };
   const text = labels[mode] || labels.system;
-  if (icon) icon.innerHTML = getThemeIconMarkup(mode);
+  const resolved = document.documentElement.dataset.resolvedTheme || "light";
+  if (icon) icon.innerHTML = getThemeIconMarkup(mode, resolved);
   if (label) label.textContent = text;
   el.themeToggle.setAttribute("aria-label", `Theme: ${text}. Click to cycle.`);
+  el.themeToggle.title = `Theme: ${text} (resolved ${resolved})`;
 }
 
 function resolveTheme(theme, mql) {
