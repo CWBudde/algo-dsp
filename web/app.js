@@ -67,6 +67,8 @@ const state = {
   scheduler: null,
   steps: [],
   eqUI: null,
+  compUI: null,
+  limUI: null,
   hoverInfo: null,
   eqParams: {
     hpFamily: "rbj",
@@ -417,6 +419,8 @@ async function ensureDSP(sampleRate) {
       syncLimiterToDSP();
       syncSpectrumToDSP();
       state.eqUI?.draw();
+      state.compUI?.draw();
+      state.limUI?.draw();
     }
     return;
   }
@@ -662,7 +666,7 @@ function updateCompressorText() {
     el.compMakeupValue.style.opacity = "1";
   }
 
-  drawDynamicsCurve(el.compGraph, "compressor");
+  state.compUI?.draw();
 }
 
 function syncLimiterToDSP() {
@@ -684,115 +688,7 @@ function updateLimiterText() {
   el.limThreshValue.textContent = `${Number(el.limThresh.value).toFixed(1)} dB`;
   el.limReleaseValue.textContent = `${Number(el.limRelease.value).toFixed(0)} ms`;
 
-  drawDynamicsCurve(el.limGraph, "limiter");
-}
-
-function drawDynamicsCurve(canvas, type) {
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width;
-  const h = canvas.height;
-  const pad = 20;
-  const range = 60; // -60dB to 0dB
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Colors from CSS vars or defaults
-  const gridColor = getComputedStyle(document.documentElement).getPropertyValue("--line").trim() || "#d9ccb6";
-  const accentColor = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#c24d2c";
-  const textColor = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#1d1b18";
-
-  // Grid
-  ctx.strokeStyle = gridColor;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([2, 2]);
-  for (let db = -range; db <= 0; db += 20) {
-    const x = pad + ((db + range) / range) * (w - 2 * pad);
-    const y = pad + (1 - (db + range) / range) * (h - 2 * pad);
-
-    ctx.beginPath();
-    ctx.moveTo(x, pad);
-    ctx.lineTo(x, h - pad);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(pad, y);
-    ctx.lineTo(w - pad, y);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
-
-  // Diagonal (1:1)
-  ctx.strokeStyle = gridColor;
-  ctx.globalAlpha = 0.5;
-  ctx.beginPath();
-  ctx.moveTo(pad, h - pad);
-  ctx.lineTo(w - pad, pad);
-  ctx.stroke();
-  ctx.globalAlpha = 1.0;
-
-  // Transfer function
-  ctx.strokeStyle = accentColor;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-
-  const getOutDB = (inDB) => {
-    if (type === "compressor") {
-      const t = state.compParams.thresholdDB;
-      const r = state.compParams.ratio;
-      const k = state.compParams.kneeDB;
-      let outDB = inDB;
-
-      if (k > 0) {
-        if (inDB > t - k / 2 && inDB < t + k / 2) {
-          // Soft knee quadratic interpolation
-          outDB = inDB + ((1 / r - 1) * Math.pow(inDB - t + k / 2, 2)) / (2 * k);
-        } else if (inDB >= t + k / 2) {
-          outDB = t + (inDB - t) / r;
-        }
-      } else {
-        if (inDB > t) {
-          outDB = t + (inDB - t) / r;
-        }
-      }
-
-      // Makeup gain (approximate auto makeup)
-      if (state.compParams.autoMakeup) {
-        const makeup = -(t + (0 - t) / r) / 2; // Rough estimate
-        outDB += makeup;
-      } else {
-        outDB += state.compParams.makeupGainDB;
-      }
-      return outDB;
-    } else {
-      // Limiter
-      const t = state.limParams.threshold;
-      return Math.min(inDB, t);
-    }
-  };
-
-  for (let i = 0; i <= 100; i++) {
-    const inDB = -range + (i / 100) * range;
-    const outDB = getOutDB(inDB);
-
-    const x = pad + ((inDB + range) / range) * (w - 2 * pad);
-    const y = h - (pad + ((outDB + range) / range) * (h - 2 * pad));
-
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-
-  // Labels
-  ctx.fillStyle = textColor;
-  ctx.font = "9px sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("In [dB]", w / 2, h - 5);
-  ctx.save();
-  ctx.translate(5, h / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillText("Out [dB]", 0, 0);
-  ctx.restore();
+  state.limUI?.draw();
 }
 
 function startSequencer() {
@@ -865,6 +761,25 @@ function startEQDrawLoop() {
   };
 
   state.eqDrawLoopHandle = requestAnimationFrame(tick);
+}
+
+function initDynamicsGraphs() {
+  state.compUI = new window.DynamicsGraph(el.compGraph, {
+    type: "compressor",
+    getParams: () => state.compParams,
+    getCurve: (inputs) => {
+      if (!state.dsp.ready || !state.dsp.api) return null;
+      return state.dsp.api.compressorCurve(inputs);
+    },
+  });
+  state.limUI = new window.DynamicsGraph(el.limGraph, {
+    type: "limiter",
+    getParams: () => state.limParams,
+    getCurve: (inputs) => {
+      if (!state.dsp.ready || !state.dsp.api) return null;
+      return state.dsp.api.limiterCurve(inputs);
+    },
+  });
 }
 
 function updateStepOptions() {
@@ -1037,10 +952,15 @@ function bindEvents() {
 }
 
 buildStepUI();
+initDynamicsGraphs();
 initEQCanvas();
 startEQDrawLoop();
 bindEvents();
 initTheme();
 ensureDSP(48000)
-  .then(() => state.eqUI?.draw())
+  .then(() => {
+    state.eqUI?.draw();
+    state.compUI?.draw();
+    state.limUI?.draw();
+  })
   .catch((err) => console.error(err));

@@ -354,6 +354,28 @@ func (e *Engine) NodeResponseCurveDB(node string, freqs []float64) []float64 {
 	return out
 }
 
+// CompressorCurveDB returns the compressor output levels in dB for given input levels in dB.
+func (e *Engine) CompressorCurveDB(inputsDB []float64) []float64 {
+	out := make([]float64, len(inputsDB))
+	for i, db := range inputsDB {
+		lin := math.Pow(10, db/20.0)
+		outLin := e.compressor.CalculateOutputLevel(lin)
+		out[i] = 20 * math.Log10(math.Max(1e-12, outLin))
+	}
+	return out
+}
+
+// LimiterCurveDB returns the limiter output levels in dB for given input levels in dB.
+func (e *Engine) LimiterCurveDB(inputsDB []float64) []float64 {
+	out := make([]float64, len(inputsDB))
+	for i, db := range inputsDB {
+		lin := math.Pow(10, db/20.0)
+		outLin := e.limiter.CalculateOutputLevel(lin)
+		out[i] = 20 * math.Log10(math.Max(1e-12, outLin))
+	}
+	return out
+}
+
 func clamp(v, minV, maxV float64) float64 {
 	if v < minV {
 		return minV

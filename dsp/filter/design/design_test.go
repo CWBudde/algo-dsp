@@ -355,55 +355,90 @@ func refCheby1HP(freq float64, order int, ripple float64, sampleRate float64) []
 	return out
 }
 
-// refCheby2LP is a reference Chebyshev Type II lowpass with corrected angle term
-// (cos((2i+1)*pi/(2N))) and corrected sign convention for A1/A2.
+// refCheby2LP is a reference Chebyshev Type II lowpass using analog prototype
+// (inverted Chebyshev I poles + imaginary-axis zeros) with bilinear transform.
 func refCheby2LP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
-	k := math.Tan(math.Pi * freq / sampleRate)
-	k2 := k * k
-	t := math.Asinh(1/ripple) / float64(order)
-	r1 := math.Sinh(t)
-	r0 := math.Cosh(t)
-	r0 = r0 * r0
-
+	wc := math.Tan(math.Pi * freq / sampleRate)
+	if ripple <= 0 {
+		ripple = 1
+	}
+	mu := math.Asinh(ripple) / float64(order)
 	out := make([]biquad.Coefficients, 0, (order+1)/2)
-	for i := (order / 2) - 1; i >= 0; i-- {
-		x := math.Cos(float64(2*i+1) * math.Pi / (2 * float64(order)))
-		c0 := 1 - x*x
-		c1 := 2 * x * r1 * k
-		n := 1 / (c1 + k2 + r0 + c0)
-		out = append(out, biquad.Coefficients{
-			B0: (k2 + c0) * n, B1: 2 * (k2 - c0) * n, B2: (k2 + c0) * n,
-			A1: -2 * (-k2 + r0 + c0) * n, A2: -(c1 - k2 - r0 - c0) * n,
-		})
+
+	for i := 0; i < order/2; i++ {
+		phi := math.Pi * float64(2*i+1) / float64(2*order)
+		sigma1 := math.Sinh(mu) * math.Sin(phi)
+		omega1 := math.Cosh(mu) * math.Cos(phi)
+		pmag2 := sigma1*sigma1 + omega1*omega1
+		sigP := sigma1 / pmag2
+		omP := omega1 / pmag2
+		omZ := 1.0 / math.Cos(phi)
+
+		wpr := wc * sigP
+		wz := wc * omZ
+		wp2 := wpr*wpr + (wc*omP)*(wc*omP)
+		wz2 := wz * wz
+
+		bn0, bn1, bn2 := 1+wz2, -2+2*wz2, 1+wz2
+		ad0 := 1 + 2*wpr + wp2
+		ad1 := -2 + 2*wp2
+		ad2 := 1 - 2*wpr + wp2
+
+		b0, b1, b2 := bn0/ad0, bn1/ad0, bn2/ad0
+		a1, a2 := ad1/ad0, ad2/ad0
+		dc := (b0 + b1 + b2) / (1 + a1 + a2)
+		b0 /= dc
+		b1 /= dc
+		b2 /= dc
+		out = append(out, biquad.Coefficients{B0: b0, B1: b1, B2: b2, A1: a1, A2: a2})
 	}
 	if order%2 != 0 {
-		out = append(out, butterworthFirstOrderLP(freq, sampleRate))
+		sp := wc / math.Sinh(mu)
+		g := sp / (1 + sp)
+		out = append(out, biquad.Coefficients{B0: g, B1: g, A1: (sp - 1) / (1 + sp)})
 	}
 	return out
 }
 
-// refCheby2HP is a reference Chebyshev Type II highpass with corrected sign convention.
+// refCheby2HP is a reference Chebyshev Type II highpass using LP-to-HP analog
+// transform followed by bilinear transform.
 func refCheby2HP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
-	k := 1 / math.Tan(math.Pi*freq/sampleRate)
-	k2 := k * k
-	t := math.Asinh(1/ripple) / float64(order)
-	r1 := math.Sinh(t)
-	r0 := math.Cosh(t)
-	r0 = r0 * r0
-
+	wc := math.Tan(math.Pi * freq / sampleRate)
+	if ripple <= 0 {
+		ripple = 1
+	}
+	mu := math.Asinh(ripple) / float64(order)
 	out := make([]biquad.Coefficients, 0, (order+1)/2)
+
 	for i := 0; i < order/2; i++ {
-		x := math.Cos(float64(2*i+1) * math.Pi / (2 * float64(order)))
-		c0 := 1 - x*x
-		c1 := 2 * x * r1 * k
-		n := 1 / (c1 + k2 + r0 + c0)
-		out = append(out, biquad.Coefficients{
-			B0: (c0 + k2) * n, B1: 2 * (c0 - k2) * n, B2: (c0 + k2) * n,
-			A1: -2 * (k2 - r0 - c0) * n, A2: -(c1 - k2 - r0 - c0) * n,
-		})
+		phi := math.Pi * float64(2*i+1) / float64(2*order)
+		sigma1 := math.Sinh(mu) * math.Sin(phi)
+		omega1 := math.Cosh(mu) * math.Cos(phi)
+
+		hpSig := wc * sigma1
+		hpOm := wc * omega1
+		hpWz := wc * math.Cos(phi)
+
+		hp2 := hpSig*hpSig + hpOm*hpOm
+		wz2 := hpWz * hpWz
+
+		bn0, bn1, bn2 := 1+wz2, -2+2*wz2, 1+wz2
+		ad0 := 1 + 2*hpSig + hp2
+		ad1 := -2 + 2*hp2
+		ad2 := 1 - 2*hpSig + hp2
+
+		b0, b1, b2 := bn0/ad0, bn1/ad0, bn2/ad0
+		a1, a2 := ad1/ad0, ad2/ad0
+		nyq := (b0 - b1 + b2) / (1 - a1 + a2)
+		b0 /= nyq
+		b1 /= nyq
+		b2 /= nyq
+		out = append(out, biquad.Coefficients{B0: b0, B1: b1, B2: b2, A1: a1, A2: a2})
 	}
 	if order%2 != 0 {
-		out = append(out, butterworthFirstOrderHP(freq, sampleRate))
+		sp := wc * math.Sinh(mu)
+		g := 1.0 / (1 + sp)
+		out = append(out, biquad.Coefficients{B0: g, B1: -g, A1: (sp - 1) / (1 + sp)})
 	}
 	return out
 }

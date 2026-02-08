@@ -261,6 +261,40 @@ func main() {
 		return arr
 	}))
 
+	api.Set("compressorCurve", export(func(args []js.Value) any {
+		if engine == nil || len(args) < 1 {
+			return js.Global().Get("Float32Array").New(0)
+		}
+		input := args[0]
+		dbs := make([]float64, input.Length())
+		for i := 0; i < input.Length(); i++ {
+			dbs[i] = input.Index(i).Float()
+		}
+		resp := engine.CompressorCurveDB(dbs)
+		arr := js.Global().Get("Float32Array").New(len(resp))
+		for i := range resp {
+			arr.SetIndex(i, resp[i])
+		}
+		return arr
+	}))
+
+	api.Set("limiterCurve", export(func(args []js.Value) any {
+		if engine == nil || len(args) < 1 {
+			return js.Global().Get("Float32Array").New(0)
+		}
+		input := args[0]
+		dbs := make([]float64, input.Length())
+		for i := 0; i < input.Length(); i++ {
+			dbs[i] = input.Index(i).Float()
+		}
+		resp := engine.LimiterCurveDB(dbs)
+		arr := js.Global().Get("Float32Array").New(len(resp))
+		for i := range resp {
+			arr.SetIndex(i, resp[i])
+		}
+		return arr
+	}))
+
 	api.Set("currentStep", export(func(args []js.Value) any {
 		if engine == nil {
 			return -1
