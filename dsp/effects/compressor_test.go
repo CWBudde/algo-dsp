@@ -289,14 +289,13 @@ func TestCoefficientCalculations(t *testing.T) {
 		t.Errorf("thresholdLog2 = %f, want %f", c.thresholdLog2, expectedThresholdLog2)
 	}
 
-	// Test knee factor calculation
+	// Test knee width calculation
 	if err := c.SetKnee(6); err != nil {
 		t.Fatal(err)
 	}
-	kneeLog2 := 2.0 * log2Of10Div20 * 6.0
-	expectedKneeFactor := kneeLog2 * kneeLog2
-	if math.Abs(c.kneeFactor-expectedKneeFactor) > 1e-10 {
-		t.Errorf("kneeFactor = %f, want %f", c.kneeFactor, expectedKneeFactor)
+	expectedKneeWidthLog2 := 6.0 * log2Of10Div20
+	if math.Abs(c.kneeWidthLog2-expectedKneeWidthLog2) > 1e-10 {
+		t.Errorf("kneeWidthLog2 = %f, want %f", c.kneeWidthLog2, expectedKneeWidthLog2)
 	}
 
 	// Test attack coefficient (should be between 0 and 1)

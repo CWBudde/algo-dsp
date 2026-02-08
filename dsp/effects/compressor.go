@@ -63,11 +63,12 @@ type Compressor struct {
 	peakLevel float64
 
 	// Computed coefficients (cached for performance)
-	attackCoeff   float64 // Attack time constant
-	releaseCoeff  float64 // Release time constant
-	thresholdLog2 float64 // Threshold in log2 domain
-	kneeFactor    float64 // (2 * log2(10)/20 * kneeDB)²
-	makeupGainLin float64 // Linear makeup gain
+	attackCoeff      float64 // Attack time constant
+	releaseCoeff     float64 // Release time constant
+	thresholdLog2    float64 // Threshold in log2 domain
+	kneeWidthLog2    float64 // Width of soft knee in log2 domain (k)
+	invKneeWidthLog2 float64 // Reciprocal of knee width (1/k)
+	makeupGainLin    float64 // Linear makeup gain
 
 	// Optional metering
 	metrics CompressorMetrics
@@ -290,9 +291,17 @@ func (c *Compressor) updateCoefficients() {
 	// Threshold in log2 domain
 	c.thresholdLog2 = c.thresholdDB * log2Of10Div20
 
-	// Knee factor: (2 * log2(10)/20 * kneeDB)²
-	kneeLog2 := 2.0 * log2Of10Div20 * c.kneeDB
-	c.kneeFactor = kneeLog2 * kneeLog2
+	// Knee width in log2 domain (k)
+	// This corresponds to FSoftKnee[0] in the reference algorithm
+	c.kneeWidthLog2 = c.kneeDB * log2Of10Div20
+
+	// Reciprocal of knee width (1/k)
+	// This corresponds to FSoftKnee[1] in the reference algorithm
+	if c.kneeDB > 0 {
+		c.invKneeWidthLog2 = 1.0 / c.kneeWidthLog2
+	} else {
+		c.invKneeWidthLog2 = 0
+	}
 
 	// Auto makeup gain calculation
 	if c.autoMakeup {
@@ -318,7 +327,8 @@ func (c *Compressor) updateTimeConstants() {
 }
 
 // calculateGain computes gain multiplier using log2-domain soft-knee formula.
-// This implements the hyperbolic soft-knee characteristic.
+// This implements a quadratic smoothing around the threshold using the
+// parameters k (kneeWidth) and 1/k.
 func (c *Compressor) calculateGain(peakLevel float64) float64 {
 	if peakLevel <= 0 {
 		return 1.0
@@ -327,25 +337,42 @@ func (c *Compressor) calculateGain(peakLevel float64) float64 {
 	// Convert peak to log2 domain
 	peakLog2 := mathLog2(peakLevel)
 
-	// Delta from threshold in log2 domain
-	delta := c.thresholdLog2 - peakLog2
+	// Calculate overshoot relative to threshold
+	// Positive overshoot means signal is above threshold
+	overshoot := peakLog2 - c.thresholdLog2
 
-	// Below threshold → no compression
-	if delta > 0 {
-		return 1.0
+	// Check for hard knee case
+	if c.kneeDB <= 0 {
+		if overshoot <= 0 {
+			return 1.0
+		}
+		// Hard knee: full ratio above threshold
+		gainLog2 := -overshoot * (1.0 - 1.0/c.ratio)
+		return mathPower2(gainLog2)
 	}
 
-	// Soft-knee formula: gain = 0.5 * (delta - sqrt(delta² + kneeFactor))
-	// This produces a smooth hyperbolic transition around threshold
-	deltaSq := delta * delta
-	sqrtTerm := mathSqrt(deltaSq + c.kneeFactor)
-	gainLog2 := 0.5 * (delta - sqrtTerm)
+	// Soft knee calculation
+	halfWidth := c.kneeWidthLog2 * 0.5
+	var effectiveOvershoot float64
+
+	if overshoot < -halfWidth {
+		// Below soft knee range: no compression
+		return 1.0
+	} else if overshoot > halfWidth {
+		// Above soft knee range: linear compression (standard ratio)
+		effectiveOvershoot = overshoot
+	} else {
+		// Inside soft knee range: quadratic smoothing
+		// Formula: (overshoot + w/2)^2 / (2*w)
+		//        = (overshoot + halfWidth)^2 * 0.5 * (1/w)
+		scratch := overshoot + halfWidth
+		effectiveOvershoot = scratch * scratch * 0.5 * c.invKneeWidthLog2
+	}
 
 	// Apply compression ratio
 	// ratio 1:1 → factor 0 → no compression
 	// ratio 4:1 → factor 0.75 → 75% of reduction
-	// ratio ∞:1 → factor 1.0 → full reduction (limiting)
-	gainLog2 *= (1.0 - 1.0/c.ratio)
+	gainLog2 := -effectiveOvershoot * (1.0 - 1.0/c.ratio)
 
 	// Convert back to linear
 	return mathPower2(gainLog2)
