@@ -57,7 +57,11 @@ ci: check-formatted test lint check-tidy
 clean:
     rm -f coverage.out coverage.html
 
+# Build web demo Go/WASM assets.
+web-wasm:
+    ./web/build-wasm.sh
+
 # Run the local web demo server
-web-demo port="8787":
+web-demo port="8787": web-wasm
     @echo "Serving web demo at http://localhost:{{port}}"
     python3 -m http.server {{port}} -d web
