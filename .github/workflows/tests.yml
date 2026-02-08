@@ -1,0 +1,23 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    uses: ./.github/workflows/test-unit.yml
+
+  lint:
+    name: Lint
+    uses: ./.github/workflows/test-lint.yml
+
+  format:
+    name: Format Check
+    uses: ./.github/workflows/test-format.yml
