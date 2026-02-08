@@ -211,6 +211,73 @@ const el = {
 
 const THEME_STORAGE_KEY = "algo-dsp-theme";
 const THEME_MODES = ["system", "light", "dark"];
+const SETTINGS_STORAGE_KEY = "algo-dsp-settings";
+
+function saveSettings() {
+  try {
+    const settings = {
+      effectsParams: state.effectsParams,
+      compParams: state.compParams,
+      limParams: state.limParams,
+    };
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch (e) {
+    // Ignore storage failures.
+  }
+}
+
+function loadSettings() {
+  let stored = null;
+  try {
+    stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+  } catch (e) {
+    return;
+  }
+  if (!stored) return;
+
+  let settings;
+  try {
+    settings = JSON.parse(stored);
+  } catch (e) {
+    return;
+  }
+
+  if (settings.effectsParams) {
+    Object.assign(state.effectsParams, settings.effectsParams);
+    if (el.chorusEnabled) el.chorusEnabled.checked = !!state.effectsParams.chorusEnabled;
+    if (el.chorusMix) el.chorusMix.value = state.effectsParams.chorusMix;
+    if (el.chorusDepth) el.chorusDepth.value = state.effectsParams.chorusDepth;
+    if (el.chorusSpeed) el.chorusSpeed.value = state.effectsParams.chorusSpeedHz;
+    if (el.chorusStages) el.chorusStages.value = state.effectsParams.chorusStages;
+    if (el.reverbEnabled) el.reverbEnabled.checked = !!state.effectsParams.reverbEnabled;
+    if (el.reverbWet) el.reverbWet.value = state.effectsParams.reverbWet;
+    if (el.reverbDry) el.reverbDry.value = state.effectsParams.reverbDry;
+    if (el.reverbRoom) el.reverbRoom.value = state.effectsParams.reverbRoomSize;
+    if (el.reverbDamp) el.reverbDamp.value = state.effectsParams.reverbDamp;
+    updateEffectsText();
+  }
+
+  if (settings.compParams) {
+    Object.assign(state.compParams, settings.compParams);
+    if (el.compEnabled) el.compEnabled.checked = !!state.compParams.enabled;
+    if (el.compThresh) el.compThresh.value = state.compParams.thresholdDB;
+    if (el.compRatio) el.compRatio.value = state.compParams.ratio;
+    if (el.compKnee) el.compKnee.value = state.compParams.kneeDB;
+    if (el.compAttack) el.compAttack.value = state.compParams.attackMs;
+    if (el.compRelease) el.compRelease.value = state.compParams.releaseMs;
+    if (el.compAuto) el.compAuto.checked = !!state.compParams.autoMakeup;
+    if (el.compMakeup) el.compMakeup.value = state.compParams.makeupGainDB;
+    updateCompressorText();
+  }
+
+  if (settings.limParams) {
+    Object.assign(state.limParams, settings.limParams);
+    if (el.limEnabled) el.limEnabled.checked = !!state.limParams.enabled;
+    if (el.limThresh) el.limThresh.value = state.limParams.threshold;
+    if (el.limRelease) el.limRelease.value = state.limParams.release;
+    updateLimiterText();
+  }
+}
 
 function getThemeIconMarkup(mode, resolvedMode = mode) {
   const effectiveMode = mode === "system" ? resolvedMode : mode;
@@ -897,6 +964,7 @@ function bindEvents() {
       readEffectsFromUI();
       updateEffectsText();
       syncEffectsToDSP();
+      saveSettings();
     });
   });
 
@@ -915,6 +983,7 @@ function bindEvents() {
       readCompressorFromUI();
       updateCompressorText();
       syncCompressorToDSP();
+      saveSettings();
     });
   });
 
@@ -924,6 +993,7 @@ function bindEvents() {
       readLimiterFromUI();
       updateLimiterText();
       syncLimiterToDSP();
+      saveSettings();
     });
   });
 
@@ -962,6 +1032,8 @@ function bindEvents() {
   readSpectrumFromUI();
   updateSpectrumText();
   updateEQText();
+
+  loadSettings();
 }
 
 buildStepUI();
