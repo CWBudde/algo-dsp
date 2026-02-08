@@ -107,7 +107,7 @@ const el = {
   analyzerWindow: document.getElementById("analyzer-window"),
   analyzerSmoothing: document.getElementById("analyzer-smoothing"),
   analyzerSmoothingValue: document.getElementById("analyzer-smoothing-value"),
-  theme: document.getElementById("theme"),
+  themeToggle: document.getElementById("theme-toggle"),
 };
 
 const THEME_STORAGE_KEY = "algo-dsp-theme";
@@ -125,7 +125,7 @@ function applyTheme(theme, mql) {
 }
 
 function initTheme() {
-  if (!el.theme) return;
+  if (!el.themeToggle) return;
   const mql = window.matchMedia("(prefers-color-scheme: dark)");
   let stored = null;
   try {
@@ -133,12 +133,13 @@ function initTheme() {
   } catch {
     stored = null;
   }
-  const selected = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
-  el.theme.value = selected;
-  applyTheme(selected, mql);
+  const hasManualTheme = stored === "light" || stored === "dark";
+  const initialTheme = hasManualTheme ? stored : "system";
+  applyTheme(initialTheme, mql);
+  el.themeToggle.checked = document.documentElement.dataset.resolvedTheme === "dark";
 
-  el.theme.addEventListener("change", () => {
-    const next = el.theme.value;
+  el.themeToggle.addEventListener("change", () => {
+    const next = el.themeToggle.checked ? "dark" : "light";
     applyTheme(next, mql);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
@@ -149,8 +150,10 @@ function initTheme() {
   });
 
   mql.addEventListener("change", () => {
-    if (el.theme.value !== "system") return;
+    const selected = document.documentElement.dataset.theme || "system";
+    if (selected !== "system") return;
     applyTheme("system", mql);
+    el.themeToggle.checked = document.documentElement.dataset.resolvedTheme === "dark";
     state.eqUI?.draw();
   });
 }

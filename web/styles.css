@@ -87,8 +87,65 @@ body {
   font-size: clamp(1.8rem, 3.5vw, 2.6rem);
 }
 
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .hero p {
   margin-top: 0.25rem;
+}
+
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.theme-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-switch .track {
+  width: 2.45rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 1px;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.theme-switch .thumb {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: var(--accent-2);
+  transform: translateX(0);
+  transition: transform 0.18s ease;
+}
+
+.theme-switch input:checked + .track {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  border-color: var(--accent);
+}
+
+.theme-switch input:checked + .track .thumb {
+  transform: translateX(1.02rem);
+  background: var(--accent);
+}
+
+.theme-switch input:focus-visible + .track {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
 }
 
 .panel {
@@ -358,6 +415,10 @@ button.active {
 
   .eq-readout {
     text-align: left;
+  }
+
+  .hero-top {
+    align-items: flex-start;
   }
 
   .effects-grid {
