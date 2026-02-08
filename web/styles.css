@@ -149,8 +149,39 @@ body {
   box-shadow: 0 8px 24px var(--shadow);
 }
 
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.panel-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.panel-controls label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.panel-controls select {
+  padding: 0.2rem 0.45rem;
+  width: auto;
+  min-width: 90px;
+  font-weight: 400;
+}
+
 h2 {
-  margin: 0 0 0.6rem;
+  margin: 0;
   font-size: 1.1rem;
 }
 

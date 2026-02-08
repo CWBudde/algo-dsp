@@ -91,7 +91,37 @@
       </section>
 
       <section class="panel">
-        <h2>Steps</h2>
+        <div class="panel-head">
+          <h2>Steps</h2>
+          <div class="panel-controls">
+            <label>
+              Scale
+              <select id="scale">
+                <option value="pentatonic" selected>Pentatonic Major</option>
+                <option value="major">Major</option>
+                <option value="minor">Minor</option>
+                <option value="chromatic">Chromatic</option>
+              </select>
+            </label>
+            <label>
+              Root
+              <select id="root-note">
+                <option value="C" selected>C</option>
+                <option value="C#">C#</option>
+                <option value="D">D</option>
+                <option value="D#">D#</option>
+                <option value="E">E</option>
+                <option value="F">F</option>
+                <option value="F#">F#</option>
+                <option value="G">G</option>
+                <option value="G#">G#</option>
+                <option value="A">A</option>
+                <option value="A#">A#</option>
+                <option value="B">B</option>
+              </select>
+            </label>
+          </div>
+        </div>
         <div id="steps" class="steps"></div>
       </section>
 
