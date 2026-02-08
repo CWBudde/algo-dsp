@@ -493,20 +493,16 @@ function updateEQText() {
   const h = state.hoverInfo;
   if (!h) {
     el.eqReadout.textContent =
-      "Hover a node for details. Mouse wheel adjusts Q/shape. Right-click a node to change filter type.";
+      "Hover a node for details. Mouse wheel adjusts shape (Q / bandwidth / ripple). Right-click a node to change filter type.";
     return;
   }
 
   const family = typeof h.family === "string" ? h.family.toUpperCase() : "RBJ";
   const orderPart = Number(h.order) > 1 ? `, Order ${Number(h.order)}` : "";
-  const isChebyshev = h.family === "chebyshev1" || h.family === "chebyshev2";
-  const usesRipple =
-    isChebyshev &&
-    (h.type === "highpass" ||
-      h.type === "lowpass" ||
-      h.type === "highshelf" ||
-      h.type === "lowshelf");
-  const shapeLabel = usesRipple ? `Ripple ${h.q.toFixed(2)} dB` : `Q ${h.q.toFixed(2)}`;
+  const shape = Number.isFinite(Number(h.shape)) ? Number(h.shape) : Number(h.q);
+  let shapeLabel = `Q ${shape.toFixed(2)}`;
+  if (h.shapeMode === "bandwidth") shapeLabel = `Bandwidth ${shape.toFixed(1)} Hz`;
+  if (h.shapeMode === "ripple") shapeLabel = `Ripple ${shape.toFixed(2)} dB`;
   el.eqReadout.textContent = `${h.label} [${family}${orderPart}]: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, ${shapeLabel}`;
 }
 

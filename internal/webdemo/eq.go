@@ -42,11 +42,11 @@ func (e *Engine) SetEQ(eq EQParams) error {
 	eq.MidGain = clamp(eq.MidGain, -24, 24)
 	eq.HighGain = clamp(eq.HighGain, -24, 24)
 	eq.LPGain = clamp(eq.LPGain, -24, 24)
-	eq.HPQ = clamp(eq.HPQ, 0.2, 8)
-	eq.LowQ = clamp(eq.LowQ, 0.2, 8)
-	eq.MidQ = clamp(eq.MidQ, 0.2, 8)
-	eq.HighQ = clamp(eq.HighQ, 0.2, 8)
-	eq.LPQ = clamp(eq.LPQ, 0.2, 8)
+	eq.HPQ = clampEQShape(eq.HPType, eq.HPFamily, eq.HPFreq, e.sampleRate, eq.HPQ)
+	eq.LowQ = clampEQShape(eq.LowType, eq.LowFamily, eq.LowFreq, e.sampleRate, eq.LowQ)
+	eq.MidQ = clampEQShape(eq.MidType, eq.MidFamily, eq.MidFreq, e.sampleRate, eq.MidQ)
+	eq.HighQ = clampEQShape(eq.HighType, eq.HighFamily, eq.HighFreq, e.sampleRate, eq.HighQ)
+	eq.LPQ = clampEQShape(eq.LPType, eq.LPFamily, eq.LPFreq, e.sampleRate, eq.LPQ)
 
 	eq.Master = clamp(eq.Master, 0, 1)
 	e.eq = eq
@@ -65,8 +65,9 @@ func (e *Engine) rebuildEQ() error {
 func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate float64) *biquad.Chain {
 	family = normalizeEQFamilyForType(kind, normalizeEQFamily(family))
 	order = normalizeEQOrder(kind, family, order)
+	q = clampEQShape(kind, family, freq, sampleRate, q)
 	linGain := nodeLinearGain(family, kind, gainDB)
-	ripple := chebyshevRippleFromQ(q)
+	ripple := chebyshevRippleFromShape(q)
 	switch family {
 	case "butterworth":
 		switch kind {
@@ -75,7 +76,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 		case "lowpass":
 			return chainFromCoeffs(design.ButterworthLP(freq, order, sampleRate), linGain)
 		case "peak":
-			bw := math.Max(1, freq/math.Max(q, 1e-6))
+			bw := peakBandwidthHz(kind, family, freq, sampleRate, q)
 			coeffs, err := band.ButterworthBand(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
@@ -98,7 +99,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 		case "lowpass":
 			return chainFromCoeffs(design.Chebyshev1LP(freq, order, ripple, sampleRate), linGain)
 		case "peak":
-			bw := math.Max(1, freq/math.Max(q, 1e-6))
+			bw := peakBandwidthHz(kind, family, freq, sampleRate, q)
 			coeffs, err := band.Chebyshev1Band(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
@@ -121,7 +122,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 		case "lowpass":
 			return chainFromCoeffs(design.Chebyshev2LP(freq, order, ripple, sampleRate), linGain)
 		case "peak":
-			bw := math.Max(1, freq/math.Max(q, 1e-6))
+			bw := peakBandwidthHz(kind, family, freq, sampleRate, q)
 			coeffs, err := band.Chebyshev2Band(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
@@ -140,7 +141,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 	case "elliptic":
 		switch kind {
 		case "peak":
-			bw := math.Max(1, freq/math.Max(q, 1e-6))
+			bw := peakBandwidthHz(kind, family, freq, sampleRate, q)
 			coeffs, err := band.EllipticBand(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
@@ -157,7 +158,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 	case "allpass":
 		return chainFromCoeffs([]biquad.Coefficients{design.Allpass(freq, q, sampleRate)}, linGain)
 	case "peak":
-		return chainFromCoeffs([]biquad.Coefficients{design.Peak(freq, gainDB, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Peak(freq, gainDB, rbjQFromShape(kind, family, freq, q), sampleRate)}, linGain)
 	case "highshelf":
 		return chainFromCoeffs([]biquad.Coefficients{design.HighShelf(freq, gainDB, q, sampleRate)}, linGain)
 	case "lowshelf":
@@ -188,10 +189,57 @@ func nodeLinearGain(family, kind string, gainDB float64) float64 {
 	return math.Pow(10, gainDB/20)
 }
 
-func chebyshevRippleFromQ(q float64) float64 {
+func chebyshevRippleFromShape(shape float64) float64 {
 	// Reuse the node's shape control as Chebyshev ripple (dB-like control).
-	// Keep it in a numerically safe and musically useful range.
-	return clamp(q, 0.1, 3)
+	return clamp(shape, 0.05, 24)
+}
+
+func eqShapeMode(kind, family string) string {
+	if kind == "peak" && family != "rbj" {
+		return "bandwidth"
+	}
+	if (family == "chebyshev1" || family == "chebyshev2") &&
+		(kind == "highpass" || kind == "lowpass" || kind == "highshelf" || kind == "lowshelf") {
+		return "ripple"
+	}
+	return "q"
+}
+
+func maxPeakBandwidth(freq, sampleRate float64) float64 {
+	nyquist := sampleRate * 0.5
+	maxBW := 2 * math.Min(math.Max(freq, 1), math.Max(nyquist-freq, 1))
+	if maxBW < 1 {
+		maxBW = 1
+	}
+	return maxBW
+}
+
+func clampEQShape(kind, family string, freq, sampleRate, value float64) float64 {
+	switch eqShapeMode(kind, family) {
+	case "bandwidth":
+		return clamp(value, 1, maxPeakBandwidth(freq, sampleRate))
+	case "ripple":
+		if family == "chebyshev2" {
+			return clamp(value, 0.05, 24)
+		}
+		return clamp(value, 0.05, 12)
+	default:
+		return clamp(value, 0.2, 8)
+	}
+}
+
+func peakBandwidthHz(kind, family string, freq, sampleRate, shape float64) float64 {
+	if eqShapeMode(kind, family) == "bandwidth" {
+		return clamp(shape, 1, maxPeakBandwidth(freq, sampleRate))
+	}
+	return clamp(freq/math.Max(shape, 1e-6), 1, maxPeakBandwidth(freq, sampleRate))
+}
+
+func rbjQFromShape(kind, family string, freq, shape float64) float64 {
+	if eqShapeMode(kind, family) == "bandwidth" {
+		return clamp(freq/math.Max(shape, 1e-6), 0.2, 8)
+	}
+	return clamp(shape, 0.2, 8)
 }
 
 func normalizeEQFamily(family string) string {
