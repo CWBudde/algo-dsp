@@ -18,7 +18,20 @@
 
       <section class="panel transport">
         <div class="row">
-          <button id="run-toggle">Play</button>
+          <button id="run-toggle" class="icon-btn" type="button" aria-label="Play">
+            <span class="icon icon-play" aria-hidden="true"></span>
+            <span class="icon icon-stop" aria-hidden="true"></span>
+            <span class="sr-only">Play</span>
+          </button>
+          <label>
+            Waveform
+            <select id="waveform">
+              <option value="sine" selected>Sine</option>
+              <option value="triangle">Triangle</option>
+              <option value="saw">Saw</option>
+              <option value="square">Square</option>
+            </select>
+          </label>
           <label>
             Tempo
             <input id="tempo" type="range" min="60" max="180" value="110" />

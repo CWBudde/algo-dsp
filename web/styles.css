@@ -79,6 +79,15 @@ button {
   cursor: pointer;
 }
 
+select {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  padding: 0.35rem 0.45rem;
+  background: #fff;
+  color: var(--ink);
+}
+
 button.primary {
   background: var(--accent-2);
   border-color: var(--accent-2);
@@ -89,6 +98,55 @@ button.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+.icon-btn {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.icon {
+  position: absolute;
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.icon-play {
+  clip-path: polygon(18% 10%, 18% 90%, 88% 50%);
+  background: currentColor;
+}
+
+.icon-stop {
+  width: 0.76rem;
+  height: 0.76rem;
+  background: currentColor;
+  border-radius: 2px;
+  opacity: 0;
+}
+
+.icon-btn.active .icon-play {
+  opacity: 0;
+}
+
+.icon-btn.active .icon-stop {
+  opacity: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .steps {
