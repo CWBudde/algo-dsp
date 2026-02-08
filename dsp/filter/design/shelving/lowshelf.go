@@ -14,52 +14,78 @@ type poleParams struct {
 	r2    float64 // squared magnitude of the analog pole (sigma^2 + omega^2)
 }
 
-// lowShelfSOS computes a single second-order low-shelf section from the
-// analog prototype pole parameters and the pre-warped frequency/gain values.
-//
-// The generalized bilinear-transform biquad coefficients are:
-//
-//	D  = 1 + 2·K·σ + K²·R²
-//	B0 = (1 + 2·K·P·σ + K²·P²·R²) / D
-//	B1 = 2·(K²·P²·R² − 1) / D
-//	B2 = (1 − 2·K·P·σ + K²·P²·R²) / D
-//	A1 = 2·(K²·R² − 1) / D
-//	A2 = (1 − 2·K·σ + K²·R²) / D
-//
-// For Butterworth (σ = c_m, R² = 1), these reduce to the Holters Eq. 14.
-func lowShelfSOS(K, P float64, pp poleParams) biquad.Coefficients {
-	K2 := K * K
-	KP := K * P
-	KP2 := KP * KP
+// sosParams holds the independent numerator and denominator analog prototype
+// parameters for a single second-order section. For Butterworth and Chebyshev I,
+// the numerator is derived from the denominator by scaling (σ→P·σ, R²→P²·R²).
+// For Chebyshev II, numerator and denominator are computed independently via the
+// Orfanidis A/B/g parameters.
+type sosParams struct {
+	den poleParams // denominator: σ_den, R²_den
+	num poleParams // numerator: σ_num, R²_num
+}
 
-	D := 1.0 + 2.0*K*pp.sigma + K2*pp.r2
+// fosParams holds the independent first-order section parameters (for odd M).
+type fosParams struct {
+	denSigma float64 // denominator real pole
+	numSigma float64 // numerator real pole
+}
+
+// bilinearSOS computes a single second-order low-shelf section via bilinear
+// transform from independent numerator and denominator analog parameters.
+//
+//	D  = 1 + 2·K·σ_d + K²·R²_d
+//	B0 = (1 + 2·K·σ_n + K²·R²_n) / D
+//	B1 = 2·(K²·R²_n − 1) / D
+//	B2 = (1 − 2·K·σ_n + K²·R²_n) / D
+//	A1 = 2·(K²·R²_d − 1) / D
+//	A2 = (1 − 2·K·σ_d + K²·R²_d) / D
+func bilinearSOS(K float64, sp sosParams) biquad.Coefficients {
+	K2 := K * K
+
+	D := 1.0 + 2.0*K*sp.den.sigma + K2*sp.den.r2
 	invD := 1.0 / D
 
 	return biquad.Coefficients{
-		B0: (1.0 + 2.0*KP*pp.sigma + KP2*pp.r2) * invD,
-		B1: (2.0*KP2*pp.r2 - 2.0) * invD,
-		B2: (1.0 - 2.0*KP*pp.sigma + KP2*pp.r2) * invD,
-		A1: (2.0*K2*pp.r2 - 2.0) * invD,
-		A2: (1.0 - 2.0*K*pp.sigma + K2*pp.r2) * invD,
+		B0: (1.0 + 2.0*K*sp.num.sigma + K2*sp.num.r2) * invD,
+		B1: (2.0*K2*sp.num.r2 - 2.0) * invD,
+		B2: (1.0 - 2.0*K*sp.num.sigma + K2*sp.num.r2) * invD,
+		A1: (2.0*K2*sp.den.r2 - 2.0) * invD,
+		A2: (1.0 - 2.0*K*sp.den.sigma + K2*sp.den.r2) * invD,
 	}
 }
 
-// lowShelfFOS computes a single first-order low-shelf section (for odd-order
-// filters). sigma is the real pole of the prototype (1 for Butterworth,
-// sinh(v0) for Chebyshev I).
-func lowShelfFOS(K, P, sigma float64) biquad.Coefficients {
-	Ks := K * sigma
-	KPs := K * P * sigma
-	D := 1.0 + Ks
+// bilinearFOS computes a single first-order low-shelf section via bilinear
+// transform from independent numerator and denominator real pole values.
+func bilinearFOS(K float64, fp fosParams) biquad.Coefficients {
+	Kd := K * fp.denSigma
+	Kn := K * fp.numSigma
+	D := 1.0 + Kd
 	invD := 1.0 / D
 
 	return biquad.Coefficients{
-		B0: (1.0 + KPs) * invD,
-		B1: (KPs - 1.0) * invD,
+		B0: (1.0 + Kn) * invD,
+		B1: (Kn - 1.0) * invD,
 		B2: 0,
-		A1: (Ks - 1.0) * invD,
+		A1: (Kd - 1.0) * invD,
 		A2: 0,
 	}
+}
+
+// lowShelfSOS computes a single second-order section where the numerator is
+// derived from the denominator by gain-scaling: σ_n = P·σ_d, R²_n = P²·R²_d.
+// This applies to Butterworth and Chebyshev I.
+func lowShelfSOS(K, P float64, pp poleParams) biquad.Coefficients {
+	return bilinearSOS(K, sosParams{
+		den: pp,
+		num: poleParams{sigma: P * pp.sigma, r2: P * P * pp.r2},
+	})
+}
+
+// lowShelfFOS computes a single first-order section where the numerator is
+// derived from the denominator by gain-scaling: σ_n = P·σ_d.
+// This applies to Butterworth and Chebyshev I.
+func lowShelfFOS(K, P, sigma float64) biquad.Coefficients {
+	return bilinearFOS(K, fosParams{denSigma: sigma, numSigma: P * sigma})
 }
 
 // butterworthPoles returns the analog prototype pole parameters for a
@@ -108,7 +134,7 @@ func chebyshev1Poles(M int, rippleDB float64) (pairs []poleParams, realSigma flo
 // lowShelfSections assembles the low-shelf biquad cascade from pole parameters.
 // K is the pre-warped frequency, P = g^(1/M), pairs are the conjugate-pair
 // pole parameters, and realSigma > 0 indicates an additional first-order section
-// (for odd M).
+// (for odd M). Used by Butterworth and Chebyshev I.
 func lowShelfSections(K, P float64, pairs []poleParams, realSigma float64) []biquad.Coefficients {
 	n := len(pairs)
 	hasFirstOrder := realSigma > 0
