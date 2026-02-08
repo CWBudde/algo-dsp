@@ -47,10 +47,12 @@ const state = {
     go: null,
     sampleRate: 0,
   },
+  waveform: "sine",
 };
 
 const el = {
   runToggle: document.getElementById("run-toggle"),
+  waveform: document.getElementById("waveform"),
   tempo: document.getElementById("tempo"),
   tempoValue: document.getElementById("tempo-value"),
   decay: document.getElementById("decay"),
@@ -104,6 +106,7 @@ async function ensureDSP(sampleRate) {
       if (typeof initErr === "string" && initErr.length > 0) throw new Error(initErr);
       state.dsp.sampleRate = sampleRate;
       syncTransportToDSP();
+      syncWaveformToDSP();
       syncStepsToDSP();
       syncEQToDSP();
       state.eqUI?.draw();
@@ -136,6 +139,7 @@ async function ensureDSP(sampleRate) {
   state.dsp.sampleRate = sampleRate;
 
   syncTransportToDSP();
+  syncWaveformToDSP();
   syncStepsToDSP();
   syncEQToDSP();
 }
@@ -206,6 +210,13 @@ function syncTransportToDSP() {
   state.dsp.api.setTransport(Number(el.tempo.value), Number(el.decay.value));
 }
 
+function syncWaveformToDSP() {
+  if (!state.dsp.ready || !state.dsp.api) return;
+  const waveform = String(el.waveform.value || "sine");
+  state.waveform = waveform;
+  state.dsp.api.setWaveform(waveform);
+}
+
 function syncStepsToDSP() {
   if (!state.dsp.ready || !state.dsp.api) return;
   const steps = state.steps.map((step) => ({
@@ -231,7 +242,9 @@ function startSequencer() {
   state.nextNoteTime = state.audioCtx.currentTime + 0.05;
   state.scheduler = setInterval(schedule, 25);
   if (state.dsp.ready && state.dsp.api) state.dsp.api.setRunning(true);
-  el.runToggle.textContent = "Stop";
+  const sr = el.runToggle.querySelector(".sr-only");
+  if (sr) sr.textContent = "Stop";
+  el.runToggle.setAttribute("aria-label", "Stop");
   el.runToggle.classList.add("active");
 }
 
@@ -241,7 +254,9 @@ function stopSequencer() {
   state.scheduler = null;
   state.isRunning = false;
   if (state.dsp.ready && state.dsp.api) state.dsp.api.setRunning(false);
-  el.runToggle.textContent = "Play";
+  const sr = el.runToggle.querySelector(".sr-only");
+  if (sr) sr.textContent = "Play";
+  el.runToggle.setAttribute("aria-label", "Play");
   el.runToggle.classList.remove("active");
   highlightStep(-1);
 }
@@ -288,12 +303,17 @@ function bindEvents() {
     });
   });
 
+  el.waveform.addEventListener("change", () => {
+    syncWaveformToDSP();
+  });
+
   el.master.addEventListener("input", () => {
     state.eqUI.setParams({ master: Number(el.master.value) });
   });
 
   el.tempoValue.textContent = `${Number(el.tempo.value)} BPM`;
   el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
+  el.waveform.value = state.waveform;
   updateEQText();
 }
 
