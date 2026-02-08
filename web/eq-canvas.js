@@ -17,7 +17,7 @@
   const TYPE_LABELS = {
     highpass: "Highpass",
     lowpass: "Lowpass",
-    bandpass: "Band EQ",
+    bandpass: "Bandpass",
     notch: "Notch",
     allpass: "Allpass",
     peak: "Peak",
@@ -329,18 +329,18 @@
 
     supportsFamilyForType(type, family) {
       if (family === "rbj") return true;
-      if (family === "elliptic") return type === "bandpass";
+      if (family === "elliptic") return type === "peak";
       if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2") {
-        return type === "highpass" || type === "lowpass" || type === "bandpass" || type === "lowshelf" || type === "highshelf";
+        return type === "highpass" || type === "lowpass" || type === "peak" || type === "lowshelf" || type === "highshelf";
       }
       return false;
     }
 
     supportsOrderForTypeFamily(type, family) {
       if (family === "rbj") return false;
-      if (family === "elliptic") return type === "bandpass";
+      if (family === "elliptic") return type === "peak";
       if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2") {
-        return type === "highpass" || type === "lowpass" || type === "bandpass" || type === "lowshelf" || type === "highshelf";
+        return type === "highpass" || type === "lowpass" || type === "peak" || type === "lowshelf" || type === "highshelf";
       }
       return false;
     }
@@ -350,7 +350,7 @@
       let v = Number(order);
       if (!Number.isFinite(v) || v <= 0) v = ORDER_DEFAULT;
       v = Math.round(clamp(v, ORDER_MIN, ORDER_MAX));
-      if (type === "bandpass") {
+      if (type === "peak" && family !== "rbj") {
         if (v < 4) v = 4;
         if (v % 2 !== 0) v += 1;
       }
@@ -358,7 +358,7 @@
     }
 
     defaultOrderForType(type) {
-      return type === "bandpass" ? 4 : ORDER_DEFAULT;
+      return type === "peak" ? 4 : ORDER_DEFAULT;
     }
 
     normalizeFamilyForKeyType(key, type, family) {
