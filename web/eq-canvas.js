@@ -3,8 +3,8 @@
   const FREQ_MAX = 20000;
   const GAIN_MIN = -18;
   const GAIN_MAX = 18;
-  const SPECTRUM_RANGE_DB = 72;
-  const SPECTRUM_OFFSET_DB = 48;
+  const SPECTRUM_RANGE_DB = 144;
+  const SPECTRUM_OFFSET_DB = 96;
   const SPECTRUM_TOP_DBFS = SPECTRUM_RANGE_DB - SPECTRUM_OFFSET_DB;
   const SPECTRUM_FLOOR_DBFS = -SPECTRUM_OFFSET_DB;
 
@@ -341,7 +341,7 @@
       });
 
       ctx.textAlign = "left";
-      [0, 12, 24, 36, 48, 60, 72].forEach((s) => {
+      [0, 24, 48, 72, 96, 120, 144].forEach((s) => {
         const y = b.bottom - (s / SPECTRUM_RANGE_DB) * (b.bottom - b.top);
         const dbfs = s - SPECTRUM_OFFSET_DB;
         const label = dbfs > 0 ? `+${dbfs}` : `${dbfs}`;
