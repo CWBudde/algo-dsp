@@ -806,7 +806,7 @@
           this.draw();
         });
         orderWrap.appendChild(select);
-        menu.appendChild(orderWrap);
+        familyCol.appendChild(orderWrap);
       }
     }
 

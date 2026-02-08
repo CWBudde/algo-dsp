@@ -66,6 +66,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 	family = normalizeEQFamilyForType(kind, normalizeEQFamily(family))
 	order = normalizeEQOrder(kind, family, order)
 	linGain := nodeLinearGain(family, kind, gainDB)
+	ripple := chebyshevRippleFromQ(q)
 	switch family {
 	case "butterworth":
 		switch kind {
@@ -93,9 +94,9 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 	case "chebyshev1":
 		switch kind {
 		case "highpass":
-			return chainFromCoeffs(design.Chebyshev1HP(freq, order, eqRippleDB, sampleRate), linGain)
+			return chainFromCoeffs(design.Chebyshev1HP(freq, order, ripple, sampleRate), linGain)
 		case "lowpass":
-			return chainFromCoeffs(design.Chebyshev1LP(freq, order, eqRippleDB, sampleRate), linGain)
+			return chainFromCoeffs(design.Chebyshev1LP(freq, order, ripple, sampleRate), linGain)
 		case "bandpass":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
 			coeffs, err := band.Chebyshev1Band(sampleRate, freq, bw, gainDB, order)
@@ -103,12 +104,12 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "highshelf":
-			coeffs, err := shelving.Chebyshev1HighShelf(sampleRate, freq, gainDB, eqRippleDB, order)
+			coeffs, err := shelving.Chebyshev1HighShelf(sampleRate, freq, gainDB, ripple, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "lowshelf":
-			coeffs, err := shelving.Chebyshev1LowShelf(sampleRate, freq, gainDB, eqRippleDB, order)
+			coeffs, err := shelving.Chebyshev1LowShelf(sampleRate, freq, gainDB, ripple, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
@@ -116,9 +117,9 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 	case "chebyshev2":
 		switch kind {
 		case "highpass":
-			return chainFromCoeffs(design.Chebyshev2HP(freq, order, eqRippleDB, sampleRate), linGain)
+			return chainFromCoeffs(design.Chebyshev2HP(freq, order, ripple, sampleRate), linGain)
 		case "lowpass":
-			return chainFromCoeffs(design.Chebyshev2LP(freq, order, eqRippleDB, sampleRate), linGain)
+			return chainFromCoeffs(design.Chebyshev2LP(freq, order, ripple, sampleRate), linGain)
 		case "bandpass":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
 			coeffs, err := band.Chebyshev2Band(sampleRate, freq, bw, gainDB, order)
@@ -126,12 +127,12 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "highshelf":
-			coeffs, err := shelving.Chebyshev2HighShelf(sampleRate, freq, gainDB, eqRippleDB, order)
+			coeffs, err := shelving.Chebyshev2HighShelf(sampleRate, freq, gainDB, ripple, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "lowshelf":
-			coeffs, err := shelving.Chebyshev2LowShelf(sampleRate, freq, gainDB, eqRippleDB, order)
+			coeffs, err := shelving.Chebyshev2LowShelf(sampleRate, freq, gainDB, ripple, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
@@ -185,6 +186,12 @@ func nodeLinearGain(family, kind string, gainDB float64) float64 {
 		return 1
 	}
 	return math.Pow(10, gainDB/20)
+}
+
+func chebyshevRippleFromQ(q float64) float64 {
+	// Reuse the node's shape control as Chebyshev ripple (dB-like control).
+	// Keep it in a numerically safe and musically useful range.
+	return clamp(q, 0.1, 3)
 }
 
 func normalizeEQFamily(family string) string {
