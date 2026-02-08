@@ -8,11 +8,11 @@
   const SPECTRUM_TOP_DBFS = SPECTRUM_RANGE_DB - SPECTRUM_OFFSET_DB;
   const SPECTRUM_FLOOR_DBFS = -SPECTRUM_OFFSET_DB;
   const NODE_TYPE_OPTIONS = {
-    hp: ["highpass", "lowpass", "bandpass", "notch", "allpass"],
-    low: ["lowshelf", "peak", "highpass", "lowpass", "bandpass", "notch", "allpass"],
-    mid: ["peak", "bandpass", "notch", "allpass", "highpass", "lowpass"],
-    high: ["highshelf", "peak", "highpass", "lowpass", "bandpass", "notch", "allpass"],
-    lp: ["lowpass", "highpass", "bandpass", "notch", "allpass"],
+    hp: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
+    low: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
+    mid: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
+    high: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
+    lp: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
   };
   const TYPE_LABELS = {
     highpass: "Highpass",
