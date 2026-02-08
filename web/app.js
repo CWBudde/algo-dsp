@@ -44,7 +44,7 @@ const state = {
   effectsParams: {
     chorusEnabled: false,
     chorusMix: 0.18,
-    chorusDepth: 0.02,
+    chorusDepth: 0.003,
     chorusSpeedHz: 0.35,
     chorusStages: 3,
     reverbEnabled: false,
@@ -301,7 +301,7 @@ function readEffectsFromUI() {
 
 function updateEffectsText() {
   el.chorusMixValue.textContent = `${Math.round(Number(el.chorusMix.value) * 100)}%`;
-  el.chorusDepthValue.textContent = Number(el.chorusDepth.value).toFixed(2);
+  el.chorusDepthValue.textContent = Number(el.chorusDepth.value).toFixed(3);
   el.chorusSpeedValue.textContent = `${Number(el.chorusSpeed.value).toFixed(2)} Hz`;
   el.chorusStagesValue.textContent = `${Number(el.chorusStages.value)}`;
   el.reverbWetValue.textContent = `${Math.round(Number(el.reverbWet.value) * 100)}%`;

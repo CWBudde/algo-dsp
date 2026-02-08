@@ -153,7 +153,7 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		effects: EffectsParams{
 			ChorusEnabled:  false,
 			ChorusMix:      0.18,
-			ChorusDepth:    0.02,
+			ChorusDepth:    0.003,
 			ChorusSpeedHz:  0.35,
 			ChorusStages:   3,
 			ReverbEnabled:  false,
@@ -271,7 +271,7 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	prevReverbEnabled := e.effects.ReverbEnabled
 
 	p.ChorusMix = clamp(p.ChorusMix, 0, 1)
-	p.ChorusDepth = clamp(p.ChorusDepth, 0, 0.1)
+	p.ChorusDepth = clamp(p.ChorusDepth, 0, 0.03)
 	p.ChorusSpeedHz = clamp(p.ChorusSpeedHz, 0.05, 5)
 	if p.ChorusStages < 1 {
 		p.ChorusStages = 1
