@@ -11,8 +11,8 @@ import (
 //
 // Elliptic filters provide the sharpest transition from passband to stopband
 // among classical IIR filter types, at the cost of ripple in both regions.
-// The rippleDB parameter controls passband ripple (like Chebyshev Type I),
-// while stopbandDB controls the minimum stopband attenuation.
+// The rippleDB parameter controls passband ripple (in dB, typical 0.1-1.0),
+// while stopbandDB controls the minimum stopband attenuation (in dB, typical 40-80).
 //
 // The design uses the standard analog elliptic prototype (poles and zeros
 // placed via Jacobi elliptic functions) followed by bilinear transform.
@@ -25,19 +25,17 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		return nil
 	}
 
-	// Convert ripple specifications to analog prototype parameters.
-	// e controls passband ripple, es controls stopband rejection.
-	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)
-	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1)
+	// Convert ripple specifications to linear selectivity parameters.
+	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)    // Passband ripple
+	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1) // Stopband selectivity
 	k1 := e / es
 
 	// Solve elliptic degree equation to find discrimination parameter.
 	kEllip := ellipdeg(order, k1, 1e-9)
 
-	// Compute Jacobi elliptic function arguments for pole/zero placement.
-	ju0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
+	// Compute pole argument for analog prototype.
+	v0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
 
-	// Determine number of conjugate pairs.
 	r := order % 2
 	L := (order - r) / 2
 
@@ -46,8 +44,9 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	// First-order section for odd orders.
 	if r == 1 {
 		// Real pole from cd elliptic function.
-		p0 := real(complex(0, 1) * cde(-1.0+ju0, kEllip, 1e-9))
-		// Bilinear transform of first-order lowpass: H(s) = 1/(s - p0)
+		p0 := -real(complex(0, 1) * cde(-1.0+v0, kEllip, 1e-9))
+		// Bilinear transform of first-order: H(s) = 1/(s - p0)
+		// After bilinear s = k*(z-1)/(z+1): H(z) = (k-p0)/(k+p0) * (1 + z^-1)/(1 - ((k+p0)/(k-p0))z^-1)
 		norm := 1 / (k - p0)
 		sections = append(sections, biquad.Coefficients{
 			B0: k * norm,
@@ -62,33 +61,36 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1.0) / float64(order)
 
-		// Evaluate cd to get the i-th conjugate zero and pole.
-		zeros := complex(0, 1) * cde(complex(ui, 0)-ju0, kEllip, 1e-9)
-		poles := complex(0, 1) * cde(complex(ui, 0)-ju0*complex(kEllip, 0), kEllip, 1e-9)
+		// Evaluate cd to get the i-th conjugate zero on imaginary axis.
+		zi := cde(complex(ui, 0), kEllip, 1e-9)
+		// Invert to get normalized zero location.
+		invZero := 1.0 / zi
+		omegaZ := imag(invZero)
 
-		// Extract real parts and magnitudes for analog prototype.
-		invZero := 1.0 / zeros
-		invPole := 1.0 / poles
-		zre := real(invZero)
-		pre := real(invPole)
-		zabs := cmplx.Abs(invZero)
-		pabs := cmplx.Abs(invPole)
+		// Evaluate cd with pole argument to get the i-th pole.
+		pi := cde(complex(ui, 0)-v0, kEllip, 1e-9)
+		invPole := 1.0 / pi
+		sigmaP := -real(invPole)
+		omegaP := imag(invPole)
 
-		// Analog prototype second-order section: H(s) = (s² - 2·zre·s + zabs²) / (s² - 2·pre·s + pabs²)
-		// Apply bilinear transform s -> k·(z-1)/(z+1) and normalize.
+		// Analog prototype second-order section:
+		// Numerator: s² + omegaZ²
+		// Denominator: s² + 2·sigmaP·s + (sigmaP² + omegaP²)
+		zabs2 := omegaZ * omegaZ
+		pabs2 := sigmaP*sigmaP + omegaP*omegaP
+
+		// Apply bilinear transform s -> k·(z-1)/(z+1).
 		k2 := k * k
-		zabs2 := zabs * zabs
-		pabs2 := pabs * pabs
 
 		// Numerator after bilinear transform.
-		bn0 := k2 + 2*k*zre + zabs2
+		bn0 := k2 + zabs2
 		bn1 := 2 * (k2 - zabs2)
-		bn2 := k2 - 2*k*zre + zabs2
+		bn2 := k2 + zabs2
 
 		// Denominator after bilinear transform.
-		ad0 := k2 + 2*k*pre + pabs2
+		ad0 := k2 + 2*k*sigmaP + pabs2
 		ad1 := 2 * (k2 - pabs2)
-		ad2 := k2 - 2*k*pre + pabs2
+		ad2 := k2 - 2*k*sigmaP + pabs2
 
 		// Normalize denominator leading coefficient to 1.
 		b0 := bn0 / ad0
@@ -126,7 +128,7 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		return nil
 	}
 
-	// Convert ripple specifications to analog prototype parameters.
+	// Convert ripple specifications to linear selectivity parameters.
 	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)
 	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1)
 	k1 := e / es
@@ -134,8 +136,8 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	// Solve elliptic degree equation.
 	kEllip := ellipdeg(order, k1, 1e-9)
 
-	// Compute Jacobi elliptic function arguments.
-	ju0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
+	// Compute pole argument.
+	v0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
 
 	r := order % 2
 	L := (order - r) / 2
@@ -144,11 +146,14 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 
 	// First-order section for odd orders with LP-to-HP transform.
 	if r == 1 {
-		// LP-to-HP: pole p0 becomes -k/p0 (frequency inversion).
-		p0LP := real(complex(0, 1) * cde(-1.0+ju0, kEllip, 1e-9))
-		p0HP := -k / p0LP
+		// LP pole.
+		p0LP := -real(complex(0, 1) * cde(-1.0+v0, kEllip, 1e-9))
+		// LP-to-HP: s -> 1/s gives pole at -1/p0LP.
+		p0HP := -1.0 / p0LP
 		// Bilinear transform of highpass first-order.
-		norm := 1 / (k - p0HP)
+		// H(s) = s/(s - p0HP), after bilinear becomes (z-1)/(c(z-1)+(z+1)) where c = k/p0HP
+		denom := k - p0HP
+		norm := 1 / denom
 		sections = append(sections, biquad.Coefficients{
 			B0: norm,
 			B1: -norm,
@@ -162,41 +167,33 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1.0) / float64(order)
 
-		// Get LP poles and zeros.
-		zeros := complex(0, 1) * cde(complex(ui, 0)-ju0, kEllip, 1e-9)
-		poles := complex(0, 1) * cde(complex(ui, 0)-ju0*complex(kEllip, 0), kEllip, 1e-9)
+		// Get LP poles (zeros don't affect HP since they're at infinity in analog domain).
+		pi := cde(complex(ui, 0)-v0, kEllip, 1e-9)
+		invPole := 1.0 / pi
+		sigmaPLP := -real(invPole)
+		omegaPLP := imag(invPole)
 
-		// LP-to-HP transformation: s -> k²/s (frequency inversion).
-		// Zero at s=z becomes zero at s=k²/z, pole at s=p becomes pole at s=k²/p.
-		invZero := 1.0 / zeros
-		invPole := 1.0 / poles
-		zre := real(invZero)
-		pre := real(invPole)
-		zabs := cmplx.Abs(invZero)
-		pabs := cmplx.Abs(invPole)
+		// LP-to-HP transformation: s -> 1/s.
+		// LP zero at s=j·omegaZ becomes HP zero at s=0 (DC).
+		// LP pole at s=sigmaP+j·omegaP becomes HP pole at s=1/(sigmaP+j·omegaP).
+		// This gives s = sigmaP/(sigmaP²+omegaP²) - j·omegaP/(sigmaP²+omegaP²).
+		pabs2LP := sigmaPLP*sigmaPLP + omegaPLP*omegaPLP
+		sigmaPHP := sigmaPLP / pabs2LP
+		omegaPHP := omegaPLP / pabs2LP
 
 		k2 := k * k
-		zabs2 := zabs * zabs
-		pabs2 := pabs * pabs
 
-		// HP analog section after LP-to-HP: H(s) = s² / (s² - 2·k²·pre/pabs²·s + k⁴/pabs²)
-		// Numerator: k⁴/zabs² + 2·k³·zre/zabs²·s + k²·s²
-		// Denominator: k⁴/pabs² + 2·k³·pre/pabs²·s + k²·s²
-		// Simplify: divide through by k² to get standard form.
+		// HP analog section: H(s) = s² / (s² + 2·sigmaPHP·s + (sigmaPHP²+omegaPHP²))
+		// Numerator after bilinear: (z-1)²  = z² - 2z + 1.
+		bn0 := 1.0
+		bn1 := -2.0
+		bn2 := 1.0
 
-		// Numerator after bilinear transform (HP zero at k²/zabs²).
-		hpZabs2 := k2 / zabs2
-		hpZre := k2 * zre / zabs2
-		bn0 := k2 + 2*k*hpZre + hpZabs2
-		bn1 := 2 * (k2 - hpZabs2)
-		bn2 := k2 - 2*k*hpZre + hpZabs2
-
-		// Denominator after bilinear transform (HP pole at k²/pabs²).
-		hpPabs2 := k2 / pabs2
-		hpPre := k2 * pre / pabs2
-		ad0 := k2 + 2*k*hpPre + hpPabs2
-		ad1 := 2 * (k2 - hpPabs2)
-		ad2 := k2 - 2*k*hpPre + hpPabs2
+		// Denominator: LP pattern with HP pole.
+		pabs2HP := sigmaPHP*sigmaPHP + omegaPHP*omegaPHP
+		ad0 := k2 + 2*k*sigmaPHP + pabs2HP
+		ad1 := 2 * (k2 - pabs2HP)
+		ad2 := k2 - 2*k*sigmaPHP + pabs2HP
 
 		// Normalize denominator.
 		b0 := bn0 / ad0
