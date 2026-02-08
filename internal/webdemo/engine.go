@@ -10,6 +10,8 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
+	"github.com/cwbudde/algo-dsp/dsp/filter/design/band"
+	"github.com/cwbudde/algo-dsp/dsp/filter/design/shelving"
 	"github.com/cwbudde/algo-dsp/dsp/window"
 )
 
@@ -17,6 +19,9 @@ const (
 	stepCount       = 16
 	minDecaySeconds = 0.01
 	maxVoices       = 64
+	eqPassOrder     = 4
+	eqBandOrder     = 4
+	eqShelfOrder    = 4
 )
 
 // StepConfig defines one sequencer step.
@@ -108,13 +113,11 @@ type Engine struct {
 	voices               []voice
 
 	eq   EQParams
-	hp   *biquad.Section
-	hpG  float64
-	low  *biquad.Section
-	mid  *biquad.Section
-	high *biquad.Section
-	lp   *biquad.Section
-	lpG  float64
+	hp   *biquad.Chain
+	low  *biquad.Chain
+	mid  *biquad.Chain
+	high *biquad.Chain
+	lp   *biquad.Chain
 
 	effects EffectsParams
 	chorus  *effects.Chorus
@@ -393,12 +396,10 @@ func (e *Engine) Render(dst []float32) {
 			x = e.reverb.ProcessSample(x)
 		}
 		x = e.hp.ProcessSample(x)
-		x *= e.hpG
 		x = e.low.ProcessSample(x)
 		x = e.mid.ProcessSample(x)
 		x = e.high.ProcessSample(x)
 		x = e.lp.ProcessSample(x)
-		x *= e.lpG
 		x *= e.eq.Master
 		e.pushSpectrumSample(x)
 		dst[i] = float32(clamp(x, -1, 1))
@@ -436,12 +437,10 @@ func (e *Engine) ResponseCurveDB(freqs []float64) []float64 {
 	for i, f := range freqs {
 		f = clamp(f, 1, e.sampleRate*0.49)
 		h := e.hp.Response(f, e.sampleRate)
-		h *= complex(e.hpG, 0)
 		h *= e.low.Response(f, e.sampleRate)
 		h *= e.mid.Response(f, e.sampleRate)
 		h *= e.high.Response(f, e.sampleRate)
 		h *= e.lp.Response(f, e.sampleRate)
-		h *= complex(e.lpG, 0)
 		mag := cmplx.Abs(h)
 		out[i] = 20 * math.Log10(math.Max(1e-12, mag))
 	}
@@ -657,41 +656,65 @@ func shuffleRatio(shuffle float64) float64 {
 }
 
 func (e *Engine) rebuildEQ() error {
-	hpCoeffs := buildEQCoeffs(e.eq.HPType, e.eq.HPFreq, e.eq.HPGain, e.eq.HPQ, e.sampleRate)
-	lowCoeffs := buildEQCoeffs(e.eq.LowType, e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
-	midCoeffs := buildEQCoeffs(e.eq.MidType, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
-	highCoeffs := buildEQCoeffs(e.eq.HighType, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
-	lpCoeffs := buildEQCoeffs(e.eq.LPType, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ, e.sampleRate)
-
-	e.hp = biquad.NewSection(hpCoeffs)
-	e.hpG = math.Pow(10, e.eq.HPGain/20)
-	e.low = biquad.NewSection(lowCoeffs)
-	e.mid = biquad.NewSection(midCoeffs)
-	e.high = biquad.NewSection(highCoeffs)
-	e.lp = biquad.NewSection(lpCoeffs)
-	e.lpG = math.Pow(10, e.eq.LPGain/20)
+	e.hp = buildEQChain(e.eq.HPType, e.eq.HPFreq, e.eq.HPGain, e.eq.HPQ, e.sampleRate)
+	e.low = buildEQChain(e.eq.LowType, e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
+	e.mid = buildEQChain(e.eq.MidType, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
+	e.high = buildEQChain(e.eq.HighType, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
+	e.lp = buildEQChain(e.eq.LPType, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ, e.sampleRate)
 	return nil
 }
 
-func buildEQCoeffs(kind string, freq, gainDB, q, sampleRate float64) biquad.Coefficients {
+func buildEQChain(kind string, freq, gainDB, q, sampleRate float64) *biquad.Chain {
+	linGain := nodeLinearGain(kind, gainDB)
 	switch kind {
 	case "highpass":
-		return design.Highpass(freq, q, sampleRate)
+		return chainFromCoeffs(design.ButterworthHP(freq, eqPassOrder, sampleRate), linGain)
 	case "bandpass":
-		return design.Bandpass(freq, q, sampleRate)
+		bw := math.Max(1, freq/math.Max(q, 1e-6))
+		coeffs, err := band.ButterworthBand(sampleRate, freq, bw, 0, eqBandOrder)
+		if err == nil {
+			return chainFromCoeffs(coeffs, linGain)
+		}
+		return chainFromCoeffs([]biquad.Coefficients{design.Bandpass(freq, q, sampleRate)}, linGain)
 	case "notch":
-		return design.Notch(freq, q, sampleRate)
+		return chainFromCoeffs([]biquad.Coefficients{design.Notch(freq, q, sampleRate)}, linGain)
 	case "allpass":
-		return design.Allpass(freq, q, sampleRate)
+		return chainFromCoeffs([]biquad.Coefficients{design.Allpass(freq, q, sampleRate)}, linGain)
 	case "peak":
-		return design.Peak(freq, gainDB, q, sampleRate)
+		return chainFromCoeffs([]biquad.Coefficients{design.Peak(freq, gainDB, q, sampleRate)}, linGain)
 	case "highshelf":
-		return design.HighShelf(freq, gainDB, q, sampleRate)
+		coeffs, err := shelving.ButterworthHighShelf(sampleRate, freq, gainDB, eqShelfOrder)
+		if err == nil {
+			return chainFromCoeffs(coeffs, linGain)
+		}
+		return chainFromCoeffs([]biquad.Coefficients{design.HighShelf(freq, gainDB, q, sampleRate)}, linGain)
 	case "lowshelf":
-		return design.LowShelf(freq, gainDB, q, sampleRate)
+		coeffs, err := shelving.ButterworthLowShelf(sampleRate, freq, gainDB, eqShelfOrder)
+		if err == nil {
+			return chainFromCoeffs(coeffs, linGain)
+		}
+		return chainFromCoeffs([]biquad.Coefficients{design.LowShelf(freq, gainDB, q, sampleRate)}, linGain)
 	default:
-		return design.Lowpass(freq, q, sampleRate)
+		return chainFromCoeffs(design.ButterworthLP(freq, eqPassOrder, sampleRate), linGain)
 	}
+}
+
+func chainFromCoeffs(coeffs []biquad.Coefficients, gain float64) *biquad.Chain {
+	if len(coeffs) == 0 {
+		coeffs = []biquad.Coefficients{{B0: 1}}
+	}
+	return biquad.NewChain(coeffs, biquad.WithGain(gain))
+}
+
+func typeUsesEmbeddedGain(kind string) bool {
+	return kind == "peak" || kind == "lowshelf" || kind == "highshelf"
+}
+
+func nodeLinearGain(kind string, gainDB float64) float64 {
+	if typeUsesEmbeddedGain(kind) {
+		return 1
+	}
+	return math.Pow(10, gainDB/20)
 }
 
 func normalizeEQType(node, kind string) string {

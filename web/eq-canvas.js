@@ -276,6 +276,10 @@
       return TYPE_LABELS[type] || type;
     }
 
+    typeUsesGainInCoeffs(type) {
+      return type === "peak" || type === "lowshelf" || type === "highshelf";
+    }
+
     labelForKey(key) {
       return this.typeLabel(this.typeForKey(key));
     }
@@ -331,13 +335,35 @@
       const p = this.params;
       const sampleRate = this.getSampleRate();
       const type = this.typeForKey(key);
+      const typeHasEmbeddedGain = this.typeUsesGainInCoeffs(type);
       if (key === "hp") {
         const hpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.hpFreq, 0, p.hpQ, sampleRate));
         return hpMag * Math.pow(10, p.hpGain / 20);
       }
-      if (key === "low") return biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.lowFreq, p.lowGain, p.lowQ, sampleRate));
-      if (key === "mid") return biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.midFreq, p.midGain, p.midQ, sampleRate));
-      if (key === "high") return biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.highFreq, p.highGain, p.highQ, sampleRate));
+      if (key === "low") {
+        const lowMag = biquadMagnitudeAt(
+          freq,
+          sampleRate,
+          this.filterCoeffs(type, p.lowFreq, typeHasEmbeddedGain ? p.lowGain : 0, p.lowQ, sampleRate),
+        );
+        return lowMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.lowGain / 20));
+      }
+      if (key === "mid") {
+        const midMag = biquadMagnitudeAt(
+          freq,
+          sampleRate,
+          this.filterCoeffs(type, p.midFreq, typeHasEmbeddedGain ? p.midGain : 0, p.midQ, sampleRate),
+        );
+        return midMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.midGain / 20));
+      }
+      if (key === "high") {
+        const highMag = biquadMagnitudeAt(
+          freq,
+          sampleRate,
+          this.filterCoeffs(type, p.highFreq, typeHasEmbeddedGain ? p.highGain : 0, p.highQ, sampleRate),
+        );
+        return highMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.highGain / 20));
+      }
       const lpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.lpFreq, 0, p.lpQ, sampleRate));
       return lpMag * Math.pow(10, p.lpGain / 20);
     }
@@ -566,7 +592,7 @@
       menu.innerHTML = "";
       const title = document.createElement("div");
       title.className = "eq-context-menu-title";
-      title.textContent = `${key.toUpperCase()} Node`;
+      title.textContent = "Filter Type";
       menu.appendChild(title);
       for (const type of NODE_TYPE_OPTIONS[key] || []) {
         const button = document.createElement("button");

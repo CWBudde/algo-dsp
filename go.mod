@@ -7,4 +7,7 @@ require (
 	github.com/cwbudde/algo-vecmath v0.1.0
 )
 
-require golang.org/x/sys v0.40.0 // indirect
+require (
+	github.com/meko-christian/algo-approx v0.0.0-20251231144736-63e2f0802054 // indirect
+	golang.org/x/sys v0.40.0 // indirect
+)
