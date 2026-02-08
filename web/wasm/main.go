@@ -32,7 +32,11 @@ func main() {
 		if engine == nil || len(args) < 2 {
 			return js.Null()
 		}
-		engine.SetTransport(args[0].Float(), args[1].Float())
+		shuffle := 0.0
+		if len(args) >= 3 {
+			shuffle = args[2].Float()
+		}
+		engine.SetTransport(args[0].Float(), args[1].Float(), shuffle)
 		return js.Null()
 	}))
 
@@ -41,6 +45,14 @@ func main() {
 			return js.Null()
 		}
 		engine.SetRunning(args[0].Bool())
+		return js.Null()
+	}))
+
+	api.Set("setWaveform", export(func(args []js.Value) any {
+		if engine == nil || len(args) < 1 {
+			return js.Null()
+		}
+		engine.SetWaveform(args[0].String())
 		return js.Null()
 	}))
 

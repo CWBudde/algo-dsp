@@ -57,6 +57,8 @@ const el = {
   tempoValue: document.getElementById("tempo-value"),
   decay: document.getElementById("decay"),
   decayValue: document.getElementById("decay-value"),
+  shuffle: document.getElementById("shuffle"),
+  shuffleValue: document.getElementById("shuffle-value"),
   steps: document.getElementById("steps"),
   eqCanvas: document.getElementById("eq-canvas"),
   eqReadout: document.getElementById("eq-readout"),
@@ -186,16 +188,21 @@ function updateEQText() {
   el.eqReadout.textContent = `${h.label}: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, Q ${h.q.toFixed(2)}`;
 }
 
-function stepDurationSeconds() {
-  return 60 / Number(el.tempo.value) / 4;
+function stepDurationSeconds(stepIndex) {
+  const base = 60 / Number(el.tempo.value) / 4;
+  const shuffle = Math.max(0, Math.min(0.95, Number(el.shuffle.value)));
+  if (shuffle <= 0) return base;
+  const ratio = shuffle * 0.5;
+  return stepIndex % 2 === 0 ? base * (1 - ratio) : base * (1 + ratio);
 }
 
 function schedule() {
   const lookahead = 0.1;
   while (state.nextNoteTime < state.audioCtx.currentTime + lookahead) {
-    highlightStep(state.currentStep);
-    state.nextNoteTime += stepDurationSeconds();
-    state.currentStep = (state.currentStep + 1) % STEP_COUNT;
+    const stepIndex = state.currentStep;
+    highlightStep(stepIndex);
+    state.nextNoteTime += stepDurationSeconds(stepIndex);
+    state.currentStep = (stepIndex + 1) % STEP_COUNT;
   }
 }
 
@@ -207,7 +214,7 @@ function highlightStep(index) {
 
 function syncTransportToDSP() {
   if (!state.dsp.ready || !state.dsp.api) return;
-  state.dsp.api.setTransport(Number(el.tempo.value), Number(el.decay.value));
+  state.dsp.api.setTransport(Number(el.tempo.value), Number(el.decay.value), Number(el.shuffle.value));
 }
 
 function syncWaveformToDSP() {
@@ -295,10 +302,11 @@ function bindEvents() {
     else startSequencer();
   });
 
-  [el.tempo, el.decay].forEach((control) => {
+  [el.tempo, el.decay, el.shuffle].forEach((control) => {
     control.addEventListener("input", () => {
       el.tempoValue.textContent = `${Number(el.tempo.value)} BPM`;
       el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
+      el.shuffleValue.textContent = `${Math.round(Number(el.shuffle.value) * 100)}%`;
       syncTransportToDSP();
     });
   });
@@ -313,6 +321,7 @@ function bindEvents() {
 
   el.tempoValue.textContent = `${Number(el.tempo.value)} BPM`;
   el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
+  el.shuffleValue.textContent = `${Math.round(Number(el.shuffle.value) * 100)}%`;
   el.waveform.value = state.waveform;
   updateEQText();
 }

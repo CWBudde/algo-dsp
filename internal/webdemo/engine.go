@@ -42,18 +42,31 @@ type EQParams struct {
 }
 
 type voice struct {
+	waveform    Waveform
 	phase       float64
 	phaseStep   float64
 	ageSamples  int
 	decaySample int
 }
 
+// Waveform defines oscillator shape for synth voices.
+type Waveform int
+
+const (
+	WaveSine Waveform = iota
+	WaveTriangle
+	WaveSaw
+	WaveSquare
+)
+
 // Engine runs the web demo DSP pipeline in Go.
 type Engine struct {
 	sampleRate float64
 	tempoBPM   float64
 	decaySec   float64
+	shuffle    float64
 	running    bool
+	waveform   Waveform
 
 	steps       [stepCount]StepConfig
 	currentStep int
@@ -80,6 +93,8 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		sampleRate: sampleRate,
 		tempoBPM:   110,
 		decaySec:   0.2,
+		shuffle:    0,
+		waveform:   WaveSine,
 		eq: EQParams{
 			HPFreq:   40,
 			HPGain:   0,
@@ -109,8 +124,22 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 	return e, nil
 }
 
-// SetTransport updates tempo and decay.
-func (e *Engine) SetTransport(tempoBPM, decaySec float64) {
+// SetWaveform updates oscillator shape used for newly-triggered voices.
+func (e *Engine) SetWaveform(name string) {
+	switch name {
+	case "triangle":
+		e.waveform = WaveTriangle
+	case "saw":
+		e.waveform = WaveSaw
+	case "square":
+		e.waveform = WaveSquare
+	default:
+		e.waveform = WaveSine
+	}
+}
+
+// SetTransport updates tempo, decay, and shuffle amount.
+func (e *Engine) SetTransport(tempoBPM, decaySec, shuffle float64) {
 	if tempoBPM > 0 {
 		e.tempoBPM = tempoBPM
 	}
@@ -118,6 +147,7 @@ func (e *Engine) SetTransport(tempoBPM, decaySec float64) {
 		decaySec = minDecaySeconds
 	}
 	e.decaySec = decaySec
+	e.shuffle = clamp(shuffle, 0, 0.95)
 }
 
 // SetRunning starts or stops new step triggering.
@@ -183,9 +213,10 @@ func (e *Engine) Render(dst []float32) {
 		if e.running {
 			e.samplesUntilNextStep -= 1
 			for e.samplesUntilNextStep <= 0 {
+				stepIndex := e.currentStep
 				e.triggerCurrentStep()
-				e.currentStep = (e.currentStep + 1) % stepCount
-				e.samplesUntilNextStep += e.stepDurationSamples()
+				e.currentStep = (stepIndex + 1) % stepCount
+				e.samplesUntilNextStep += e.stepDurationSamplesForStep(stepIndex)
 			}
 		}
 
@@ -234,6 +265,7 @@ func (e *Engine) triggerCurrentStep() {
 		decaySamples = 1
 	}
 	e.voices = append(e.voices, voice{
+		waveform:    e.waveform,
 		phase:       0,
 		phaseStep:   2 * math.Pi * step.FreqHz / e.sampleRate,
 		ageSamples:  0,
@@ -259,7 +291,7 @@ func (e *Engine) nextSample() float64 {
 		}
 
 		env := envelope(v.ageSamples, attackSamples, v.decaySample)
-		sum += env * math.Sin(v.phase)
+		sum += env * waveSample(v.waveform, v.phase)
 
 		v.phase += v.phaseStep
 		if v.phase > math.Pi {
@@ -275,6 +307,18 @@ func (e *Engine) nextSample() float64 {
 
 func (e *Engine) stepDurationSamples() float64 {
 	return e.sampleRate * 60.0 / e.tempoBPM / 4.0
+}
+
+func (e *Engine) stepDurationSamplesForStep(stepIndex int) float64 {
+	base := e.stepDurationSamples()
+	if e.shuffle <= 0 {
+		return base
+	}
+	ratio := e.shuffle * 0.5
+	if stepIndex%2 == 0 {
+		return base * (1 - ratio)
+	}
+	return base * (1 + ratio)
 }
 
 func (e *Engine) rebuildEQ() error {
@@ -323,4 +367,20 @@ func clamp(v, minV, maxV float64) float64 {
 func defaultStepFreq(i int) float64 {
 	defaults := [...]float64{130.81, 164.81, 196, 220, 261.63, 329.63, 392, 440}
 	return defaults[(i % 8)]
+}
+
+func waveSample(w Waveform, phase float64) float64 {
+	switch w {
+	case WaveTriangle:
+		return (2 / math.Pi) * math.Asin(math.Sin(phase))
+	case WaveSaw:
+		return phase / math.Pi
+	case WaveSquare:
+		if math.Sin(phase) >= 0 {
+			return 1
+		}
+		return -1
+	default:
+		return math.Sin(phase)
+	}
 }

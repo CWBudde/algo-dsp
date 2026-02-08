@@ -4,7 +4,7 @@ Production-quality DSP (Digital Signal Processing) algorithms for Go. Algorithm-
 
 **Module**: `github.com/cwbudde/algo-dsp`
 
-**Status**: Phases 0-12 complete. Phase 13 (optimization) and Phase 14 (API stabilization / v1.0) in progress. See `PLAN.md` for the full roadmap.
+Try an interactive DSP demo live in your browser: [https://cwbudde.github.io/algo-dsp/](https://cwbudde.github.io/algo-dsp/)
 
 ## Quick Start
 
