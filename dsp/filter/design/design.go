@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+	"github.com/cwbudde/algo-dsp/dsp/filter/design/pass"
 )
 
 const defaultQ = 1 / math.Sqrt2
@@ -31,42 +32,12 @@ func BilinearTransform(sCoeffs [3]float64, sampleRate float64) [3]float64 {
 
 // Lowpass designs a lowpass biquad at freq (Hz) with quality factor q.
 func Lowpass(freq, q, sampleRate float64) biquad.Coefficients {
-	w0, ok := normalizedW0(freq, sampleRate)
-	if !ok {
-		return biquad.Coefficients{}
-	}
-	q = normalizedQ(q)
-	cw := math.Cos(w0)
-	sw := math.Sin(w0)
-	alpha := sw / (2 * q)
-
-	b0 := (1 - cw) / 2
-	b1 := 1 - cw
-	b2 := (1 - cw) / 2
-	a0 := 1 + alpha
-	a1 := -2 * cw
-	a2 := 1 - alpha
-	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
+	return pass.LowpassRBJ(freq, q, sampleRate)
 }
 
 // Highpass designs a highpass biquad at freq (Hz) with quality factor q.
 func Highpass(freq, q, sampleRate float64) biquad.Coefficients {
-	w0, ok := normalizedW0(freq, sampleRate)
-	if !ok {
-		return biquad.Coefficients{}
-	}
-	q = normalizedQ(q)
-	cw := math.Cos(w0)
-	sw := math.Sin(w0)
-	alpha := sw / (2 * q)
-
-	b0 := (1 + cw) / 2
-	b1 := -(1 + cw)
-	b2 := (1 + cw) / 2
-	a0 := 1 + alpha
-	a1 := -2 * cw
-	a2 := 1 - alpha
-	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
+	return pass.HighpassRBJ(freq, q, sampleRate)
 }
 
 // Bandpass designs a constant-skirt-gain bandpass biquad.

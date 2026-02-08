@@ -3,7 +3,6 @@
   const FREQ_MAX = 20000;
   const GAIN_MIN = -18;
   const GAIN_MAX = 18;
-  const EDGE_Q = 1 / Math.sqrt(2);
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -69,12 +68,12 @@
     };
   }
 
-  function lowShelfCoeffs(freq, gainDB, sampleRate) {
+  function lowShelfCoeffs(freq, gainDB, q, sampleRate) {
     const a = Math.pow(10, gainDB / 40);
     const w0 = (2 * Math.PI * freq) / sampleRate;
     const cosw0 = Math.cos(w0);
     const sinw0 = Math.sin(w0);
-    const alpha = (sinw0 / 2) * Math.sqrt(2);
+    const alpha = sinw0 / (2 * q);
     const twoSqrtAAlpha = 2 * Math.sqrt(a) * alpha;
     return {
       b0: a * ((a + 1) - (a - 1) * cosw0 + twoSqrtAAlpha),
@@ -86,12 +85,12 @@
     };
   }
 
-  function highShelfCoeffs(freq, gainDB, sampleRate) {
+  function highShelfCoeffs(freq, gainDB, q, sampleRate) {
     const a = Math.pow(10, gainDB / 40);
     const w0 = (2 * Math.PI * freq) / sampleRate;
     const cosw0 = Math.cos(w0);
     const sinw0 = Math.sin(w0);
-    const alpha = (sinw0 / 2) * Math.sqrt(2);
+    const alpha = sinw0 / (2 * q);
     const twoSqrtAAlpha = 2 * Math.sqrt(a) * alpha;
     return {
       b0: a * ((a + 1) + (a - 1) * cosw0 + twoSqrtAAlpha),
@@ -113,15 +112,20 @@
       this.getResponseDB = options.getResponseDB || null;
       this.params = {
         hpFreq: 40,
+        hpGain: 0,
+        hpQ: 0.707,
         lowFreq: 120,
         lowGain: 0,
+        lowQ: 0.707,
         midFreq: 1000,
         midGain: 0,
+        midQ: 1.2,
         highFreq: 5000,
         highGain: 0,
+        highQ: 0.707,
         lpFreq: 12000,
         lpGain: 0,
-        midQ: 1.2,
+        lpQ: 0.707,
         master: 0.75,
         ...(options.initialParams || {}),
       };
@@ -162,10 +166,15 @@
       this.params.highFreq = clamp(this.params.highFreq, this.params.midFreq * 1.15, this.params.lpFreq / 1.15);
 
       this.params.lowGain = clamp(this.params.lowGain, GAIN_MIN, GAIN_MAX);
+      this.params.hpGain = clamp(this.params.hpGain, GAIN_MIN, GAIN_MAX);
       this.params.midGain = clamp(this.params.midGain, GAIN_MIN, GAIN_MAX);
       this.params.highGain = clamp(this.params.highGain, GAIN_MIN, GAIN_MAX);
       this.params.lpGain = clamp(this.params.lpGain, GAIN_MIN, GAIN_MAX);
+      this.params.hpQ = clamp(this.params.hpQ, 0.2, 8);
+      this.params.lowQ = clamp(this.params.lowQ, 0.2, 8);
       this.params.midQ = clamp(this.params.midQ, 0.2, 8);
+      this.params.highQ = clamp(this.params.highQ, 0.2, 8);
+      this.params.lpQ = clamp(this.params.lpQ, 0.2, 8);
       this.params.master = clamp(this.params.master, 0, 1);
     }
 
@@ -208,11 +217,14 @@
     filterMagnitude(key, freq) {
       const p = this.params;
       const sampleRate = this.getSampleRate();
-      if (key === "hp") return biquadMagnitudeAt(freq, sampleRate, highpassCoeffs(p.hpFreq, EDGE_Q, sampleRate));
-      if (key === "low") return biquadMagnitudeAt(freq, sampleRate, lowShelfCoeffs(p.lowFreq, p.lowGain, sampleRate));
+      if (key === "hp") {
+        const hpMag = biquadMagnitudeAt(freq, sampleRate, highpassCoeffs(p.hpFreq, p.hpQ, sampleRate));
+        return hpMag * Math.pow(10, p.hpGain / 20);
+      }
+      if (key === "low") return biquadMagnitudeAt(freq, sampleRate, lowShelfCoeffs(p.lowFreq, p.lowGain, p.lowQ, sampleRate));
       if (key === "mid") return biquadMagnitudeAt(freq, sampleRate, peakingCoeffs(p.midFreq, p.midGain, p.midQ, sampleRate));
-      if (key === "high") return biquadMagnitudeAt(freq, sampleRate, highShelfCoeffs(p.highFreq, p.highGain, sampleRate));
-      const lpMag = biquadMagnitudeAt(freq, sampleRate, lowpassCoeffs(p.lpFreq, EDGE_Q, sampleRate));
+      if (key === "high") return biquadMagnitudeAt(freq, sampleRate, highShelfCoeffs(p.highFreq, p.highGain, p.highQ, sampleRate));
+      const lpMag = biquadMagnitudeAt(freq, sampleRate, lowpassCoeffs(p.lpFreq, p.lpQ, sampleRate));
       return lpMag * Math.pow(10, p.lpGain / 20);
     }
 
@@ -353,7 +365,7 @@
       const p = this.params;
       const yZero = this.gainToY(0);
       return [
-        { key: "hp", label: "Highpass", x: this.freqToX(p.hpFreq), y: yZero, color: "#8a4f1f" },
+        { key: "hp", label: "Highpass", x: this.freqToX(p.hpFreq), y: this.gainToY(p.hpGain), color: "#8a4f1f" },
         { key: "low", label: "Low Shelf", x: this.freqToX(p.lowFreq), y: this.gainToY(p.lowGain), color: "#c24d2c" },
         { key: "mid", label: "Peak", x: this.freqToX(p.midFreq), y: this.gainToY(p.midGain), color: "#225d7d" },
         { key: "high", label: "High Shelf", x: this.freqToX(p.highFreq), y: this.gainToY(p.highGain), color: "#3b7d44" },
@@ -363,11 +375,20 @@
 
     hoverInfoForKey(key) {
       const p = this.params;
-      if (key === "hp") return { key, label: "Highpass", freq: p.hpFreq, gain: 0 };
-      if (key === "low") return { key, label: "Low Shelf", freq: p.lowFreq, gain: p.lowGain };
-      if (key === "mid") return { key, label: "Peak", freq: p.midFreq, gain: p.midGain };
-      if (key === "high") return { key, label: "High Shelf", freq: p.highFreq, gain: p.highGain };
-      if (key === "lp") return { key, label: "Lowpass", freq: p.lpFreq, gain: p.lpGain };
+      if (key === "hp") return { key, label: "Highpass", freq: p.hpFreq, gain: p.hpGain, q: p.hpQ };
+      if (key === "low") return { key, label: "Low Shelf", freq: p.lowFreq, gain: p.lowGain, q: p.lowQ };
+      if (key === "mid") return { key, label: "Peak", freq: p.midFreq, gain: p.midGain, q: p.midQ };
+      if (key === "high") return { key, label: "High Shelf", freq: p.highFreq, gain: p.highGain, q: p.highQ };
+      if (key === "lp") return { key, label: "Lowpass", freq: p.lpFreq, gain: p.lpGain, q: p.lpQ };
+      return null;
+    }
+
+    qFieldForKey(key) {
+      if (key === "hp") return "hpQ";
+      if (key === "low") return "lowQ";
+      if (key === "mid") return "midQ";
+      if (key === "high") return "highQ";
+      if (key === "lp") return "lpQ";
       return null;
     }
 
@@ -442,6 +463,7 @@
 
       if (node.key === "hp") {
         this.params.hpFreq = clamp(this.xToFreq(x), FREQ_MIN, this.params.lowFreq / 1.15);
+        this.params.hpGain = gain;
       } else if (node.key === "low") {
         this.params.lowFreq = clamp(this.xToFreq(x), this.params.hpFreq * 1.15, this.params.midFreq / 1.15);
         this.params.lowGain = gain;
@@ -508,6 +530,25 @@
         }
         this.canvas.style.cursor = "crosshair";
       });
+
+      this.canvas.addEventListener(
+        "wheel",
+        (ev) => {
+          const key = this.activeNode || this.hoverNode;
+          if (!key) return;
+
+          const field = this.qFieldForKey(key);
+          if (!field) return;
+
+          ev.preventDefault();
+          const factor = ev.deltaY < 0 ? 1.08 : 1 / 1.08;
+          this.params[field] = clamp(this.params[field] * factor, 0.2, 8);
+          this.onHover(this.hoverInfoForKey(key));
+          this.onChange({ ...this.params });
+          this.draw();
+        },
+        { passive: false },
+      );
 
       window.addEventListener("resize", () => this.resize());
     }
