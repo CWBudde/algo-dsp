@@ -27,18 +27,23 @@ type StepConfig struct {
 
 // EQParams defines the 5-node EQ parameters.
 type EQParams struct {
+	HPType   string
 	HPFreq   float64
 	HPGain   float64
 	HPQ      float64
+	LowType  string
 	LowFreq  float64
 	LowGain  float64
 	LowQ     float64
+	MidType  string
 	MidFreq  float64
 	MidGain  float64
 	MidQ     float64
+	HighType string
 	HighFreq float64
 	HighGain float64
 	HighQ    float64
+	LPType   string
 	LPFreq   float64
 	LPGain   float64
 	LPQ      float64
@@ -143,18 +148,23 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		shuffle:    0,
 		waveform:   WaveSine,
 		eq: EQParams{
+			HPType:   "highpass",
 			HPFreq:   40,
 			HPGain:   0,
 			HPQ:      1 / math.Sqrt2,
+			LowType:  "lowshelf",
 			LowFreq:  100,
 			LowGain:  0,
 			LowQ:     1 / math.Sqrt2,
+			MidType:  "peak",
 			MidFreq:  1000,
 			MidGain:  0,
 			MidQ:     1.2,
+			HighType: "highshelf",
 			HighFreq: 6000,
 			HighGain: 0,
 			HighQ:    1 / math.Sqrt2,
+			LPType:   "lowpass",
 			LPFreq:   12000,
 			LPGain:   0,
 			LPQ:      1 / math.Sqrt2,
@@ -251,10 +261,15 @@ func (e *Engine) SetSteps(steps []StepConfig) {
 // SetEQ updates EQ parameters and rebuilds the filters.
 func (e *Engine) SetEQ(eq EQParams) error {
 	eq.HPFreq = clamp(eq.HPFreq, 20, e.sampleRate*0.49)
+	eq.HPType = normalizeEQType("hp", eq.HPType)
 	eq.LowFreq = clamp(eq.LowFreq, 20, e.sampleRate*0.49)
+	eq.LowType = normalizeEQType("low", eq.LowType)
 	eq.MidFreq = clamp(eq.MidFreq, 20, e.sampleRate*0.49)
+	eq.MidType = normalizeEQType("mid", eq.MidType)
 	eq.HighFreq = clamp(eq.HighFreq, 20, e.sampleRate*0.49)
+	eq.HighType = normalizeEQType("high", eq.HighType)
 	eq.LPFreq = clamp(eq.LPFreq, 20, e.sampleRate*0.49)
+	eq.LPType = normalizeEQType("lp", eq.LPType)
 	eq.LowGain = clamp(eq.LowGain, -24, 24)
 	eq.HPGain = clamp(eq.HPGain, -24, 24)
 	eq.MidGain = clamp(eq.MidGain, -24, 24)
@@ -346,7 +361,7 @@ func (e *Engine) SetSpectrum(p SpectrumParams) error {
 	e.spectrumSamplesToHop = 0
 	e.spectrumDB = make([]float64, cfg.FFTSize/2+1)
 	for i := range e.spectrumDB {
-		e.spectrumDB[i] = -120
+		e.spectrumDB[i] = -130
 	}
 	e.spectrumReady = false
 	return nil
@@ -438,7 +453,7 @@ func (e *Engine) SpectrumCurveDB(freqs []float64) []float64 {
 	out := make([]float64, len(freqs))
 	if !e.spectrumReady || len(e.spectrumDB) == 0 {
 		for i := range out {
-			out[i] = -120
+			out[i] = -130
 		}
 		return out
 	}
@@ -447,7 +462,7 @@ func (e *Engine) SpectrumCurveDB(freqs []float64) []float64 {
 	lastBin := len(e.spectrumDB) - 1
 	if lastBin < 1 {
 		for i := range out {
-			out[i] = -120
+			out[i] = -130
 		}
 		return out
 	}
@@ -495,7 +510,7 @@ func (e *Engine) pushSpectrumSample(x float64) {
 
 func (e *Engine) updateSpectrumFrame() {
 	const (
-		minDB = -120.0
+		minDB = -130.0
 		eps   = 1e-12
 	)
 
@@ -642,11 +657,11 @@ func shuffleRatio(shuffle float64) float64 {
 }
 
 func (e *Engine) rebuildEQ() error {
-	hpCoeffs := design.Highpass(e.eq.HPFreq, e.eq.HPQ, e.sampleRate)
-	lowCoeffs := design.LowShelf(e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
-	midCoeffs := design.Peak(e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
-	highCoeffs := design.HighShelf(e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
-	lpCoeffs := design.Lowpass(e.eq.LPFreq, e.eq.LPQ, e.sampleRate)
+	hpCoeffs := buildEQCoeffs(e.eq.HPType, e.eq.HPFreq, e.eq.HPGain, e.eq.HPQ, e.sampleRate)
+	lowCoeffs := buildEQCoeffs(e.eq.LowType, e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
+	midCoeffs := buildEQCoeffs(e.eq.MidType, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
+	highCoeffs := buildEQCoeffs(e.eq.HighType, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
+	lpCoeffs := buildEQCoeffs(e.eq.LPType, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ, e.sampleRate)
 
 	e.hp = biquad.NewSection(hpCoeffs)
 	e.hpG = math.Pow(10, e.eq.HPGain/20)
@@ -656,6 +671,74 @@ func (e *Engine) rebuildEQ() error {
 	e.lp = biquad.NewSection(lpCoeffs)
 	e.lpG = math.Pow(10, e.eq.LPGain/20)
 	return nil
+}
+
+func buildEQCoeffs(kind string, freq, gainDB, q, sampleRate float64) biquad.Coefficients {
+	switch kind {
+	case "highpass":
+		return design.Highpass(freq, q, sampleRate)
+	case "bandpass":
+		return design.Bandpass(freq, q, sampleRate)
+	case "notch":
+		return design.Notch(freq, q, sampleRate)
+	case "allpass":
+		return design.Allpass(freq, q, sampleRate)
+	case "peak":
+		return design.Peak(freq, gainDB, q, sampleRate)
+	case "highshelf":
+		return design.HighShelf(freq, gainDB, q, sampleRate)
+	case "lowshelf":
+		return design.LowShelf(freq, gainDB, q, sampleRate)
+	default:
+		return design.Lowpass(freq, q, sampleRate)
+	}
+}
+
+func normalizeEQType(node, kind string) string {
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case "highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "highshelf", "lowshelf":
+	default:
+		kind = ""
+	}
+	switch node {
+	case "hp":
+		switch kind {
+		case "highpass", "lowpass", "bandpass", "notch", "allpass":
+			return kind
+		default:
+			return "highpass"
+		}
+	case "low":
+		switch kind {
+		case "lowshelf", "peak", "highpass", "lowpass", "bandpass", "notch", "allpass":
+			return kind
+		default:
+			return "lowshelf"
+		}
+	case "mid":
+		switch kind {
+		case "peak", "bandpass", "notch", "allpass", "highpass", "lowpass":
+			return kind
+		default:
+			return "peak"
+		}
+	case "high":
+		switch kind {
+		case "highshelf", "peak", "highpass", "lowpass", "bandpass", "notch", "allpass":
+			return kind
+		default:
+			return "highshelf"
+		}
+	case "lp":
+		switch kind {
+		case "lowpass", "highpass", "bandpass", "notch", "allpass":
+			return kind
+		default:
+			return "lowpass"
+		}
+	default:
+		return "peak"
+	}
 }
 
 func envelope(age, attack, decay int) float64 {

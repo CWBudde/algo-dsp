@@ -4,9 +4,26 @@
   const GAIN_MIN = -18;
   const GAIN_MAX = 18;
   const SPECTRUM_RANGE_DB = 144;
-  const SPECTRUM_OFFSET_DB = 96;
+  const SPECTRUM_OFFSET_DB = 120;
   const SPECTRUM_TOP_DBFS = SPECTRUM_RANGE_DB - SPECTRUM_OFFSET_DB;
   const SPECTRUM_FLOOR_DBFS = -SPECTRUM_OFFSET_DB;
+  const NODE_TYPE_OPTIONS = {
+    hp: ["highpass", "lowpass", "bandpass", "notch", "allpass"],
+    low: ["lowshelf", "peak", "highpass", "lowpass", "bandpass", "notch", "allpass"],
+    mid: ["peak", "bandpass", "notch", "allpass", "highpass", "lowpass"],
+    high: ["highshelf", "peak", "highpass", "lowpass", "bandpass", "notch", "allpass"],
+    lp: ["lowpass", "highpass", "bandpass", "notch", "allpass"],
+  };
+  const TYPE_LABELS = {
+    highpass: "Highpass",
+    lowpass: "Lowpass",
+    bandpass: "Bandpass",
+    notch: "Notch",
+    allpass: "Allpass",
+    peak: "Peak",
+    highshelf: "High Shelf",
+    lowshelf: "Low Shelf",
+  };
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -111,6 +128,49 @@
     };
   }
 
+  function bandpassCoeffs(freq, q, sampleRate) {
+    const w0 = (2 * Math.PI * freq) / sampleRate;
+    const alpha = Math.sin(w0) / (2 * q);
+    const cosw0 = Math.cos(w0);
+    const sinw0 = Math.sin(w0);
+    return {
+      b0: sinw0 / 2,
+      b1: 0,
+      b2: -sinw0 / 2,
+      a0: 1 + alpha,
+      a1: -2 * cosw0,
+      a2: 1 - alpha,
+    };
+  }
+
+  function notchCoeffs(freq, q, sampleRate) {
+    const w0 = (2 * Math.PI * freq) / sampleRate;
+    const alpha = Math.sin(w0) / (2 * q);
+    const cosw0 = Math.cos(w0);
+    return {
+      b0: 1,
+      b1: -2 * cosw0,
+      b2: 1,
+      a0: 1 + alpha,
+      a1: -2 * cosw0,
+      a2: 1 - alpha,
+    };
+  }
+
+  function allpassCoeffs(freq, q, sampleRate) {
+    const w0 = (2 * Math.PI * freq) / sampleRate;
+    const alpha = Math.sin(w0) / (2 * q);
+    const cosw0 = Math.cos(w0);
+    return {
+      b0: 1 - alpha,
+      b1: -2 * cosw0,
+      b2: 1 + alpha,
+      a0: 1 + alpha,
+      a1: -2 * cosw0,
+      a2: 1 - alpha,
+    };
+  }
+
   class EQCanvas {
     constructor(canvas, options = {}) {
       this.canvas = canvas;
@@ -121,18 +181,23 @@
       this.getResponseDB = options.getResponseDB || null;
       this.getSpectrumDB = options.getSpectrumDB || null;
       this.params = {
+        hpType: "highpass",
         hpFreq: 40,
         hpGain: 0,
         hpQ: 0.707,
+        lowType: "lowshelf",
         lowFreq: 120,
         lowGain: 0,
         lowQ: 0.707,
+        midType: "peak",
         midFreq: 1000,
         midGain: 0,
         midQ: 1.2,
+        highType: "highshelf",
         highFreq: 5000,
         highGain: 0,
         highQ: 0.707,
+        lpType: "lowpass",
         lpFreq: 12000,
         lpGain: 0,
         lpQ: 0.707,
@@ -142,9 +207,12 @@
       this.nodes = [];
       this.activeNode = null;
       this.hoverNode = null;
+      this.contextMenu = this.createContextMenu();
+      this.menuNodeKey = null;
       this.cssWidth = 0;
       this.cssHeight = 0;
 
+      this.constrainOrder();
       this.resize();
       this.bindEvents();
       this.draw();
@@ -175,7 +243,52 @@
       this.params.midQ = clamp(this.params.midQ, 0.2, 8);
       this.params.highQ = clamp(this.params.highQ, 0.2, 8);
       this.params.lpQ = clamp(this.params.lpQ, 0.2, 8);
+      this.params.hpType = this.normalizeTypeForKey("hp", this.params.hpType);
+      this.params.lowType = this.normalizeTypeForKey("low", this.params.lowType);
+      this.params.midType = this.normalizeTypeForKey("mid", this.params.midType);
+      this.params.highType = this.normalizeTypeForKey("high", this.params.highType);
+      this.params.lpType = this.normalizeTypeForKey("lp", this.params.lpType);
       this.params.master = clamp(this.params.master, 0, 1);
+    }
+
+    typeFieldForKey(key) {
+      if (key === "hp") return "hpType";
+      if (key === "low") return "lowType";
+      if (key === "mid") return "midType";
+      if (key === "high") return "highType";
+      if (key === "lp") return "lpType";
+      return null;
+    }
+
+    normalizeTypeForKey(key, value) {
+      const options = NODE_TYPE_OPTIONS[key] || [];
+      if (options.includes(value)) return value;
+      return options[0] || "peak";
+    }
+
+    typeForKey(key) {
+      const field = this.typeFieldForKey(key);
+      if (!field) return "peak";
+      return this.normalizeTypeForKey(key, this.params[field]);
+    }
+
+    typeLabel(type) {
+      return TYPE_LABELS[type] || type;
+    }
+
+    labelForKey(key) {
+      return this.typeLabel(this.typeForKey(key));
+    }
+
+    filterCoeffs(type, freq, gainDB, q, sampleRate) {
+      if (type === "highpass") return highpassCoeffs(freq, q, sampleRate);
+      if (type === "lowpass") return lowpassCoeffs(freq, q, sampleRate);
+      if (type === "bandpass") return bandpassCoeffs(freq, q, sampleRate);
+      if (type === "notch") return notchCoeffs(freq, q, sampleRate);
+      if (type === "allpass") return allpassCoeffs(freq, q, sampleRate);
+      if (type === "highshelf") return highShelfCoeffs(freq, gainDB, q, sampleRate);
+      if (type === "lowshelf") return lowShelfCoeffs(freq, gainDB, q, sampleRate);
+      return peakingCoeffs(freq, gainDB, q, sampleRate);
     }
 
     bounds() {
@@ -217,14 +330,15 @@
     filterMagnitude(key, freq) {
       const p = this.params;
       const sampleRate = this.getSampleRate();
+      const type = this.typeForKey(key);
       if (key === "hp") {
-        const hpMag = biquadMagnitudeAt(freq, sampleRate, highpassCoeffs(p.hpFreq, p.hpQ, sampleRate));
+        const hpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.hpFreq, 0, p.hpQ, sampleRate));
         return hpMag * Math.pow(10, p.hpGain / 20);
       }
-      if (key === "low") return biquadMagnitudeAt(freq, sampleRate, lowShelfCoeffs(p.lowFreq, p.lowGain, p.lowQ, sampleRate));
-      if (key === "mid") return biquadMagnitudeAt(freq, sampleRate, peakingCoeffs(p.midFreq, p.midGain, p.midQ, sampleRate));
-      if (key === "high") return biquadMagnitudeAt(freq, sampleRate, highShelfCoeffs(p.highFreq, p.highGain, p.highQ, sampleRate));
-      const lpMag = biquadMagnitudeAt(freq, sampleRate, lowpassCoeffs(p.lpFreq, p.lpQ, sampleRate));
+      if (key === "low") return biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.lowFreq, p.lowGain, p.lowQ, sampleRate));
+      if (key === "mid") return biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.midFreq, p.midGain, p.midQ, sampleRate));
+      if (key === "high") return biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.highFreq, p.highGain, p.highQ, sampleRate));
+      const lpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.lpFreq, 0, p.lpQ, sampleRate));
       return lpMag * Math.pow(10, p.lpGain / 20);
     }
 
@@ -411,21 +525,21 @@
     nodeDescriptors() {
       const p = this.params;
       return [
-        { key: "hp", label: "Highpass", x: this.freqToX(p.hpFreq), y: this.gainToY(p.hpGain), color: cssVar("--canvas-node-hp", "#8a4f1f") },
-        { key: "low", label: "Low Shelf", x: this.freqToX(p.lowFreq), y: this.gainToY(p.lowGain), color: cssVar("--canvas-node-low", "#c24d2c") },
-        { key: "mid", label: "Peak", x: this.freqToX(p.midFreq), y: this.gainToY(p.midGain), color: cssVar("--canvas-node-mid", "#225d7d") },
-        { key: "high", label: "High Shelf", x: this.freqToX(p.highFreq), y: this.gainToY(p.highGain), color: cssVar("--canvas-node-high", "#3b7d44") },
-        { key: "lp", label: "Lowpass", x: this.freqToX(p.lpFreq), y: this.gainToY(p.lpGain), color: cssVar("--canvas-node-lp", "#6a4aa5") },
+        { key: "hp", label: this.labelForKey("hp"), x: this.freqToX(p.hpFreq), y: this.gainToY(p.hpGain), color: cssVar("--canvas-node-hp", "#8a4f1f") },
+        { key: "low", label: this.labelForKey("low"), x: this.freqToX(p.lowFreq), y: this.gainToY(p.lowGain), color: cssVar("--canvas-node-low", "#c24d2c") },
+        { key: "mid", label: this.labelForKey("mid"), x: this.freqToX(p.midFreq), y: this.gainToY(p.midGain), color: cssVar("--canvas-node-mid", "#225d7d") },
+        { key: "high", label: this.labelForKey("high"), x: this.freqToX(p.highFreq), y: this.gainToY(p.highGain), color: cssVar("--canvas-node-high", "#3b7d44") },
+        { key: "lp", label: this.labelForKey("lp"), x: this.freqToX(p.lpFreq), y: this.gainToY(p.lpGain), color: cssVar("--canvas-node-lp", "#6a4aa5") },
       ];
     }
 
     hoverInfoForKey(key) {
       const p = this.params;
-      if (key === "hp") return { key, label: "Highpass", freq: p.hpFreq, gain: p.hpGain, q: p.hpQ };
-      if (key === "low") return { key, label: "Low Shelf", freq: p.lowFreq, gain: p.lowGain, q: p.lowQ };
-      if (key === "mid") return { key, label: "Peak", freq: p.midFreq, gain: p.midGain, q: p.midQ };
-      if (key === "high") return { key, label: "High Shelf", freq: p.highFreq, gain: p.highGain, q: p.highQ };
-      if (key === "lp") return { key, label: "Lowpass", freq: p.lpFreq, gain: p.lpGain, q: p.lpQ };
+      if (key === "hp") return { key, label: this.labelForKey("hp"), type: this.typeForKey("hp"), freq: p.hpFreq, gain: p.hpGain, q: p.hpQ };
+      if (key === "low") return { key, label: this.labelForKey("low"), type: this.typeForKey("low"), freq: p.lowFreq, gain: p.lowGain, q: p.lowQ };
+      if (key === "mid") return { key, label: this.labelForKey("mid"), type: this.typeForKey("mid"), freq: p.midFreq, gain: p.midGain, q: p.midQ };
+      if (key === "high") return { key, label: this.labelForKey("high"), type: this.typeForKey("high"), freq: p.highFreq, gain: p.highGain, q: p.highQ };
+      if (key === "lp") return { key, label: this.labelForKey("lp"), type: this.typeForKey("lp"), freq: p.lpFreq, gain: p.lpGain, q: p.lpQ };
       return null;
     }
 
@@ -436,6 +550,63 @@
       if (key === "high") return "highQ";
       if (key === "lp") return "lpQ";
       return null;
+    }
+
+    createContextMenu() {
+      const menu = document.createElement("div");
+      menu.className = "eq-context-menu";
+      menu.hidden = true;
+      document.body.appendChild(menu);
+      return menu;
+    }
+
+    renderContextMenu(key) {
+      const menu = this.contextMenu;
+      const selected = this.typeForKey(key);
+      menu.innerHTML = "";
+      const title = document.createElement("div");
+      title.className = "eq-context-menu-title";
+      title.textContent = `${key.toUpperCase()} Node`;
+      menu.appendChild(title);
+      for (const type of NODE_TYPE_OPTIONS[key] || []) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "eq-context-menu-item";
+        if (type === selected) button.classList.add("is-active");
+        button.textContent = this.typeLabel(type);
+        button.addEventListener("click", () => {
+          const field = this.typeFieldForKey(key);
+          if (!field) return;
+          this.params[field] = type;
+          this.hideContextMenu();
+          this.onHover(this.hoverInfoForKey(key));
+          this.onChange({ ...this.params });
+          this.draw();
+        });
+        menu.appendChild(button);
+      }
+    }
+
+    showContextMenu(key, clientX, clientY) {
+      this.menuNodeKey = key;
+      this.renderContextMenu(key);
+      const menu = this.contextMenu;
+      menu.hidden = false;
+      menu.style.left = "0px";
+      menu.style.top = "0px";
+      const pad = 8;
+      const rect = menu.getBoundingClientRect();
+      const maxLeft = Math.max(pad, window.innerWidth - rect.width - pad);
+      const maxTop = Math.max(pad, window.innerHeight - rect.height - pad);
+      menu.style.left = `${clamp(clientX, pad, maxLeft)}px`;
+      menu.style.top = `${clamp(clientY, pad, maxTop)}px`;
+    }
+
+    hideContextMenu() {
+      this.menuNodeKey = null;
+      this.contextMenu.hidden = true;
+      this.contextMenu.style.left = "0px";
+      this.contextMenu.style.top = "0px";
     }
 
     draw() {
@@ -537,6 +708,7 @@
 
     bindEvents() {
       this.canvas.addEventListener("pointerdown", (ev) => {
+        this.hideContextMenu();
         const p = this.canvasPoint(ev);
         const node = this.nodeAt(p.x, p.y);
         if (!node) return;
@@ -565,6 +737,21 @@
         this.canvas.style.cursor = hover ? "grab" : "crosshair";
       });
 
+      this.canvas.addEventListener("contextmenu", (ev) => {
+        const p = this.canvasPoint(ev);
+        const node = this.nodeAt(p.x, p.y);
+        if (!node) {
+          this.hideContextMenu();
+          return;
+        }
+        ev.preventDefault();
+        this.activeNode = null;
+        this.hoverNode = node.key;
+        this.onHover(this.hoverInfoForKey(node.key));
+        this.showContextMenu(node.key, ev.clientX, ev.clientY);
+        this.draw();
+      });
+
       const release = () => {
         this.activeNode = null;
         this.canvas.style.cursor = this.hoverNode ? "grab" : "crosshair";
@@ -582,6 +769,17 @@
         }
         this.canvas.style.cursor = "crosshair";
       });
+
+      window.addEventListener("pointerdown", (ev) => {
+        if (this.contextMenu.hidden) return;
+        if (this.contextMenu.contains(ev.target)) return;
+        this.hideContextMenu();
+      });
+      window.addEventListener("keydown", (ev) => {
+        if (ev.key !== "Escape") return;
+        this.hideContextMenu();
+      });
+      window.addEventListener("scroll", () => this.hideContextMenu(), true);
 
       this.canvas.addEventListener(
         "wheel",
@@ -602,7 +800,10 @@
         { passive: false },
       );
 
-      window.addEventListener("resize", () => this.resize());
+      window.addEventListener("resize", () => {
+        this.hideContextMenu();
+        this.resize();
+      });
     }
   }
 

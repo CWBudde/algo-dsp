@@ -24,18 +24,23 @@ const state = {
   eqUI: null,
   hoverInfo: null,
   eqParams: {
+    hpType: "highpass",
     hpFreq: 40,
     hpGain: 0,
     hpQ: 0.707,
+    lowType: "lowshelf",
     lowFreq: 120,
     lowGain: 0,
     lowQ: 0.707,
+    midType: "peak",
     midFreq: 1000,
     midGain: 0,
     midQ: 1.2,
+    highType: "highshelf",
     highFreq: 5000,
     highGain: 0,
     highQ: 0.707,
+    lpType: "lowpass",
     lpFreq: 12000,
     lpGain: 0,
     lpQ: 0.707,
@@ -319,7 +324,7 @@ function updateEQText() {
   const h = state.hoverInfo;
   if (!h) {
     el.eqReadout.textContent =
-      "Hover a node for details. Mouse wheel adjusts that node Q.";
+      "Hover a node for details. Mouse wheel adjusts Q. Right-click a node to change filter type.";
     return;
   }
 
