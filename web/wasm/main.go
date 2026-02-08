@@ -126,6 +126,23 @@ func main() {
 		return js.Null()
 	}))
 
+	api.Set("setSpectrum", export(func(args []js.Value) any {
+		if engine == nil || len(args) < 1 {
+			return js.Null()
+		}
+		p := args[0]
+		err := engine.SetSpectrum(webdemo.SpectrumParams{
+			FFTSize:   p.Get("fftSize").Int(),
+			Overlap:   p.Get("overlap").Float(),
+			Window:    p.Get("window").String(),
+			Smoothing: p.Get("smoothing").Float(),
+		})
+		if err != nil {
+			return err.Error()
+		}
+		return js.Null()
+	}))
+
 	api.Set("render", export(func(args []js.Value) any {
 		if engine == nil || len(args) < 1 {
 			return js.Global().Get("Float32Array").New(0)

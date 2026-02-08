@@ -131,7 +131,7 @@
         lpFreq: 12000,
         lpGain: 0,
         lpQ: 0.707,
-        master: 0.75,
+        master: 1,
         ...(options.initialParams || {}),
       };
       this.nodes = [];
