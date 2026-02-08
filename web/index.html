@@ -243,8 +243,8 @@
 
       <section class="panel output-panel">
         <h2>Output</h2>
-        <div class="effects-grid">
-          <div class="fx-card">
+        <div class="effects-grid dynamics-grid">
+          <div class="fx-card comp-card">
             <div class="fx-head">
               <h3>Compressor</h3>
               <label class="fx-toggle">
@@ -291,7 +291,23 @@
             </label>
           </div>
 
-          <div class="fx-card">
+          <div class="fx-card visuals-card">
+            <div class="fx-head">
+              <h3>Dynamics</h3>
+            </div>
+            <div class="dynamics-plots">
+              <div class="plot-item">
+                <canvas id="comp-graph" width="160" height="160"></canvas>
+                <span class="plot-label">Compressor</span>
+              </div>
+              <div class="plot-item">
+                <canvas id="lim-graph" width="160" height="160"></canvas>
+                <span class="plot-label">Limiter</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fx-card lim-card">
             <div class="fx-head">
               <h3>Limiter</h3>
               <label class="fx-toggle">

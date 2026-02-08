@@ -31,8 +31,8 @@ func Chebyshev1LP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 			B0: k2 * t,
 			B1: 2 * k2 * t,
 			B2: k2 * t,
-			A1: 2 * (b - k2) * t,
-			A2: (a - k2 - b) * t,
+			A1: -2 * (b - k2) * t,
+			A2: -(a - k2 - b) * t,
 		})
 	}
 	if order%2 != 0 {
@@ -69,8 +69,8 @@ func Chebyshev1HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 			B0: t,
 			B1: -2 * t,
 			B2: t,
-			A1: 2 * (1 - a*k2) * t,
-			A2: (b - 1 - a*k2) * t,
+			A1: -2 * (1 - a*k2) * t,
+			A2: -(b - 1 - a*k2) * t,
 		})
 	}
 	if order%2 != 0 {

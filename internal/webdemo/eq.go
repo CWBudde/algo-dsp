@@ -74,7 +74,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			return chainFromCoeffs(design.ButterworthHP(freq, order, sampleRate), linGain)
 		case "lowpass":
 			return chainFromCoeffs(design.ButterworthLP(freq, order, sampleRate), linGain)
-		case "bandpass":
+		case "peak":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
 			coeffs, err := band.ButterworthBand(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
@@ -97,7 +97,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			return chainFromCoeffs(design.Chebyshev1HP(freq, order, ripple, sampleRate), linGain)
 		case "lowpass":
 			return chainFromCoeffs(design.Chebyshev1LP(freq, order, ripple, sampleRate), linGain)
-		case "bandpass":
+		case "peak":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
 			coeffs, err := band.Chebyshev1Band(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
@@ -120,7 +120,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			return chainFromCoeffs(design.Chebyshev2HP(freq, order, ripple, sampleRate), linGain)
 		case "lowpass":
 			return chainFromCoeffs(design.Chebyshev2LP(freq, order, ripple, sampleRate), linGain)
-		case "bandpass":
+		case "peak":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
 			coeffs, err := band.Chebyshev2Band(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
@@ -139,7 +139,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 		}
 	case "elliptic":
 		switch kind {
-		case "bandpass":
+		case "peak":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
 			coeffs, err := band.EllipticBand(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
@@ -208,9 +208,9 @@ func supportsEQFamily(kind, family string) bool {
 	case "rbj":
 		return true
 	case "butterworth", "chebyshev1", "chebyshev2":
-		return kind == "highpass" || kind == "lowpass" || kind == "bandpass" || kind == "lowshelf" || kind == "highshelf"
+		return kind == "highpass" || kind == "lowpass" || kind == "peak" || kind == "lowshelf" || kind == "highshelf"
 	case "elliptic":
-		return kind == "bandpass"
+		return kind == "peak"
 	default:
 		return false
 	}
@@ -228,10 +228,10 @@ func supportsEQOrder(kind, family string) bool {
 		return false
 	}
 	if family == "elliptic" {
-		return kind == "bandpass"
+		return kind == "peak"
 	}
 	if family == "butterworth" || family == "chebyshev1" || family == "chebyshev2" {
-		return kind == "highpass" || kind == "lowpass" || kind == "bandpass" || kind == "lowshelf" || kind == "highshelf"
+		return kind == "highpass" || kind == "lowpass" || kind == "peak" || kind == "lowshelf" || kind == "highshelf"
 	}
 	return false
 }
@@ -243,7 +243,7 @@ func normalizeEQOrder(kind, family string, order int) int {
 	if order <= 0 {
 		order = eqDefaultOrder
 	}
-	if kind == "bandpass" {
+	if kind == "peak" {
 		order = int(clamp(float64(order), 4, 12))
 		if order%2 != 0 {
 			order++
@@ -257,7 +257,7 @@ func normalizeEQType(node, kind string) string {
 	normalized := strings.ToLower(strings.TrimSpace(kind))
 	switch normalized {
 	case "bandeq", "band-eq", "bandeqpeak", "bell", "bandbell":
-		normalized = "bandpass"
+		normalized = "peak"
 	}
 	switch normalized {
 	case "highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "highshelf", "lowshelf":
