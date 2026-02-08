@@ -210,6 +210,21 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) []biqu
 		sections = append(sections, bilinearFOS(K, fosParams{denSigma: A, numSigma: B}))
 	}
 
+	// The Orfanidis Chebyshev II prototype does not inherently produce the
+	// correct DC gain when used with a direct lowpass bilinear transform
+	// (unlike the bandpass case where the BP transform embeds the gain).
+	// Correct by computing the actual DC gain and scaling the first section.
+	dcGain := 1.0
+	for _, s := range sections {
+		dcGain *= (s.B0 + s.B1 + s.B2) / (1.0 + s.A1 + s.A2)
+	}
+	if dcGain != 0 {
+		corr := G / dcGain
+		sections[0].B0 *= corr
+		sections[0].B1 *= corr
+		sections[0].B2 *= corr
+	}
+
 	return sections
 }
 

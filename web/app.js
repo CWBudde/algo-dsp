@@ -15,14 +15,29 @@ const STEP_COUNT = 16;
 
 const state = {
   audioCtx: null,
+  outputNode: null,
   isRunning: false,
   currentStep: 0,
   nextNoteTime: 0,
   scheduler: null,
   steps: [],
-  eq: null,
-  chart: null,
-  chartFreqs: null,
+  eqUI: null,
+  eqParams: {
+    lowFreq: 100,
+    lowGain: 0,
+    midFreq: 1000,
+    midGain: 0,
+    highFreq: 6000,
+    highGain: 0,
+    midQ: 1.2,
+    master: 0.75,
+  },
+  dsp: {
+    ready: false,
+    api: null,
+    go: null,
+    sampleRate: 0,
+  },
 };
 
 const el = {
@@ -32,14 +47,10 @@ const el = {
   decay: document.getElementById("decay"),
   decayValue: document.getElementById("decay-value"),
   steps: document.getElementById("steps"),
-  lowGain: document.getElementById("low-gain"),
-  lowGainValue: document.getElementById("low-gain-value"),
-  midGain: document.getElementById("mid-gain"),
-  midGainValue: document.getElementById("mid-gain-value"),
+  eqCanvas: document.getElementById("eq-canvas"),
+  eqReadout: document.getElementById("eq-readout"),
   midQ: document.getElementById("mid-q"),
   midQValue: document.getElementById("mid-q-value"),
-  highGain: document.getElementById("high-gain"),
-  highGainValue: document.getElementById("high-gain-value"),
   master: document.getElementById("master"),
   masterValue: document.getElementById("master-value"),
 };
@@ -48,7 +59,6 @@ function buildStepUI() {
   for (let i = 0; i < STEP_COUNT; i += 1) {
     const step = document.createElement("div");
     step.className = "step";
-    step.dataset.index = String(i);
 
     const head = document.createElement("div");
     head.className = "step-head";
@@ -72,100 +82,105 @@ function buildStepUI() {
     step.appendChild(noteSelect);
     el.steps.appendChild(step);
 
-    state.steps.push({
-      enabled,
-      noteSelect,
-      node: step,
-    });
+    const stateStep = { enabled, noteSelect, node: step };
+    state.steps.push(stateStep);
+
+    enabled.addEventListener("change", syncStepsToDSP);
+    noteSelect.addEventListener("change", syncStepsToDSP);
   }
 }
 
-function setupAudio() {
+async function ensureDSP(sampleRate) {
+  if (state.dsp.ready) {
+    if (Math.abs(state.dsp.sampleRate - sampleRate) > 1) {
+      const initErr = state.dsp.api.init(sampleRate);
+      if (typeof initErr === "string" && initErr.length > 0) {
+        throw new Error(initErr);
+      }
+      state.dsp.sampleRate = sampleRate;
+      syncTransportToDSP();
+      syncStepsToDSP();
+      syncEQToDSP();
+      state.eqUI?.draw();
+    }
+    return;
+  }
+  if (typeof Go === "undefined") {
+    throw new Error("wasm_exec.js missing. Build wasm assets first.");
+  }
+
+  const go = new Go();
+  let result;
+  try {
+    result = await WebAssembly.instantiateStreaming(fetch("algo_dsp_demo.wasm"), go.importObject);
+  } catch {
+    const response = await fetch("algo_dsp_demo.wasm");
+    const bytes = await response.arrayBuffer();
+    result = await WebAssembly.instantiate(bytes, go.importObject);
+  }
+
+  go.run(result.instance);
+
+  const api = window.AlgoDSPDemo;
+  if (!api) throw new Error("AlgoDSPDemo API not found after wasm init");
+
+  const initErr = api.init(sampleRate);
+  if (typeof initErr === "string" && initErr.length > 0) {
+    throw new Error(initErr);
+  }
+
+  state.dsp.ready = true;
+  state.dsp.api = api;
+  state.dsp.go = go;
+  state.dsp.sampleRate = sampleRate;
+
+  syncTransportToDSP();
+  syncStepsToDSP();
+  syncEQToDSP();
+}
+
+async function setupAudio() {
   if (state.audioCtx) return;
+
   const ctx = new AudioContext();
+  await ensureDSP(ctx.sampleRate);
 
-  const low = ctx.createBiquadFilter();
-  low.type = "lowshelf";
-  low.frequency.value = 100;
+  const node = ctx.createScriptProcessor(1024, 0, 1);
+  node.onaudioprocess = (event) => {
+    const out = event.outputBuffer.getChannelData(0);
+    if (!state.dsp.ready || !state.dsp.api) {
+      out.fill(0);
+      return;
+    }
 
-  const mid = ctx.createBiquadFilter();
-  mid.type = "peaking";
-  mid.frequency.value = 1000;
+    const chunk = state.dsp.api.render(out.length);
+    out.set(chunk);
+  };
 
-  const high = ctx.createBiquadFilter();
-  high.type = "highshelf";
-  high.frequency.value = 6000;
-
-  const master = ctx.createGain();
-  master.gain.value = Number(el.master.value);
-
-  low.connect(mid);
-  mid.connect(high);
-  high.connect(master);
-  master.connect(ctx.destination);
+  node.connect(ctx.destination);
 
   state.audioCtx = ctx;
-  state.eq = { low, mid, high, master };
-  applyEQControls();
-  updateChart();
+  state.outputNode = node;
+  state.eqUI?.draw();
 }
 
-function applyEQControls() {
-  const lowGain = Number(el.lowGain.value);
-  const midGain = Number(el.midGain.value);
-  const midQ = Number(el.midQ.value);
-  const highGain = Number(el.highGain.value);
-  const master = Number(el.master.value);
-
-  if (state.eq) {
-    state.eq.low.gain.value = lowGain;
-    state.eq.mid.gain.value = midGain;
-    state.eq.mid.Q.value = midQ;
-    state.eq.high.gain.value = highGain;
-    state.eq.master.gain.value = master;
-  }
-
-  el.lowGainValue.textContent = `${lowGain.toFixed(1)} dB`;
-  el.midGainValue.textContent = `${midGain.toFixed(1)} dB`;
-  el.midQValue.textContent = midQ.toFixed(1);
-  el.highGainValue.textContent = `${highGain.toFixed(1)} dB`;
-  el.masterValue.textContent = master.toFixed(2);
-}
-
-function playStep(stepIndex, when) {
-  if (!state.audioCtx || !state.eq) return;
-  const step = state.steps[stepIndex];
-  if (!step.enabled.checked) return;
-
-  const freq = Number(step.noteSelect.value);
-  const decay = Number(el.decay.value);
-  const amp = 0.22;
-
-  const osc = state.audioCtx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.value = freq;
-
-  const env = state.audioCtx.createGain();
-  env.gain.setValueAtTime(0.0001, when);
-  env.gain.exponentialRampToValueAtTime(amp, when + 0.005);
-  env.gain.exponentialRampToValueAtTime(0.0001, when + decay);
-
-  osc.connect(env);
-  env.connect(state.eq.low);
-
-  osc.start(when);
-  osc.stop(when + decay + 0.02);
+function updateEQText() {
+  const p = state.eqParams;
+  el.midQValue.textContent = p.midQ.toFixed(1);
+  el.masterValue.textContent = p.master.toFixed(2);
+  el.eqReadout.textContent =
+    `Low ${Math.round(p.lowFreq)} Hz / ${p.lowGain.toFixed(1)} dB, ` +
+    `Mid ${Math.round(p.midFreq)} Hz / ${p.midGain.toFixed(1)} dB, ` +
+    `High ${Math.round(p.highFreq)} Hz / ${p.highGain.toFixed(1)} dB`;
 }
 
 function stepDurationSeconds() {
-  const bpm = Number(el.tempo.value);
-  return 60 / bpm / 4;
+  return 60 / Number(el.tempo.value) / 4;
 }
 
 function schedule() {
   const lookahead = 0.1;
   while (state.nextNoteTime < state.audioCtx.currentTime + lookahead) {
-    playStep(state.currentStep, state.nextNoteTime);
     highlightStep(state.currentStep);
     state.nextNoteTime += stepDurationSeconds();
     state.currentStep = (state.currentStep + 1) % STEP_COUNT;
@@ -178,6 +193,28 @@ function highlightStep(index) {
   });
 }
 
+function syncTransportToDSP() {
+  if (!state.dsp.ready || !state.dsp.api) return;
+  state.dsp.api.setTransport(Number(el.tempo.value), Number(el.decay.value));
+}
+
+function syncStepsToDSP() {
+  if (!state.dsp.ready || !state.dsp.api) return;
+  const steps = state.steps.map((step) => ({
+    enabled: step.enabled.checked,
+    freq: Number(step.noteSelect.value),
+  }));
+  state.dsp.api.setSteps(steps);
+}
+
+function syncEQToDSP() {
+  if (!state.dsp.ready || !state.dsp.api) return;
+  const err = state.dsp.api.setEQ(state.eqParams);
+  if (typeof err === "string" && err.length > 0) {
+    console.error("setEQ failed", err);
+  }
+}
+
 function startSequencer() {
   if (!state.audioCtx) return;
   if (state.audioCtx.state === "suspended") state.audioCtx.resume();
@@ -187,6 +224,7 @@ function startSequencer() {
   state.currentStep = 0;
   state.nextNoteTime = state.audioCtx.currentTime + 0.05;
   state.scheduler = setInterval(schedule, 25);
+  if (state.dsp.ready && state.dsp.api) state.dsp.api.setRunning(true);
   el.runToggle.textContent = "Stop";
   el.runToggle.classList.add("active");
 }
@@ -196,203 +234,66 @@ function stopSequencer() {
   clearInterval(state.scheduler);
   state.scheduler = null;
   state.isRunning = false;
+  if (state.dsp.ready && state.dsp.api) state.dsp.api.setRunning(false);
   el.runToggle.textContent = "Play";
   el.runToggle.classList.remove("active");
   highlightStep(-1);
 }
 
-function initChart() {
-  if (state.chart) return;
-  const ctx = document.getElementById("eq-chart");
-  state.chartFreqs = chartFrequencies();
-  const labels = Array.from(state.chartFreqs, (hz) => {
-    if (hz >= 1000) return `${(hz / 1000).toFixed(1)}k`;
-    return `${Math.round(hz)}`;
-  });
-
-  state.chart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Magnitude (dB)",
-          data: labels.map(() => 0),
-          borderColor: "#225d7d",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.18,
-        },
-      ],
+function initEQCanvas() {
+  state.eqUI = new window.EQCanvas(el.eqCanvas, {
+    initialParams: state.eqParams,
+    onChange: (params) => {
+      state.eqParams = { ...params };
+      syncEQToDSP();
+      updateEQText();
     },
-    options: {
-      responsive: true,
-      animation: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: {
-          ticks: { maxTicksLimit: 8 },
-        },
-        y: {
-          min: -24,
-          max: 24,
-          title: { display: true, text: "dB" },
-        },
-      },
+    getSampleRate: () => state.audioCtx?.sampleRate ?? 48000,
+    getResponseDB: (freqs) => {
+      if (!state.dsp.ready || !state.dsp.api) return null;
+      return state.dsp.api.responseCurve(freqs);
     },
   });
-}
-
-function chartFrequencies() {
-  const n = 128;
-  const min = 20;
-  const max = 20000;
-  const out = new Float32Array(n);
-  const ratio = Math.pow(max / min, 1 / (n - 1));
-  out[0] = min;
-  for (let i = 1; i < n; i += 1) out[i] = out[i - 1] * ratio;
-  return out;
-}
-
-function biquadMagnitudeAt(freq, sampleRate, c) {
-  const omega = (2 * Math.PI * freq) / sampleRate;
-  const cos1 = Math.cos(omega);
-  const sin1 = Math.sin(omega);
-  const cos2 = Math.cos(2 * omega);
-  const sin2 = Math.sin(2 * omega);
-
-  const numRe = c.b0 + c.b1 * cos1 + c.b2 * cos2;
-  const numIm = -(c.b1 * sin1 + c.b2 * sin2);
-  const denRe = c.a0 + c.a1 * cos1 + c.a2 * cos2;
-  const denIm = -(c.a1 * sin1 + c.a2 * sin2);
-
-  const numPow = numRe * numRe + numIm * numIm;
-  const denPow = denRe * denRe + denIm * denIm;
-  return Math.sqrt(Math.max(1e-20, numPow / Math.max(1e-20, denPow)));
-}
-
-function peakingCoeffs(freq, gainDB, q, sampleRate) {
-  const a = Math.pow(10, gainDB / 40);
-  const w0 = (2 * Math.PI * freq) / sampleRate;
-  const alpha = Math.sin(w0) / (2 * q);
-  const cosw0 = Math.cos(w0);
-  return {
-    b0: 1 + alpha * a,
-    b1: -2 * cosw0,
-    b2: 1 - alpha * a,
-    a0: 1 + alpha / a,
-    a1: -2 * cosw0,
-    a2: 1 - alpha / a,
-  };
-}
-
-function lowShelfCoeffs(freq, gainDB, sampleRate) {
-  const a = Math.pow(10, gainDB / 40);
-  const w0 = (2 * Math.PI * freq) / sampleRate;
-  const cosw0 = Math.cos(w0);
-  const sinw0 = Math.sin(w0);
-  const s = 1;
-  const alpha = (sinw0 / 2) * Math.sqrt((a + 1 / a) * (1 / s - 1) + 2);
-  const twoSqrtAAlpha = 2 * Math.sqrt(a) * alpha;
-  return {
-    b0: a * ((a + 1) - (a - 1) * cosw0 + twoSqrtAAlpha),
-    b1: 2 * a * ((a - 1) - (a + 1) * cosw0),
-    b2: a * ((a + 1) - (a - 1) * cosw0 - twoSqrtAAlpha),
-    a0: (a + 1) + (a - 1) * cosw0 + twoSqrtAAlpha,
-    a1: -2 * ((a - 1) + (a + 1) * cosw0),
-    a2: (a + 1) + (a - 1) * cosw0 - twoSqrtAAlpha,
-  };
-}
-
-function highShelfCoeffs(freq, gainDB, sampleRate) {
-  const a = Math.pow(10, gainDB / 40);
-  const w0 = (2 * Math.PI * freq) / sampleRate;
-  const cosw0 = Math.cos(w0);
-  const sinw0 = Math.sin(w0);
-  const s = 1;
-  const alpha = (sinw0 / 2) * Math.sqrt((a + 1 / a) * (1 / s - 1) + 2);
-  const twoSqrtAAlpha = 2 * Math.sqrt(a) * alpha;
-  return {
-    b0: a * ((a + 1) + (a - 1) * cosw0 + twoSqrtAAlpha),
-    b1: -2 * a * ((a - 1) + (a + 1) * cosw0),
-    b2: a * ((a + 1) + (a - 1) * cosw0 - twoSqrtAAlpha),
-    a0: (a + 1) - (a - 1) * cosw0 + twoSqrtAAlpha,
-    a1: 2 * ((a - 1) - (a + 1) * cosw0),
-    a2: (a + 1) - (a - 1) * cosw0 - twoSqrtAAlpha,
-  };
-}
-
-function updateChart() {
-  if (!state.chart) return;
-
-  const freqs = state.chartFreqs ?? chartFrequencies();
-  let db;
-
-  if (state.eq) {
-    const p = new Float32Array(freqs.length);
-    const lowMag = new Float32Array(freqs.length);
-    const midMag = new Float32Array(freqs.length);
-    const highMag = new Float32Array(freqs.length);
-
-    state.eq.low.getFrequencyResponse(freqs, lowMag, p);
-    state.eq.mid.getFrequencyResponse(freqs, midMag, p);
-    state.eq.high.getFrequencyResponse(freqs, highMag, p);
-
-    db = Array.from(freqs, (_, i) => {
-      const mag = lowMag[i] * midMag[i] * highMag[i];
-      return 20 * Math.log10(Math.max(1e-6, mag));
-    });
-  } else {
-    const sampleRate = 48000;
-    const lowCoeffs = lowShelfCoeffs(100, Number(el.lowGain.value), sampleRate);
-    const midCoeffs = peakingCoeffs(1000, Number(el.midGain.value), Number(el.midQ.value), sampleRate);
-    const highCoeffs = highShelfCoeffs(6000, Number(el.highGain.value), sampleRate);
-    const master = Number(el.master.value);
-
-    db = Array.from(freqs, (freq) => {
-      const mag =
-        biquadMagnitudeAt(freq, sampleRate, lowCoeffs) *
-        biquadMagnitudeAt(freq, sampleRate, midCoeffs) *
-        biquadMagnitudeAt(freq, sampleRate, highCoeffs) *
-        master;
-      return 20 * Math.log10(Math.max(1e-6, mag));
-    });
-  }
-
-  state.chart.data.datasets[0].data = db;
-  state.chart.update();
 }
 
 function bindEvents() {
-  el.runToggle.addEventListener("click", () => {
-    if (!state.audioCtx) setupAudio();
-    if (state.isRunning) {
-      stopSequencer();
-    } else {
-      startSequencer();
+  el.runToggle.addEventListener("click", async () => {
+    if (!state.audioCtx) {
+      try {
+        await setupAudio();
+      } catch (err) {
+        console.error(err);
+        return;
+      }
     }
+    if (state.isRunning) stopSequencer();
+    else startSequencer();
   });
 
   [el.tempo, el.decay].forEach((control) => {
     control.addEventListener("input", () => {
       el.tempoValue.textContent = `${Number(el.tempo.value)} BPM`;
       el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
+      syncTransportToDSP();
     });
   });
 
-  [el.lowGain, el.midGain, el.midQ, el.highGain, el.master].forEach((control) => {
-    control.addEventListener("input", () => {
-      applyEQControls();
-      updateChart();
-    });
+  el.midQ.addEventListener("input", () => {
+    state.eqUI.setParams({ midQ: Number(el.midQ.value) });
+  });
+
+  el.master.addEventListener("input", () => {
+    state.eqUI.setParams({ master: Number(el.master.value) });
   });
 
   el.tempoValue.textContent = `${Number(el.tempo.value)} BPM`;
   el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
+  updateEQText();
 }
 
 buildStepUI();
-initChart();
-applyEQControls();
-updateChart();
+initEQCanvas();
 bindEvents();
+ensureDSP(48000)
+  .then(() => state.eqUI?.draw())
+  .catch((err) => console.error(err));

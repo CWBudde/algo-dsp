@@ -168,8 +168,9 @@ Phase 13: Optimization and SIMD Paths                 [3 weeks]
 Phase 14: API Stabilization and v1.0                  [2 weeks]
 Phase 15: Advanced Parametric EQ Design               [2 weeks]
 Phase 16: High-Order Graphic EQ Bands                 [4 weeks]
+Phase 17: High-Order Shelving Filters                  [2 weeks]
 
-Total Estimated Duration: ~41 weeks
+Total Estimated Duration: ~43 weeks
 ```
 
 ---
@@ -566,32 +567,32 @@ Implementation notes:
 
 #### 15.2 Validation and tests
 
-- [ ] Unit tests for parameter validation and edge cases:
-  - [ ] Invalid values (non-positive gains, `w0` not in (0, π), `dw` not in (0, π), `sections <= 0`, `f0 >= Fs/2`, etc.).
-  - [ ] Typical audio settings across sample rates (44.1k/48k/96k/192k).
-- [ ] Response sanity tests using existing `biquad.Response` helpers:
-  - [ ] Check approximate peak behavior at `f0` (magnitude near requested gain within tolerance).
-  - [ ] Check stability (poles inside unit circle) for representative and “stress” settings.
-  - [ ] For the convenience wrapper policy (`G0=G1=1`), verify DC and Nyquist magnitude are near unity.
-- [ ] Cascade behavior:
-  - [ ] Verify N-section cascade magnitude at `f0` matches (approximately) the target total gain.
+- [x] Unit tests for parameter validation and edge cases:
+  - [x] Invalid values (non-positive gains, `w0` not in (0, π), `dw` not in (0, π), `sections <= 0`, `f0 >= Fs/2`, etc.).
+  - [x] Typical audio settings across sample rates (44.1k/48k/96k/192k).
+- [x] Response sanity tests using existing `biquad.Response` helpers:
+  - [x] Check approximate peak behavior at `f0` (magnitude near requested gain within tolerance).
+  - [x] Check stability (poles inside unit circle) for representative and "stress" settings.
+  - [x] For the convenience wrapper policy (`G0=G1=1`), verify DC and Nyquist magnitude are near unity.
+- [x] Cascade behavior:
+  - [x] Verify N-section cascade magnitude at `f0` matches (approximately) the target total gain.
 
 #### 15.3 Documentation and examples
 
-- [ ] Package docs clarifying:
-  - [ ] Difference vs `design.Peak(...)` (RBJ) and why Orfanidis is offered.
-  - [ ] Meaning of `G0/G1/G/GB` and `w0/dw` for the expert API.
-  - [ ] The default Nyquist policy (`G1=1`) and when a caller should use the expert API instead.
-- [ ] Runnable example showing cascade -> `biquad.NewChain`.
+- [x] Package docs clarifying:
+  - [x] Difference vs `design.Peak(...)` (RBJ) and why Orfanidis is offered.
+  - [x] Meaning of `G0/G1/G/GB` and `w0/dw` for the expert API.
+  - [x] The default Nyquist policy (`G1=1`) and when a caller should use the expert API instead.
+- [x] Runnable example showing cascade -> `biquad.NewChain`.
 
 #### 15.4 Exit criteria
 
-- [ ] `go test ./...` and `go test -race ./...` pass.
-- [ ] New package has runnable examples and doc comments on public identifiers.
-- [ ] Numerical validation: response checks pass across at least 2 sample rates.
-- [ ] No new allocations in biquad runtime paths (designer-only code may allocate where unavoidable).
+- [x] `go test ./...` and `go test -race ./...` pass.
+- [x] New package has runnable examples and doc comments on public identifiers.
+- [x] Numerical validation: response checks pass across at least 2 sample rates.
+- [x] No new allocations in biquad runtime paths (designer-only code may allocate where unavoidable).
 
-### Phase 16: High-Order Graphic EQ Bands (Orfanidis-style) (Planned)
+### Phase 16: High-Order Graphic EQ Bands (Orfanidis-style) (Complete - 2026-02-07)
 
 Goal: Implement gain-adjustable, high-order band filters suitable for graphic EQ bands (fixed center frequencies, per-band gain changes), using Orfanidis-style formulations. Support Butterworth, Chebyshev Type I, Chebyshev Type II, and Elliptic topologies.
 
@@ -609,13 +610,13 @@ Rationale / fit with repo:
 - A **band filter** is a gain-adjustable, high-order IIR that boosts/cuts primarily within the band while remaining near-unity outside (as used in classic graphic EQ designs).
 - Designers return cascaded second-order sections (SOS) as `[]biquad.Coefficients`.
 
-#### 16.2 Package layout (proposed)
+#### 16.2 Package layout (implemented)
 
-- [ ] `dsp/filter/design/orfanidis/geq` (or `dsp/filter/design/orfanidis/bandpass`)
+- [x] `dsp/filter/design/band`
   - Contains Orfanidis-style high-order _band_ designers and helpers.
-  - Depends only on `math`, `errors`, `dsp/filter/biquad`, and (optionally) `dsp/filter/bank` for band specs.
+  - Depends only on `math`, `errors`, `dsp/filter/biquad`, and internal helpers.
 
-Design note: keep “grid/band spec” types separate from coefficient design so callers can use IEC 61260 grids (`bank`) or custom grids.
+Design note: keep "grid/band spec" types separate from coefficient design so callers can use IEC 61260 grids (`bank`) or custom grids.
 
 #### 16.3 APIs: expert vs audio-friendly
 
@@ -634,19 +635,19 @@ Expose two layers, similar to Phase 15:
   - Implements a _policy_ that chooses a default `Gb` from `gainDB` (band-edge convention).
   - Keeps the API practical for “graphic EQ band knob” use.
 
-#### 16.4 Topology deliverables (must-do)
+#### 16.4 Topology deliverables (complete)
 
 For each topology, implement:
 
-- [ ] Butterworth band designer
-- [ ] Chebyshev Type I band designer
-- [ ] Chebyshev Type II band designer
-- [ ] Elliptic band designer
+- [x] Butterworth band designer
+- [x] Chebyshev Type I band designer
+- [x] Chebyshev Type II band designer
+- [x] Elliptic band designer
 
 For each designer, provide:
 
-- A coefficient generator returning `[]biquad.Coefficients` with deterministic section ordering.
-- A small helper for the default **band-edge gain policy** (the “Gb choice”), so audio-friendly wrappers are consistent and testable.
+- [x] A coefficient generator returning `[]biquad.Coefficients` with deterministic section ordering.
+- [x] A small helper for the default **band-edge gain policy** (the "Gb choice"), so audio-friendly wrappers are consistent and testable.
 
 API sketch (names can be refined during implementation review):
 
@@ -661,39 +662,210 @@ Constraints:
 - Validate frequency bounds: `0 < fl < f0 < fh < Fs/2`.
 - Ensure stable poles (inside unit circle) for all sections.
 
-#### 16.5 Optional: precomputation/caching helpers (nice-to-have)
+#### 16.5 Optional: precomputation/caching helpers (deferred)
 
 The C++ example precomputes a filter per gain step. In Go, keep this optional and transport-agnostic:
 
 - [ ] Provide a small helper that precomputes `map[int][]biquad.Coefficients` for integer dB steps.
 - [ ] Keep it purely in-memory and avoid adding any file I/O.
 
-#### 16.6 Validation and tests (must-do)
+Note: Deferred as not critical for initial implementation. Coefficient generation is fast enough for real-time updates.
 
-- [ ] Parameter validation tests for all topologies.
-- [ ] Stability tests (poles inside unit circle) across representative settings and stress settings (near Nyquist, wide bands, large boosts/cuts).
-- [ ] Frequency response conformance tests:
-  - [ ] Center gain close to requested gain (within tolerance).
-  - [ ] Band-edge magnitude close to the chosen `Gb` policy.
-  - [ ] Outside-band behavior is near-unity (define a pragmatic tolerance and frequency points).
-- [ ] Cross-sample-rate tests at 44.1k/48k/96k/192k.
+#### 16.6 Validation and tests (complete)
 
-#### 16.7 Documentation and examples (must-do)
+- [x] Parameter validation tests for all topologies.
+- [x] Stability tests (poles inside unit circle) across representative settings and stress settings (near Nyquist, wide bands, large boosts/cuts).
+- [x] Frequency response conformance tests:
+  - [x] Center gain close to requested gain (within tolerance).
+  - [x] Band-edge magnitude close to the chosen `Gb` policy.
+  - [x] Outside-band behavior is near-unity (define a pragmatic tolerance and frequency points).
+- [x] Cross-sample-rate tests at 44.1k/48k/96k/192k.
 
-- [ ] Package docs clarifying:
-  - [ ] What these “band filters” are (graphic EQ building blocks) vs Phase 15 parametric peaking EQ.
-  - [ ] How bandwidth is defined and how `Gb` is chosen.
-  - [ ] Which parameters should be tuned per topology (ripple/attenuation for Chebyshev/Elliptic).
-- [ ] Runnable example:
+#### 16.7 Documentation and examples (complete)
+
+- [x] Package docs clarifying:
+  - [x] What these "band filters" are (graphic EQ building blocks) vs Phase 15 parametric peaking EQ.
+  - [x] How bandwidth is defined and how `Gb` is chosen.
+  - [x] Which parameters should be tuned per topology (ripple/attenuation for Chebyshev/Elliptic).
+- [x] Runnable example:
   - Build a 10-band or 1/3-octave grid and generate a full EQ chain by cascading band filters.
   - Show updating gains by regenerating coefficients (no stateful UI logic).
 
 #### 16.8 Exit criteria
 
-- [ ] `go test ./...` and `go test -race ./...` pass.
-- [ ] All new public identifiers have doc comments and runnable examples.
-- [ ] Deterministic outputs for deterministic inputs (tests lock this down).
-- [ ] No changes to biquad runtime APIs required.
+- [x] `go test ./...` and `go test -race ./...` pass.
+- [x] All new public identifiers have doc comments and runnable examples.
+- [x] Deterministic outputs for deterministic inputs (tests lock this down).
+- [x] No changes to biquad runtime APIs required.
+
+### Phase 17: High-Order Shelving Filters (Holters/Zölzer + Orfanidis) (In Progress)
+
+Goal: Implement high-order shelving filter designers (low-shelf and high-shelf) supporting
+Butterworth, Chebyshev Type I, Chebyshev Type II, and Elliptic topologies.
+Returns cascaded second-order sections (`[]biquad.Coefficients`).
+
+Rationale / fit with repo:
+
+- Shelving filters are a fundamental EQ building block alongside the band filters from Phase 16.
+- The package `dsp/filter/design/shelving` provides coefficient designers that complement the
+  existing `design.LowShelf` / `design.HighShelf` (RBJ-style 2nd order) with higher-order variants.
+- Uses the Holters & Zölzer decomposition (Section 2.1 of "Parametric Higher-Order Shelving Filters")
+  for Butterworth and Chebyshev I, and the Orfanidis framework for Chebyshev II.
+
+#### 17.1 Package: `dsp/filter/design/shelving`
+
+**Data types (internal):**
+
+- `poleParams{sigma, r2}` — analog prototype pole parameters per conjugate pair.
+- `sosParams{den, num poleParams}` — independent numerator/denominator analog parameters for a single SOS.
+- `fosParams{denSigma, numSigma}` — first-order section parameters (odd-order real pole).
+
+**Core building blocks (internal):**
+
+- `bilinearSOS(K, sosParams)` — bilinear transform from independent num/den analog parameters to digital biquad.
+- `bilinearFOS(K, fosParams)` — bilinear transform for first-order section.
+- `lowShelfSOS(K, P, poleParams)` — SOS where num = P·den scaling (Butterworth, Chebyshev I).
+- `lowShelfFOS(K, P, sigma)` — FOS with P-scaling.
+- `butterworthPoles(M)` — unit-circle pole placement for Butterworth.
+- `chebyshev1Poles(M, rippleDB)` — elliptical pole placement for Chebyshev I.
+- `lowShelfSections(K, P, pairs, realSigma)` — assembles cascade from pole parameters.
+- `negateOddPowers(sections)` — converts low-shelf to high-shelf via H_HS(z) = H_LS(−z).
+
+#### 17.2 Public API
+
+```go
+// Butterworth shelving (Holters & Zölzer)
+func ButterworthLowShelf(sampleRate, freqHz, gainDB float64, order int) ([]biquad.Coefficients, error)
+func ButterworthHighShelf(sampleRate, freqHz, gainDB float64, order int) ([]biquad.Coefficients, error)
+
+// Chebyshev Type I shelving (Holters & Zölzer)
+func Chebyshev1LowShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int) ([]biquad.Coefficients, error)
+func Chebyshev1HighShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int) ([]biquad.Coefficients, error)
+
+// Chebyshev Type II shelving (Orfanidis framework)
+func Chebyshev2LowShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int) ([]biquad.Coefficients, error)
+func Chebyshev2HighShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int) ([]biquad.Coefficients, error)
+```
+
+Key design:
+
+- `order >= 1` (unlike band filters which require even order >= 4).
+  Odd orders produce an additional first-order section.
+- `rippleDB > 0` for Chebyshev types (controls transition ripple for Type I, stopband ripple for Type II).
+- `gainDB == 0` returns a single passthrough section.
+- Low-shelf uses `K = tan(π·f/fs)`, high-shelf uses `K = 1/tan(π·f/fs)` plus `negateOddPowers`.
+
+#### 17.3 Implementation status
+
+**Butterworth (Complete):**
+
+- [x] `butterworthPoles` — unit-circle pole placement.
+- [x] `ButterworthLowShelf` / `ButterworthHighShelf` — validated across orders 1–12, gains ±30 dB.
+- [x] Tests: parameter validation, zero gain, section count, DC/Nyquist gain accuracy,
+      cutoff gain (Eq. 5: |H|² = (g²+1)/2), pole stability, boost/cut inversion,
+      order sweep, frequency sweep, extreme gains, monotonicity, paper design example.
+
+**Chebyshev Type I (Complete):**
+
+- [x] `chebyshev1Poles` — elliptical pole placement with ripple parameter.
+- [x] `Chebyshev1LowShelf` / `Chebyshev1HighShelf` — validated across orders 1–12.
+- [x] Tests: parameter validation, zero gain, section count, DC/Nyquist accuracy,
+      pole stability, order sweep, steeper-than-Butterworth comparison, extreme gains,
+      various ripple values (0.1–3.0 dB), frequency sweep.
+
+**Chebyshev Type II (In Progress — filter shape bug):**
+
+- [x] `chebyshev2Sections` — Orfanidis A/B parameter computation and bilinear transform.
+- [x] `Chebyshev2LowShelf` / `Chebyshev2HighShelf` — API implemented, compiles, runs.
+- [x] DC gain correction — post-hoc scaling of first section's numerator to achieve target DC gain.
+- [x] Tests written (22 test functions covering all categories, 51 passing, 8 failing).
+- [ ] **BUG: filter does not produce a proper shelf shape.**
+
+#### 17.4 TODO: Fix Chebyshev Type II shelving filter shape
+
+**Problem:**
+
+The current `chebyshev2Sections` implementation produces nearly flat gain across all frequencies
+instead of transitioning from shelf gain (at DC for low-shelf) to ~0 dB (at Nyquist for low-shelf).
+The DC gain correction makes DC correct, but the Nyquist gain is approximately `gainDB − rippleDB`
+(e.g. +11.5 dB for a +12 dB shelf with 0.5 dB ripple) instead of ~0 dB.
+
+Example: `Chebyshev2LowShelf(48000, 1000, 12, 0.5, 4)` produces:
+
+```plain
+    1 Hz: +12.00 dB    (correct — shelf gain)
+  500 Hz: +11.90 dB    (wrong — should be transitioning)
+ 1000 Hz: +12.00 dB    (wrong — should be near cutoff gain)
+ 5000 Hz: +11.56 dB    (wrong — should be near 0 dB)
+23999 Hz: +11.90 dB    (wrong — should be ~0 dB)
+```
+
+_Root cause analysis:_
+
+The Orfanidis A/B parameters were adapted directly from the band EQ case (`chebyshev2BandRad`
+in `band.go`). In the band EQ case, these parameters work correctly because the bandpass bilinear
+transform `s → (z² − 2·cos(w0)·z + 1) / (z² − 1)` embeds frequency warping that creates the
+correct shape. For the shelving case, we use a direct lowpass bilinear transform `s → (z−1)/(z+1)·(1/K)`
+which maps the analog frequency axis differently.
+
+The key insight is that the Orfanidis Chebyshev II formulation for _band_ EQ places zeros on the
+imaginary axis to create notches at specific frequencies, and the bandpass transform maps these
+notches to the correct digital frequencies. When the same A/B parameters are used with a direct
+lowpass bilinear transform, the zeros end up at wrong frequencies and don't create the expected
+shelf-to-flat transition.
+
+_Possible approaches:_
+
+1. _Derive proper Chebyshev II poles and zeros for the lowpass prototype_ — analogous to how
+   `chebyshev1Poles` computes poles on an ellipse, compute Chebyshev II poles _and_ transmission
+   zeros for the lowpass prototype. The key difference from Chebyshev I is that Type II has zeros
+   at `s = ±j/cos(θ_m)` in the analog prototype. These zeros need to be placed so they map to
+   the correct digital frequencies under the lowpass bilinear transform.
+
+2. _Use the Holters/Zölzer approach for Chebyshev II_ — the paper's decomposition works for
+   any all-pole prototype. Chebyshev II is _not_ all-pole (it has finite transmission zeros),
+   so the simple P-scaling (`σ_n = P·σ_d`) doesn't apply. However, the `sosParams` infrastructure
+   already supports independent numerator/denominator parameters — the challenge is computing
+   the correct analog prototype zeros.
+
+3. _Reference: AES paper on shelving filters_ — see `dsp/filter/design/AESShelving.pdf` for
+   the Orfanidis shelving filter formulation that may contain the proper Chebyshev II lowpass
+   prototype derivation.
+
+**Failing tests (8 of 22 Chebyshev II tests, all trace to the same root cause):**
+
+- `TestChebyshev2LowShelf_NyquistGain` — Nyquist ≈ +11.9 dB instead of ~0 dB
+- `TestChebyshev2HighShelf_DCGain` — DC ≈ +11.9 dB instead of ~0 dB
+- `TestChebyshev2LowShelf_VariousOrders` — Nyquist check fails for all orders
+- `TestChebyshev2LowShelf_StopbandRipple` — stopband is at shelf gain (~11.5 dB), not ~0 dB
+- `TestChebyshev2HighShelf_StopbandRipple` — stopband is at shelf gain, not ~0 dB
+- `TestChebyshev2LowShelf_VariousRipple` — Nyquist check fails for all ripple values (0.1-3.0 dB)
+- `TestChebyshev2LowShelf_MonotonicShelfRegion` — non-monotonic at 380 Hz due to wrong shape
+- `TestChebyshev2_FlatStopband` — stopband deviation = 11.5 dB (exceeds 0.5 dB ripple bound)
+
+**Tests passing (51 of 59 total including Butterworth and Chebyshev I):**
+
+- Butterworth (all tests pass): parameter validation, zero gain, section count, DC/Nyquist gain accuracy,
+  cutoff gain, pole stability, boost/cut inversion, order sweep (1-12), frequency sweep, extreme gains,
+  monotonicity, paper design example.
+- Chebyshev Type I (all tests pass): parameter validation, zero gain, section count, DC/Nyquist accuracy,
+  pole stability, order sweep, steeper-than-Butterworth comparison, extreme gains, various ripple values,
+  frequency sweep.
+- Chebyshev Type II (14 of 22 pass): parameter validation, zero gain, section count, DC gain (low-shelf),
+  Nyquist gain (high-shelf), pole stability, extreme gains, frequency sweep (DC-only), boost/cut inversion.
+
+#### 17.5 Future: Elliptic shelving filters
+
+- [ ] Implement elliptic shelving filters once Chebyshev II is working.
+  The elliptic case also has transmission zeros, so it will face similar challenges
+  to Chebyshev II. The elliptic function machinery already exists in `band/elliptic.go`.
+
+#### 17.6 Exit criteria
+
+- [ ] All shelving filter topologies produce correct shelf shape.
+- [ ] All tests pass (currently 51/59 total: Butterworth ✓, Chebyshev I ✓, Chebyshev II 14/22).
+- [x] `go test ./dsp/filter/design/shelving/ -race` passes (for implemented Butterworth/Chebyshev I).
+- [x] Doc comments on all public functions.
 
 ---
 
@@ -845,6 +1017,7 @@ Quarter-end success criteria:
 | 1.1     | 2026-02-07 | Claude  | Completed Phase 12: stats/time with single-pass Welford's algorithm (DC, RMS, peak, range, crest factor, energy/power, zero crossings, variance, skewness, kurtosis), StreamingStats with bit-identical results. stats/frequency with spectral centroid, spread, flatness, rolloff, bandwidth. Zero allocations. Coverage: time 98%, freq 97.8%.                                        |
 | 1.2     | 2026-02-07 | Copilot | Added Phase 15 plan for Orfanidis peaking EQ coefficient design and pragmatic higher-order PEQ via cascaded sections under `dsp/filter/design/orfanidis`.                                                                                                                                                                                                                               |
 | 1.3     | 2026-02-07 | Copilot | Added Phase 16 plan for Orfanidis-style high-order graphic EQ band filters (Butterworth, Chebyshev I/II, Elliptic) with SOS outputs and validation strategy.                                                                                                                                                                                                                            |
+| 1.4     | 2026-02-08 | Claude  | Added Phase 17: high-order shelving filters. Butterworth and Chebyshev I complete. Chebyshev II API + tests written (22 tests, 14 passing) with documented bug: Orfanidis band EQ A/B params don't produce correct shelf shape under direct lowpass bilinear transform. Root cause analysis and three possible fix approaches documented.                                               |
 
 ---
 

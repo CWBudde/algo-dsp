@@ -334,17 +334,17 @@ func ellipdeg2(n, k, tol float64) float64 {
 	// instead of calling math.Pow each iteration.
 	// q1pow = q1^i, q1sq = q1^(i*i), q1gap = q1^(2i+1) (the step ratio).
 	var s1, s2 float64
-	q1sq := q1        // q1^(1*1) = q1
-	q1pow := q1       // q1^1
-	q1gap := q1       // will become q1^(2i+1) before advancing q1sq
-	q1_2 := q1 * q1   // q1^2, constant factor for incrementing the gap
+	q1sq := q1      // q1^(1*1) = q1
+	q1pow := q1     // q1^1
+	q1gap := q1     // will become q1^(2i+1) before advancing q1sq
+	q1_2 := q1 * q1 // q1^2, constant factor for incrementing the gap
 	for i := 1; i <= M; i++ {
-		s2 += q1sq          // += q1^(i*i)
-		s1 += q1sq * q1pow  // += q1^(i*(i+1))
+		s2 += q1sq         // += q1^(i*i)
+		s1 += q1sq * q1pow // += q1^(i*(i+1))
 		// Advance: q1^((i+1)^2) = q1^(i^2) * q1^(2i+1)
-		q1gap *= q1_2       // q1^(2i+1)
+		q1gap *= q1_2 // q1^(2i+1)
 		q1sq *= q1gap
-		q1pow *= q1         // q1^(i+1)
+		q1pow *= q1 // q1^(i+1)
 	}
 
 	r := (1.0 + s1) / (1.0 + 2*s2)
