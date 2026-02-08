@@ -31,13 +31,27 @@
       <header class="hero">
         <div class="hero-top">
           <h1>algo-dsp Web Demo</h1>
-          <label class="theme-switch" title="Theme follows system until toggled">
-            <span>Dark</span>
-            <input id="theme-toggle" type="checkbox" role="switch" aria-label="Toggle dark mode" />
-            <span class="track" aria-hidden="true">
-              <span class="thumb"></span>
-            </span>
-          </label>
+          <button id="theme-toggle" class="theme-toggle" type="button" title="Theme follows system until toggled" aria-label="Toggle theme">
+            <svg
+              class="theme-toggle-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <span class="theme-toggle-label">Theme</span>
+          </button>
         </div>
         <p>Step synthesizer (pure tones + decay) with realtime 5-node EQ.</p>
       </header>
