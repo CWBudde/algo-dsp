@@ -6,12 +6,13 @@ The compressor implementation supports optional fast math approximations via the
 
 Benchmark results on 12th Gen Intel Core i7-1255U:
 
-| Configuration | ProcessSample (ns/op) | Speedup |
-|--------------|----------------------|---------|
-| Standard math | ~76 ns/op | baseline |
-| Fast math (`-tags=fastmath`) | ~56 ns/op | **~26% faster** |
+| Configuration                | ProcessSample (ns/op) | Speedup         |
+| ---------------------------- | --------------------- | --------------- |
+| Standard math                | ~76 ns/op             | baseline        |
+| Fast math (`-tags=fastmath`) | ~56 ns/op             | **~26% faster** |
 
 **Key findings:**
+
 - Fast math provides ~26% speedup in single-sample processing
 - Zero allocations maintained in both variants
 - Numerical accuracy remains excellent for audio DSP (see Accuracy section)
@@ -47,6 +48,7 @@ The compressor abstracts math operations through internal functions:
 - `mathSqrt(x)` - √x using `FastSqrt`
 
 Build tags select the implementation:
+
 - [compressor_math.go](compressor_math.go) - Standard math (default, no tag)
 - [compressor_math_fast.go](compressor_math_fast.go) - Fast approximations (`-tags=fastmath`)
 
@@ -54,13 +56,14 @@ Build tags select the implementation:
 
 The algo-approx library provides excellent accuracy for audio DSP:
 
-| Function | Decimal Digits | Max Relative Error |
-|----------|---------------:|-------------------:|
-| FastLog (ln) | 3.1 | 7.58×10⁻⁴ |
-| FastExp | 5.5 | 3.23×10⁻⁶ |
-| FastSqrt | 5.8 | 1.50×10⁻⁶ |
+| Function     | Decimal Digits | Max Relative Error |
+| ------------ | -------------: | -----------------: |
+| FastLog (ln) |            3.1 |          7.58×10⁻⁴ |
+| FastExp      |            5.5 |          3.23×10⁻⁶ |
+| FastSqrt     |            5.8 |          1.50×10⁻⁶ |
 
 **For audio DSP context:**
+
 - 16-bit audio: ~4.8 decimal digits precision
 - 24-bit audio: ~7.2 decimal digits precision
 - Fast approximations exceed 16-bit precision and approach 24-bit
@@ -70,6 +73,7 @@ The compressor's soft-knee algorithm uses log₂-domain processing, making it ro
 ## When to Use Fast Math
 
 **Recommended for:**
+
 - Real-time audio processing with CPU constraints
 - High channel counts (>16 channels)
 - Sample rates ≥96kHz
@@ -77,6 +81,7 @@ The compressor's soft-knee algorithm uses log₂-domain processing, making it ro
 - Batch processing large audio files
 
 **Standard math sufficient for:**
+
 - Offline processing without strict latency requirements
 - Low channel counts (≤8 channels)
 - When maximum numerical precision is critical
