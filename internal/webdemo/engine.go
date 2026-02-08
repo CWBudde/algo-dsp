@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/cmplx"
+	"strings"
 
 	algofft "github.com/MeKo-Christian/algo-fft"
 	"github.com/cwbudde/algo-dsp/dsp/effects"
@@ -16,8 +17,6 @@ const (
 	stepCount       = 16
 	minDecaySeconds = 0.01
 	maxVoices       = 64
-	spectrumFFTSize = 2048
-	spectrumHopSize = spectrumFFTSize / 2
 )
 
 // StepConfig defines one sequencer step.
@@ -60,6 +59,14 @@ type EffectsParams struct {
 	ReverbRoomSize float64
 	ReverbDamp     float64
 	ReverbGain     float64
+}
+
+// SpectrumParams defines real-time analyzer settings.
+type SpectrumParams struct {
+	FFTSize   int
+	Overlap   float64
+	Window    string
+	Smoothing float64
 }
 
 type voice struct {
@@ -108,9 +115,12 @@ type Engine struct {
 	chorus  *effects.Chorus
 	reverb  *effects.Reverb
 
+	spectrum             SpectrumParams
 	spectrumWindow       []float64
 	spectrumWindowGain   float64
 	spectrumPlan         *algofft.Plan[complex128]
+	spectrumFFTSize      int
+	spectrumHopSize      int
 	spectrumInput        []complex128
 	spectrumOutput       []complex128
 	spectrumRing         []float64
@@ -162,6 +172,12 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			ReverbRoomSize: 0.72,
 			ReverbDamp:     0.45,
 			ReverbGain:     0.015,
+		},
+		spectrum: SpectrumParams{
+			FFTSize:   2048,
+			Overlap:   0.75,
+			Window:    "blackmanharris",
+			Smoothing: 0.65,
 		},
 	}
 	if err := e.initSpectrumAnalyzer(); err != nil {
@@ -299,6 +315,53 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	return nil
 }
 
+// SetSpectrum updates analyzer settings used for the EQ graph spectrum.
+func (e *Engine) SetSpectrum(p SpectrumParams) error {
+	cfg := sanitizeSpectrumParams(p)
+
+	winType, err := spectrumWindowType(cfg.Window)
+	if err != nil {
+		return err
+	}
+	win := window.Generate(winType, cfg.FFTSize, window.WithPeriodic())
+	if len(win) != cfg.FFTSize {
+		return fmt.Errorf("invalid analyzer window size: %d", cfg.FFTSize)
+	}
+	sum := 0.0
+	for _, w := range win {
+		sum += w
+	}
+
+	plan, err := algofft.NewPlan64(cfg.FFTSize)
+	if err != nil {
+		return fmt.Errorf("spectrum init fft plan: %w", err)
+	}
+
+	hop := int(math.Round(float64(cfg.FFTSize) * (1 - cfg.Overlap)))
+	if hop < 1 {
+		hop = 1
+	}
+
+	e.spectrum = cfg
+	e.spectrumWindow = win
+	e.spectrumWindowGain = sum / float64(cfg.FFTSize)
+	e.spectrumPlan = plan
+	e.spectrumFFTSize = cfg.FFTSize
+	e.spectrumHopSize = hop
+	e.spectrumInput = make([]complex128, cfg.FFTSize)
+	e.spectrumOutput = make([]complex128, cfg.FFTSize)
+	e.spectrumRing = make([]float64, cfg.FFTSize)
+	e.spectrumWrite = 0
+	e.spectrumFilled = 0
+	e.spectrumSamplesToHop = 0
+	e.spectrumDB = make([]float64, cfg.FFTSize/2+1)
+	for i := range e.spectrumDB {
+		e.spectrumDB[i] = -120
+	}
+	e.spectrumReady = false
+	return nil
+}
+
 // CurrentStep returns the currently playing step index.
 func (e *Engine) CurrentStep() int {
 	return e.currentStep
@@ -398,7 +461,7 @@ func (e *Engine) SpectrumCurveDB(freqs []float64) []float64 {
 		}
 		return out
 	}
-	binHz := e.sampleRate / float64(spectrumFFTSize)
+	binHz := e.sampleRate / float64(e.spectrumFFTSize)
 	for i, f := range freqs {
 		f = clamp(f, 0, nyquist)
 		bin := f / binHz
@@ -420,42 +483,20 @@ func (e *Engine) SpectrumCurveDB(freqs []float64) []float64 {
 }
 
 func (e *Engine) initSpectrumAnalyzer() error {
-	win, err := window.Hann(spectrumFFTSize, window.WithPeriodic())
-	if err != nil {
-		return fmt.Errorf("spectrum init: %w", err)
-	}
-	sum := 0.0
-	for _, w := range win {
-		sum += w
-	}
-	plan, err := algofft.NewPlan64(spectrumFFTSize)
-	if err != nil {
-		return fmt.Errorf("spectrum init fft plan: %w", err)
-	}
-	e.spectrumWindow = win
-	e.spectrumWindowGain = sum / float64(spectrumFFTSize)
-	e.spectrumPlan = plan
-	e.spectrumInput = make([]complex128, spectrumFFTSize)
-	e.spectrumOutput = make([]complex128, spectrumFFTSize)
-	e.spectrumRing = make([]float64, spectrumFFTSize)
-	e.spectrumDB = make([]float64, spectrumFFTSize/2+1)
-	for i := range e.spectrumDB {
-		e.spectrumDB[i] = -120
-	}
-	return nil
+	return e.SetSpectrum(e.spectrum)
 }
 
 func (e *Engine) pushSpectrumSample(x float64) {
 	e.spectrumRing[e.spectrumWrite] = x
 	e.spectrumWrite++
-	if e.spectrumWrite >= spectrumFFTSize {
+	if e.spectrumWrite >= e.spectrumFFTSize {
 		e.spectrumWrite = 0
 	}
-	if e.spectrumFilled < spectrumFFTSize {
+	if e.spectrumFilled < e.spectrumFFTSize {
 		e.spectrumFilled++
 	}
 	e.spectrumSamplesToHop++
-	if e.spectrumFilled < spectrumFFTSize || e.spectrumSamplesToHop < spectrumHopSize {
+	if e.spectrumFilled < e.spectrumFFTSize || e.spectrumSamplesToHop < e.spectrumHopSize {
 		return
 	}
 	e.spectrumSamplesToHop = 0
@@ -464,17 +505,16 @@ func (e *Engine) pushSpectrumSample(x float64) {
 
 func (e *Engine) updateSpectrumFrame() {
 	const (
-		smooth = 0.65
-		minDB  = -120.0
-		eps    = 1e-12
+		minDB = -120.0
+		eps   = 1e-12
 	)
 
 	read := e.spectrumWrite
-	for i := 0; i < spectrumFFTSize; i++ {
+	for i := 0; i < e.spectrumFFTSize; i++ {
 		s := e.spectrumRing[read]
 		e.spectrumInput[i] = complex(s*e.spectrumWindow[i], 0)
 		read++
-		if read >= spectrumFFTSize {
+		if read >= e.spectrumFFTSize {
 			read = 0
 		}
 	}
@@ -482,7 +522,7 @@ func (e *Engine) updateSpectrumFrame() {
 		return
 	}
 
-	norm := float64(spectrumFFTSize) * math.Max(e.spectrumWindowGain, eps)
+	norm := float64(e.spectrumFFTSize) * math.Max(e.spectrumWindowGain, eps)
 	last := len(e.spectrumDB) - 1
 	for k := 0; k <= last; k++ {
 		mag := cmplx.Abs(e.spectrumOutput[k]) / norm
@@ -497,9 +537,43 @@ func (e *Engine) updateSpectrumFrame() {
 			e.spectrumDB[k] = db
 			continue
 		}
+		smooth := e.spectrum.Smoothing
 		e.spectrumDB[k] = smooth*e.spectrumDB[k] + (1-smooth)*db
 	}
 	e.spectrumReady = true
+}
+
+func sanitizeSpectrumParams(p SpectrumParams) SpectrumParams {
+	cfg := p
+	switch cfg.FFTSize {
+	case 256, 512, 1024, 2048, 4096, 8192:
+	default:
+		cfg.FFTSize = 2048
+	}
+	cfg.Overlap = clamp(cfg.Overlap, 0.25, 0.95)
+	cfg.Smoothing = clamp(cfg.Smoothing, 0, 0.95)
+	cfg.Window = strings.ToLower(strings.TrimSpace(cfg.Window))
+	if cfg.Window == "" {
+		cfg.Window = "blackmanharris"
+	}
+	return cfg
+}
+
+func spectrumWindowType(name string) (window.Type, error) {
+	switch name {
+	case "hann":
+		return window.TypeHann, nil
+	case "hamming":
+		return window.TypeHamming, nil
+	case "blackman":
+		return window.TypeBlackman, nil
+	case "blackmanharris":
+		return window.TypeBlackmanHarris4Term, nil
+	case "flattop":
+		return window.TypeFlatTop, nil
+	default:
+		return 0, fmt.Errorf("unsupported spectrum window: %s", name)
+	}
 }
 
 func (e *Engine) triggerCurrentStep() {

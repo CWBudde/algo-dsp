@@ -54,6 +54,12 @@ const state = {
     reverbDamp: 0.45,
     reverbGain: 0.015,
   },
+  analyzerParams: {
+    fftSize: 2048,
+    overlap: 0.75,
+    window: "blackmanharris",
+    smoothing: 0.65,
+  },
   dsp: {
     ready: false,
     api: null,
@@ -97,6 +103,12 @@ const el = {
   reverbRoomValue: document.getElementById("reverb-room-value"),
   reverbDamp: document.getElementById("reverb-damp"),
   reverbDampValue: document.getElementById("reverb-damp-value"),
+  analyzerFFT: document.getElementById("analyzer-fft"),
+  analyzerOverlap: document.getElementById("analyzer-overlap"),
+  analyzerOverlapValue: document.getElementById("analyzer-overlap-value"),
+  analyzerWindow: document.getElementById("analyzer-window"),
+  analyzerSmoothing: document.getElementById("analyzer-smoothing"),
+  analyzerSmoothingValue: document.getElementById("analyzer-smoothing-value"),
 };
 
 function buildStepUI() {
@@ -145,6 +157,7 @@ async function ensureDSP(sampleRate) {
       syncStepsToDSP();
       syncEQToDSP();
       syncEffectsToDSP();
+      syncSpectrumToDSP();
       state.eqUI?.draw();
     }
     return;
@@ -179,6 +192,7 @@ async function ensureDSP(sampleRate) {
   syncStepsToDSP();
   syncEQToDSP();
   syncEffectsToDSP();
+  syncSpectrumToDSP();
 }
 
 async function setupAudio() {
@@ -208,7 +222,6 @@ async function setupAudio() {
 
 function updateEQText() {
   el.masterValue.textContent = state.eqParams.master.toFixed(2);
-
   const h = state.hoverInfo;
   if (!h) {
     el.eqReadout.textContent = "Hover a node for details. Mouse wheel adjusts that node Q.";
@@ -283,6 +296,28 @@ function syncEffectsToDSP() {
   if (!state.dsp.ready || !state.dsp.api) return;
   const err = state.dsp.api.setEffects(state.effectsParams);
   if (typeof err === "string" && err.length > 0) console.error("setEffects failed", err);
+}
+
+function syncSpectrumToDSP() {
+  if (!state.dsp.ready || !state.dsp.api) return;
+  const err = state.dsp.api.setSpectrum(state.analyzerParams);
+  if (typeof err === "string" && err.length > 0) console.error("setSpectrum failed", err);
+}
+
+function readSpectrumFromUI() {
+  state.analyzerParams = {
+    fftSize: Number(el.analyzerFFT.value),
+    overlap: Number(el.analyzerOverlap.value) / 100,
+    window: String(el.analyzerWindow.value),
+    smoothing: Number(el.analyzerSmoothing.value),
+  };
+}
+
+function updateSpectrumText() {
+  const overlapPct = Math.round(Number(el.analyzerOverlap.value));
+  const hopPct = Math.max(1, 100 - overlapPct);
+  el.analyzerOverlapValue.textContent = `${overlapPct}% overlap (${hopPct}% hop)`;
+  el.analyzerSmoothingValue.textContent = Number(el.analyzerSmoothing.value).toFixed(2);
 }
 
 function readEffectsFromUI() {
@@ -431,12 +466,35 @@ function bindEvents() {
     });
   });
 
+  [el.analyzerFFT, el.analyzerWindow].forEach((control) => {
+    control.addEventListener("change", () => {
+      readSpectrumFromUI();
+      updateSpectrumText();
+      syncSpectrumToDSP();
+    });
+  });
+
+  [el.analyzerOverlap, el.analyzerSmoothing].forEach((control) => {
+    control.addEventListener("input", () => {
+      readSpectrumFromUI();
+      updateSpectrumText();
+      syncSpectrumToDSP();
+    });
+  });
+
   el.tempoValue.textContent = `${Number(el.tempo.value)} BPM`;
   el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
   el.shuffleValue.textContent = `${Math.round(Number(el.shuffle.value) * 100)}%`;
   el.waveform.value = state.waveform;
+  el.master.value = String(state.eqParams.master);
   updateEffectsText();
   readEffectsFromUI();
+  el.analyzerFFT.value = String(state.analyzerParams.fftSize);
+  el.analyzerOverlap.value = String(Math.round(state.analyzerParams.overlap * 100));
+  el.analyzerWindow.value = state.analyzerParams.window;
+  el.analyzerSmoothing.value = String(state.analyzerParams.smoothing);
+  readSpectrumFromUI();
+  updateSpectrumText();
   updateEQText();
 }
 

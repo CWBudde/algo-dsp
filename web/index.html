@@ -56,10 +56,45 @@
       </section>
 
       <section class="panel eq-panel">
-        <h2>EQ</h2>
+        <div class="eq-head">
+          <h2>EQ</h2>
+          <p id="eq-readout" class="eq-readout">Hover a node for details.</p>
+        </div>
         <canvas id="eq-canvas" height="400" aria-label="Interactive EQ graph"></canvas>
+        <div class="analyzer-band">
+          <label>
+            FFT Size
+            <select id="analyzer-fft">
+              <option value="256">256</option>
+              <option value="512">512</option>
+              <option value="1024">1024</option>
+              <option value="2048" selected>2048</option>
+              <option value="4096">4096</option>
+              <option value="8192">8192</option>
+            </select>
+          </label>
+          <label>
+            Overlap
+            <input id="analyzer-overlap" type="range" min="25" max="90" step="1" value="75" />
+            <span id="analyzer-overlap-value">75% overlap (25% hop)</span>
+          </label>
+          <label>
+            Window
+            <select id="analyzer-window">
+              <option value="hann">Hann</option>
+              <option value="hamming">Hamming</option>
+              <option value="blackman">Blackman</option>
+              <option value="blackmanharris" selected>Blackman-Harris</option>
+              <option value="flattop">Flat Top</option>
+            </select>
+          </label>
+          <label>
+            Smoothing
+            <input id="analyzer-smoothing" type="range" min="0" max="0.95" step="0.01" value="0.65" />
+            <span id="analyzer-smoothing-value">0.65</span>
+          </label>
+        </div>
         <div class="eq-meta">
-          <p id="eq-readout">Hover a node for details.</p>
           <label>
             Master
             <input id="master" type="range" min="0" max="1" step="0.01" value="0.75" />
