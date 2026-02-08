@@ -1,15 +1,53 @@
-const NOTE_FREQS = [
-  ["A2", 110],
-  ["C3", 130.81],
-  ["E3", 164.81],
-  ["G3", 196],
-  ["A3", 220],
-  ["C4", 261.63],
-  ["E4", 329.63],
-  ["G4", 392],
-  ["A4", 440],
-  ["C5", 523.25],
+const SCALES = {
+  pentatonic: [0, 2, 4, 7, 9],
+  major: [0, 2, 4, 5, 7, 9, 11],
+  minor: [0, 2, 3, 5, 7, 8, 10],
+  chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+};
+
+const ROOT_NOTES = [
+  "C",
+  "C#",
+  "D",
+  "D#",
+  "E",
+  "F",
+  "F#",
+  "G",
+  "G#",
+  "A",
+  "A#",
+  "B",
 ];
+
+function getNoteFreq(noteIndex) {
+  // A4 (index 57) = 440Hz.
+  return 440 * Math.pow(2, (noteIndex - 57) / 12);
+}
+
+function generateNotes(rootName, scaleKey) {
+  const rootOffset = ROOT_NOTES.indexOf(rootName);
+  const intervals = SCALES[scaleKey] || SCALES.pentatonic;
+  const notes = [];
+
+  // Generate 2 octaves starting from octave 3
+  for (let octave = 3; octave <= 4; octave++) {
+    for (const interval of intervals) {
+      const noteIdx = octave * 12 + rootOffset + interval;
+      const freq = getNoteFreq(noteIdx);
+      const noteName = ROOT_NOTES[(rootOffset + interval) % 12];
+      const label = `${noteName}${octave}`;
+      notes.push([label, freq]);
+    }
+  }
+  // Add one more root note at the top
+  const topIdx = 5 * 12 + rootOffset;
+  notes.push([`${rootName}5`, getNoteFreq(topIdx)]);
+
+  return notes;
+}
+
+let currentNotes = generateNotes("C", "pentatonic");
 
 const STEP_COUNT = 16;
 
@@ -111,6 +149,8 @@ const el = {
   shuffle: document.getElementById("shuffle"),
   shuffleValue: document.getElementById("shuffle-value"),
   steps: document.getElementById("steps"),
+  scale: document.getElementById("scale"),
+  rootNote: document.getElementById("root-note"),
   eqCanvas: document.getElementById("eq-canvas"),
   eqReadout: document.getElementById("eq-readout"),
   chorusEnabled: document.getElementById("chorus-enabled"),
@@ -264,11 +304,11 @@ function buildStepUI() {
     head.appendChild(enabled);
 
     const noteSelect = document.createElement("select");
-    NOTE_FREQS.forEach(([label, freq], idx) => {
+    currentNotes.forEach(([label, freq], idx) => {
       const opt = document.createElement("option");
       opt.value = String(freq);
       opt.textContent = label;
-      if (idx === (i % 8) + 1) opt.selected = true;
+      if (idx === (i % currentNotes.length)) opt.selected = true;
       noteSelect.appendChild(opt);
     });
 
@@ -630,6 +670,26 @@ function startEQDrawLoop() {
   state.eqDrawLoopHandle = requestAnimationFrame(tick);
 }
 
+function updateStepOptions() {
+  currentNotes = generateNotes(el.rootNote.value, el.scale.value);
+  state.steps.forEach((step, i) => {
+    const prevIndex = step.noteSelect.selectedIndex;
+    step.noteSelect.innerHTML = "";
+    currentNotes.forEach(([label, freq]) => {
+      const opt = document.createElement("option");
+      opt.value = String(freq);
+      opt.textContent = label;
+      step.noteSelect.appendChild(opt);
+    });
+    if (prevIndex >= 0 && prevIndex < currentNotes.length) {
+      step.noteSelect.selectedIndex = prevIndex;
+    } else {
+      step.noteSelect.selectedIndex = i % currentNotes.length;
+    }
+  });
+  syncStepsToDSP();
+}
+
 function bindEvents() {
   el.runToggle.addEventListener("click", async () => {
     if (!state.audioCtx) {
@@ -643,6 +703,9 @@ function bindEvents() {
     if (state.isRunning) stopSequencer();
     else startSequencer();
   });
+
+  el.scale.addEventListener("change", updateStepOptions);
+  el.rootNote.addEventListener("change", updateStepOptions);
 
   [el.tempo, el.decay, el.shuffle].forEach((control) => {
     control.addEventListener("input", () => {
