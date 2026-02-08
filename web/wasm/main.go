@@ -102,6 +102,30 @@ func main() {
 		return js.Null()
 	}))
 
+	api.Set("setEffects", export(func(args []js.Value) any {
+		if engine == nil || len(args) < 1 {
+			return js.Null()
+		}
+		p := args[0]
+		err := engine.SetEffects(webdemo.EffectsParams{
+			ChorusEnabled:  p.Get("chorusEnabled").Bool(),
+			ChorusMix:      p.Get("chorusMix").Float(),
+			ChorusDepth:    p.Get("chorusDepth").Float(),
+			ChorusSpeedHz:  p.Get("chorusSpeedHz").Float(),
+			ChorusStages:   p.Get("chorusStages").Int(),
+			ReverbEnabled:  p.Get("reverbEnabled").Bool(),
+			ReverbWet:      p.Get("reverbWet").Float(),
+			ReverbDry:      p.Get("reverbDry").Float(),
+			ReverbRoomSize: p.Get("reverbRoomSize").Float(),
+			ReverbDamp:     p.Get("reverbDamp").Float(),
+			ReverbGain:     p.Get("reverbGain").Float(),
+		})
+		if err != nil {
+			return err.Error()
+		}
+		return js.Null()
+	}))
+
 	api.Set("render", export(func(args []js.Value) any {
 		if engine == nil || len(args) < 1 {
 			return js.Global().Get("Float32Array").New(0)

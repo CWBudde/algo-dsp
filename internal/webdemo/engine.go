@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/cmplx"
 
+	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
 )
@@ -39,6 +40,22 @@ type EQParams struct {
 	LPGain   float64
 	LPQ      float64
 	Master   float64
+}
+
+// EffectsParams defines chorus and reverb parameters for the demo chain.
+type EffectsParams struct {
+	ChorusEnabled bool
+	ChorusMix     float64
+	ChorusDepth   float64
+	ChorusSpeedHz float64
+	ChorusStages  int
+
+	ReverbEnabled  bool
+	ReverbWet      float64
+	ReverbDry      float64
+	ReverbRoomSize float64
+	ReverbDamp     float64
+	ReverbGain     float64
 }
 
 type voice struct {
@@ -82,6 +99,10 @@ type Engine struct {
 	high *biquad.Section
 	lp   *biquad.Section
 	lpG  float64
+
+	effects EffectsParams
+	chorus  *effects.Chorus
+	reverb  *effects.Reverb
 }
 
 // NewEngine creates a configured audio engine.
@@ -113,6 +134,28 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			LPQ:      1 / math.Sqrt2,
 			Master:   0.75,
 		},
+		effects: EffectsParams{
+			ChorusEnabled:  false,
+			ChorusMix:      0.25,
+			ChorusDepth:    0.5,
+			ChorusSpeedHz:  1.5,
+			ChorusStages:   2,
+			ReverbEnabled:  false,
+			ReverbWet:      0.25,
+			ReverbDry:      1.0,
+			ReverbRoomSize: 0.6,
+			ReverbDamp:     0.4,
+			ReverbGain:     0.015,
+		},
+	}
+	chorus, err := effects.NewChorus()
+	if err != nil {
+		return nil, err
+	}
+	e.chorus = chorus
+	e.reverb = effects.NewReverb()
+	if err := e.rebuildEffects(); err != nil {
+		return nil, err
 	}
 	for i := 0; i < stepCount; i++ {
 		e.steps[i] = StepConfig{Enabled: i%4 == 0, FreqHz: defaultStepFreq(i)}
@@ -203,6 +246,40 @@ func (e *Engine) SetEQ(eq EQParams) error {
 	return e.rebuildEQ()
 }
 
+// SetEffects updates chorus/reverb settings.
+func (e *Engine) SetEffects(p EffectsParams) error {
+	prevChorusEnabled := e.effects.ChorusEnabled
+	prevReverbEnabled := e.effects.ReverbEnabled
+
+	p.ChorusMix = clamp(p.ChorusMix, 0, 1)
+	p.ChorusDepth = clamp(p.ChorusDepth, 0, 2)
+	p.ChorusSpeedHz = clamp(p.ChorusSpeedHz, 0.05, 10)
+	if p.ChorusStages < 1 {
+		p.ChorusStages = 1
+	}
+	if p.ChorusStages > 6 {
+		p.ChorusStages = 6
+	}
+
+	p.ReverbWet = clamp(p.ReverbWet, 0, 1.5)
+	p.ReverbDry = clamp(p.ReverbDry, 0, 1.5)
+	p.ReverbRoomSize = clamp(p.ReverbRoomSize, 0, 0.98)
+	p.ReverbDamp = clamp(p.ReverbDamp, 0, 0.99)
+	p.ReverbGain = clamp(p.ReverbGain, 0, 0.1)
+
+	e.effects = p
+	if err := e.rebuildEffects(); err != nil {
+		return err
+	}
+	if prevChorusEnabled && !p.ChorusEnabled {
+		e.chorus.Reset()
+	}
+	if prevReverbEnabled && !p.ReverbEnabled {
+		e.reverb.Reset()
+	}
+	return nil
+}
+
 // CurrentStep returns the currently playing step index.
 func (e *Engine) CurrentStep() int {
 	return e.currentStep
@@ -222,6 +299,12 @@ func (e *Engine) Render(dst []float32) {
 		}
 
 		x := e.nextSample()
+		if e.effects.ChorusEnabled {
+			x = e.chorus.ProcessSample(x)
+		}
+		if e.effects.ReverbEnabled {
+			x = e.reverb.ProcessSample(x)
+		}
 		x = e.hp.ProcessSample(x)
 		x *= e.hpG
 		x = e.low.ProcessSample(x)
@@ -232,6 +315,31 @@ func (e *Engine) Render(dst []float32) {
 		x *= e.eq.Master
 		dst[i] = float32(clamp(x, -1, 1))
 	}
+}
+
+func (e *Engine) rebuildEffects() error {
+	if err := e.chorus.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.chorus.SetMix(e.effects.ChorusMix); err != nil {
+		return err
+	}
+	if err := e.chorus.SetDepth(e.effects.ChorusDepth); err != nil {
+		return err
+	}
+	if err := e.chorus.SetSpeedHz(e.effects.ChorusSpeedHz); err != nil {
+		return err
+	}
+	if err := e.chorus.SetStages(e.effects.ChorusStages); err != nil {
+		return err
+	}
+
+	e.reverb.SetWet(e.effects.ReverbWet)
+	e.reverb.SetDry(e.effects.ReverbDry)
+	e.reverb.SetRoomSize(e.effects.ReverbRoomSize)
+	e.reverb.SetDamp(e.effects.ReverbDamp)
+	e.reverb.SetGain(e.effects.ReverbGain)
+	return nil
 }
 
 // ResponseCurveDB returns EQ magnitude response in dB for freqs.
