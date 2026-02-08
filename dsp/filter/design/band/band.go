@@ -14,13 +14,15 @@ var ErrInvalidParams = errors.New("band: invalid parameters")
 // gainDB is the desired center gain in dB. bandwidthHz is the band width in Hz.
 // order must be an even integer greater than 2.
 func ButterworthBand(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) ([]biquad.Coefficients, error) {
+	if gainDB == 0 {
+		return passthroughSections(), nil
+	}
+
 	w0, wb, err := bandParams(sampleRate, f0Hz, bandwidthHz, order)
 	if err != nil {
 		return nil, err
 	}
-	if gainDB == 0 {
-		return passthroughSections(), nil
-	}
+
 	gb := butterworthBWGainDB(gainDB)
 
 	return butterworthBandRad(w0, wb, gainDB, gb, order)
@@ -31,13 +33,15 @@ func ButterworthBand(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) (
 // gainDB is the desired center gain in dB. bandwidthHz is the band width in Hz.
 // order must be an even integer greater than 2.
 func Chebyshev1Band(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) ([]biquad.Coefficients, error) {
+	if gainDB == 0 {
+		return passthroughSections(), nil
+	}
+
 	w0, wb, err := bandParams(sampleRate, f0Hz, bandwidthHz, order)
 	if err != nil {
 		return nil, err
 	}
-	if gainDB == 0 {
-		return passthroughSections(), nil
-	}
+
 	gb := chebyshev1BWGainDB(gainDB)
 
 	return chebyshev1BandRad(w0, wb, gainDB, gb, order)
@@ -48,14 +52,17 @@ func Chebyshev1Band(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) ([
 // gainDB is the desired center gain in dB. bandwidthHz is the band width in Hz.
 // order must be an even integer greater than 2.
 func Chebyshev2Band(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) ([]biquad.Coefficients, error) {
+	if gainDB == 0 {
+		return passthroughSections(), nil
+	}
+
 	w0, wb, err := bandParams(sampleRate, f0Hz, bandwidthHz, order)
 	if err != nil {
 		return nil, err
 	}
-	if gainDB == 0 {
-		return passthroughSections(), nil
-	}
+
 	gb := chebyshev2BWGainDB(gainDB)
+
 	return chebyshev2BandRad(w0, wb, gainDB, gb, order)
 }
 
@@ -64,14 +71,17 @@ func Chebyshev2Band(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) ([
 // gainDB is the desired center gain in dB. bandwidthHz is the band width in Hz.
 // order must be an even integer greater than 2.
 func EllipticBand(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) ([]biquad.Coefficients, error) {
+	if gainDB == 0 {
+		return passthroughSections(), nil
+	}
+
 	w0, wb, err := bandParams(sampleRate, f0Hz, bandwidthHz, order)
 	if err != nil {
 		return nil, err
 	}
-	if gainDB == 0 {
-		return passthroughSections(), nil
-	}
+
 	gb := ellipticBWGainDB(gainDB)
+
 	return ellipticBandRad(w0, wb, gainDB, gb, order)
 }
 
@@ -79,23 +89,29 @@ func bandParams(sampleRate, f0Hz, bandwidthHz float64, order int) (float64, floa
 	if sampleRate <= 0 || f0Hz <= 0 || bandwidthHz <= 0 {
 		return 0, 0, ErrInvalidParams
 	}
+
 	if f0Hz >= sampleRate*0.5 {
 		return 0, 0, ErrInvalidParams
 	}
+
 	if order <= 2 || order%2 != 0 {
 		return 0, 0, ErrInvalidParams
 	}
+
 	fl := f0Hz - bandwidthHz*0.5
 	fh := f0Hz + bandwidthHz*0.5
+
 	if fl <= 0 || fh >= sampleRate*0.5 {
 		return 0, 0, ErrInvalidParams
 	}
 
 	w0 := 2 * math.Pi * f0Hz / sampleRate
 	wb := 2 * math.Pi * bandwidthHz / sampleRate
+
 	if !(w0 > 0 && w0 < math.Pi && wb > 0 && wb < math.Pi) {
 		return 0, 0, ErrInvalidParams
 	}
+
 	return w0, wb, nil
 }
 
@@ -107,9 +123,11 @@ func butterworthBWGainDB(gainDB float64) float64 {
 	if gainDB < -3 {
 		return gainDB + 3
 	}
+
 	if gainDB < 3 {
 		return gainDB / math.Sqrt2
 	}
+
 	return gainDB - 3
 }
 
@@ -117,6 +135,7 @@ func chebyshev1BWGainDB(gainDB float64) float64 {
 	if gainDB < 0 {
 		return gainDB + 0.1
 	}
+
 	return gainDB - 0.1
 }
 
@@ -124,6 +143,7 @@ func chebyshev2BWGainDB(gainDB float64) float64 {
 	if gainDB < 0 {
 		return -0.1
 	}
+
 	return 0.1
 }
 
@@ -131,6 +151,7 @@ func ellipticBWGainDB(gainDB float64) float64 {
 	if gainDB < 0 {
 		return gainDB + 0.05
 	}
+
 	return gainDB - 0.05
 }
 
@@ -138,6 +159,7 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 	G0 := 1.0 // db2Lin(0) is always exactly 1
 	G := db2Lin(gainDB)
 	Gb := db2Lin(gbDB)
+
 	if G == 0 || Gb == 0 || G0 == 0 {
 		return nil, ErrInvalidParams
 	}
@@ -183,6 +205,7 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 		}
 		sections = append(sections, biquads...)
 	}
+
 	return sections, nil
 }
 
@@ -190,6 +213,7 @@ func chebyshev1BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 	G0 := 1.0 // db2Lin(0) is always exactly 1
 	G := db2Lin(gainDB)
 	Gb := db2Lin(gbDB)
+
 	if Gb*Gb == G0*G0 {
 		return nil, ErrInvalidParams
 	}
@@ -236,6 +260,7 @@ func chebyshev1BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 		}
 		sections = append(sections, biquads...)
 	}
+
 	return sections, nil
 }
 
@@ -250,7 +275,7 @@ func chebyshev2BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 	e := math.Sqrt((G*G - Gb*Gb) / (Gb*Gb - G0*G0))
 	g := math.Pow(G, 1.0/float64(order))
 	eu := math.Pow(e+math.Sqrt(1+e*e), 1.0/float64(order))
-	ew := math.Pow(G0*e+Gb*math.Sqrt(1+e*e), 1.0/float64(order))
+	ew := math.Pow(G0*e+Gb*math.Sqrt(1.0+e*e), 1.0/float64(order))
 	A := (eu - 1.0/eu) * 0.5
 	B := (ew - g*g/ew) * 0.5
 	tb := math.Tan(wb * 0.5)
@@ -268,9 +293,9 @@ func chebyshev2BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 		}
 
 		Bv := [5]float64{
-			(g*g*tb*tb + 2*g*B*si*tb + B*B + g*g*ci*ci) / Di,
+			(g*g*tb*tb + 2.0*g*B*si*tb + B*B + g*g*ci*ci) / Di,
 			-4 * c0 * (B*B + g*g*ci*ci + g*B*si*tb) / Di,
-			2 * ((B*B+g*g*ci*ci)*(1+2*c0*c0) - g*g*tb*tb) / Di,
+			2 * ((B*B+g*g*ci*ci)*(1.0+2.0*c0*c0) - g*g*tb*tb) / Di,
 			-4 * c0 * (B*B + g*g*ci*ci - g*B*si*tb) / Di,
 			(g*g*tb*tb - 2*g*B*si*tb + B*B + g*g*ci*ci) / Di,
 		}
@@ -289,6 +314,7 @@ func chebyshev2BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 		}
 		sections = append(sections, biquads...)
 	}
+
 	return sections, nil
 }
 

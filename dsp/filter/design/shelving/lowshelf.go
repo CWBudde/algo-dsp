@@ -154,6 +154,65 @@ func lowShelfSections(K, P float64, pairs []poleParams, realSigma float64) []biq
 	return sections
 }
 
+// chebyshev2Sections assembles the low-shelf biquad cascade for a Chebyshev
+// Type II design using the Orfanidis framework. Unlike Butterworth and
+// Chebyshev I (where numerator parameters are a simple gain-scaling of the
+// denominator), Chebyshev II has independent numerator and denominator
+// pole/zero placement determined by the A and B ellipse parameters.
+//
+// The Orfanidis parameters for Chebyshev II are (cf. chebyshev2BandRad in band/):
+//
+//	eu = (e + sqrt(1 + e²))^(1/M),   A = (eu − 1/eu) / 2
+//	ew = (G0·e + Gb·sqrt(1 + e²))^(1/M), B = (ew − g²/ew) / 2
+//
+// where e = sqrt((G² − Gb²)/(Gb² − G0²)), g = G^(1/M), G0 = 1 (0 dB reference),
+// G = 10^(gainDB/20), and Gb = 10^(stopbandDB/20).
+//
+// Per section m = 1..L, θ_m = (2m−1)/(2M)·π:
+//
+//	den: σ = A·sin(θ_m),  R² = A² + cos²(θ_m)
+//	num: σ = B·sin(θ_m),  R² = B² + g²·cos²(θ_m)
+func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) []biquad.Coefficients {
+	G0 := 1.0
+	G := db2Lin(gainDB)
+	Gb := db2Lin(stopbandDB)
+	g := math.Pow(G, 1.0/float64(order))
+
+	e := math.Sqrt((G*G - Gb*Gb) / (Gb*Gb - G0*G0))
+	eu := math.Pow(e+math.Sqrt(1+e*e), 1.0/float64(order))
+	ew := math.Pow(G0*e+Gb*math.Sqrt(1.0+e*e), 1.0/float64(order))
+	A := (eu - 1.0/eu) * 0.5
+	B := (ew - g*g/ew) * 0.5
+
+	L := order / 2
+	hasFirstOrder := order%2 == 1
+	n := L
+	if hasFirstOrder {
+		n++
+	}
+	sections := make([]biquad.Coefficients, 0, n)
+
+	for m := 1; m <= L; m++ {
+		theta := float64(2*m-1) / float64(2*order) * math.Pi
+		si := math.Sin(theta)
+		ci := math.Cos(theta)
+
+		sp := sosParams{
+			den: poleParams{sigma: A * si, r2: A*A + ci*ci},
+			num: poleParams{sigma: B * si, r2: B*B + g*g*ci*ci},
+		}
+		sections = append(sections, bilinearSOS(K, sp))
+	}
+
+	if hasFirstOrder {
+		// For odd order, the real pole/zero: θ = π/2, sin=1, cos=0.
+		// den: σ = A, num: σ = B.
+		sections = append(sections, bilinearFOS(K, fosParams{denSigma: A, numSigma: B}))
+	}
+
+	return sections
+}
+
 // ln10over20 is the precomputed constant ln(10)/20.
 const ln10over20 = 0.11512925464970228
 
