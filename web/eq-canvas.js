@@ -3,6 +3,8 @@
   const FREQ_MAX = 20000;
   const GAIN_MIN = -18;
   const GAIN_MAX = 18;
+  const SPECTRUM_RANGE_DB = 72;
+  const SPECTRUM_FLOOR_DBFS = -SPECTRUM_RANGE_DB;
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -110,6 +112,7 @@
       this.onHover = options.onHover || (() => {});
       this.getSampleRate = options.getSampleRate || (() => 48000);
       this.getResponseDB = options.getResponseDB || null;
+      this.getSpectrumDB = options.getSpectrumDB || null;
       this.params = {
         hpFreq: 40,
         hpGain: 0,
@@ -180,7 +183,7 @@
 
     bounds() {
       const left = 64;
-      const right = this.cssWidth - 24;
+      const right = this.cssWidth - 60;
       const top = 50;
       const bottom = top + 300;
       return { left, right, top, bottom };
@@ -251,6 +254,13 @@
 
     computeSingleFilterDB(key, freqs) {
       return freqs.map((freq) => 20 * Math.log10(Math.max(1e-6, this.filterMagnitude(key, freq))));
+    }
+
+    computeSpectrumDB(freqs) {
+      if (!this.getSpectrumDB) return null;
+      const spectrum = this.getSpectrumDB(Float32Array.from(freqs));
+      if (!spectrum || typeof spectrum.length !== "number" || spectrum.length !== freqs.length) return null;
+      return spectrum;
     }
 
     resize() {
@@ -328,6 +338,12 @@
         ctx.fillText(label, b.left - 6, y + 4);
       });
 
+      ctx.textAlign = "left";
+      [0, 12, 24, 36, 48, 60, 72].forEach((s) => {
+        const y = b.bottom - (s / SPECTRUM_RANGE_DB) * (b.bottom - b.top);
+        ctx.fillText(`${s}`, b.right + 8, y + 4);
+      });
+
       ctx.font = "12px IBM Plex Sans, sans-serif";
       ctx.textAlign = "right";
       ctx.fillText("Hz", b.right, b.bottom + 34);
@@ -336,6 +352,12 @@
       ctx.rotate(-Math.PI / 2);
       ctx.textAlign = "center";
       ctx.fillText("dB", -10, 0);
+      ctx.restore();
+      ctx.save();
+      ctx.translate(b.right + 42, b.top + (b.bottom - b.top) / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.textAlign = "center";
+      ctx.fillText("Spectrum dB", 0, 0);
       ctx.restore();
       ctx.textAlign = "left";
     }
@@ -354,6 +376,28 @@
         const db = responseDB[i];
         const x = b.left + t * (b.right - b.left);
         const y = b.bottom - ((clamp(db, GAIN_MIN, GAIN_MAX) - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    drawSpectrumCurve(ctx, b, spectrumDB, color, width) {
+      const n = spectrumDB.length;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(b.left, b.top, b.right - b.left, b.bottom - b.top);
+      ctx.clip();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      for (let i = 0; i < n; i += 1) {
+        const t = i / (n - 1);
+        const dbFS = clamp(spectrumDB[i], SPECTRUM_FLOOR_DBFS, 0);
+        const spectrumDBScaled = dbFS + SPECTRUM_RANGE_DB;
+        const x = b.left + t * (b.right - b.left);
+        const y = b.bottom - (spectrumDBScaled / SPECTRUM_RANGE_DB) * (b.bottom - b.top);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -423,6 +467,11 @@
         }[focusKey];
         const color = this.activeNode ? `rgba(${focusColor}, 0.72)` : `rgba(${focusColor}, 0.28)`;
         this.drawCurve(ctx, b, singleDB, color, this.activeNode ? 2.5 : 2);
+      }
+
+      const spectrumDB = this.computeSpectrumDB(freqs);
+      if (spectrumDB) {
+        this.drawSpectrumCurve(ctx, b, spectrumDB, "rgba(194,77,44,0.62)", 1.25);
       }
 
       const responseDB = this.computeResponseDB(freqs);

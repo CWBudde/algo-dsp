@@ -43,15 +43,15 @@ const state = {
   },
   effectsParams: {
     chorusEnabled: false,
-    chorusMix: 0.25,
-    chorusDepth: 0.5,
-    chorusSpeedHz: 1.5,
-    chorusStages: 2,
+    chorusMix: 0.18,
+    chorusDepth: 0.02,
+    chorusSpeedHz: 0.35,
+    chorusStages: 3,
     reverbEnabled: false,
-    reverbWet: 0.25,
+    reverbWet: 0.22,
     reverbDry: 1.0,
-    reverbRoomSize: 0.6,
-    reverbDamp: 0.4,
+    reverbRoomSize: 0.72,
+    reverbDamp: 0.45,
     reverbGain: 0.015,
   },
   dsp: {
@@ -355,6 +355,10 @@ function initEQCanvas() {
     getResponseDB: (freqs) => {
       if (!state.dsp.ready || !state.dsp.api) return null;
       return state.dsp.api.responseCurve(freqs);
+    },
+    getSpectrumDB: (freqs) => {
+      if (!state.dsp.ready || !state.dsp.api) return null;
+      return state.dsp.api.spectrumCurve(freqs);
     },
   });
 }

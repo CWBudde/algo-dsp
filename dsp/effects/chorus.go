@@ -8,10 +8,10 @@ import (
 
 const (
 	defaultChorusSampleRate = 44100.0
-	defaultChorusSpeedHz    = 2.0
-	defaultChorusDepth      = 0.5
-	defaultChorusMix        = 0.5
-	defaultChorusStages     = 2
+	defaultChorusSpeedHz    = 0.35
+	defaultChorusDepth      = 0.02
+	defaultChorusMix        = 0.18
+	defaultChorusStages     = 3
 	defaultChorusSeed       = 1
 )
 

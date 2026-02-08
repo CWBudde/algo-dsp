@@ -23,10 +23,10 @@ const (
 	reverbAllpassTuningL3 = 341
 	reverbAllpassTuningL4 = 225
 
-	defaultReverbWet      = 1.0
+	defaultReverbWet      = 0.22
 	defaultReverbDry      = 1.0
-	defaultReverbRoomSize = 0.5
-	defaultReverbDamp     = 0.5
+	defaultReverbRoomSize = 0.72
+	defaultReverbDamp     = 0.45
 )
 
 // Reverb is a lightweight Schroeder/Freeverb-style reverb.
