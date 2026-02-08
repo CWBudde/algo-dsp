@@ -43,16 +43,16 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 
 	// First-order section for odd orders.
 	if r == 1 {
-		// Real pole from cd elliptic function.
-		p0 := -real(complex(0, 1) * cde(-1.0+v0, kEllip, 1e-9))
-		// Bilinear transform of first-order: H(s) = 1/(s - p0)
-		// After bilinear s = k*(z-1)/(z+1): H(z) = (k-p0)/(k+p0) * (1 + z^-1)/(1 - ((k+p0)/(k-p0))z^-1)
-		norm := 1 / (k - p0)
+		// Real LP prototype pole magnitude for odd-order first-order section.
+		p0 := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, 1e-9))
+		// Bilinear transform of H(s)=1/(s+p0) using s=k*(1-z^-1)/(1+z^-1).
+		denom := k + p0
+		norm := 1 / denom
 		sections = append(sections, biquad.Coefficients{
 			B0: k * norm,
 			B1: k * norm,
 			B2: 0,
-			A1: (k + p0) * norm,
+			A1: (p0 - k) * norm,
 			A2: 0,
 		})
 	}
@@ -61,14 +61,16 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1.0) / float64(order)
 
-		// Evaluate cd to get the i-th conjugate zero on imaginary axis.
-		zi := cde(complex(ui, 0), kEllip, 1e-9)
+		// Evaluate cd to get the i-th conjugate LP prototype zero/pole pair.
+		zi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
 		// Invert to get normalized zero location.
 		invZero := 1.0 / zi
-		omegaZ := imag(invZero)
+		zre := real(invZero)
+		zabs2 := cmplx.Abs(invZero)
+		zabs2 *= zabs2
 
 		// Evaluate cd with pole argument to get the i-th pole.
-		pi := cde(complex(ui, 0)-v0, kEllip, 1e-9)
+		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
 		invPole := 1.0 / pi
 		sigmaP := -real(invPole)
 		omegaP := imag(invPole)
@@ -76,20 +78,19 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		// Analog prototype second-order section:
 		// Numerator: s² + omegaZ²
 		// Denominator: s² + 2·sigmaP·s + (sigmaP² + omegaP²)
-		zabs2 := omegaZ * omegaZ
 		pabs2 := sigmaP*sigmaP + omegaP*omegaP
 
 		// Apply bilinear transform s -> k·(z-1)/(z+1).
 		k2 := k * k
 
-		// Numerator after bilinear transform.
-		bn0 := k2 + zabs2
-		bn1 := 2 * (k2 - zabs2)
-		bn2 := k2 + zabs2
+		// Numerator from N(s)=s²-2·zre·s+|z|² after bilinear transform.
+		bn0 := k2 - 2*k*zre + zabs2
+		bn1 := 2 * (zabs2 - k2)
+		bn2 := k2 + 2*k*zre + zabs2
 
 		// Denominator after bilinear transform.
 		ad0 := k2 + 2*k*sigmaP + pabs2
-		ad1 := 2 * (k2 - pabs2)
+		ad1 := 2 * (pabs2 - k2)
 		ad2 := k2 - 2*k*sigmaP + pabs2
 
 		// Normalize denominator leading coefficient to 1.
@@ -99,18 +100,13 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		a1 := ad1 / ad0
 		a2 := ad2 / ad0
 
-		// Normalize for unity DC gain.
-		dcGain := (b0 + b1 + b2) / (1 + a1 + a2)
-		b0 /= dcGain
-		b1 /= dcGain
-		b2 /= dcGain
-
 		sections = append(sections, biquad.Coefficients{
 			B0: b0, B1: b1, B2: b2,
 			A1: a1, A2: a2,
 		})
 	}
 
+	normalizeCascadeLP(sections)
 	return sections
 }
 
@@ -147,18 +143,17 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	// First-order section for odd orders with LP-to-HP transform.
 	if r == 1 {
 		// LP pole.
-		p0LP := -real(complex(0, 1) * cde(-1.0+v0, kEllip, 1e-9))
+		p0LP := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, 1e-9))
 		// LP-to-HP: s -> 1/s gives pole at -1/p0LP.
 		p0HP := -1.0 / p0LP
-		// Bilinear transform of highpass first-order.
-		// H(s) = s/(s - p0HP), after bilinear becomes (z-1)/(c(z-1)+(z+1)) where c = k/p0HP
+		// Bilinear transform of H(s)=s/(s-p0HP) with s=k*(1-z^-1)/(1+z^-1).
 		denom := k - p0HP
 		norm := 1 / denom
 		sections = append(sections, biquad.Coefficients{
-			B0: norm,
-			B1: -norm,
+			B0: k * norm,
+			B1: -k * norm,
 			B2: 0,
-			A1: (k + p0HP) * norm,
+			A1: (-k - p0HP) * norm,
 			A2: 0,
 		})
 	}
@@ -167,8 +162,14 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1.0) / float64(order)
 
-		// Get LP poles (zeros don't affect HP since they're at infinity in analog domain).
-		pi := cde(complex(ui, 0)-v0, kEllip, 1e-9)
+		zi := complex(0, 1) * cde(complex(ui, 0), kEllip, 1e-9)
+		invZero := 1.0 / zi
+		zre := real(invZero)
+		zabs2 := cmplx.Abs(invZero)
+		zabs2 *= zabs2
+
+		// Get LP poles.
+		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
 		invPole := 1.0 / pi
 		sigmaPLP := -real(invPole)
 		omegaPLP := imag(invPole)
@@ -183,17 +184,17 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 
 		k2 := k * k
 
-		// HP analog section: H(s) = s² / (s² + 2·sigmaPHP·s + (sigmaPHP²+omegaPHP²))
-		// Numerator after bilinear: (z-1)²  = z² - 2z + 1.
-		bn0 := 1.0
-		bn1 := -2.0
-		bn2 := 1.0
+		// HP analog section from LP-to-HP coefficient reversal:
+		// N(s)=|z|²·s²-2·zre·s+1, D(s)=|p|²·s²+2·sigmaP·s+1.
+		bn0 := zabs2*k2 - 2*k*zre + 1
+		bn1 := 2 * (1 - zabs2*k2)
+		bn2 := zabs2*k2 + 2*k*zre + 1
 
 		// Denominator: LP pattern with HP pole.
 		pabs2HP := sigmaPHP*sigmaPHP + omegaPHP*omegaPHP
-		ad0 := k2 + 2*k*sigmaPHP + pabs2HP
-		ad1 := 2 * (k2 - pabs2HP)
-		ad2 := k2 - 2*k*sigmaPHP + pabs2HP
+		ad0 := pabs2HP*k2 + 2*k*sigmaPHP + 1
+		ad1 := 2 * (1 - pabs2HP*k2)
+		ad2 := pabs2HP*k2 - 2*k*sigmaPHP + 1
 
 		// Normalize denominator.
 		b0 := bn0 / ad0
@@ -202,19 +203,54 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		a1 := ad1 / ad0
 		a2 := ad2 / ad0
 
-		// Normalize for unity gain at Nyquist (z=-1).
-		nyqGain := (b0 - b1 + b2) / (1 - a1 + a2)
-		b0 /= nyqGain
-		b1 /= nyqGain
-		b2 /= nyqGain
-
 		sections = append(sections, biquad.Coefficients{
 			B0: b0, B1: b1, B2: b2,
 			A1: a1, A2: a2,
 		})
 	}
 
+	normalizeCascadeHP(sections)
 	return sections
+}
+
+func normalizeCascadeLP(sections []biquad.Coefficients) {
+	if len(sections) == 0 {
+		return
+	}
+	gain := 1.0
+	for _, s := range sections {
+		den := 1 + s.A1 + s.A2
+		if den == 0 {
+			return
+		}
+		gain *= (s.B0 + s.B1 + s.B2) / den
+	}
+	if gain == 0 || math.IsNaN(gain) || math.IsInf(gain, 0) {
+		return
+	}
+	sections[0].B0 /= gain
+	sections[0].B1 /= gain
+	sections[0].B2 /= gain
+}
+
+func normalizeCascadeHP(sections []biquad.Coefficients) {
+	if len(sections) == 0 {
+		return
+	}
+	gain := 1.0
+	for _, s := range sections {
+		den := 1 - s.A1 + s.A2
+		if den == 0 {
+			return
+		}
+		gain *= (s.B0 - s.B1 + s.B2) / den
+	}
+	if gain == 0 || math.IsNaN(gain) || math.IsInf(gain, 0) {
+		return
+	}
+	sections[0].B0 /= gain
+	sections[0].B1 /= gain
+	sections[0].B2 /= gain
 }
 
 // Elliptic function helpers (simplified from band package).
