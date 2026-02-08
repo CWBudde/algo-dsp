@@ -4,6 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>algo-dsp Web Demo</title>
+    <script>
+      (() => {
+        try {
+          const stored = localStorage.getItem("algo-dsp-theme");
+          const selected = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+          const mql = window.matchMedia("(prefers-color-scheme: dark)");
+          const resolved = selected === "system" ? (mql.matches ? "dark" : "light") : selected;
+          const root = document.documentElement;
+          root.dataset.theme = selected;
+          root.dataset.resolvedTheme = resolved;
+        } catch {
+          const root = document.documentElement;
+          root.dataset.theme = "system";
+          root.dataset.resolvedTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="styles.css" />
     <script src="eq-canvas.js" defer></script>
     <script src="wasm_exec.js" defer></script>
@@ -45,6 +62,14 @@
               <option value="triangle">Triangle</option>
               <option value="saw">Saw</option>
               <option value="square">Square</option>
+            </select>
+          </label>
+          <label>
+            Theme
+            <select id="theme">
+              <option value="system" selected>System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
             </select>
           </label>
         </div>
@@ -95,11 +120,6 @@
           </label>
         </div>
         <div class="eq-meta">
-          <label>
-            Master
-            <input id="master" type="range" min="0" max="1" step="0.01" value="0.75" />
-            <span id="master-value">0.75</span>
-          </label>
         </div>
       </section>
 

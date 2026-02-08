@@ -12,6 +12,11 @@
     return Math.min(max, Math.max(min, v));
   }
 
+  function cssVar(name, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
   function biquadMagnitudeAt(freq, sampleRate, c) {
     const omega = (2 * Math.PI * freq) / sampleRate;
     const cos1 = Math.cos(omega);
@@ -280,6 +285,10 @@
     }
 
     drawGrid(ctx, b, w, h) {
+      const gridMinor = cssVar("--canvas-grid-minor", "#ece1d2");
+      const gridMajor = cssVar("--canvas-grid-major", "#d4c6b2");
+      const axis = cssVar("--canvas-axis", "#9b8f7a");
+      const label = cssVar("--canvas-label", "#6a5f4f");
       const crisp = (v) => Math.round(v) + 0.5;
       const drawV = (x, y1, y2) => {
         const cx = crisp(x);
@@ -308,23 +317,23 @@
       });
 
       ctx.lineWidth = 1;
-      ctx.strokeStyle = "#ece1d2";
+      ctx.strokeStyle = gridMinor;
       minors.forEach((f) => drawV(xAt(f), b.top, b.bottom));
 
-      ctx.strokeStyle = "#d4c6b2";
+      ctx.strokeStyle = gridMajor;
       majors.forEach((f) => drawV(xAt(f), b.top, b.bottom));
 
       [-18, -12, -6, 0, 6, 12, 18].forEach((g) => {
         const y = b.bottom - ((g - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
-        ctx.strokeStyle = g === 0 ? "#d4c6b2" : "#ece1d2";
+        ctx.strokeStyle = g === 0 ? gridMajor : gridMinor;
         drawH(b.left, b.right, y);
       });
 
-      ctx.strokeStyle = "#9b8f7a";
+      ctx.strokeStyle = axis;
       drawV(b.left, b.top, b.bottom);
       drawH(b.left, b.right, b.bottom);
 
-      ctx.fillStyle = "#6a5f4f";
+      ctx.fillStyle = label;
       ctx.font = "11px IBM Plex Sans, sans-serif";
       ctx.textAlign = "center";
       [100, 1000, 10000].forEach((f) => {
@@ -355,13 +364,13 @@
       ctx.translate(18, b.top + (b.bottom - b.top) / 2);
       ctx.rotate(-Math.PI / 2);
       ctx.textAlign = "center";
-      ctx.fillText("dB", -10, 0);
+      ctx.fillText("Gain [dB]", -10, 0);
       ctx.restore();
       ctx.save();
       ctx.translate(b.right + 42, b.top + (b.bottom - b.top) / 2);
       ctx.rotate(Math.PI / 2);
       ctx.textAlign = "center";
-      ctx.fillText("dBFS", 0, 0);
+      ctx.fillText("Level [dbFS]", 0, 0);
       ctx.restore();
       ctx.textAlign = "left";
     }
@@ -411,13 +420,12 @@
 
     nodeDescriptors() {
       const p = this.params;
-      const yZero = this.gainToY(0);
       return [
-        { key: "hp", label: "Highpass", x: this.freqToX(p.hpFreq), y: this.gainToY(p.hpGain), color: "#8a4f1f" },
-        { key: "low", label: "Low Shelf", x: this.freqToX(p.lowFreq), y: this.gainToY(p.lowGain), color: "#c24d2c" },
-        { key: "mid", label: "Peak", x: this.freqToX(p.midFreq), y: this.gainToY(p.midGain), color: "#225d7d" },
-        { key: "high", label: "High Shelf", x: this.freqToX(p.highFreq), y: this.gainToY(p.highGain), color: "#3b7d44" },
-        { key: "lp", label: "Lowpass", x: this.freqToX(p.lpFreq), y: this.gainToY(p.lpGain), color: "#6a4aa5" },
+        { key: "hp", label: "Highpass", x: this.freqToX(p.hpFreq), y: this.gainToY(p.hpGain), color: cssVar("--canvas-node-hp", "#8a4f1f") },
+        { key: "low", label: "Low Shelf", x: this.freqToX(p.lowFreq), y: this.gainToY(p.lowGain), color: cssVar("--canvas-node-low", "#c24d2c") },
+        { key: "mid", label: "Peak", x: this.freqToX(p.midFreq), y: this.gainToY(p.midGain), color: cssVar("--canvas-node-mid", "#225d7d") },
+        { key: "high", label: "High Shelf", x: this.freqToX(p.highFreq), y: this.gainToY(p.highGain), color: cssVar("--canvas-node-high", "#3b7d44") },
+        { key: "lp", label: "Lowpass", x: this.freqToX(p.lpFreq), y: this.gainToY(p.lpGain), color: cssVar("--canvas-node-lp", "#6a4aa5") },
       ];
     }
 
@@ -447,7 +455,7 @@
       const b = this.bounds();
 
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = cssVar("--canvas-bg", "#fff");
       ctx.fillRect(0, 0, w, h);
 
       this.drawGrid(ctx, b, w, h);
@@ -463,11 +471,11 @@
       if (focusKey) {
         const singleDB = this.computeSingleFilterDB(focusKey, freqs);
         const focusColor = {
-          hp: "138,79,31",
-          low: "194,77,44",
-          mid: "34,93,125",
-          high: "59,125,68",
-          lp: "106,74,165",
+          hp: cssVar("--canvas-focus-hp", "138,79,31"),
+          low: cssVar("--canvas-focus-low", "194,77,44"),
+          mid: cssVar("--canvas-focus-mid", "34,93,125"),
+          high: cssVar("--canvas-focus-high", "59,125,68"),
+          lp: cssVar("--canvas-focus-lp", "106,74,165"),
         }[focusKey];
         const color = this.activeNode ? `rgba(${focusColor}, 0.72)` : `rgba(${focusColor}, 0.28)`;
         this.drawCurve(ctx, b, singleDB, color, this.activeNode ? 2.5 : 2);
@@ -475,11 +483,11 @@
 
       const spectrumDB = this.computeSpectrumDB(freqs);
       if (spectrumDB) {
-        this.drawSpectrumCurve(ctx, b, spectrumDB, "rgba(194,77,44,0.62)", 1.25);
+        this.drawSpectrumCurve(ctx, b, spectrumDB, cssVar("--canvas-spectrum", "rgba(194,77,44,0.62)"), 1.25);
       }
 
       const responseDB = this.computeResponseDB(freqs);
-      this.drawCurve(ctx, b, responseDB, "#225d7d", 2.4);
+      this.drawCurve(ctx, b, responseDB, cssVar("--canvas-response", "#225d7d"), 2.4);
 
       this.nodes = this.nodeDescriptors();
       this.nodes.forEach((n) => {
@@ -488,7 +496,7 @@
         ctx.arc(n.x, n.y, 6.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = "#fff";
+        ctx.strokeStyle = cssVar("--canvas-node-stroke", "#fff");
         ctx.stroke();
       });
     }
