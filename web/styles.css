@@ -60,6 +60,18 @@ h2 {
   align-items: center;
 }
 
+.transport .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem 1rem;
+  align-items: end;
+}
+
+.transport .row > label {
+  flex: 1 1 180px;
+  min-width: 160px;
+}
+
 label {
   display: grid;
   gap: 0.2rem;
@@ -108,6 +120,8 @@ button.active {
   display: grid;
   place-items: center;
   position: relative;
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .icon {

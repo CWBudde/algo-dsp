@@ -14,6 +14,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `github.com/cwbudde/wav`: WAV container support (separate concern) (see ../wav)
 - `github.com/cwbudde/mfw`: Application that will consume this library (see ../mfw)
 
+**Web Demo**: [https://cwbudde.github.io/algo-dsp/](https://cwbudde.github.io/algo-dsp/)
+
 ## Development Commands
 
 ### Setup and Build

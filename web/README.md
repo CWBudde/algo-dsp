@@ -23,4 +23,6 @@ just web-demo
 
 ## GitHub Pages
 
+The demo is hosted at [https://cwbudde.github.io/algo-dsp/](https://cwbudde.github.io/algo-dsp/).
+
 This repository deploys `web/` automatically via `.github/workflows/pages.yml` to GitHub Pages (`gh-pages` environment).
