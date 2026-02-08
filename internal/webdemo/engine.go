@@ -266,16 +266,6 @@ func (e *Engine) SetEQ(eq EQParams) error {
 	eq.HighQ = clamp(eq.HighQ, 0.2, 8)
 	eq.LPQ = clamp(eq.LPQ, 0.2, 8)
 
-	eq.LowFreq = clamp(eq.LowFreq, eq.HPFreq*1.15, e.sampleRate*0.49)
-	eq.MidFreq = clamp(eq.MidFreq, eq.LowFreq*1.15, e.sampleRate*0.49)
-	eq.HighFreq = clamp(eq.HighFreq, eq.MidFreq*1.15, e.sampleRate*0.49)
-	eq.LPFreq = clamp(eq.LPFreq, eq.HighFreq*1.15, e.sampleRate*0.49)
-
-	eq.HPFreq = clamp(eq.HPFreq, 20, eq.LowFreq/1.15)
-	eq.LowFreq = clamp(eq.LowFreq, eq.HPFreq*1.15, eq.MidFreq/1.15)
-	eq.MidFreq = clamp(eq.MidFreq, eq.LowFreq*1.15, eq.HighFreq/1.15)
-	eq.HighFreq = clamp(eq.HighFreq, eq.MidFreq*1.15, eq.LPFreq/1.15)
-
 	eq.Master = clamp(eq.Master, 0, 1)
 	e.eq = eq
 	return e.rebuildEQ()

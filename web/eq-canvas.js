@@ -165,16 +165,6 @@
       this.params.highFreq = clamp(this.params.highFreq, FREQ_MIN, FREQ_MAX);
       this.params.lpFreq = clamp(this.params.lpFreq, FREQ_MIN, FREQ_MAX);
 
-      this.params.lowFreq = clamp(this.params.lowFreq, this.params.hpFreq * 1.15, FREQ_MAX);
-      this.params.midFreq = clamp(this.params.midFreq, this.params.lowFreq * 1.15, FREQ_MAX);
-      this.params.highFreq = clamp(this.params.highFreq, this.params.midFreq * 1.15, FREQ_MAX);
-      this.params.lpFreq = clamp(this.params.lpFreq, this.params.highFreq * 1.15, FREQ_MAX);
-
-      this.params.hpFreq = clamp(this.params.hpFreq, FREQ_MIN, this.params.lowFreq / 1.15);
-      this.params.lowFreq = clamp(this.params.lowFreq, this.params.hpFreq * 1.15, this.params.midFreq / 1.15);
-      this.params.midFreq = clamp(this.params.midFreq, this.params.lowFreq * 1.15, this.params.highFreq / 1.15);
-      this.params.highFreq = clamp(this.params.highFreq, this.params.midFreq * 1.15, this.params.lpFreq / 1.15);
-
       this.params.lowGain = clamp(this.params.lowGain, GAIN_MIN, GAIN_MAX);
       this.params.hpGain = clamp(this.params.hpGain, GAIN_MIN, GAIN_MAX);
       this.params.midGain = clamp(this.params.midGain, GAIN_MIN, GAIN_MAX);
@@ -521,21 +511,22 @@
 
     dragNode(node, x, y) {
       const gain = clamp(this.yToGain(y), GAIN_MIN, GAIN_MAX);
+      const freq = clamp(this.xToFreq(x), FREQ_MIN, FREQ_MAX);
 
       if (node.key === "hp") {
-        this.params.hpFreq = clamp(this.xToFreq(x), FREQ_MIN, this.params.lowFreq / 1.15);
+        this.params.hpFreq = freq;
         this.params.hpGain = gain;
       } else if (node.key === "low") {
-        this.params.lowFreq = clamp(this.xToFreq(x), this.params.hpFreq * 1.15, this.params.midFreq / 1.15);
+        this.params.lowFreq = freq;
         this.params.lowGain = gain;
       } else if (node.key === "mid") {
-        this.params.midFreq = clamp(this.xToFreq(x), this.params.lowFreq * 1.15, this.params.highFreq / 1.15);
+        this.params.midFreq = freq;
         this.params.midGain = gain;
       } else if (node.key === "high") {
-        this.params.highFreq = clamp(this.xToFreq(x), this.params.midFreq * 1.15, this.params.lpFreq / 1.15);
+        this.params.highFreq = freq;
         this.params.highGain = gain;
       } else {
-        this.params.lpFreq = clamp(this.xToFreq(x), this.params.highFreq * 1.15, FREQ_MAX);
+        this.params.lpFreq = freq;
         this.params.lpGain = gain;
       }
 
