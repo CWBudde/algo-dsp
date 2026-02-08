@@ -18,7 +18,7 @@ func ButterworthLP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 	n2 := order / 2
 	for i := n2 - 1; i >= 0; i-- {
 		q := butterworthQ(order, i)
-		sections = append(sections, lowpassRBJ(freq, q, sampleRate))
+		sections = append(sections, LowpassRBJ(freq, q, sampleRate))
 	}
 	if order%2 != 0 {
 		sections = append(sections, butterworthFirstOrderLP(freq, sampleRate))
@@ -38,7 +38,7 @@ func ButterworthHP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 	n2 := order / 2
 	for i := n2 - 1; i >= 0; i-- {
 		q := butterworthQ(order, i)
-		sections = append(sections, highpassRBJ(freq, q, sampleRate))
+		sections = append(sections, HighpassRBJ(freq, q, sampleRate))
 	}
 	if order%2 != 0 {
 		sections = append(sections, butterworthFirstOrderHP(freq, sampleRate))
@@ -46,8 +46,8 @@ func ButterworthHP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 	return sections
 }
 
-// lowpassRBJ designs a lowpass biquad using the RBJ cookbook formula.
-func lowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
+// LowpassRBJ designs a lowpass biquad using the RBJ cookbook formula.
+func LowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return biquad.Coefficients{}
 	}
@@ -78,8 +78,8 @@ func lowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	}
 }
 
-// highpassRBJ designs a highpass biquad using the RBJ cookbook formula.
-func highpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
+// HighpassRBJ designs a highpass biquad using the RBJ cookbook formula.
+func HighpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return biquad.Coefficients{}
 	}

@@ -7,7 +7,6 @@ import (
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
-	"github.com/cwbudde/algo-dsp/dsp/filter/design/shelving"
 )
 
 const (
@@ -25,15 +24,20 @@ type StepConfig struct {
 // EQParams defines the 5-node EQ parameters.
 type EQParams struct {
 	HPFreq   float64
+	HPGain   float64
+	HPQ      float64
 	LowFreq  float64
 	LowGain  float64
+	LowQ     float64
 	MidFreq  float64
 	MidGain  float64
+	MidQ     float64
 	HighFreq float64
 	HighGain float64
+	HighQ    float64
 	LPFreq   float64
 	LPGain   float64
-	MidQ     float64
+	LPQ      float64
 	Master   float64
 }
 
@@ -59,6 +63,7 @@ type Engine struct {
 
 	eq   EQParams
 	hp   *biquad.Section
+	hpG  float64
 	low  *biquad.Section
 	mid  *biquad.Section
 	high *biquad.Section
@@ -77,15 +82,20 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		decaySec:   0.2,
 		eq: EQParams{
 			HPFreq:   40,
+			HPGain:   0,
+			HPQ:      1 / math.Sqrt2,
 			LowFreq:  100,
 			LowGain:  0,
+			LowQ:     1 / math.Sqrt2,
 			MidFreq:  1000,
 			MidGain:  0,
+			MidQ:     1.2,
 			HighFreq: 6000,
 			HighGain: 0,
+			HighQ:    1 / math.Sqrt2,
 			LPFreq:   12000,
 			LPGain:   0,
-			MidQ:     1.2,
+			LPQ:      1 / math.Sqrt2,
 			Master:   0.75,
 		},
 	}
@@ -137,9 +147,15 @@ func (e *Engine) SetEQ(eq EQParams) error {
 	eq.HighFreq = clamp(eq.HighFreq, 20, e.sampleRate*0.49)
 	eq.LPFreq = clamp(eq.LPFreq, 20, e.sampleRate*0.49)
 	eq.LowGain = clamp(eq.LowGain, -24, 24)
+	eq.HPGain = clamp(eq.HPGain, -24, 24)
 	eq.MidGain = clamp(eq.MidGain, -24, 24)
 	eq.HighGain = clamp(eq.HighGain, -24, 24)
 	eq.LPGain = clamp(eq.LPGain, -24, 24)
+	eq.HPQ = clamp(eq.HPQ, 0.2, 8)
+	eq.LowQ = clamp(eq.LowQ, 0.2, 8)
+	eq.MidQ = clamp(eq.MidQ, 0.2, 8)
+	eq.HighQ = clamp(eq.HighQ, 0.2, 8)
+	eq.LPQ = clamp(eq.LPQ, 0.2, 8)
 
 	eq.LowFreq = clamp(eq.LowFreq, eq.HPFreq*1.15, e.sampleRate*0.49)
 	eq.MidFreq = clamp(eq.MidFreq, eq.LowFreq*1.15, e.sampleRate*0.49)
@@ -151,7 +167,6 @@ func (e *Engine) SetEQ(eq EQParams) error {
 	eq.MidFreq = clamp(eq.MidFreq, eq.LowFreq*1.15, eq.HighFreq/1.15)
 	eq.HighFreq = clamp(eq.HighFreq, eq.MidFreq*1.15, eq.LPFreq/1.15)
 
-	eq.MidQ = clamp(eq.MidQ, 0.2, 8)
 	eq.Master = clamp(eq.Master, 0, 1)
 	e.eq = eq
 	return e.rebuildEQ()
@@ -176,6 +191,7 @@ func (e *Engine) Render(dst []float32) {
 
 		x := e.nextSample()
 		x = e.hp.ProcessSample(x)
+		x *= e.hpG
 		x = e.low.ProcessSample(x)
 		x = e.mid.ProcessSample(x)
 		x = e.high.ProcessSample(x)
@@ -192,6 +208,7 @@ func (e *Engine) ResponseCurveDB(freqs []float64) []float64 {
 	for i, f := range freqs {
 		f = clamp(f, 1, e.sampleRate*0.49)
 		h := e.hp.Response(f, e.sampleRate)
+		h *= complex(e.hpG, 0)
 		h *= e.low.Response(f, e.sampleRate)
 		h *= e.mid.Response(f, e.sampleRate)
 		h *= e.high.Response(f, e.sampleRate)
@@ -261,25 +278,17 @@ func (e *Engine) stepDurationSamples() float64 {
 }
 
 func (e *Engine) rebuildEQ() error {
-	hpCoeffs := design.Highpass(e.eq.HPFreq, 1/math.Sqrt2, e.sampleRate)
-	lowCoeffs, err := shelving.ButterworthLowShelf(e.sampleRate, e.eq.LowFreq, e.eq.LowGain, 1)
-	if err != nil {
-		return fmt.Errorf("build low shelf: %w", err)
-	}
-	midCoeffs, err := design.PeakCascade(e.sampleRate, e.eq.MidFreq, e.eq.MidQ, e.eq.MidGain, 1)
-	if err != nil {
-		return fmt.Errorf("build peaking: %w", err)
-	}
-	highCoeffs, err := shelving.ButterworthHighShelf(e.sampleRate, e.eq.HighFreq, e.eq.HighGain, 1)
-	if err != nil {
-		return fmt.Errorf("build high shelf: %w", err)
-	}
-	lpCoeffs := design.Lowpass(e.eq.LPFreq, 1/math.Sqrt2, e.sampleRate)
+	hpCoeffs := design.Highpass(e.eq.HPFreq, e.eq.HPQ, e.sampleRate)
+	lowCoeffs := design.LowShelf(e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
+	midCoeffs := design.Peak(e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
+	highCoeffs := design.HighShelf(e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
+	lpCoeffs := design.Lowpass(e.eq.LPFreq, e.eq.LPQ, e.sampleRate)
 
 	e.hp = biquad.NewSection(hpCoeffs)
-	e.low = biquad.NewSection(lowCoeffs[0])
-	e.mid = biquad.NewSection(midCoeffs[0])
-	e.high = biquad.NewSection(highCoeffs[0])
+	e.hpG = math.Pow(10, e.eq.HPGain/20)
+	e.low = biquad.NewSection(lowCoeffs)
+	e.mid = biquad.NewSection(midCoeffs)
+	e.high = biquad.NewSection(highCoeffs)
 	e.lp = biquad.NewSection(lpCoeffs)
 	e.lpG = math.Pow(10, e.eq.LPGain/20)
 	return nil

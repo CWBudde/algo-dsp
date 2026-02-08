@@ -25,6 +25,7 @@ const state = {
   hoverInfo: null,
   eqParams: {
     hpFreq: 40,
+    hpGain: 0,
     hpQ: 0.707,
     lowFreq: 120,
     lowGain: 0,
@@ -169,12 +170,12 @@ function updateEQText() {
 
   const h = state.hoverInfo;
   if (!h) {
-    el.eqReadout.textContent = "Hover a node for details. Shift + wheel adjusts that node Q.";
+    el.eqReadout.textContent = "Hover a node for details. Mouse wheel adjusts that node Q.";
     return;
   }
 
   if (h.key === "hp" || h.key === "lp") {
-    el.eqReadout.textContent = `${h.label}: ${Math.round(h.freq)} Hz, Q ${h.q.toFixed(2)}${h.key === "lp" ? `, ${h.gain.toFixed(1)} dB` : ""}`;
+    el.eqReadout.textContent = `${h.label}: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, Q ${h.q.toFixed(2)}`;
     return;
   }
 
