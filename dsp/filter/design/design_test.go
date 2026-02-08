@@ -135,7 +135,7 @@ func TestButterworthHP_OrderAndShape(t *testing.T) {
 	}
 }
 
-func TestChebyshev1ParityWithLegacyFormulas(t *testing.T) {
+func TestChebyshev1ParityWithRefFormulas(t *testing.T) {
 	sr := 48000.0
 	freq := 1000.0
 	order := 4
@@ -143,8 +143,8 @@ func TestChebyshev1ParityWithLegacyFormulas(t *testing.T) {
 
 	c1lp := Chebyshev1LP(freq, order, ripple, sr)
 	c1hp := Chebyshev1HP(freq, order, ripple, sr)
-	ref1lp := legacyCheby1LP(freq, order, ripple, sr)
-	ref1hp := legacyCheby1HP(freq, order, ripple, sr)
+	ref1lp := refCheby1LP(freq, order, ripple, sr)
+	ref1hp := refCheby1HP(freq, order, ripple, sr)
 
 	if !coeffSliceEqual(c1lp, ref1lp) {
 		t.Fatal("Chebyshev1LP parity mismatch")
@@ -171,7 +171,7 @@ func TestChebyshevResponseShape(t *testing.T) {
 	}
 }
 
-func TestChebyshev2CorrectedVariant(t *testing.T) {
+func TestChebyshev2ParityWithRefFormulas(t *testing.T) {
 	sr := 48000.0
 	freq := 1000.0
 	order := 4
@@ -180,19 +180,14 @@ func TestChebyshev2CorrectedVariant(t *testing.T) {
 	gotLP := Chebyshev2LP(freq, order, ripple, sr)
 	gotHP := Chebyshev2HP(freq, order, ripple, sr)
 
-	refLP := correctedCheby2LP(freq, order, ripple, sr)
-	refHP := correctedCheby2HP(freq, order, ripple, sr)
-	legacyLP := legacyCheby2LP(freq, order, ripple, sr)
+	refLP := refCheby2LP(freq, order, ripple, sr)
+	refHP := refCheby2HP(freq, order, ripple, sr)
 
 	if !coeffSliceEqual(gotLP, refLP) {
-		t.Fatal("Chebyshev2LP corrected-form mismatch")
+		t.Fatal("Chebyshev2LP parity mismatch")
 	}
 	if !coeffSliceEqual(gotHP, refHP) {
-		t.Fatal("Chebyshev2HP corrected-form mismatch")
-	}
-	// Demonstrate intentional deviation from strict legacy LP formula.
-	if coeffSliceEqual(gotLP, legacyLP) {
-		t.Fatal("Chebyshev2LP unexpectedly matches legacy uncorrected formula")
+		t.Fatal("Chebyshev2HP parity mismatch")
 	}
 }
 
@@ -305,7 +300,9 @@ func coeffSliceEqual(a, b []biquad.Coefficients) bool {
 	return true
 }
 
-func legacyCheby1LP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
+// refCheby1LP is a reference Chebyshev Type I lowpass implementation with
+// corrected sign convention (A1/A2 negated for subtraction-based biquad engine).
+func refCheby1LP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
 	k := math.Tan(math.Pi * freq / sampleRate)
 	k2 := k * k
 	t := math.Asinh(ripple) / float64(order)
@@ -321,7 +318,7 @@ func legacyCheby1LP(freq float64, order int, ripple float64, sampleRate float64)
 		n := 1 / (a + b + k2)
 		out = append(out, biquad.Coefficients{
 			B0: k2 * n, B1: 2 * k2 * n, B2: k2 * n,
-			A1: 2 * (b - k2) * n, A2: (a - k2 - b) * n,
+			A1: -2 * (b - k2) * n, A2: -(a - k2 - b) * n,
 		})
 	}
 	if order%2 != 0 {
@@ -330,7 +327,9 @@ func legacyCheby1LP(freq float64, order int, ripple float64, sampleRate float64)
 	return out
 }
 
-func legacyCheby1HP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
+// refCheby1HP is a reference Chebyshev Type I highpass implementation with
+// corrected sign convention.
+func refCheby1HP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
 	k := math.Tan(math.Pi * freq / sampleRate)
 	k2 := k * k
 	t := math.Asinh(ripple) / float64(order)
@@ -347,7 +346,7 @@ func legacyCheby1HP(freq float64, order int, ripple float64, sampleRate float64)
 		n := 1 / (b + 1 + a*k2)
 		out = append(out, biquad.Coefficients{
 			B0: n, B1: -2 * n, B2: n,
-			A1: 2 * (1 - a*k2) * n, A2: (b - 1 - a*k2) * n,
+			A1: -2 * (1 - a*k2) * n, A2: -(b - 1 - a*k2) * n,
 		})
 	}
 	if order%2 != 0 {
@@ -356,32 +355,9 @@ func legacyCheby1HP(freq float64, order int, ripple float64, sampleRate float64)
 	return out
 }
 
-func legacyCheby2LP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
-	k := math.Tan(math.Pi * freq / sampleRate)
-	k2 := k * k
-	t := math.Asinh(1/ripple) / float64(order)
-	r1 := math.Sinh(t)
-	r0 := math.Cosh(t)
-	r0 = r0 * r0
-
-	out := make([]biquad.Coefficients, 0, (order+1)/2)
-	for i := (order / 2) - 1; i >= 0; i-- {
-		x := math.Cos(float64(2*i+1) / (2 * float64(order)))
-		c0 := 1 - x*x
-		c1 := 2 * x * r1 * k
-		n := 1 / (c1 + k2 + r0 + c0)
-		out = append(out, biquad.Coefficients{
-			B0: (k2 + c0) * n, B1: 2 * (k2 - c0) * n, B2: (k2 + c0) * n,
-			A1: 2 * (-k2 + r0 + c0) * n, A2: (c1 - k2 - r0 - c0) * n,
-		})
-	}
-	if order%2 != 0 {
-		out = append(out, butterworthFirstOrderLP(freq, sampleRate))
-	}
-	return out
-}
-
-func correctedCheby2LP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
+// refCheby2LP is a reference Chebyshev Type II lowpass with corrected angle term
+// (cos((2i+1)*pi/(2N))) and corrected sign convention for A1/A2.
+func refCheby2LP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
 	k := math.Tan(math.Pi * freq / sampleRate)
 	k2 := k * k
 	t := math.Asinh(1/ripple) / float64(order)
@@ -397,7 +373,7 @@ func correctedCheby2LP(freq float64, order int, ripple float64, sampleRate float
 		n := 1 / (c1 + k2 + r0 + c0)
 		out = append(out, biquad.Coefficients{
 			B0: (k2 + c0) * n, B1: 2 * (k2 - c0) * n, B2: (k2 + c0) * n,
-			A1: 2 * (-k2 + r0 + c0) * n, A2: (c1 - k2 - r0 - c0) * n,
+			A1: -2 * (-k2 + r0 + c0) * n, A2: -(c1 - k2 - r0 - c0) * n,
 		})
 	}
 	if order%2 != 0 {
@@ -406,7 +382,8 @@ func correctedCheby2LP(freq float64, order int, ripple float64, sampleRate float
 	return out
 }
 
-func correctedCheby2HP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
+// refCheby2HP is a reference Chebyshev Type II highpass with corrected sign convention.
+func refCheby2HP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
 	k := 1 / math.Tan(math.Pi*freq/sampleRate)
 	k2 := k * k
 	t := math.Asinh(1/ripple) / float64(order)
@@ -422,7 +399,7 @@ func correctedCheby2HP(freq float64, order int, ripple float64, sampleRate float
 		n := 1 / (c1 + k2 + r0 + c0)
 		out = append(out, biquad.Coefficients{
 			B0: (c0 + k2) * n, B1: 2 * (c0 - k2) * n, B2: (c0 + k2) * n,
-			A1: 2 * (k2 - r0 - c0) * n, A2: (c1 - k2 - r0 - c0) * n,
+			A1: -2 * (k2 - r0 - c0) * n, A2: -(c1 - k2 - r0 - c0) * n,
 		})
 	}
 	if order%2 != 0 {
