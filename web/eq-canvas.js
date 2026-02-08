@@ -35,6 +35,12 @@
   const ORDER_MIN = 1;
   const ORDER_MAX = 12;
   const ORDER_DEFAULT = 2;
+  const SHAPE_Q_MIN = 0.2;
+  const SHAPE_Q_MAX = 8;
+  const SHAPE_RIPPLE_MIN = 0.05;
+  const SHAPE_RIPPLE_MAX_CHEBY1 = 12;
+  const SHAPE_RIPPLE_MAX_CHEBY2 = 24;
+  const SHAPE_BANDWIDTH_MIN = 1;
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -260,11 +266,6 @@
       this.params.midGain = clamp(this.params.midGain, GAIN_MIN, GAIN_MAX);
       this.params.highGain = clamp(this.params.highGain, GAIN_MIN, GAIN_MAX);
       this.params.lpGain = clamp(this.params.lpGain, GAIN_MIN, GAIN_MAX);
-      this.params.hpQ = clamp(this.params.hpQ, 0.2, 8);
-      this.params.lowQ = clamp(this.params.lowQ, 0.2, 8);
-      this.params.midQ = clamp(this.params.midQ, 0.2, 8);
-      this.params.highQ = clamp(this.params.highQ, 0.2, 8);
-      this.params.lpQ = clamp(this.params.lpQ, 0.2, 8);
       this.params.hpType = this.normalizeTypeForKey("hp", this.params.hpType);
       this.params.lowType = this.normalizeTypeForKey("low", this.params.lowType);
       this.params.midType = this.normalizeTypeForKey("mid", this.params.midType);
@@ -280,6 +281,11 @@
       this.params.midOrder = this.normalizeOrderForKeyTypeFamily("mid", this.params.midType, this.params.midFamily, this.params.midOrder);
       this.params.highOrder = this.normalizeOrderForKeyTypeFamily("high", this.params.highType, this.params.highFamily, this.params.highOrder);
       this.params.lpOrder = this.normalizeOrderForKeyTypeFamily("lp", this.params.lpType, this.params.lpFamily, this.params.lpOrder);
+      this.params.hpQ = this.clampShapeForKey("hp", this.params.hpQ);
+      this.params.lowQ = this.clampShapeForKey("low", this.params.lowQ);
+      this.params.midQ = this.clampShapeForKey("mid", this.params.midQ);
+      this.params.highQ = this.clampShapeForKey("high", this.params.highQ);
+      this.params.lpQ = this.clampShapeForKey("lp", this.params.lpQ);
       this.params.master = clamp(this.params.master, 0, 1);
     }
 
@@ -450,34 +456,39 @@
       const family = this.familyForKey(key);
       const typeHasEmbeddedGain = this.typeUsesGainInCoeffs(family, type);
       if (key === "hp") {
-        const hpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.hpFreq, 0, p.hpQ, sampleRate));
+        const hpQ = this.qForFilterCoeffs(type, family, p.hpFreq, p.hpQ);
+        const hpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.hpFreq, 0, hpQ, sampleRate));
         return hpMag * Math.pow(10, p.hpGain / 20);
       }
       if (key === "low") {
+        const lowQ = this.qForFilterCoeffs(type, family, p.lowFreq, p.lowQ);
         const lowMag = biquadMagnitudeAt(
           freq,
           sampleRate,
-          this.filterCoeffs(type, p.lowFreq, typeHasEmbeddedGain ? p.lowGain : 0, p.lowQ, sampleRate),
+          this.filterCoeffs(type, p.lowFreq, typeHasEmbeddedGain ? p.lowGain : 0, lowQ, sampleRate),
         );
         return lowMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.lowGain / 20));
       }
       if (key === "mid") {
+        const midQ = this.qForFilterCoeffs(type, family, p.midFreq, p.midQ);
         const midMag = biquadMagnitudeAt(
           freq,
           sampleRate,
-          this.filterCoeffs(type, p.midFreq, typeHasEmbeddedGain ? p.midGain : 0, p.midQ, sampleRate),
+          this.filterCoeffs(type, p.midFreq, typeHasEmbeddedGain ? p.midGain : 0, midQ, sampleRate),
         );
         return midMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.midGain / 20));
       }
       if (key === "high") {
+        const highQ = this.qForFilterCoeffs(type, family, p.highFreq, p.highQ);
         const highMag = biquadMagnitudeAt(
           freq,
           sampleRate,
-          this.filterCoeffs(type, p.highFreq, typeHasEmbeddedGain ? p.highGain : 0, p.highQ, sampleRate),
+          this.filterCoeffs(type, p.highFreq, typeHasEmbeddedGain ? p.highGain : 0, highQ, sampleRate),
         );
         return highMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.highGain / 20));
       }
-      const lpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.lpFreq, 0, p.lpQ, sampleRate));
+      const lpQ = this.qForFilterCoeffs(type, family, p.lpFreq, p.lpQ);
+      const lpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.lpFreq, 0, lpQ, sampleRate));
       return lpMag * Math.pow(10, p.lpGain / 20);
     }
 
@@ -680,11 +691,11 @@
 
     hoverInfoForKey(key) {
       const p = this.params;
-      if (key === "hp") return { key, label: this.labelForKey("hp"), type: this.typeForKey("hp"), family: this.familyForKey("hp"), order: this.orderForKey("hp"), freq: p.hpFreq, gain: p.hpGain, q: p.hpQ };
-      if (key === "low") return { key, label: this.labelForKey("low"), type: this.typeForKey("low"), family: this.familyForKey("low"), order: this.orderForKey("low"), freq: p.lowFreq, gain: p.lowGain, q: p.lowQ };
-      if (key === "mid") return { key, label: this.labelForKey("mid"), type: this.typeForKey("mid"), family: this.familyForKey("mid"), order: this.orderForKey("mid"), freq: p.midFreq, gain: p.midGain, q: p.midQ };
-      if (key === "high") return { key, label: this.labelForKey("high"), type: this.typeForKey("high"), family: this.familyForKey("high"), order: this.orderForKey("high"), freq: p.highFreq, gain: p.highGain, q: p.highQ };
-      if (key === "lp") return { key, label: this.labelForKey("lp"), type: this.typeForKey("lp"), family: this.familyForKey("lp"), order: this.orderForKey("lp"), freq: p.lpFreq, gain: p.lpGain, q: p.lpQ };
+      if (key === "hp") return { key, label: this.labelForKey("hp"), type: this.typeForKey("hp"), family: this.familyForKey("hp"), order: this.orderForKey("hp"), freq: p.hpFreq, gain: p.hpGain, q: p.hpQ, shape: p.hpQ, shapeMode: this.shapeModeForKey("hp") };
+      if (key === "low") return { key, label: this.labelForKey("low"), type: this.typeForKey("low"), family: this.familyForKey("low"), order: this.orderForKey("low"), freq: p.lowFreq, gain: p.lowGain, q: p.lowQ, shape: p.lowQ, shapeMode: this.shapeModeForKey("low") };
+      if (key === "mid") return { key, label: this.labelForKey("mid"), type: this.typeForKey("mid"), family: this.familyForKey("mid"), order: this.orderForKey("mid"), freq: p.midFreq, gain: p.midGain, q: p.midQ, shape: p.midQ, shapeMode: this.shapeModeForKey("mid") };
+      if (key === "high") return { key, label: this.labelForKey("high"), type: this.typeForKey("high"), family: this.familyForKey("high"), order: this.orderForKey("high"), freq: p.highFreq, gain: p.highGain, q: p.highQ, shape: p.highQ, shapeMode: this.shapeModeForKey("high") };
+      if (key === "lp") return { key, label: this.labelForKey("lp"), type: this.typeForKey("lp"), family: this.familyForKey("lp"), order: this.orderForKey("lp"), freq: p.lpFreq, gain: p.lpGain, q: p.lpQ, shape: p.lpQ, shapeMode: this.shapeModeForKey("lp") };
       return null;
     }
 
@@ -695,6 +706,60 @@
       if (key === "high") return "highQ";
       if (key === "lp") return "lpQ";
       return null;
+    }
+
+    freqForKey(key) {
+      if (key === "hp") return this.params.hpFreq;
+      if (key === "low") return this.params.lowFreq;
+      if (key === "mid") return this.params.midFreq;
+      if (key === "high") return this.params.highFreq;
+      if (key === "lp") return this.params.lpFreq;
+      return 1000;
+    }
+
+    shapeModeForTypeFamily(type, family) {
+      if (type === "peak" && family !== "rbj") return "bandwidth";
+      if ((family === "chebyshev1" || family === "chebyshev2") && (type === "highpass" || type === "lowpass" || type === "highshelf" || type === "lowshelf")) {
+        return "ripple";
+      }
+      return "q";
+    }
+
+    shapeModeForKey(key) {
+      return this.shapeModeForTypeFamily(this.typeForKey(key), this.familyForKey(key));
+    }
+
+    shapeRangeForKey(key) {
+      const family = this.familyForKey(key);
+      const mode = this.shapeModeForKey(key);
+      if (mode === "ripple") {
+        return {
+          min: SHAPE_RIPPLE_MIN,
+          max: family === "chebyshev2" ? SHAPE_RIPPLE_MAX_CHEBY2 : SHAPE_RIPPLE_MAX_CHEBY1,
+        };
+      }
+      if (mode === "bandwidth") {
+        const sampleRate = this.getSampleRate();
+        const nyquist = sampleRate * 0.5;
+        const freq = this.freqForKey(key);
+        const max = Math.max(SHAPE_BANDWIDTH_MIN, 2 * Math.min(Math.max(freq, 1), Math.max(nyquist - freq, 1)));
+        return { min: SHAPE_BANDWIDTH_MIN, max };
+      }
+      return { min: SHAPE_Q_MIN, max: SHAPE_Q_MAX };
+    }
+
+    clampShapeForKey(key, value) {
+      const range = this.shapeRangeForKey(key);
+      let v = Number(value);
+      if (!Number.isFinite(v)) v = range.min;
+      return clamp(v, range.min, range.max);
+    }
+
+    qForFilterCoeffs(type, family, freq, shape) {
+      if (this.shapeModeForTypeFamily(type, family) === "bandwidth") {
+        return clamp(freq / Math.max(shape, 1e-6), SHAPE_Q_MIN, SHAPE_Q_MAX);
+      }
+      return clamp(shape, SHAPE_Q_MIN, SHAPE_Q_MAX);
     }
 
     createContextMenu() {
@@ -1024,8 +1089,15 @@
           if (!field) return;
 
           ev.preventDefault();
-          const factor = ev.deltaY < 0 ? 1.08 : 1 / 1.08;
-          this.params[field] = clamp(this.params[field] * factor, 0.2, 8);
+          const mode = this.shapeModeForKey(key);
+          const range = this.shapeRangeForKey(key);
+          if (mode === "ripple") {
+            const delta = ev.deltaY < 0 ? 0.1 : -0.1;
+            this.params[field] = clamp(this.params[field] + delta, range.min, range.max);
+          } else {
+            const factor = ev.deltaY < 0 ? 1.08 : 1 / 1.08;
+            this.params[field] = clamp(this.params[field] * factor, range.min, range.max);
+          }
           this.onHover(this.hoverInfoForKey(key));
           this.onChange({ ...this.params });
           this.draw();
