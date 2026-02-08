@@ -14,7 +14,7 @@ const (
 	stepCount       = 16
 	minDecaySeconds = 0.01
 	maxVoices       = 64
-	eqDefaultOrder  = 4
+	eqDefaultOrder  = 2
 )
 
 // StepConfig defines one sequencer step.

@@ -340,7 +340,7 @@ func TestGainCalculationBelowThreshold(t *testing.T) {
 	}
 
 	// Test various levels below threshold
-	levels := []float64{0.001, 0.01, 0.05}  // All below -20dB
+	levels := []float64{0.001, 0.01, 0.05} // All below -20dB
 	for _, level := range levels {
 		gain := c.calculateGain(level)
 		if gain != 1.0 {
@@ -358,12 +358,12 @@ func TestGainCalculationAboveThreshold(t *testing.T) {
 	if err := c.SetRatio(4); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.SetKnee(0); err != nil {  // Hard knee for predictable testing
+	if err := c.SetKnee(0); err != nil { // Hard knee for predictable testing
 		t.Fatal(err)
 	}
 
 	// Test level above threshold (-20dB = 0.1 linear)
-	level := 0.2  // Above threshold
+	level := 0.2 // Above threshold
 	gain := c.calculateGain(level)
 
 	if gain >= 1.0 {
@@ -376,13 +376,13 @@ func TestGainCalculationAboveThreshold(t *testing.T) {
 
 // TestGainCalculationRatios verifies different ratios.
 func TestGainCalculationRatios(t *testing.T) {
-	levels := []float64{0.2, 0.3}  // Levels above threshold
+	levels := []float64{0.2, 0.3} // Levels above threshold
 
 	tests := []struct {
-		ratio       float64
-		wantLessGain bool  // Higher ratio = more compression = less gain
+		ratio        float64
+		wantLessGain bool // Higher ratio = more compression = less gain
 	}{
-		{1.0, false},  // No compression
+		{1.0, false}, // No compression
 		{2.0, false},
 		{4.0, false},
 		{10.0, false},
@@ -500,7 +500,7 @@ func TestMetricsTracking(t *testing.T) {
 	if err := c.SetThreshold(-20); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.SetAttack(1); err != nil {  // Very fast attack
+	if err := c.SetAttack(1); err != nil { // Very fast attack
 		t.Fatal(err)
 	}
 	c.ResetMetrics()
@@ -529,7 +529,7 @@ func TestMetricsTracking(t *testing.T) {
 // TestEnvelopeFollowerAttack verifies attack phase behavior.
 func TestEnvelopeFollowerAttack(t *testing.T) {
 	c, _ := NewCompressor(48000)
-	if err := c.SetAttack(1); err != nil {  // Very fast 1ms attack
+	if err := c.SetAttack(1); err != nil { // Very fast 1ms attack
 		t.Fatal(err)
 	}
 	c.Reset()
@@ -543,7 +543,7 @@ func TestEnvelopeFollowerAttack(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		c.ProcessSample(level)
 		// Peak should increase monotonically during attack (or stay constant when settled)
-		if c.peakLevel < prevPeak-1e-10 {  // Allow tiny numerical errors
+		if c.peakLevel < prevPeak-1e-10 { // Allow tiny numerical errors
 			t.Errorf("Peak decreased during attack at sample %d: %f -> %f", i, prevPeak, c.peakLevel)
 			break
 		}
@@ -560,10 +560,10 @@ func TestEnvelopeFollowerAttack(t *testing.T) {
 // TestEnvelopeFollowerRelease verifies release phase behavior.
 func TestEnvelopeFollowerRelease(t *testing.T) {
 	c, _ := NewCompressor(48000)
-	if err := c.SetAttack(1); err != nil {  // Fast attack to build up quickly
+	if err := c.SetAttack(1); err != nil { // Fast attack to build up quickly
 		t.Fatal(err)
 	}
-	if err := c.SetRelease(50); err != nil {  // 50ms release
+	if err := c.SetRelease(50); err != nil { // 50ms release
 		t.Fatal(err)
 	}
 	c.Reset()
@@ -584,7 +584,7 @@ func TestEnvelopeFollowerRelease(t *testing.T) {
 	for i := 0; i < 5000; i++ {
 		c.ProcessSample(0)
 		// Peak should decrease monotonically during release (or stay at zero when settled)
-		if c.peakLevel > prevPeak+1e-10 {  // Allow tiny numerical errors
+		if c.peakLevel > prevPeak+1e-10 { // Allow tiny numerical errors
 			t.Errorf("Peak increased during release at sample %d: %f -> %f", i, prevPeak, c.peakLevel)
 			break
 		}

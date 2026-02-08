@@ -34,6 +34,7 @@
   };
   const ORDER_MIN = 1;
   const ORDER_MAX = 12;
+  const ORDER_DEFAULT = 2;
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -347,13 +348,17 @@
     normalizeOrderForKeyTypeFamily(key, type, family, order) {
       if (!this.supportsOrderForTypeFamily(type, family)) return 1;
       let v = Number(order);
-      if (!Number.isFinite(v) || v <= 0) v = 4;
+      if (!Number.isFinite(v) || v <= 0) v = ORDER_DEFAULT;
       v = Math.round(clamp(v, ORDER_MIN, ORDER_MAX));
       if (type === "bandpass") {
         if (v < 4) v = 4;
         if (v % 2 !== 0) v += 1;
       }
       return v;
+    }
+
+    defaultOrderForType(type) {
+      return type === "bandpass" ? 4 : ORDER_DEFAULT;
     }
 
     normalizeFamilyForKeyType(key, type, family) {
@@ -765,8 +770,13 @@
         button.textContent = this.familyLabel(family);
         button.addEventListener("click", () => {
           const field = this.familyFieldForKey(key);
+          const orderField = this.orderFieldForKey(key);
           if (!field) return;
+          const prevFamily = this.familyForKey(key);
           this.params[field] = family;
+          if (orderField && prevFamily === "rbj" && family !== "rbj") {
+            this.params[orderField] = this.defaultOrderForType(currentType);
+          }
           this.constrainOrder();
           this.hideContextMenu();
           this.onHover(this.hoverInfoForKey(key));

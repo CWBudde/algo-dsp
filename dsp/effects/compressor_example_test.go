@@ -28,11 +28,11 @@ func ExampleCompressor_configuration() {
 	comp, _ := effects.NewCompressor(48000)
 
 	// Configure for aggressive compression
-	_ = comp.SetThreshold(-10.0)  // Compress above -10dB
-	_ = comp.SetRatio(8.0)         // 8:1 ratio
-	_ = comp.SetKnee(3.0)          // 3dB soft knee
-	_ = comp.SetAttack(5.0)        // Fast 5ms attack
-	_ = comp.SetRelease(50.0)      // 50ms release
+	_ = comp.SetThreshold(-10.0) // Compress above -10dB
+	_ = comp.SetRatio(8.0)       // 8:1 ratio
+	_ = comp.SetKnee(3.0)        // 3dB soft knee
+	_ = comp.SetAttack(5.0)      // Fast 5ms attack
+	_ = comp.SetRelease(50.0)    // 50ms release
 
 	// Process audio buffer
 	buf := make([]float64, 256)
