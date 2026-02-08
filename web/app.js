@@ -26,26 +26,31 @@ const state = {
   eqParams: {
     hpFamily: "rbj",
     hpType: "highpass",
+    hpOrder: 4,
     hpFreq: 40,
     hpGain: 0,
     hpQ: 0.707,
     lowFamily: "rbj",
     lowType: "lowshelf",
+    lowOrder: 4,
     lowFreq: 120,
     lowGain: 0,
     lowQ: 0.707,
     midFamily: "rbj",
     midType: "peak",
+    midOrder: 4,
     midFreq: 1000,
     midGain: 0,
     midQ: 1.2,
     highFamily: "rbj",
     highType: "highshelf",
+    highOrder: 4,
     highFreq: 5000,
     highGain: 0,
     highQ: 0.707,
     lpFamily: "rbj",
     lpType: "lowpass",
+    lpOrder: 4,
     lpFreq: 12000,
     lpGain: 0,
     lpQ: 0.707,
@@ -73,6 +78,11 @@ const state = {
     releaseMs: 100,
     makeupGainDB: 0,
     autoMakeup: true,
+  },
+  limParams: {
+    enabled: true,
+    threshold: -0.1,
+    release: 100,
   },
   analyzerParams: {
     fftSize: 2048,
@@ -135,6 +145,11 @@ const el = {
   compAuto: document.getElementById("comp-auto"),
   compMakeup: document.getElementById("comp-makeup"),
   compMakeupValue: document.getElementById("comp-makeup-value"),
+  limEnabled: document.getElementById("lim-enabled"),
+  limThresh: document.getElementById("lim-thresh"),
+  limThreshValue: document.getElementById("lim-thresh-value"),
+  limRelease: document.getElementById("lim-release"),
+  limReleaseValue: document.getElementById("lim-release-value"),
   analyzerFFT: document.getElementById("analyzer-fft"),
   analyzerOverlap: document.getElementById("analyzer-overlap"),
   analyzerOverlapValue: document.getElementById("analyzer-overlap-value"),
@@ -282,6 +297,7 @@ async function ensureDSP(sampleRate) {
       syncEQToDSP();
       syncEffectsToDSP();
       syncCompressorToDSP();
+      syncLimiterToDSP();
       syncSpectrumToDSP();
       state.eqUI?.draw();
     }
@@ -323,6 +339,7 @@ async function ensureDSP(sampleRate) {
   syncEQToDSP();
   syncEffectsToDSP();
   syncCompressorToDSP();
+  syncLimiterToDSP();
   syncSpectrumToDSP();
 }
 
@@ -360,7 +377,8 @@ function updateEQText() {
   }
 
   const family = typeof h.family === "string" ? h.family.toUpperCase() : "RBJ";
-  el.eqReadout.textContent = `${h.label} [${family}]: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, Q ${h.q.toFixed(2)}`;
+  const orderPart = Number(h.order) > 1 ? `, Order ${Number(h.order)}` : "";
+  el.eqReadout.textContent = `${h.label} [${family}${orderPart}]: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, Q ${h.q.toFixed(2)}`;
 }
 
 function stepDurationSeconds(stepIndex) {
@@ -520,6 +538,26 @@ function updateCompressorText() {
   }
 }
 
+function syncLimiterToDSP() {
+  if (!state.dsp.ready || !state.dsp.api) return;
+  const err = state.dsp.api.setLimiter(state.limParams);
+  if (typeof err === "string" && err.length > 0)
+    console.error("setLimiter failed", err);
+}
+
+function readLimiterFromUI() {
+  state.limParams = {
+    enabled: el.limEnabled.checked,
+    threshold: Number(el.limThresh.value),
+    release: Number(el.limRelease.value),
+  };
+}
+
+function updateLimiterText() {
+  el.limThreshValue.textContent = `${Number(el.limThresh.value).toFixed(1)} dB`;
+  el.limReleaseValue.textContent = `${Number(el.limRelease.value).toFixed(0)} ms`;
+}
+
 function startSequencer() {
   if (!state.audioCtx) return;
   if (state.audioCtx.state === "suspended") state.audioCtx.resume();
@@ -653,6 +691,15 @@ function bindEvents() {
     });
   });
 
+  [el.limEnabled, el.limThresh, el.limRelease].forEach((control) => {
+    const eventName = control.type === "checkbox" ? "change" : "input";
+    control.addEventListener(eventName, () => {
+      readLimiterFromUI();
+      updateLimiterText();
+      syncLimiterToDSP();
+    });
+  });
+
   [el.analyzerFFT, el.analyzerWindow].forEach((control) => {
     control.addEventListener("change", () => {
       readSpectrumFromUI();
@@ -677,6 +724,8 @@ function bindEvents() {
   readEffectsFromUI();
   updateCompressorText();
   readCompressorFromUI();
+  updateLimiterText();
+  readLimiterFromUI();
   el.analyzerFFT.value = String(state.analyzerParams.fftSize);
   el.analyzerOverlap.value = String(
     Math.round(state.analyzerParams.overlap * 100),

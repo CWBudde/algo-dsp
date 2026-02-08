@@ -19,9 +19,7 @@ const (
 	stepCount       = 16
 	minDecaySeconds = 0.01
 	maxVoices       = 64
-	eqPassOrder     = 4
-	eqBandOrder     = 4
-	eqShelfOrder    = 4
+	eqDefaultOrder  = 4
 	eqRippleDB      = 0.5
 )
 
@@ -35,26 +33,31 @@ type StepConfig struct {
 type EQParams struct {
 	HPFamily   string
 	HPType     string
+	HPOrder    int
 	HPFreq     float64
 	HPGain     float64
 	HPQ        float64
 	LowFamily  string
 	LowType    string
+	LowOrder   int
 	LowFreq    float64
 	LowGain    float64
 	LowQ       float64
 	MidFamily  string
 	MidType    string
+	MidOrder   int
 	MidFreq    float64
 	MidGain    float64
 	MidQ       float64
 	HighFamily string
 	HighType   string
+	HighOrder  int
 	HighFreq   float64
 	HighGain   float64
 	HighQ      float64
 	LPFamily   string
 	LPType     string
+	LPOrder    int
 	LPFreq     float64
 	LPGain     float64
 	LPQ        float64
@@ -87,6 +90,13 @@ type CompressorParams struct {
 	ReleaseMs    float64
 	MakeupGainDB float64
 	AutoMakeup   bool
+}
+
+// LimiterParams defines limiter settings.
+type LimiterParams struct {
+	Enabled   bool
+	Threshold float64
+	Release   float64
 }
 
 // SpectrumParams defines real-time analyzer settings.
@@ -144,6 +154,9 @@ type Engine struct {
 	compParams CompressorParams
 	compressor *effects.Compressor
 
+	limParams LimiterParams
+	limiter   *effects.Limiter
+
 	spectrum             SpectrumParams
 	spectrumWindow       []float64
 	spectrumWindowGain   float64
@@ -171,30 +184,35 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		decaySec:   0.2,
 		shuffle:    0,
 		waveform:   WaveSine,
-		eq: EQParams{
-			HPFamily:   "rbj",
-			HPType:     "highpass",
-			HPFreq:     40,
+			eq: EQParams{
+				HPFamily:   "rbj",
+				HPType:     "highpass",
+				HPOrder:    eqDefaultOrder,
+				HPFreq:     40,
 			HPGain:     0,
 			HPQ:        1 / math.Sqrt2,
-			LowFamily:  "rbj",
-			LowType:    "lowshelf",
-			LowFreq:    100,
+				LowFamily:  "rbj",
+				LowType:    "lowshelf",
+				LowOrder:   eqDefaultOrder,
+				LowFreq:    100,
 			LowGain:    0,
 			LowQ:       1 / math.Sqrt2,
-			MidFamily:  "rbj",
-			MidType:    "peak",
-			MidFreq:    1000,
+				MidFamily:  "rbj",
+				MidType:    "peak",
+				MidOrder:   eqDefaultOrder,
+				MidFreq:    1000,
 			MidGain:    0,
 			MidQ:       1.2,
-			HighFamily: "rbj",
-			HighType:   "highshelf",
-			HighFreq:   6000,
+				HighFamily: "rbj",
+				HighType:   "highshelf",
+				HighOrder:  eqDefaultOrder,
+				HighFreq:   6000,
 			HighGain:   0,
 			HighQ:      1 / math.Sqrt2,
-			LPFamily:   "rbj",
-			LPType:     "lowpass",
-			LPFreq:     12000,
+				LPFamily:   "rbj",
+				LPType:     "lowpass",
+				LPOrder:    eqDefaultOrder,
+				LPFreq:     12000,
 			LPGain:     0,
 			LPQ:        1 / math.Sqrt2,
 			Master:     0.75,
@@ -222,6 +240,11 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			MakeupGainDB: 0,
 			AutoMakeup:   true,
 		},
+		limParams: LimiterParams{
+			Enabled:   true,
+			Threshold: -0.1,
+			Release:   100,
+		},
 		spectrum: SpectrumParams{
 			FFTSize:   2048,
 			Overlap:   0.75,
@@ -244,10 +267,19 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 	}
 	e.compressor = comp
 
+	lim, err := effects.NewLimiter(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.limiter = lim
+
 	if err := e.rebuildEffects(); err != nil {
 		return nil, err
 	}
 	if err := e.rebuildCompressor(); err != nil {
+		return nil, err
+	}
+	if err := e.rebuildLimiter(); err != nil {
 		return nil, err
 	}
 	for i := 0; i < stepCount; i++ {
@@ -312,22 +344,27 @@ func (e *Engine) SetEQ(eq EQParams) error {
 	eq.HPType = normalizeEQType("hp", eq.HPType)
 	eq.HPFamily = normalizeEQFamily(eq.HPFamily)
 	eq.HPFamily = normalizeEQFamilyForType(eq.HPType, eq.HPFamily)
+	eq.HPOrder = normalizeEQOrder(eq.HPType, eq.HPFamily, eq.HPOrder)
 	eq.LowFreq = clamp(eq.LowFreq, 20, e.sampleRate*0.49)
 	eq.LowType = normalizeEQType("low", eq.LowType)
 	eq.LowFamily = normalizeEQFamily(eq.LowFamily)
 	eq.LowFamily = normalizeEQFamilyForType(eq.LowType, eq.LowFamily)
+	eq.LowOrder = normalizeEQOrder(eq.LowType, eq.LowFamily, eq.LowOrder)
 	eq.MidFreq = clamp(eq.MidFreq, 20, e.sampleRate*0.49)
 	eq.MidType = normalizeEQType("mid", eq.MidType)
 	eq.MidFamily = normalizeEQFamily(eq.MidFamily)
 	eq.MidFamily = normalizeEQFamilyForType(eq.MidType, eq.MidFamily)
+	eq.MidOrder = normalizeEQOrder(eq.MidType, eq.MidFamily, eq.MidOrder)
 	eq.HighFreq = clamp(eq.HighFreq, 20, e.sampleRate*0.49)
 	eq.HighType = normalizeEQType("high", eq.HighType)
 	eq.HighFamily = normalizeEQFamily(eq.HighFamily)
 	eq.HighFamily = normalizeEQFamilyForType(eq.HighType, eq.HighFamily)
+	eq.HighOrder = normalizeEQOrder(eq.HighType, eq.HighFamily, eq.HighOrder)
 	eq.LPFreq = clamp(eq.LPFreq, 20, e.sampleRate*0.49)
 	eq.LPType = normalizeEQType("lp", eq.LPType)
 	eq.LPFamily = normalizeEQFamily(eq.LPFamily)
 	eq.LPFamily = normalizeEQFamilyForType(eq.LPType, eq.LPFamily)
+	eq.LPOrder = normalizeEQOrder(eq.LPType, eq.LPFamily, eq.LPOrder)
 	eq.LowGain = clamp(eq.LowGain, -24, 24)
 	eq.HPGain = clamp(eq.HPGain, -24, 24)
 	eq.MidGain = clamp(eq.MidGain, -24, 24)
@@ -360,6 +397,22 @@ func (e *Engine) SetCompressor(p CompressorParams) error {
 	}
 	if prevEnabled && !p.Enabled {
 		e.compressor.Reset()
+	}
+	return nil
+}
+
+// SetLimiter updates limiter parameters.
+func (e *Engine) SetLimiter(p LimiterParams) error {
+	prevEnabled := e.limParams.Enabled
+	p.Threshold = clamp(p.Threshold, -24, 0)
+	p.Release = clamp(p.Release, 1, 5000)
+
+	e.limParams = p
+	if err := e.rebuildLimiter(); err != nil {
+		return err
+	}
+	if prevEnabled && !p.Enabled {
+		e.limiter.Reset()
 	}
 	return nil
 }
@@ -481,6 +534,10 @@ func (e *Engine) Render(dst []float32) {
 			x = e.compressor.ProcessSample(x)
 		}
 
+		if e.limParams.Enabled {
+			x = e.limiter.ProcessSample(x)
+		}
+
 		e.pushSpectrumSample(x)
 		dst[i] = float32(clamp(x, -1, 1))
 	}
@@ -513,6 +570,19 @@ func (e *Engine) rebuildCompressor() error {
 		if err := e.compressor.SetMakeupGain(e.compParams.MakeupGainDB); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (e *Engine) rebuildLimiter() error {
+	if err := e.limiter.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.limiter.SetThreshold(e.limParams.Threshold); err != nil {
+		return err
+	}
+	if err := e.limiter.SetRelease(e.limParams.Release); err != nil {
+		return err
 	}
 	return nil
 }
@@ -767,37 +837,38 @@ func shuffleRatio(shuffle float64) float64 {
 }
 
 func (e *Engine) rebuildEQ() error {
-	e.hp = buildEQChain(e.eq.HPFamily, e.eq.HPType, e.eq.HPFreq, e.eq.HPGain, e.eq.HPQ, e.sampleRate)
-	e.low = buildEQChain(e.eq.LowFamily, e.eq.LowType, e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
-	e.mid = buildEQChain(e.eq.MidFamily, e.eq.MidType, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
-	e.high = buildEQChain(e.eq.HighFamily, e.eq.HighType, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
-	e.lp = buildEQChain(e.eq.LPFamily, e.eq.LPType, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ, e.sampleRate)
+	e.hp = buildEQChain(e.eq.HPFamily, e.eq.HPType, e.eq.HPOrder, e.eq.HPFreq, e.eq.HPGain, e.eq.HPQ, e.sampleRate)
+	e.low = buildEQChain(e.eq.LowFamily, e.eq.LowType, e.eq.LowOrder, e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
+	e.mid = buildEQChain(e.eq.MidFamily, e.eq.MidType, e.eq.MidOrder, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
+	e.high = buildEQChain(e.eq.HighFamily, e.eq.HighType, e.eq.HighOrder, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
+	e.lp = buildEQChain(e.eq.LPFamily, e.eq.LPType, e.eq.LPOrder, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ, e.sampleRate)
 	return nil
 }
 
-func buildEQChain(family, kind string, freq, gainDB, q, sampleRate float64) *biquad.Chain {
+func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate float64) *biquad.Chain {
 	family = normalizeEQFamilyForType(kind, normalizeEQFamily(family))
+	order = normalizeEQOrder(kind, family, order)
 	linGain := nodeLinearGain(family, kind, gainDB)
 	switch family {
 	case "butterworth":
 		switch kind {
 		case "highpass":
-			return chainFromCoeffs(design.ButterworthHP(freq, eqPassOrder, sampleRate), linGain)
+			return chainFromCoeffs(design.ButterworthHP(freq, order, sampleRate), linGain)
 		case "lowpass":
-			return chainFromCoeffs(design.ButterworthLP(freq, eqPassOrder, sampleRate), linGain)
+			return chainFromCoeffs(design.ButterworthLP(freq, order, sampleRate), linGain)
 		case "bandpass":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
-			coeffs, err := band.ButterworthBand(sampleRate, freq, bw, gainDB, eqBandOrder)
+			coeffs, err := band.ButterworthBand(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "highshelf":
-			coeffs, err := shelving.ButterworthHighShelf(sampleRate, freq, gainDB, eqShelfOrder)
+			coeffs, err := shelving.ButterworthHighShelf(sampleRate, freq, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "lowshelf":
-			coeffs, err := shelving.ButterworthLowShelf(sampleRate, freq, gainDB, eqShelfOrder)
+			coeffs, err := shelving.ButterworthLowShelf(sampleRate, freq, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
@@ -805,22 +876,22 @@ func buildEQChain(family, kind string, freq, gainDB, q, sampleRate float64) *biq
 	case "chebyshev1":
 		switch kind {
 		case "highpass":
-			return chainFromCoeffs(design.Chebyshev1HP(freq, eqPassOrder, eqRippleDB, sampleRate), linGain)
+			return chainFromCoeffs(design.Chebyshev1HP(freq, order, eqRippleDB, sampleRate), linGain)
 		case "lowpass":
-			return chainFromCoeffs(design.Chebyshev1LP(freq, eqPassOrder, eqRippleDB, sampleRate), linGain)
+			return chainFromCoeffs(design.Chebyshev1LP(freq, order, eqRippleDB, sampleRate), linGain)
 		case "bandpass":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
-			coeffs, err := band.Chebyshev1Band(sampleRate, freq, bw, gainDB, eqBandOrder)
+			coeffs, err := band.Chebyshev1Band(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "highshelf":
-			coeffs, err := shelving.Chebyshev1HighShelf(sampleRate, freq, gainDB, eqRippleDB, eqShelfOrder)
+			coeffs, err := shelving.Chebyshev1HighShelf(sampleRate, freq, gainDB, eqRippleDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "lowshelf":
-			coeffs, err := shelving.Chebyshev1LowShelf(sampleRate, freq, gainDB, eqRippleDB, eqShelfOrder)
+			coeffs, err := shelving.Chebyshev1LowShelf(sampleRate, freq, gainDB, eqRippleDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
@@ -828,22 +899,22 @@ func buildEQChain(family, kind string, freq, gainDB, q, sampleRate float64) *biq
 	case "chebyshev2":
 		switch kind {
 		case "highpass":
-			return chainFromCoeffs(design.Chebyshev2HP(freq, eqPassOrder, eqRippleDB, sampleRate), linGain)
+			return chainFromCoeffs(design.Chebyshev2HP(freq, order, eqRippleDB, sampleRate), linGain)
 		case "lowpass":
-			return chainFromCoeffs(design.Chebyshev2LP(freq, eqPassOrder, eqRippleDB, sampleRate), linGain)
+			return chainFromCoeffs(design.Chebyshev2LP(freq, order, eqRippleDB, sampleRate), linGain)
 		case "bandpass":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
-			coeffs, err := band.Chebyshev2Band(sampleRate, freq, bw, gainDB, eqBandOrder)
+			coeffs, err := band.Chebyshev2Band(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "highshelf":
-			coeffs, err := shelving.Chebyshev2HighShelf(sampleRate, freq, gainDB, eqRippleDB, eqShelfOrder)
+			coeffs, err := shelving.Chebyshev2HighShelf(sampleRate, freq, gainDB, eqRippleDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case "lowshelf":
-			coeffs, err := shelving.Chebyshev2LowShelf(sampleRate, freq, gainDB, eqRippleDB, eqShelfOrder)
+			coeffs, err := shelving.Chebyshev2LowShelf(sampleRate, freq, gainDB, eqRippleDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
@@ -852,7 +923,7 @@ func buildEQChain(family, kind string, freq, gainDB, q, sampleRate float64) *biq
 		switch kind {
 		case "bandpass":
 			bw := math.Max(1, freq/math.Max(q, 1e-6))
-			coeffs, err := band.EllipticBand(sampleRate, freq, bw, gainDB, eqBandOrder)
+			coeffs, err := band.EllipticBand(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
@@ -926,6 +997,36 @@ func normalizeEQFamilyForType(kind, family string) string {
 		return family
 	}
 	return "rbj"
+}
+
+func supportsEQOrder(kind, family string) bool {
+	if family == "rbj" {
+		return false
+	}
+	if family == "elliptic" {
+		return kind == "bandpass"
+	}
+	if family == "butterworth" || family == "chebyshev1" || family == "chebyshev2" {
+		return kind == "highpass" || kind == "lowpass" || kind == "bandpass" || kind == "lowshelf" || kind == "highshelf"
+	}
+	return false
+}
+
+func normalizeEQOrder(kind, family string, order int) int {
+	if !supportsEQOrder(kind, family) {
+		return 1
+	}
+	if order <= 0 {
+		order = eqDefaultOrder
+	}
+	if kind == "bandpass" {
+		order = int(clamp(float64(order), 4, 12))
+		if order%2 != 0 {
+			order++
+		}
+		return order
+	}
+	return int(clamp(float64(order), 1, 12))
 }
 
 func normalizeEQType(node, kind string) string {

@@ -340,12 +340,29 @@ button.active {
 .eq-context-menu {
   position: fixed;
   z-index: 1000;
-  min-width: 160px;
+  min-width: 320px;
   padding: 0.4rem;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.eq-context-menu-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.eq-context-menu-col {
+  min-width: 0;
+}
+
+.eq-context-menu-divider {
+  align-self: stretch;
+  background: var(--line);
+  border-radius: 1px;
 }
 
 .eq-context-menu-title {
@@ -385,6 +402,22 @@ button.active {
 .eq-context-menu-item.is-active {
   background: rgba(34, 93, 125, 0.16);
   font-weight: 600;
+}
+
+.eq-context-order {
+  margin-top: 0.35rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.eq-context-order-select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.35rem 0.45rem;
+  font: inherit;
 }
 
 .eq-meta {
