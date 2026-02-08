@@ -604,6 +604,10 @@ function initEQCanvas() {
       if (!state.dsp.ready || !state.dsp.api) return null;
       return state.dsp.api.responseCurve(freqs);
     },
+    getNodeResponseDB: (key, freqs) => {
+      if (!state.dsp.ready || !state.dsp.api) return null;
+      return state.dsp.api.nodeResponseCurve(key, freqs);
+    },
     getSpectrumDB: (freqs) => {
       if (!state.dsp.ready || !state.dsp.api) return null;
       return state.dsp.api.spectrumCurve(freqs);
