@@ -158,6 +158,7 @@ const el = {
   steps: document.getElementById("steps"),
   scale: document.getElementById("scale"),
   rootNote: document.getElementById("root-note"),
+  randomizeSteps: document.getElementById("randomize-steps"),
   eqCanvas: document.getElementById("eq-canvas"),
   eqReadout: document.getElementById("eq-readout"),
   chorusEnabled: document.getElementById("chorus-enabled"),
@@ -705,6 +706,35 @@ function updateStepOptions() {
   syncStepsToDSP();
 }
 
+function randomizeSteps() {
+  const intervals = SCALES[el.scale.value] || SCALES.pentatonic;
+  const hasFifth = intervals.includes(7);
+  
+  // Find indices in currentNotes for root and fifth (using octave 3 as base)
+  const rootIndex = 0; // First note in currentNotes is root octave 3
+  let fifthIndex = -1;
+  if (hasFifth) {
+    fifthIndex = intervals.indexOf(7);
+  }
+
+  state.steps.forEach((step, i) => {
+    // 1-indexed steps: 1, 5, 9, 13
+    // 0-indexed: 0, 4, 8, 12
+    if (i === 0 || i === 8) {
+      step.enabled.checked = true;
+      step.noteSelect.selectedIndex = rootIndex;
+    } else if ((i === 4 || i === 12) && hasFifth) {
+      step.enabled.checked = true;
+      step.noteSelect.selectedIndex = fifthIndex;
+    } else {
+      // Randomize other steps
+      step.enabled.checked = Math.random() > 0.6; // ~40% chance to be enabled
+      step.noteSelect.selectedIndex = Math.floor(Math.random() * currentNotes.length);
+    }
+  });
+  syncStepsToDSP();
+}
+
 function bindEvents() {
   el.runToggle.addEventListener("click", async () => {
     if (!state.audioCtx) {
@@ -721,6 +751,7 @@ function bindEvents() {
 
   el.scale.addEventListener("change", updateStepOptions);
   el.rootNote.addEventListener("change", updateStepOptions);
+  el.randomizeSteps.addEventListener("click", randomizeSteps);
 
   [el.tempo, el.decay, el.shuffle].forEach((control) => {
     control.addEventListener("input", () => {
