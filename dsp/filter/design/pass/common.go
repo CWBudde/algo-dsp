@@ -74,18 +74,3 @@ func cheby1RippleFactors(order int, rippleDB float64) (float64, float64) {
 	r0 := math.Cosh(t)
 	return r0 * r0, r1
 }
-
-// cheby2RippleFactors computes ripple-dependent factors for Chebyshev Type II filters.
-// Returns (r0, r1) where r0 = cosh²(asinh(1/rippleDB)/order) and r1 = sinh(asinh(1/rippleDB)/order).
-func cheby2RippleFactors(order int, rippleDB float64) (float64, float64) {
-	if order <= 0 {
-		return 1, 0
-	}
-	if rippleDB <= 0 {
-		rippleDB = 1
-	}
-	t := math.Asinh(1/rippleDB) / float64(order)
-	r1 := math.Sinh(t)
-	r0 := math.Cosh(t)
-	return r0 * r0, r1
-}

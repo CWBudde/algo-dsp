@@ -257,6 +257,14 @@ func (c *Compressor) ProcessInPlace(buf []float64) {
 	}
 }
 
+// CalculateOutputLevel computes the steady-state output level for a given input magnitude.
+// This allows visualizing the compression curve.
+func (c *Compressor) CalculateOutputLevel(inputMagnitude float64) float64 {
+	inputMagnitude = math.Abs(inputMagnitude)
+	gain := c.calculateGain(inputMagnitude)
+	return inputMagnitude * gain * c.makeupGainLin
+}
+
 // Reset clears envelope follower and metrics.
 func (c *Compressor) Reset() {
 	c.peakLevel = 0

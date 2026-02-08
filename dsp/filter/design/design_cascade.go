@@ -49,23 +49,20 @@ func Chebyshev1HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 	return pass.Chebyshev1HP(freq, order, rippleDB, sampleRate)
 }
 
-// Chebyshev2LP designs a lowpass Chebyshev Type II cascade.
+// Chebyshev2LP designs a lowpass Chebyshev Type II (inverse Chebyshev) cascade.
 //
-// The coefficient formulas are based on mfw legacy MFFilter.pas
-// TMFDSPChebyshev2LP.CalculateCoefficients, with a corrected angle term:
-// cos((2i+1)*pi/(2N)). The legacy code omits pi in that term.
-//
-// Future: Add optional Orfanidis-based variant that respects Nyquist gain constraint.
+// Uses an analog prototype with inverted Chebyshev Type I poles and
+// imaginary-axis zeros, followed by bilinear transform. The passband is
+// maximally flat and the stopband exhibits equiripple behavior.
 func Chebyshev2LP(freq float64, order int, rippleDB, sampleRate float64) []biquad.Coefficients {
 	return pass.Chebyshev2LP(freq, order, rippleDB, sampleRate)
 }
 
-// Chebyshev2HP designs a highpass Chebyshev Type II cascade.
+// Chebyshev2HP designs a highpass Chebyshev Type II (inverse Chebyshev) cascade.
 //
-// The coefficient formulas are ported from mfw legacy MFFilter.pas
-// TMFDSPChebyshev2HP.CalculateCoefficients.
-//
-// Future: Add optional Orfanidis-based variant that respects DC gain constraint.
+// Applies an LP-to-HP frequency transformation to the analog prototype
+// before bilinear transform. The passband is maximally flat and the
+// stopband exhibits equiripple behavior.
 func Chebyshev2HP(freq float64, order int, rippleDB, sampleRate float64) []biquad.Coefficients {
 	return pass.Chebyshev2HP(freq, order, rippleDB, sampleRate)
 }

@@ -54,6 +54,11 @@ func (l *Limiter) ProcessSample(input float64) float64 {
 	return l.comp.ProcessSample(input)
 }
 
+// CalculateOutputLevel computes the steady-state output level for a given input magnitude.
+func (l *Limiter) CalculateOutputLevel(inputMagnitude float64) float64 {
+	return l.comp.CalculateOutputLevel(inputMagnitude)
+}
+
 // Reset clears the internal state.
 func (l *Limiter) Reset() {
 	l.comp.Reset()

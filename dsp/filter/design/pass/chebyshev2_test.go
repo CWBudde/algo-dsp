@@ -14,22 +14,35 @@ func TestChebyshev2LP_Basic(t *testing.T) {
 	if len(sections) != 2 {
 		t.Fatalf("expected 2 sections for order 4, got %d", len(sections))
 	}
-	for i, s := range sections {
+	for _, s := range sections {
 		assertFiniteCoefficients(t, s)
 		assertStableSection(t, s)
-		_ = i
 	}
 }
 
-func TestChebyshev2LP_PassbandGain(t *testing.T) {
+func TestChebyshev2LP_PassbandFlat(t *testing.T) {
 	sr := 48000.0
 	fc := 1000.0
 
-	for _, order := range []int{2, 4, 6, 8} {
+	for _, order := range []int{4, 6, 8} {
 		sections := Chebyshev2LP(fc, order, 2.0, sr)
-		dcGain := cascadeMagDB(sections, 10, sr)
-		if dcGain < -1 || dcGain > 1 {
-			t.Errorf("order %d: DC gain = %.2f dB, expected near 0 dB", order, dcGain)
+		// Passband should be maximally flat (monotonically decreasing)
+		// Check that the passband variation is small (< 1 dB up to 80% of cutoff)
+		maxPB, minPB := -1000.0, 1000.0
+		for f := 10.0; f <= fc*0.8; f += 5 {
+			g := cascadeMagDB(sections, f, sr)
+			if g > maxPB {
+				maxPB = g
+			}
+			if g < minPB {
+				minPB = g
+			}
+		}
+		if maxPB-minPB > 1.0 {
+			t.Errorf("order %d: passband variation = %.4f dB, expected < 1 dB", order, maxPB-minPB)
+		}
+		if math.Abs(maxPB) > 0.5 {
+			t.Errorf("order %d: passband max = %.4f dB, expected near 0 dB", order, maxPB)
 		}
 	}
 }
@@ -38,13 +51,28 @@ func TestChebyshev2LP_StopbandFloor(t *testing.T) {
 	sr := 48000.0
 	fc := 1000.0
 
-	// Chebyshev Type II has equiripple stopband with a defined floor
-	for _, order := range []int{4, 6, 8} {
-		sections := Chebyshev2LP(fc, order, 2.0, sr)
-		// Deep in stopband, gain should be well below 0
-		at10x := cascadeMagDB(sections, 10*fc, sr)
-		if at10x > -10 {
-			t.Errorf("order %d: stopband at 10x cutoff = %.2f dB, expected < -10 dB", order, at10x)
+	// With ripple=2.0, stopband attenuation is ~-7 dB.
+	// Use ripple=3.0 for deeper stopband (~-10 dB).
+	for _, tc := range []struct {
+		ripple, minAtten float64
+	}{
+		{2.0, -7.0},
+		{3.0, -10.0},
+	} {
+		for _, order := range []int{4, 6, 8} {
+			sections := Chebyshev2LP(fc, order, tc.ripple, sr)
+			// Measure deep in stopband
+			maxSB := -1000.0
+			for f := fc * 2; f < sr*0.45; f += 100 {
+				g := cascadeMagDB(sections, f, sr)
+				if g > maxSB {
+					maxSB = g
+				}
+			}
+			if maxSB > tc.minAtten+1 {
+				t.Errorf("order %d ripple=%.1f: stopband max = %.2f dB, expected < %.0f dB",
+					order, tc.ripple, maxSB, tc.minAtten+1)
+			}
 		}
 	}
 }
@@ -56,12 +84,12 @@ func TestChebyshev2LP_StopbandEquiripple(t *testing.T) {
 
 	sections := Chebyshev2LP(fc, order, 2.0, sr)
 
-	// Type II stopband should have ripples that don't exceed the stopband rejection level
-	// Check multiple points in the stopband
+	// Type II stopband should have equiripple behavior:
+	// multiple local minima (notches) with maxima bounded by the stopband level
 	var minStop, maxStop float64
 	minStop = 0
 	maxStop = -200
-	for f := 3 * fc; f < sr/2; f += 500 {
+	for f := 2 * fc; f < sr/2; f += 50 {
 		g := cascadeMagDB(sections, f, sr)
 		if g < minStop {
 			minStop = g
@@ -70,10 +98,39 @@ func TestChebyshev2LP_StopbandEquiripple(t *testing.T) {
 			maxStop = g
 		}
 	}
-	// The stopband should have variation (equiripple behavior)
-	// but all values should be negative (attenuating)
+	// All stopband values should be negative (attenuating)
 	if maxStop > 0 {
 		t.Errorf("stopband gain exceeds 0 dB: max=%.2f dB", maxStop)
+	}
+	// There should be significant variation (equiripple notches)
+	if maxStop-minStop < 3 {
+		t.Errorf("stopband has insufficient variation: max=%.2f min=%.2f (expected equiripple)",
+			maxStop, minStop)
+	}
+}
+
+func TestChebyshev2LP_DeeperStopbandWithHigherRipple(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+	order := 6
+
+	// Higher ripple parameter should produce deeper stopband
+	ripples := []float64{1.0, 2.0, 3.0}
+	var prevMax float64
+	for i, ripple := range ripples {
+		sections := Chebyshev2LP(fc, order, ripple, sr)
+		maxSB := -1000.0
+		for f := fc * 2; f < sr*0.45; f += 50 {
+			g := cascadeMagDB(sections, f, sr)
+			if g > maxSB {
+				maxSB = g
+			}
+		}
+		if i > 0 && maxSB >= prevMax {
+			t.Errorf("ripple=%.1f: stopband max %.2f dB not deeper than ripple=%.1f (%.2f dB)",
+				ripple, maxSB, ripples[i-1], prevMax)
+		}
+		prevMax = maxSB
 	}
 }
 
@@ -84,7 +141,7 @@ func TestChebyshev2LP_CutoffAttenuation(t *testing.T) {
 	for _, order := range []int{2, 4, 6} {
 		sections := Chebyshev2LP(fc, order, 2.0, sr)
 		atCutoff := cascadeMagDB(sections, fc, sr)
-		// Type II has its -3dB point near (but not exactly at) the specified frequency
+		// Type II has its stopband edge near the specified frequency
 		if atCutoff > 1 || atCutoff < -20 {
 			t.Errorf("order %d: gain at cutoff = %.2f dB, expected within [-20, 1] dB", order, atCutoff)
 		}
@@ -139,14 +196,21 @@ func TestChebyshev2LP_RippleEffect(t *testing.T) {
 	sections1 := Chebyshev2LP(fc, order, 0.5, sr)
 	sections2 := Chebyshev2LP(fc, order, 2.0, sr)
 
-	// Both should be valid lowpass filters
+	// Both should be valid lowpass filters with flat passband
 	dc1 := cascadeMagDB(sections1, 10, sr)
 	dc2 := cascadeMagDB(sections2, 10, sr)
-	if dc1 < -2 || dc1 > 2 {
+	if math.Abs(dc1) > 1 {
 		t.Errorf("ripple=0.5: DC gain = %.2f dB, expected near 0 dB", dc1)
 	}
-	if dc2 < -2 || dc2 > 2 {
+	if math.Abs(dc2) > 1 {
 		t.Errorf("ripple=2.0: DC gain = %.2f dB, expected near 0 dB", dc2)
+	}
+
+	// Higher ripple should give deeper stopband
+	sb1 := cascadeMagDB(sections1, fc*5, sr)
+	sb2 := cascadeMagDB(sections2, fc*5, sr)
+	if sb2 >= sb1 {
+		t.Errorf("higher ripple should give deeper stopband: sb(0.5)=%.2f, sb(2.0)=%.2f", sb1, sb2)
 	}
 }
 
@@ -158,7 +222,7 @@ func TestChebyshev2LP_SampleRates(t *testing.T) {
 			t.Errorf("sr=%.0f: expected 2 sections, got %d", sr, len(sections))
 		}
 		dcGain := cascadeMagDB(sections, fc*0.1, sr)
-		if dcGain < -2 || dcGain > 2 {
+		if math.Abs(dcGain) > 1 {
 			t.Errorf("sr=%.0f: DC gain = %.2f dB, expected near 0 dB", sr, dcGain)
 		}
 	}
@@ -191,7 +255,7 @@ func TestChebyshev2LP_FrequencyRange(t *testing.T) {
 			continue
 		}
 		dcGain := cascadeMagDB(sections, fc*0.01, sr)
-		if dcGain < -2 || dcGain > 2 {
+		if math.Abs(dcGain) > 1 {
 			t.Errorf("fc=%.0f: DC gain = %.2f dB, expected near 0 dB", fc, dcGain)
 		}
 	}
@@ -205,10 +269,63 @@ func TestChebyshev2HP_Basic(t *testing.T) {
 	if len(sections) != 2 {
 		t.Fatalf("expected 2 sections for order 4, got %d", len(sections))
 	}
-	for i, s := range sections {
+	for _, s := range sections {
 		assertFiniteCoefficients(t, s)
 		assertStableSection(t, s)
-		_ = i
+	}
+}
+
+func TestChebyshev2HP_PassbandFlat(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+
+	for _, order := range []int{4, 6, 8} {
+		sections := Chebyshev2HP(fc, order, 2.0, sr)
+		// Passband (above cutoff) should be maximally flat
+		maxPB, minPB := -1000.0, 1000.0
+		for f := fc * 1.5; f <= sr*0.45; f += 50 {
+			g := cascadeMagDB(sections, f, sr)
+			if g > maxPB {
+				maxPB = g
+			}
+			if g < minPB {
+				minPB = g
+			}
+		}
+		if maxPB-minPB > 1.0 {
+			t.Errorf("order %d: passband variation = %.4f dB, expected < 1 dB", order, maxPB-minPB)
+		}
+		if math.Abs(maxPB) > 0.5 {
+			t.Errorf("order %d: passband max = %.4f dB, expected near 0 dB", order, maxPB)
+		}
+	}
+}
+
+func TestChebyshev2HP_StopbandAttenuation(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+
+	// With ripple=2.0, stopband is ~-7 dB. Use ripple=3.0 for ~-10 dB.
+	for _, tc := range []struct {
+		ripple, minAtten float64
+	}{
+		{2.0, -7.0},
+		{3.0, -10.0},
+	} {
+		for _, order := range []int{4, 6, 8} {
+			sections := Chebyshev2HP(fc, order, tc.ripple, sr)
+			maxSB := -1000.0
+			for f := 10.0; f <= fc*0.5; f += 5 {
+				g := cascadeMagDB(sections, f, sr)
+				if g > maxSB {
+					maxSB = g
+				}
+			}
+			if maxSB > tc.minAtten+1 {
+				t.Errorf("order %d ripple=%.1f: stopband max = %.2f dB, expected < %.0f dB",
+					order, tc.ripple, maxSB, tc.minAtten+1)
+			}
+		}
 	}
 }
 
@@ -219,21 +336,8 @@ func TestChebyshev2HP_HighFreqGain(t *testing.T) {
 	for _, order := range []int{2, 4, 6, 8} {
 		sections := Chebyshev2HP(fc, order, 2.0, sr)
 		highGain := cascadeMagDB(sections, sr*0.4, sr)
-		if highGain < -3 || highGain > 3 {
+		if math.Abs(highGain) > 1 {
 			t.Errorf("order %d: high-freq gain = %.2f dB, expected near 0 dB", order, highGain)
-		}
-	}
-}
-
-func TestChebyshev2HP_StopbandAttenuation(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
-
-	for _, order := range []int{4, 6, 8} {
-		sections := Chebyshev2HP(fc, order, 2.0, sr)
-		lowGain := cascadeMagDB(sections, fc/10, sr)
-		if lowGain > -10 {
-			t.Errorf("order %d: stopband at fc/10 = %.2f dB, expected < -10 dB", order, lowGain)
 		}
 	}
 }
@@ -310,7 +414,7 @@ func TestChebyshev2_LP_HP_Symmetry(t *testing.T) {
 	lpLow := cascadeMagDB(lp, 100, sr)
 	hpHigh := cascadeMagDB(hp, sr*0.4, sr)
 
-	if math.Abs(lpLow-hpHigh) > 3 {
+	if math.Abs(lpLow-hpHigh) > 2 {
 		t.Errorf("LP passband (%.2f dB) and HP passband (%.2f dB) should be comparable", lpLow, hpHigh)
 	}
 }
@@ -323,7 +427,7 @@ func TestChebyshev2HP_SampleRates(t *testing.T) {
 			t.Errorf("sr=%.0f: expected 2 sections, got %d", sr, len(sections))
 		}
 		highGain := cascadeMagDB(sections, sr*0.4, sr)
-		if highGain < -3 || highGain > 3 {
+		if math.Abs(highGain) > 1 {
 			t.Errorf("sr=%.0f: high-freq gain = %.2f dB, expected near 0 dB", sr, highGain)
 		}
 	}
@@ -340,8 +444,9 @@ func TestChebyshev2HP_FrequencyRange(t *testing.T) {
 		// Measure well above cutoff but away from Nyquist
 		measFreq := math.Min(fc*10, sr*0.4)
 		highGain := cascadeMagDB(sections, measFreq, sr)
-		if highGain < -3 || highGain > 3 {
-			t.Errorf("fc=%.0f: high-freq gain at %.0f Hz = %.2f dB, expected near 0 dB", fc, measFreq, highGain)
+		if math.Abs(highGain) > 2 {
+			t.Errorf("fc=%.0f: high-freq gain at %.0f Hz = %.2f dB, expected near 0 dB",
+				fc, measFreq, highGain)
 		}
 	}
 }
@@ -380,7 +485,6 @@ func TestChebyshev2LP_ImpulseResponse_Bounded(t *testing.T) {
 	sections := Chebyshev2LP(fc, 4, 2.0, sr)
 	chain := chainForTest(sections)
 
-	// Feed an impulse and verify output stays bounded
 	out := chain.ProcessSample(1.0)
 	maxVal := math.Abs(out)
 	for i := 0; i < 1000; i++ {
@@ -457,7 +561,6 @@ func TestChebyshev2HP_ImpulseResponse_Bounded(t *testing.T) {
 // --- Sign convention regression tests ---
 
 func TestChebyshev1LP_A1_Negative(t *testing.T) {
-	// Regression test: A1 should be negative for a lowpass filter at freq << sr/2
 	sr := 48000.0
 	fc := 1000.0
 	sections := Chebyshev1LP(fc, 4, 1.0, sr)

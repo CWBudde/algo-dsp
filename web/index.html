@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>algo-dsp Web Demo</title>
+
+    <link rel="icon" type="image/png" sizes="32x32" href="Algo-X-32.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="Algo-X-64.png" />
+    <link rel="apple-touch-icon" href="Algo-X-256.png" />
+
+    <meta property="og:title" content="algo-dsp Web Demo" />
+    <meta property="og:description" content="Interactive high-performance DSP demo featuring a step synthesizer, 5-node EQ, chorus, reverb, and dynamics processing." />
+    <meta property="og:image" content="Algo-X-256.png" />
+    <meta property="og:type" content="website" />
+
     <script>
       (() => {
         try {
@@ -23,6 +33,7 @@
     </script>
     <link rel="stylesheet" href="styles.css" />
     <script src="eq-canvas.js" defer></script>
+    <script src="dynamics-graph.js" defer></script>
     <script src="wasm_exec.js" defer></script>
     <script src="app.js" defer></script>
   </head>
