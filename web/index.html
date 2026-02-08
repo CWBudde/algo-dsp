@@ -67,6 +67,71 @@
           </label>
         </div>
       </section>
+
+      <section class="panel effects-panel">
+        <h2>Effects</h2>
+        <div class="effects-grid">
+          <div class="fx-card">
+            <div class="fx-head">
+              <h3>Chorus</h3>
+              <label class="fx-toggle">
+                <input id="chorus-enabled" type="checkbox" />
+                <span>On</span>
+              </label>
+            </div>
+            <label>
+              Mix
+              <input id="chorus-mix" type="range" min="0" max="1" step="0.01" value="0.25" />
+              <span id="chorus-mix-value">25%</span>
+            </label>
+            <label>
+              Depth
+              <input id="chorus-depth" type="range" min="0" max="2" step="0.01" value="0.5" />
+              <span id="chorus-depth-value">0.50</span>
+            </label>
+            <label>
+              Speed
+              <input id="chorus-speed" type="range" min="0.05" max="10" step="0.01" value="1.5" />
+              <span id="chorus-speed-value">1.50 Hz</span>
+            </label>
+            <label>
+              Stages
+              <input id="chorus-stages" type="range" min="1" max="6" step="1" value="2" />
+              <span id="chorus-stages-value">2</span>
+            </label>
+          </div>
+
+          <div class="fx-card">
+            <div class="fx-head">
+              <h3>Reverb</h3>
+              <label class="fx-toggle">
+                <input id="reverb-enabled" type="checkbox" />
+                <span>On</span>
+              </label>
+            </div>
+            <label>
+              Wet
+              <input id="reverb-wet" type="range" min="0" max="1" step="0.01" value="0.25" />
+              <span id="reverb-wet-value">25%</span>
+            </label>
+            <label>
+              Dry
+              <input id="reverb-dry" type="range" min="0" max="1.5" step="0.01" value="1" />
+              <span id="reverb-dry-value">1.00</span>
+            </label>
+            <label>
+              Room
+              <input id="reverb-room" type="range" min="0" max="0.98" step="0.01" value="0.6" />
+              <span id="reverb-room-value">0.60</span>
+            </label>
+            <label>
+              Damp
+              <input id="reverb-damp" type="range" min="0" max="0.99" step="0.01" value="0.4" />
+              <span id="reverb-damp-value">0.40</span>
+            </label>
+          </div>
+        </div>
+      </section>
     </main>
   </body>
 </html>

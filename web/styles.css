@@ -227,12 +227,49 @@ button.active {
   font-size: 0.9rem;
 }
 
+.effects-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.fx-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: #fff;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.fx-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fx-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.fx-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
 @media (max-width: 720px) {
   .steps {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .eq-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .effects-grid {
     grid-template-columns: 1fr;
   }
 }

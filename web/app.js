@@ -41,6 +41,19 @@ const state = {
     lpQ: 0.707,
     master: 0.75,
   },
+  effectsParams: {
+    chorusEnabled: false,
+    chorusMix: 0.25,
+    chorusDepth: 0.5,
+    chorusSpeedHz: 1.5,
+    chorusStages: 2,
+    reverbEnabled: false,
+    reverbWet: 0.25,
+    reverbDry: 1.0,
+    reverbRoomSize: 0.6,
+    reverbDamp: 0.4,
+    reverbGain: 0.015,
+  },
   dsp: {
     ready: false,
     api: null,
@@ -64,6 +77,24 @@ const el = {
   eqReadout: document.getElementById("eq-readout"),
   master: document.getElementById("master"),
   masterValue: document.getElementById("master-value"),
+  chorusEnabled: document.getElementById("chorus-enabled"),
+  chorusMix: document.getElementById("chorus-mix"),
+  chorusMixValue: document.getElementById("chorus-mix-value"),
+  chorusDepth: document.getElementById("chorus-depth"),
+  chorusDepthValue: document.getElementById("chorus-depth-value"),
+  chorusSpeed: document.getElementById("chorus-speed"),
+  chorusSpeedValue: document.getElementById("chorus-speed-value"),
+  chorusStages: document.getElementById("chorus-stages"),
+  chorusStagesValue: document.getElementById("chorus-stages-value"),
+  reverbEnabled: document.getElementById("reverb-enabled"),
+  reverbWet: document.getElementById("reverb-wet"),
+  reverbWetValue: document.getElementById("reverb-wet-value"),
+  reverbDry: document.getElementById("reverb-dry"),
+  reverbDryValue: document.getElementById("reverb-dry-value"),
+  reverbRoom: document.getElementById("reverb-room"),
+  reverbRoomValue: document.getElementById("reverb-room-value"),
+  reverbDamp: document.getElementById("reverb-damp"),
+  reverbDampValue: document.getElementById("reverb-damp-value"),
 };
 
 function buildStepUI() {
@@ -111,6 +142,7 @@ async function ensureDSP(sampleRate) {
       syncWaveformToDSP();
       syncStepsToDSP();
       syncEQToDSP();
+      syncEffectsToDSP();
       state.eqUI?.draw();
     }
     return;
@@ -144,6 +176,7 @@ async function ensureDSP(sampleRate) {
   syncWaveformToDSP();
   syncStepsToDSP();
   syncEQToDSP();
+  syncEffectsToDSP();
 }
 
 async function setupAudio() {
@@ -244,6 +277,39 @@ function syncEQToDSP() {
   if (typeof err === "string" && err.length > 0) console.error("setEQ failed", err);
 }
 
+function syncEffectsToDSP() {
+  if (!state.dsp.ready || !state.dsp.api) return;
+  const err = state.dsp.api.setEffects(state.effectsParams);
+  if (typeof err === "string" && err.length > 0) console.error("setEffects failed", err);
+}
+
+function readEffectsFromUI() {
+  state.effectsParams = {
+    chorusEnabled: el.chorusEnabled.checked,
+    chorusMix: Number(el.chorusMix.value),
+    chorusDepth: Number(el.chorusDepth.value),
+    chorusSpeedHz: Number(el.chorusSpeed.value),
+    chorusStages: Number(el.chorusStages.value),
+    reverbEnabled: el.reverbEnabled.checked,
+    reverbWet: Number(el.reverbWet.value),
+    reverbDry: Number(el.reverbDry.value),
+    reverbRoomSize: Number(el.reverbRoom.value),
+    reverbDamp: Number(el.reverbDamp.value),
+    reverbGain: state.effectsParams.reverbGain,
+  };
+}
+
+function updateEffectsText() {
+  el.chorusMixValue.textContent = `${Math.round(Number(el.chorusMix.value) * 100)}%`;
+  el.chorusDepthValue.textContent = Number(el.chorusDepth.value).toFixed(2);
+  el.chorusSpeedValue.textContent = `${Number(el.chorusSpeed.value).toFixed(2)} Hz`;
+  el.chorusStagesValue.textContent = `${Number(el.chorusStages.value)}`;
+  el.reverbWetValue.textContent = `${Math.round(Number(el.reverbWet.value) * 100)}%`;
+  el.reverbDryValue.textContent = Number(el.reverbDry.value).toFixed(2);
+  el.reverbRoomValue.textContent = Number(el.reverbRoom.value).toFixed(2);
+  el.reverbDampValue.textContent = Number(el.reverbDamp.value).toFixed(2);
+}
+
 function startSequencer() {
   if (!state.audioCtx) return;
   if (state.audioCtx.state === "suspended") state.audioCtx.resume();
@@ -324,10 +390,32 @@ function bindEvents() {
     state.eqUI.setParams({ master: Number(el.master.value) });
   });
 
+  [
+    el.chorusEnabled,
+    el.chorusMix,
+    el.chorusDepth,
+    el.chorusSpeed,
+    el.chorusStages,
+    el.reverbEnabled,
+    el.reverbWet,
+    el.reverbDry,
+    el.reverbRoom,
+    el.reverbDamp,
+  ].forEach((control) => {
+    const eventName = control.type === "checkbox" ? "change" : "input";
+    control.addEventListener(eventName, () => {
+      readEffectsFromUI();
+      updateEffectsText();
+      syncEffectsToDSP();
+    });
+  });
+
   el.tempoValue.textContent = `${Number(el.tempo.value)} BPM`;
   el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
   el.shuffleValue.textContent = `${Math.round(Number(el.shuffle.value) * 100)}%`;
   el.waveform.value = state.waveform;
+  updateEffectsText();
+  readEffectsFromUI();
   updateEQText();
 }
 
