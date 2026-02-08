@@ -22,6 +22,7 @@ const (
 	eqPassOrder     = 4
 	eqBandOrder     = 4
 	eqShelfOrder    = 4
+	eqRippleDB      = 0.5
 )
 
 // StepConfig defines one sequencer step.
@@ -32,27 +33,32 @@ type StepConfig struct {
 
 // EQParams defines the 5-node EQ parameters.
 type EQParams struct {
-	HPType   string
-	HPFreq   float64
-	HPGain   float64
-	HPQ      float64
-	LowType  string
-	LowFreq  float64
-	LowGain  float64
-	LowQ     float64
-	MidType  string
-	MidFreq  float64
-	MidGain  float64
-	MidQ     float64
-	HighType string
-	HighFreq float64
-	HighGain float64
-	HighQ    float64
-	LPType   string
-	LPFreq   float64
-	LPGain   float64
-	LPQ      float64
-	Master   float64
+	HPFamily   string
+	HPType     string
+	HPFreq     float64
+	HPGain     float64
+	HPQ        float64
+	LowFamily  string
+	LowType    string
+	LowFreq    float64
+	LowGain    float64
+	LowQ       float64
+	MidFamily  string
+	MidType    string
+	MidFreq    float64
+	MidGain    float64
+	MidQ       float64
+	HighFamily string
+	HighType   string
+	HighFreq   float64
+	HighGain   float64
+	HighQ      float64
+	LPFamily   string
+	LPType     string
+	LPFreq     float64
+	LPGain     float64
+	LPQ        float64
+	Master     float64
 }
 
 // EffectsParams defines chorus and reverb parameters for the demo chain.
@@ -69,6 +75,18 @@ type EffectsParams struct {
 	ReverbRoomSize float64
 	ReverbDamp     float64
 	ReverbGain     float64
+}
+
+// CompressorParams defines compressor settings.
+type CompressorParams struct {
+	Enabled      bool
+	ThresholdDB  float64
+	Ratio        float64
+	KneeDB       float64
+	AttackMs     float64
+	ReleaseMs    float64
+	MakeupGainDB float64
+	AutoMakeup   bool
 }
 
 // SpectrumParams defines real-time analyzer settings.
@@ -123,6 +141,9 @@ type Engine struct {
 	chorus  *effects.Chorus
 	reverb  *effects.Reverb
 
+	compParams CompressorParams
+	compressor *effects.Compressor
+
 	spectrum             SpectrumParams
 	spectrumWindow       []float64
 	spectrumWindowGain   float64
@@ -151,27 +172,32 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		shuffle:    0,
 		waveform:   WaveSine,
 		eq: EQParams{
-			HPType:   "highpass",
-			HPFreq:   40,
-			HPGain:   0,
-			HPQ:      1 / math.Sqrt2,
-			LowType:  "lowshelf",
-			LowFreq:  100,
-			LowGain:  0,
-			LowQ:     1 / math.Sqrt2,
-			MidType:  "peak",
-			MidFreq:  1000,
-			MidGain:  0,
-			MidQ:     1.2,
-			HighType: "highshelf",
-			HighFreq: 6000,
-			HighGain: 0,
-			HighQ:    1 / math.Sqrt2,
-			LPType:   "lowpass",
-			LPFreq:   12000,
-			LPGain:   0,
-			LPQ:      1 / math.Sqrt2,
-			Master:   0.75,
+			HPFamily:   "rbj",
+			HPType:     "highpass",
+			HPFreq:     40,
+			HPGain:     0,
+			HPQ:        1 / math.Sqrt2,
+			LowFamily:  "rbj",
+			LowType:    "lowshelf",
+			LowFreq:    100,
+			LowGain:    0,
+			LowQ:       1 / math.Sqrt2,
+			MidFamily:  "rbj",
+			MidType:    "peak",
+			MidFreq:    1000,
+			MidGain:    0,
+			MidQ:       1.2,
+			HighFamily: "rbj",
+			HighType:   "highshelf",
+			HighFreq:   6000,
+			HighGain:   0,
+			HighQ:      1 / math.Sqrt2,
+			LPFamily:   "rbj",
+			LPType:     "lowpass",
+			LPFreq:     12000,
+			LPGain:     0,
+			LPQ:        1 / math.Sqrt2,
+			Master:     0.75,
 		},
 		effects: EffectsParams{
 			ChorusEnabled:  false,
@@ -185,6 +211,16 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			ReverbRoomSize: 0.72,
 			ReverbDamp:     0.45,
 			ReverbGain:     0.015,
+		},
+		compParams: CompressorParams{
+			Enabled:      false,
+			ThresholdDB:  -20,
+			Ratio:        4,
+			KneeDB:       6,
+			AttackMs:     10,
+			ReleaseMs:    100,
+			MakeupGainDB: 0,
+			AutoMakeup:   true,
 		},
 		spectrum: SpectrumParams{
 			FFTSize:   2048,
@@ -202,7 +238,16 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 	}
 	e.chorus = chorus
 	e.reverb = effects.NewReverb()
+	comp, err := effects.NewCompressor(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.compressor = comp
+
 	if err := e.rebuildEffects(); err != nil {
+		return nil, err
+	}
+	if err := e.rebuildCompressor(); err != nil {
 		return nil, err
 	}
 	for i := 0; i < stepCount; i++ {
@@ -265,14 +310,24 @@ func (e *Engine) SetSteps(steps []StepConfig) {
 func (e *Engine) SetEQ(eq EQParams) error {
 	eq.HPFreq = clamp(eq.HPFreq, 20, e.sampleRate*0.49)
 	eq.HPType = normalizeEQType("hp", eq.HPType)
+	eq.HPFamily = normalizeEQFamily(eq.HPFamily)
+	eq.HPFamily = normalizeEQFamilyForType(eq.HPType, eq.HPFamily)
 	eq.LowFreq = clamp(eq.LowFreq, 20, e.sampleRate*0.49)
 	eq.LowType = normalizeEQType("low", eq.LowType)
+	eq.LowFamily = normalizeEQFamily(eq.LowFamily)
+	eq.LowFamily = normalizeEQFamilyForType(eq.LowType, eq.LowFamily)
 	eq.MidFreq = clamp(eq.MidFreq, 20, e.sampleRate*0.49)
 	eq.MidType = normalizeEQType("mid", eq.MidType)
+	eq.MidFamily = normalizeEQFamily(eq.MidFamily)
+	eq.MidFamily = normalizeEQFamilyForType(eq.MidType, eq.MidFamily)
 	eq.HighFreq = clamp(eq.HighFreq, 20, e.sampleRate*0.49)
 	eq.HighType = normalizeEQType("high", eq.HighType)
+	eq.HighFamily = normalizeEQFamily(eq.HighFamily)
+	eq.HighFamily = normalizeEQFamilyForType(eq.HighType, eq.HighFamily)
 	eq.LPFreq = clamp(eq.LPFreq, 20, e.sampleRate*0.49)
 	eq.LPType = normalizeEQType("lp", eq.LPType)
+	eq.LPFamily = normalizeEQFamily(eq.LPFamily)
+	eq.LPFamily = normalizeEQFamilyForType(eq.LPType, eq.LPFamily)
 	eq.LowGain = clamp(eq.LowGain, -24, 24)
 	eq.HPGain = clamp(eq.HPGain, -24, 24)
 	eq.MidGain = clamp(eq.MidGain, -24, 24)
@@ -287,6 +342,26 @@ func (e *Engine) SetEQ(eq EQParams) error {
 	eq.Master = clamp(eq.Master, 0, 1)
 	e.eq = eq
 	return e.rebuildEQ()
+}
+
+// SetCompressor updates compressor parameters.
+func (e *Engine) SetCompressor(p CompressorParams) error {
+	prevEnabled := e.compParams.Enabled
+	p.ThresholdDB = clamp(p.ThresholdDB, -60, 0)
+	p.Ratio = clamp(p.Ratio, 1, 100)
+	p.KneeDB = clamp(p.KneeDB, 0, 24)
+	p.AttackMs = clamp(p.AttackMs, 0.1, 1000)
+	p.ReleaseMs = clamp(p.ReleaseMs, 1, 5000)
+	p.MakeupGainDB = clamp(p.MakeupGainDB, 0, 24)
+
+	e.compParams = p
+	if err := e.rebuildCompressor(); err != nil {
+		return err
+	}
+	if prevEnabled && !p.Enabled {
+		e.compressor.Reset()
+	}
+	return nil
 }
 
 // SetEffects updates chorus/reverb settings.
@@ -401,9 +476,45 @@ func (e *Engine) Render(dst []float32) {
 		x = e.high.ProcessSample(x)
 		x = e.lp.ProcessSample(x)
 		x *= e.eq.Master
+
+		if e.compParams.Enabled {
+			x = e.compressor.ProcessSample(x)
+		}
+
 		e.pushSpectrumSample(x)
 		dst[i] = float32(clamp(x, -1, 1))
 	}
+}
+
+func (e *Engine) rebuildCompressor() error {
+	if err := e.compressor.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.compressor.SetThreshold(e.compParams.ThresholdDB); err != nil {
+		return err
+	}
+	if err := e.compressor.SetRatio(e.compParams.Ratio); err != nil {
+		return err
+	}
+	if err := e.compressor.SetKnee(e.compParams.KneeDB); err != nil {
+		return err
+	}
+	if err := e.compressor.SetAttack(e.compParams.AttackMs); err != nil {
+		return err
+	}
+	if err := e.compressor.SetRelease(e.compParams.ReleaseMs); err != nil {
+		return err
+	}
+	if e.compParams.AutoMakeup {
+		if err := e.compressor.SetAutoMakeup(true); err != nil {
+			return err
+		}
+	} else {
+		if err := e.compressor.SetMakeupGain(e.compParams.MakeupGainDB); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *Engine) rebuildEffects() error {
@@ -656,25 +767,101 @@ func shuffleRatio(shuffle float64) float64 {
 }
 
 func (e *Engine) rebuildEQ() error {
-	e.hp = buildEQChain(e.eq.HPType, e.eq.HPFreq, e.eq.HPGain, e.eq.HPQ, e.sampleRate)
-	e.low = buildEQChain(e.eq.LowType, e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
-	e.mid = buildEQChain(e.eq.MidType, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
-	e.high = buildEQChain(e.eq.HighType, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
-	e.lp = buildEQChain(e.eq.LPType, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ, e.sampleRate)
+	e.hp = buildEQChain(e.eq.HPFamily, e.eq.HPType, e.eq.HPFreq, e.eq.HPGain, e.eq.HPQ, e.sampleRate)
+	e.low = buildEQChain(e.eq.LowFamily, e.eq.LowType, e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
+	e.mid = buildEQChain(e.eq.MidFamily, e.eq.MidType, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
+	e.high = buildEQChain(e.eq.HighFamily, e.eq.HighType, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
+	e.lp = buildEQChain(e.eq.LPFamily, e.eq.LPType, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ, e.sampleRate)
 	return nil
 }
 
-func buildEQChain(kind string, freq, gainDB, q, sampleRate float64) *biquad.Chain {
-	linGain := nodeLinearGain(kind, gainDB)
+func buildEQChain(family, kind string, freq, gainDB, q, sampleRate float64) *biquad.Chain {
+	family = normalizeEQFamilyForType(kind, normalizeEQFamily(family))
+	linGain := nodeLinearGain(family, kind, gainDB)
+	switch family {
+	case "butterworth":
+		switch kind {
+		case "highpass":
+			return chainFromCoeffs(design.ButterworthHP(freq, eqPassOrder, sampleRate), linGain)
+		case "lowpass":
+			return chainFromCoeffs(design.ButterworthLP(freq, eqPassOrder, sampleRate), linGain)
+		case "bandpass":
+			bw := math.Max(1, freq/math.Max(q, 1e-6))
+			coeffs, err := band.ButterworthBand(sampleRate, freq, bw, gainDB, eqBandOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		case "highshelf":
+			coeffs, err := shelving.ButterworthHighShelf(sampleRate, freq, gainDB, eqShelfOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		case "lowshelf":
+			coeffs, err := shelving.ButterworthLowShelf(sampleRate, freq, gainDB, eqShelfOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		}
+	case "chebyshev1":
+		switch kind {
+		case "highpass":
+			return chainFromCoeffs(design.Chebyshev1HP(freq, eqPassOrder, eqRippleDB, sampleRate), linGain)
+		case "lowpass":
+			return chainFromCoeffs(design.Chebyshev1LP(freq, eqPassOrder, eqRippleDB, sampleRate), linGain)
+		case "bandpass":
+			bw := math.Max(1, freq/math.Max(q, 1e-6))
+			coeffs, err := band.Chebyshev1Band(sampleRate, freq, bw, gainDB, eqBandOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		case "highshelf":
+			coeffs, err := shelving.Chebyshev1HighShelf(sampleRate, freq, gainDB, eqRippleDB, eqShelfOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		case "lowshelf":
+			coeffs, err := shelving.Chebyshev1LowShelf(sampleRate, freq, gainDB, eqRippleDB, eqShelfOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		}
+	case "chebyshev2":
+		switch kind {
+		case "highpass":
+			return chainFromCoeffs(design.Chebyshev2HP(freq, eqPassOrder, eqRippleDB, sampleRate), linGain)
+		case "lowpass":
+			return chainFromCoeffs(design.Chebyshev2LP(freq, eqPassOrder, eqRippleDB, sampleRate), linGain)
+		case "bandpass":
+			bw := math.Max(1, freq/math.Max(q, 1e-6))
+			coeffs, err := band.Chebyshev2Band(sampleRate, freq, bw, gainDB, eqBandOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		case "highshelf":
+			coeffs, err := shelving.Chebyshev2HighShelf(sampleRate, freq, gainDB, eqRippleDB, eqShelfOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		case "lowshelf":
+			coeffs, err := shelving.Chebyshev2LowShelf(sampleRate, freq, gainDB, eqRippleDB, eqShelfOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		}
+	case "elliptic":
+		switch kind {
+		case "bandpass":
+			bw := math.Max(1, freq/math.Max(q, 1e-6))
+			coeffs, err := band.EllipticBand(sampleRate, freq, bw, gainDB, eqBandOrder)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		}
+	}
 	switch kind {
 	case "highpass":
-		return chainFromCoeffs(design.ButterworthHP(freq, eqPassOrder, sampleRate), linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Highpass(freq, q, sampleRate)}, linGain)
 	case "bandpass":
-		bw := math.Max(1, freq/math.Max(q, 1e-6))
-		coeffs, err := band.ButterworthBand(sampleRate, freq, bw, 0, eqBandOrder)
-		if err == nil {
-			return chainFromCoeffs(coeffs, linGain)
-		}
 		return chainFromCoeffs([]biquad.Coefficients{design.Bandpass(freq, q, sampleRate)}, linGain)
 	case "notch":
 		return chainFromCoeffs([]biquad.Coefficients{design.Notch(freq, q, sampleRate)}, linGain)
@@ -683,19 +870,11 @@ func buildEQChain(kind string, freq, gainDB, q, sampleRate float64) *biquad.Chai
 	case "peak":
 		return chainFromCoeffs([]biquad.Coefficients{design.Peak(freq, gainDB, q, sampleRate)}, linGain)
 	case "highshelf":
-		coeffs, err := shelving.ButterworthHighShelf(sampleRate, freq, gainDB, eqShelfOrder)
-		if err == nil {
-			return chainFromCoeffs(coeffs, linGain)
-		}
 		return chainFromCoeffs([]biquad.Coefficients{design.HighShelf(freq, gainDB, q, sampleRate)}, linGain)
 	case "lowshelf":
-		coeffs, err := shelving.ButterworthLowShelf(sampleRate, freq, gainDB, eqShelfOrder)
-		if err == nil {
-			return chainFromCoeffs(coeffs, linGain)
-		}
 		return chainFromCoeffs([]biquad.Coefficients{design.LowShelf(freq, gainDB, q, sampleRate)}, linGain)
 	default:
-		return chainFromCoeffs(design.ButterworthLP(freq, eqPassOrder, sampleRate), linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Lowpass(freq, q, sampleRate)}, linGain)
 	}
 }
 
@@ -706,15 +885,47 @@ func chainFromCoeffs(coeffs []biquad.Coefficients, gain float64) *biquad.Chain {
 	return biquad.NewChain(coeffs, biquad.WithGain(gain))
 }
 
-func typeUsesEmbeddedGain(kind string) bool {
-	return kind == "peak" || kind == "lowshelf" || kind == "highshelf"
+func typeUsesEmbeddedGain(family, kind string) bool {
+	if kind == "peak" || kind == "lowshelf" || kind == "highshelf" {
+		return true
+	}
+	return kind == "bandpass" && family != "rbj"
 }
 
-func nodeLinearGain(kind string, gainDB float64) float64 {
-	if typeUsesEmbeddedGain(kind) {
+func nodeLinearGain(family, kind string, gainDB float64) float64 {
+	if typeUsesEmbeddedGain(family, kind) {
 		return 1
 	}
 	return math.Pow(10, gainDB/20)
+}
+
+func normalizeEQFamily(family string) string {
+	switch strings.ToLower(strings.TrimSpace(family)) {
+	case "rbj", "butterworth", "chebyshev1", "chebyshev2", "elliptic":
+		return strings.ToLower(strings.TrimSpace(family))
+	default:
+		return "rbj"
+	}
+}
+
+func supportsEQFamily(kind, family string) bool {
+	switch family {
+	case "rbj":
+		return true
+	case "butterworth", "chebyshev1", "chebyshev2":
+		return kind == "highpass" || kind == "lowpass" || kind == "bandpass" || kind == "lowshelf" || kind == "highshelf"
+	case "elliptic":
+		return kind == "bandpass"
+	default:
+		return false
+	}
+}
+
+func normalizeEQFamilyForType(kind, family string) string {
+	if supportsEQFamily(kind, family) {
+		return family
+	}
+	return "rbj"
 }
 
 func normalizeEQType(node, kind string) string {

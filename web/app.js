@@ -24,22 +24,27 @@ const state = {
   eqUI: null,
   hoverInfo: null,
   eqParams: {
+    hpFamily: "rbj",
     hpType: "highpass",
     hpFreq: 40,
     hpGain: 0,
     hpQ: 0.707,
+    lowFamily: "rbj",
     lowType: "lowshelf",
     lowFreq: 120,
     lowGain: 0,
     lowQ: 0.707,
+    midFamily: "rbj",
     midType: "peak",
     midFreq: 1000,
     midGain: 0,
     midQ: 1.2,
+    highFamily: "rbj",
     highType: "highshelf",
     highFreq: 5000,
     highGain: 0,
     highQ: 0.707,
+    lpFamily: "rbj",
     lpType: "lowpass",
     lpFreq: 12000,
     lpGain: 0,
@@ -58,6 +63,16 @@ const state = {
     reverbRoomSize: 0.72,
     reverbDamp: 0.45,
     reverbGain: 0.015,
+  },
+  compParams: {
+    enabled: false,
+    thresholdDB: -20,
+    ratio: 4,
+    kneeDB: 6,
+    attackMs: 10,
+    releaseMs: 100,
+    makeupGainDB: 0,
+    autoMakeup: true,
   },
   analyzerParams: {
     fftSize: 2048,
@@ -106,6 +121,20 @@ const el = {
   reverbRoomValue: document.getElementById("reverb-room-value"),
   reverbDamp: document.getElementById("reverb-damp"),
   reverbDampValue: document.getElementById("reverb-damp-value"),
+  compEnabled: document.getElementById("comp-enabled"),
+  compThresh: document.getElementById("comp-thresh"),
+  compThreshValue: document.getElementById("comp-thresh-value"),
+  compRatio: document.getElementById("comp-ratio"),
+  compRatioValue: document.getElementById("comp-ratio-value"),
+  compKnee: document.getElementById("comp-knee"),
+  compKneeValue: document.getElementById("comp-knee-value"),
+  compAttack: document.getElementById("comp-attack"),
+  compAttackValue: document.getElementById("comp-attack-value"),
+  compRelease: document.getElementById("comp-release"),
+  compReleaseValue: document.getElementById("comp-release-value"),
+  compAuto: document.getElementById("comp-auto"),
+  compMakeup: document.getElementById("comp-makeup"),
+  compMakeupValue: document.getElementById("comp-makeup-value"),
   analyzerFFT: document.getElementById("analyzer-fft"),
   analyzerOverlap: document.getElementById("analyzer-overlap"),
   analyzerOverlapValue: document.getElementById("analyzer-overlap-value"),
@@ -252,6 +281,7 @@ async function ensureDSP(sampleRate) {
       syncStepsToDSP();
       syncEQToDSP();
       syncEffectsToDSP();
+      syncCompressorToDSP();
       syncSpectrumToDSP();
       state.eqUI?.draw();
     }
@@ -292,6 +322,7 @@ async function ensureDSP(sampleRate) {
   syncStepsToDSP();
   syncEQToDSP();
   syncEffectsToDSP();
+  syncCompressorToDSP();
   syncSpectrumToDSP();
 }
 
@@ -328,12 +359,8 @@ function updateEQText() {
     return;
   }
 
-  if (h.key === "hp" || h.key === "lp") {
-    el.eqReadout.textContent = `${h.label}: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, Q ${h.q.toFixed(2)}`;
-    return;
-  }
-
-  el.eqReadout.textContent = `${h.label}: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, Q ${h.q.toFixed(2)}`;
+  const family = typeof h.family === "string" ? h.family.toUpperCase() : "RBJ";
+  el.eqReadout.textContent = `${h.label} [${family}]: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, Q ${h.q.toFixed(2)}`;
 }
 
 function stepDurationSeconds(stepIndex) {
@@ -456,6 +483,43 @@ function updateEffectsText() {
   el.reverbDampValue.textContent = Number(el.reverbDamp.value).toFixed(2);
 }
 
+function syncCompressorToDSP() {
+  if (!state.dsp.ready || !state.dsp.api) return;
+  const err = state.dsp.api.setCompressor(state.compParams);
+  if (typeof err === "string" && err.length > 0)
+    console.error("setCompressor failed", err);
+}
+
+function readCompressorFromUI() {
+  state.compParams = {
+    enabled: el.compEnabled.checked,
+    thresholdDB: Number(el.compThresh.value),
+    ratio: Number(el.compRatio.value),
+    kneeDB: Number(el.compKnee.value),
+    attackMs: Number(el.compAttack.value),
+    releaseMs: Number(el.compRelease.value),
+    autoMakeup: el.compAuto.checked,
+    makeupGainDB: Number(el.compMakeup.value),
+  };
+}
+
+function updateCompressorText() {
+  el.compThreshValue.textContent = `${Number(el.compThresh.value).toFixed(1)} dB`;
+  el.compRatioValue.textContent = `${Number(el.compRatio.value).toFixed(1)}:1`;
+  el.compKneeValue.textContent = `${Number(el.compKnee.value).toFixed(1)} dB`;
+  el.compAttackValue.textContent = `${Number(el.compAttack.value).toFixed(1)} ms`;
+  el.compReleaseValue.textContent = `${Number(el.compRelease.value).toFixed(0)} ms`;
+  el.compMakeupValue.textContent = `${Number(el.compMakeup.value).toFixed(1)} dB`;
+
+  if (el.compAuto.checked) {
+    el.compMakeup.disabled = true;
+    el.compMakeupValue.style.opacity = "0.5";
+  } else {
+    el.compMakeup.disabled = false;
+    el.compMakeupValue.style.opacity = "1";
+  }
+}
+
 function startSequencer() {
   if (!state.audioCtx) return;
   if (state.audioCtx.state === "suspended") state.audioCtx.resume();
@@ -571,6 +635,24 @@ function bindEvents() {
     });
   });
 
+  [
+    el.compEnabled,
+    el.compThresh,
+    el.compRatio,
+    el.compKnee,
+    el.compAttack,
+    el.compRelease,
+    el.compAuto,
+    el.compMakeup,
+  ].forEach((control) => {
+    const eventName = control.type === "checkbox" ? "change" : "input";
+    control.addEventListener(eventName, () => {
+      readCompressorFromUI();
+      updateCompressorText();
+      syncCompressorToDSP();
+    });
+  });
+
   [el.analyzerFFT, el.analyzerWindow].forEach((control) => {
     control.addEventListener("change", () => {
       readSpectrumFromUI();
@@ -593,6 +675,8 @@ function bindEvents() {
   el.waveform.value = state.waveform;
   updateEffectsText();
   readEffectsFromUI();
+  updateCompressorText();
+  readCompressorFromUI();
   el.analyzerFFT.value = String(state.analyzerParams.fftSize);
   el.analyzerOverlap.value = String(
     Math.round(state.analyzerParams.overlap * 100),

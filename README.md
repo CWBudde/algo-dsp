@@ -46,6 +46,7 @@ func main() {
 | `dsp/conv`             | Direct, overlap-add, and overlap-save convolution. Cross/auto-correlation. Deconvolution (naive, regularized, Wiener). Auto-selects strategy based on kernel size                                                      |
 | `dsp/resample`         | Polyphase FIR resampler with rational ratio API. Three quality modes (Fast/Balanced/Best) with configurable anti-aliasing                                                                                              |
 | `dsp/signal`           | Signal generators (sine, multisine, white/pink noise, impulse, linear/log sweep) and utilities (normalize, clip, DC removal, envelope)                                                                                 |
+| `dsp/effects`          | Algorithmic audio effects: soft-knee compressor (log₂-domain, zero-alloc), chorus (modulated delay), reverb (Schroeder/Freeverb). Optional fast-math mode (`-tags=fastmath`) for 26% speedup                           |
 | `dsp/buffer`           | Buffer type with pool-based reuse for real-time hot paths                                                                                                                                                              |
 | `dsp/core`             | Numeric helpers (clamp, epsilon compare, dB conversions)                                                                                                                                                               |
 
