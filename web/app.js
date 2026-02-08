@@ -1,7 +1,14 @@
 const SCALES = {
   pentatonic: [0, 2, 4, 7, 9],
+  pentatonicMinor: [0, 3, 5, 7, 10],
   major: [0, 2, 4, 5, 7, 9, 11],
   minor: [0, 2, 3, 5, 7, 8, 10],
+  dorian: [0, 2, 3, 5, 7, 9, 10],
+  phrygian: [0, 1, 3, 5, 7, 8, 10],
+  lydian: [0, 2, 4, 6, 7, 9, 11],
+  mixolydian: [0, 2, 4, 5, 7, 9, 10],
+  blues: [0, 3, 5, 6, 7, 10],
+  hijazkiar: [0, 1, 4, 5, 7, 8, 11],
   chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
 };
 
@@ -412,13 +419,21 @@ function updateEQText() {
   const h = state.hoverInfo;
   if (!h) {
     el.eqReadout.textContent =
-      "Hover a node for details. Mouse wheel adjusts Q. Right-click a node to change filter type.";
+      "Hover a node for details. Mouse wheel adjusts Q/shape. Right-click a node to change filter type.";
     return;
   }
 
   const family = typeof h.family === "string" ? h.family.toUpperCase() : "RBJ";
   const orderPart = Number(h.order) > 1 ? `, Order ${Number(h.order)}` : "";
-  el.eqReadout.textContent = `${h.label} [${family}${orderPart}]: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, Q ${h.q.toFixed(2)}`;
+  const isChebyshev = h.family === "chebyshev1" || h.family === "chebyshev2";
+  const usesRipple =
+    isChebyshev &&
+    (h.type === "highpass" ||
+      h.type === "lowpass" ||
+      h.type === "highshelf" ||
+      h.type === "lowshelf");
+  const shapeLabel = usesRipple ? `Ripple ${h.q.toFixed(2)} dB` : `Q ${h.q.toFixed(2)}`;
+  el.eqReadout.textContent = `${h.label} [${family}${orderPart}]: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, ${shapeLabel}`;
 }
 
 function stepDurationSeconds(stepIndex) {

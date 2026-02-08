@@ -15,7 +15,6 @@ const (
 	minDecaySeconds = 0.01
 	maxVoices       = 64
 	eqDefaultOrder  = 4
-	eqRippleDB      = 0.5
 )
 
 // StepConfig defines one sequencer step.
