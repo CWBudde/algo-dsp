@@ -4,7 +4,9 @@
   const GAIN_MIN = -18;
   const GAIN_MAX = 18;
   const SPECTRUM_RANGE_DB = 72;
-  const SPECTRUM_FLOOR_DBFS = -SPECTRUM_RANGE_DB;
+  const SPECTRUM_OFFSET_DB = 48;
+  const SPECTRUM_TOP_DBFS = SPECTRUM_RANGE_DB - SPECTRUM_OFFSET_DB;
+  const SPECTRUM_FLOOR_DBFS = -SPECTRUM_OFFSET_DB;
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
@@ -341,7 +343,9 @@
       ctx.textAlign = "left";
       [0, 12, 24, 36, 48, 60, 72].forEach((s) => {
         const y = b.bottom - (s / SPECTRUM_RANGE_DB) * (b.bottom - b.top);
-        ctx.fillText(`${s}`, b.right + 8, y + 4);
+        const dbfs = s - SPECTRUM_OFFSET_DB;
+        const label = dbfs > 0 ? `+${dbfs}` : `${dbfs}`;
+        ctx.fillText(label, b.right + 8, y + 4);
       });
 
       ctx.font = "12px IBM Plex Sans, sans-serif";
@@ -357,7 +361,7 @@
       ctx.translate(b.right + 42, b.top + (b.bottom - b.top) / 2);
       ctx.rotate(Math.PI / 2);
       ctx.textAlign = "center";
-      ctx.fillText("Spectrum dB", 0, 0);
+      ctx.fillText("dBFS", 0, 0);
       ctx.restore();
       ctx.textAlign = "left";
     }
@@ -394,8 +398,8 @@
       ctx.beginPath();
       for (let i = 0; i < n; i += 1) {
         const t = i / (n - 1);
-        const dbFS = clamp(spectrumDB[i], SPECTRUM_FLOOR_DBFS, 0);
-        const spectrumDBScaled = dbFS + SPECTRUM_RANGE_DB;
+        const dbFS = clamp(spectrumDB[i], SPECTRUM_FLOOR_DBFS, SPECTRUM_TOP_DBFS);
+        const spectrumDBScaled = dbFS + SPECTRUM_OFFSET_DB;
         const x = b.left + t * (b.right - b.left);
         const y = b.bottom - (spectrumDBScaled / SPECTRUM_RANGE_DB) * (b.bottom - b.top);
         if (i === 0) ctx.moveTo(x, y);
