@@ -1,8 +1,9 @@
 package band
 
 import (
-	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	"testing"
+
+	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
 
 // ============================================================
@@ -13,11 +14,9 @@ func TestEllipticBand_Boost(t *testing.T) {
 	testBandDesign(t, "Elliptic +12dB", EllipticBand, 1000, 500, 12, 4, 0.5)
 }
 
-
 func TestEllipticBand_Cut(t *testing.T) {
 	testBandDesign(t, "Elliptic -12dB", EllipticBand, 1000, 500, -12, 4, 0.5)
 }
-
 
 func TestEllipticBand_VariousOrders(t *testing.T) {
 	for _, order := range []int{4, 6, 8, 10} {
@@ -34,7 +33,6 @@ func TestEllipticBand_VariousOrders(t *testing.T) {
 		})
 	}
 }
-
 
 func TestAllDesigners_ErrorOnInvalidParams(t *testing.T) {
 	designers := []struct {
@@ -71,5 +69,3 @@ func TestAllDesigners_ErrorOnInvalidParams(t *testing.T) {
 		})
 	}
 }
-
-

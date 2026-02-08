@@ -39,6 +39,14 @@ desktop.ini
 .history/
 .tmp/
 
+# DSP research/docs
+dsp/**/*.pdf
+
+# WASM build artifacts
+/wasm
+**/algo_dsp_demo.wasm
+**/wasm_exec.js
+
 # AI agents
 .claude/
 .serena/

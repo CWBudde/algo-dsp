@@ -12,11 +12,9 @@ func TestChebyshev2Band_Boost(t *testing.T) {
 	testBandDesign(t, "Chebyshev2 +12dB", Chebyshev2Band, 1000, 500, 12, 4, 0.5)
 }
 
-
 func TestChebyshev2Band_Cut(t *testing.T) {
 	testBandDesign(t, "Chebyshev2 -12dB", Chebyshev2Band, 1000, 500, -12, 4, 0.5)
 }
-
 
 func TestChebyshev2Band_VariousOrders(t *testing.T) {
 	for _, order := range []int{4, 6, 8, 10} {
@@ -33,5 +31,3 @@ func TestChebyshev2Band_VariousOrders(t *testing.T) {
 		})
 	}
 }
-
-

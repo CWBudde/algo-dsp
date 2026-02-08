@@ -34,7 +34,6 @@ func TestButterworthLowShelf_InvalidParams(t *testing.T) {
 	}
 }
 
-
 func TestButterworthHighShelf_InvalidParams(t *testing.T) {
 	_, err := ButterworthHighShelf(0, 1000, 6, 2)
 	if err == nil {
@@ -50,7 +49,6 @@ func TestButterworthHighShelf_InvalidParams(t *testing.T) {
 // Passthrough at zero gain
 // ============================================================
 
-
 func TestLowShelf_ZeroGain(t *testing.T) {
 	sections, err := ButterworthLowShelf(testSR, 1000, 0, 4)
 	if err != nil {
@@ -65,7 +63,6 @@ func TestLowShelf_ZeroGain(t *testing.T) {
 	}
 }
 
-
 func TestHighShelf_ZeroGain(t *testing.T) {
 	sections, err := ButterworthHighShelf(testSR, 1000, 0, 4)
 	if err != nil {
@@ -79,7 +76,6 @@ func TestHighShelf_ZeroGain(t *testing.T) {
 // ============================================================
 // Section count
 // ============================================================
-
 
 func TestLowShelf_SectionCount(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 7, 8} {
@@ -100,7 +96,6 @@ func TestLowShelf_SectionCount(t *testing.T) {
 // First-order section structure for odd M
 // ============================================================
 
-
 func TestLowShelf_Order1_FirstOrderSection(t *testing.T) {
 	sections, err := ButterworthLowShelf(testSR, 1000, 6, 1)
 	if err != nil {
@@ -114,7 +109,6 @@ func TestLowShelf_Order1_FirstOrderSection(t *testing.T) {
 		t.Errorf("M=1 should produce first-order section, but B2=%.6f A2=%.6f", s.B2, s.A2)
 	}
 }
-
 
 func TestLowShelf_Order3_HasFirstOrder(t *testing.T) {
 	sections, err := ButterworthLowShelf(testSR, 1000, 6, 3)
@@ -135,7 +129,6 @@ func TestLowShelf_Order3_HasFirstOrder(t *testing.T) {
 // Low-shelf frequency response
 // ============================================================
 
-
 func TestLowShelf_DCGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12, 20} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -151,7 +144,6 @@ func TestLowShelf_DCGain(t *testing.T) {
 	}
 }
 
-
 func TestLowShelf_NyquistGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -166,7 +158,6 @@ func TestLowShelf_NyquistGain(t *testing.T) {
 		})
 	}
 }
-
 
 func TestLowShelf_CutoffGain(t *testing.T) {
 	// At the cutoff frequency, |H|^2 = (g^2 + 1) / 2 (Eq. 5).
@@ -189,7 +180,6 @@ func TestLowShelf_CutoffGain(t *testing.T) {
 // High-shelf frequency response
 // ============================================================
 
-
 func TestHighShelf_NyquistGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12, 20} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -204,7 +194,6 @@ func TestHighShelf_NyquistGain(t *testing.T) {
 		})
 	}
 }
-
 
 func TestHighShelf_DCGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12} {
@@ -225,7 +214,6 @@ func TestHighShelf_DCGain(t *testing.T) {
 // Pole stability
 // ============================================================
 
-
 func TestLowShelf_Stability(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
 		t.Run(orderName(M), func(t *testing.T) {
@@ -237,7 +225,6 @@ func TestLowShelf_Stability(t *testing.T) {
 		})
 	}
 }
-
 
 func TestHighShelf_Stability(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
@@ -254,7 +241,6 @@ func TestHighShelf_Stability(t *testing.T) {
 // ============================================================
 // Boost/cut inversion
 // ============================================================
-
 
 func TestLowShelf_BoostCutInversion(t *testing.T) {
 	// The Holters/Zölzer Butterworth shelving design has a known asymmetry
@@ -292,7 +278,6 @@ func TestLowShelf_BoostCutInversion(t *testing.T) {
 	}
 }
 
-
 func TestHighShelf_BoostCutInversion(t *testing.T) {
 	boost, err := ButterworthHighShelf(testSR, 1000, 12, 6)
 	if err != nil {
@@ -318,7 +303,6 @@ func TestHighShelf_BoostCutInversion(t *testing.T) {
 // Order sweep
 // ============================================================
 
-
 func TestLowShelf_VariousOrders(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
 		t.Run(orderName(M), func(t *testing.T) {
@@ -343,7 +327,6 @@ func TestLowShelf_VariousOrders(t *testing.T) {
 // Frequency sweep
 // ============================================================
 
-
 func TestLowShelf_VariousFrequencies(t *testing.T) {
 	for _, freq := range []float64{100, 300, 500, 1000, 2000, 5000, 10000} {
 		t.Run(freqName(freq), func(t *testing.T) {
@@ -359,7 +342,6 @@ func TestLowShelf_VariousFrequencies(t *testing.T) {
 		})
 	}
 }
-
 
 func TestHighShelf_VariousFrequencies(t *testing.T) {
 	for _, freq := range []float64{100, 300, 500, 1000, 2000, 5000, 10000} {
@@ -381,7 +363,6 @@ func TestHighShelf_VariousFrequencies(t *testing.T) {
 // Extreme gains
 // ============================================================
 
-
 func TestLowShelf_ExtremeGains(t *testing.T) {
 	for _, gainDB := range []float64{-30, -20, -6, -1, 1, 6, 20, 30} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -402,7 +383,6 @@ func TestLowShelf_ExtremeGains(t *testing.T) {
 // Monotonicity (Butterworth property)
 // ============================================================
 
-
 func TestLowShelf_Monotonic(t *testing.T) {
 	sections, err := ButterworthLowShelf(testSR, 1000, 12, 6)
 	if err != nil {
@@ -421,7 +401,6 @@ func TestLowShelf_Monotonic(t *testing.T) {
 		prevMag = mag
 	}
 }
-
 
 func TestHighShelf_Monotonic(t *testing.T) {
 	sections, err := ButterworthHighShelf(testSR, 1000, 12, 6)
@@ -445,7 +424,6 @@ func TestHighShelf_Monotonic(t *testing.T) {
 // ============================================================
 // Chebyshev Type I: parameter validation
 // ============================================================
-
 
 func TestPaperDesignExample(t *testing.T) {
 	// The paper uses fs=48kHz, f_B=300Hz, G=-5dB for a low-shelf.
@@ -475,5 +453,3 @@ func TestPaperDesignExample(t *testing.T) {
 // ============================================================
 // Chebyshev Type II: parameter validation
 // ============================================================
-
-

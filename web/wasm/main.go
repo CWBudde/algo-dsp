@@ -67,12 +67,15 @@ func main() {
 		}
 		p := args[0]
 		err := engine.SetEQ(webdemo.EQParams{
+			HPFreq:   p.Get("hpFreq").Float(),
 			LowFreq:  p.Get("lowFreq").Float(),
 			LowGain:  p.Get("lowGain").Float(),
 			MidFreq:  p.Get("midFreq").Float(),
 			MidGain:  p.Get("midGain").Float(),
 			HighFreq: p.Get("highFreq").Float(),
 			HighGain: p.Get("highGain").Float(),
+			LPFreq:   p.Get("lpFreq").Float(),
+			LPGain:   p.Get("lpGain").Float(),
 			MidQ:     p.Get("midQ").Float(),
 			Master:   p.Get("master").Float(),
 		})

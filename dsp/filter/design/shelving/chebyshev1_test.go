@@ -33,7 +33,6 @@ func TestChebyshev1LowShelf_InvalidParams(t *testing.T) {
 	}
 }
 
-
 func TestChebyshev1HighShelf_InvalidParams(t *testing.T) {
 	_, err := Chebyshev1HighShelf(0, 1000, 6, 0.5, 2)
 	if err == nil {
@@ -48,7 +47,6 @@ func TestChebyshev1HighShelf_InvalidParams(t *testing.T) {
 // ============================================================
 // Chebyshev Type I: passthrough at zero gain
 // ============================================================
-
 
 func TestChebyshev1LowShelf_ZeroGain(t *testing.T) {
 	sections, err := Chebyshev1LowShelf(testSR, 1000, 0, 0.5, 4)
@@ -67,7 +65,6 @@ func TestChebyshev1LowShelf_ZeroGain(t *testing.T) {
 // ============================================================
 // Chebyshev Type I: section count (same as Butterworth)
 // ============================================================
-
 
 func TestChebyshev1LowShelf_SectionCount(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 7, 8} {
@@ -88,7 +85,6 @@ func TestChebyshev1LowShelf_SectionCount(t *testing.T) {
 // Chebyshev Type I: DC and Nyquist gain accuracy
 // ============================================================
 
-
 func TestChebyshev1LowShelf_DCGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12, 20} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -103,7 +99,6 @@ func TestChebyshev1LowShelf_DCGain(t *testing.T) {
 		})
 	}
 }
-
 
 func TestChebyshev1LowShelf_NyquistGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12} {
@@ -120,7 +115,6 @@ func TestChebyshev1LowShelf_NyquistGain(t *testing.T) {
 	}
 }
 
-
 func TestChebyshev1HighShelf_NyquistGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12, 20} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -135,7 +129,6 @@ func TestChebyshev1HighShelf_NyquistGain(t *testing.T) {
 		})
 	}
 }
-
 
 func TestChebyshev1HighShelf_DCGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12} {
@@ -156,7 +149,6 @@ func TestChebyshev1HighShelf_DCGain(t *testing.T) {
 // Chebyshev Type I: pole stability
 // ============================================================
 
-
 func TestChebyshev1LowShelf_Stability(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
 		t.Run(orderName(M), func(t *testing.T) {
@@ -168,7 +160,6 @@ func TestChebyshev1LowShelf_Stability(t *testing.T) {
 		})
 	}
 }
-
 
 func TestChebyshev1HighShelf_Stability(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
@@ -185,7 +176,6 @@ func TestChebyshev1HighShelf_Stability(t *testing.T) {
 // ============================================================
 // Chebyshev Type I: order sweep
 // ============================================================
-
 
 func TestChebyshev1LowShelf_VariousOrders(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
@@ -210,7 +200,6 @@ func TestChebyshev1LowShelf_VariousOrders(t *testing.T) {
 // ============================================================
 // Chebyshev Type I: steeper transition than Butterworth
 // ============================================================
-
 
 func TestChebyshev1_SteeperTransition(t *testing.T) {
 	// For the same order, Chebyshev I should have a steeper transition.
@@ -248,7 +237,6 @@ func TestChebyshev1_SteeperTransition(t *testing.T) {
 // Chebyshev Type I: extreme gains
 // ============================================================
 
-
 func TestChebyshev1LowShelf_ExtremeGains(t *testing.T) {
 	for _, gainDB := range []float64{-30, -20, -6, -1, 1, 6, 20, 30} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
@@ -268,7 +256,6 @@ func TestChebyshev1LowShelf_ExtremeGains(t *testing.T) {
 // ============================================================
 // Chebyshev Type I: various ripple values
 // ============================================================
-
 
 func TestChebyshev1LowShelf_VariousRipple(t *testing.T) {
 	ripples := []float64{0.1, 0.25, 0.5, 1.0, 2.0, 3.0}
@@ -296,7 +283,6 @@ func TestChebyshev1LowShelf_VariousRipple(t *testing.T) {
 // Chebyshev Type I: frequency sweep
 // ============================================================
 
-
 func TestChebyshev1LowShelf_VariousFrequencies(t *testing.T) {
 	for _, freq := range []float64{100, 300, 500, 1000, 2000, 5000, 10000} {
 		t.Run(freqName(freq), func(t *testing.T) {
@@ -316,5 +302,3 @@ func TestChebyshev1LowShelf_VariousFrequencies(t *testing.T) {
 // ============================================================
 // Paper design example verification (Section 5)
 // ============================================================
-
-
