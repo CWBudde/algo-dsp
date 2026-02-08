@@ -271,7 +271,7 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	prevReverbEnabled := e.effects.ReverbEnabled
 
 	p.ChorusMix = clamp(p.ChorusMix, 0, 1)
-	p.ChorusDepth = clamp(p.ChorusDepth, 0, 0.03)
+	p.ChorusDepth = clamp(p.ChorusDepth, 0, 0.01)
 	p.ChorusSpeedHz = clamp(p.ChorusSpeedHz, 0.05, 5)
 	if p.ChorusStages < 1 {
 		p.ChorusStages = 1

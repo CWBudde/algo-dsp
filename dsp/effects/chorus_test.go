@@ -64,3 +64,37 @@ func TestChorusResetRestoresState(t *testing.T) {
 		}
 	}
 }
+
+func TestChorusDelayIndependentOfRate(t *testing.T) {
+	c, err := NewChorus()
+	if err != nil {
+		t.Fatalf("NewChorus() error = %v", err)
+	}
+	if err := c.SetDepth(0.003); err != nil {
+		t.Fatalf("SetDepth() error = %v", err)
+	}
+
+	if err := c.SetSpeedHz(0.25); err != nil {
+		t.Fatalf("SetSpeedHz() error = %v", err)
+	}
+	slowMax := c.maxDelay
+
+	if err := c.SetSpeedHz(2.5); err != nil {
+		t.Fatalf("SetSpeedHz() error = %v", err)
+	}
+	fastMax := c.maxDelay
+
+	if slowMax != fastMax {
+		t.Fatalf("max delay should not depend on rate: slow=%d fast=%d", slowMax, fastMax)
+	}
+}
+
+func TestChorusBaseDelayIsNonZeroByDefault(t *testing.T) {
+	c, err := NewChorus()
+	if err != nil {
+		t.Fatalf("NewChorus() error = %v", err)
+	}
+	if c.BaseDelay() <= 0 {
+		t.Fatalf("base delay must be > 0, got %f", c.BaseDelay())
+	}
+}
