@@ -39,7 +39,7 @@ const state = {
     lpFreq: 12000,
     lpGain: 0,
     lpQ: 0.707,
-    master: 0.75,
+    master: 1,
   },
   effectsParams: {
     chorusEnabled: false,
@@ -83,8 +83,6 @@ const el = {
   steps: document.getElementById("steps"),
   eqCanvas: document.getElementById("eq-canvas"),
   eqReadout: document.getElementById("eq-readout"),
-  master: document.getElementById("master"),
-  masterValue: document.getElementById("master-value"),
   chorusEnabled: document.getElementById("chorus-enabled"),
   chorusMix: document.getElementById("chorus-mix"),
   chorusMixValue: document.getElementById("chorus-mix-value"),
@@ -109,7 +107,53 @@ const el = {
   analyzerWindow: document.getElementById("analyzer-window"),
   analyzerSmoothing: document.getElementById("analyzer-smoothing"),
   analyzerSmoothingValue: document.getElementById("analyzer-smoothing-value"),
+  theme: document.getElementById("theme"),
 };
+
+const THEME_STORAGE_KEY = "algo-dsp-theme";
+
+function resolveTheme(theme, mql) {
+  return theme === "system" ? (mql.matches ? "dark" : "light") : theme;
+}
+
+function applyTheme(theme, mql) {
+  const selected = theme === "light" || theme === "dark" || theme === "system" ? theme : "system";
+  const resolved = resolveTheme(selected, mql);
+  const root = document.documentElement;
+  root.dataset.theme = selected;
+  root.dataset.resolvedTheme = resolved;
+}
+
+function initTheme() {
+  if (!el.theme) return;
+  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+  let stored = null;
+  try {
+    stored = localStorage.getItem(THEME_STORAGE_KEY);
+  } catch {
+    stored = null;
+  }
+  const selected = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+  el.theme.value = selected;
+  applyTheme(selected, mql);
+
+  el.theme.addEventListener("change", () => {
+    const next = el.theme.value;
+    applyTheme(next, mql);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, next);
+    } catch {
+      // Ignore storage failures (private mode / disabled storage).
+    }
+    state.eqUI?.draw();
+  });
+
+  mql.addEventListener("change", () => {
+    if (el.theme.value !== "system") return;
+    applyTheme("system", mql);
+    state.eqUI?.draw();
+  });
+}
 
 function buildStepUI() {
   for (let i = 0; i < STEP_COUNT; i += 1) {
@@ -221,7 +265,6 @@ async function setupAudio() {
 }
 
 function updateEQText() {
-  el.masterValue.textContent = state.eqParams.master.toFixed(2);
   const h = state.hoverInfo;
   if (!h) {
     el.eqReadout.textContent = "Hover a node for details. Mouse wheel adjusts that node Q.";
@@ -442,10 +485,6 @@ function bindEvents() {
     syncWaveformToDSP();
   });
 
-  el.master.addEventListener("input", () => {
-    state.eqUI.setParams({ master: Number(el.master.value) });
-  });
-
   [
     el.chorusEnabled,
     el.chorusMix,
@@ -486,7 +525,6 @@ function bindEvents() {
   el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
   el.shuffleValue.textContent = `${Math.round(Number(el.shuffle.value) * 100)}%`;
   el.waveform.value = state.waveform;
-  el.master.value = String(state.eqParams.master);
   updateEffectsText();
   readEffectsFromUI();
   el.analyzerFFT.value = String(state.analyzerParams.fftSize);
@@ -502,6 +540,7 @@ buildStepUI();
 initEQCanvas();
 startEQDrawLoop();
 bindEvents();
+initTheme();
 ensureDSP(48000)
   .then(() => state.eqUI?.draw())
   .catch((err) => console.error(err));

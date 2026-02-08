@@ -5,6 +5,61 @@
   --line: #d9ccb6;
   --accent: #c24d2c;
   --accent-2: #225d7d;
+  --surface: #fff;
+  --bg-fx-1: #f9e5c8;
+  --bg-fx-2: #dbe9f1;
+  --shadow: rgba(0, 0, 0, 0.06);
+  --canvas-bg: #fff;
+  --canvas-grid-minor: #ece1d2;
+  --canvas-grid-major: #d4c6b2;
+  --canvas-axis: #9b8f7a;
+  --canvas-label: #6a5f4f;
+  --canvas-spectrum: rgba(194, 77, 44, 0.62);
+  --canvas-response: #225d7d;
+  --canvas-node-stroke: #fff;
+  --canvas-focus-hp: 138, 79, 31;
+  --canvas-focus-low: 194, 77, 44;
+  --canvas-focus-mid: 34, 93, 125;
+  --canvas-focus-high: 59, 125, 68;
+  --canvas-focus-lp: 106, 74, 165;
+  --canvas-node-hp: #8a4f1f;
+  --canvas-node-low: #c24d2c;
+  --canvas-node-mid: #225d7d;
+  --canvas-node-high: #3b7d44;
+  --canvas-node-lp: #6a4aa5;
+  color-scheme: light;
+}
+
+:root[data-resolved-theme="dark"] {
+  --bg: #14181c;
+  --ink: #e8ecef;
+  --panel: #1d242b;
+  --line: #344352;
+  --accent: #de775a;
+  --accent-2: #67a8d1;
+  --surface: #24303a;
+  --bg-fx-1: #3f2a1f;
+  --bg-fx-2: #1d3342;
+  --shadow: rgba(0, 0, 0, 0.35);
+  --canvas-bg: #161d23;
+  --canvas-grid-minor: #31404d;
+  --canvas-grid-major: #425567;
+  --canvas-axis: #7f95aa;
+  --canvas-label: #b8c5d0;
+  --canvas-spectrum: rgba(222, 119, 90, 0.78);
+  --canvas-response: #8fc0e1;
+  --canvas-node-stroke: #e2ebf2;
+  --canvas-focus-hp: 211, 143, 90;
+  --canvas-focus-low: 222, 119, 90;
+  --canvas-focus-mid: 103, 168, 209;
+  --canvas-focus-high: 119, 181, 128;
+  --canvas-focus-lp: 162, 133, 215;
+  --canvas-node-hp: #d38f5a;
+  --canvas-node-low: #de775a;
+  --canvas-node-mid: #67a8d1;
+  --canvas-node-high: #77b580;
+  --canvas-node-lp: #a285d7;
+  color-scheme: dark;
 }
 
 * {
@@ -15,8 +70,8 @@ body {
   margin: 0;
   color: var(--ink);
   background:
-    radial-gradient(circle at 12% 10%, #f9e5c8 0%, transparent 35%),
-    radial-gradient(circle at 88% 90%, #dbe9f1 0%, transparent 35%),
+    radial-gradient(circle at 12% 10%, var(--bg-fx-1) 0%, transparent 35%),
+    radial-gradient(circle at 88% 90%, var(--bg-fx-2) 0%, transparent 35%),
     var(--bg);
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
 }
@@ -42,7 +97,7 @@ body {
   border-radius: 14px;
   padding: 1rem;
   margin-top: 1rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px var(--shadow);
 }
 
 h2 {
@@ -84,11 +139,12 @@ input[type="range"] {
 
 button {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   border-radius: 10px;
   padding: 0.55rem 0.75rem;
   font-weight: 600;
   cursor: pointer;
+  color: var(--ink);
 }
 
 select {
@@ -96,7 +152,7 @@ select {
   border-radius: 8px;
   border: 1px solid var(--line);
   padding: 0.35rem 0.45rem;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
 }
 
@@ -173,7 +229,7 @@ button.active {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.5rem;
-  background: #fff;
+  background: var(--surface);
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
@@ -228,7 +284,7 @@ button.active {
   height: 400px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--canvas-bg);
   touch-action: none;
 }
 
@@ -242,7 +298,7 @@ button.active {
 .analyzer-band {
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
   padding: 0.75rem;
   display: grid;
   gap: 0.6rem;
@@ -263,7 +319,7 @@ button.active {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0.8rem;
-  background: #fff;
+  background: var(--surface);
   display: grid;
   gap: 0.45rem;
 }
