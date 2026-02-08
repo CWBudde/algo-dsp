@@ -301,7 +301,7 @@ function readEffectsFromUI() {
 
 function updateEffectsText() {
   el.chorusMixValue.textContent = `${Math.round(Number(el.chorusMix.value) * 100)}%`;
-  el.chorusDepthValue.textContent = Number(el.chorusDepth.value).toFixed(3);
+  el.chorusDepthValue.textContent = `${(Number(el.chorusDepth.value) * 1000).toFixed(1)} ms`;
   el.chorusSpeedValue.textContent = `${Number(el.chorusSpeed.value).toFixed(2)} Hz`;
   el.chorusStagesValue.textContent = `${Number(el.chorusStages.value)}`;
   el.reverbWetValue.textContent = `${Math.round(Number(el.reverbWet.value) * 100)}%`;
