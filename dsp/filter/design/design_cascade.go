@@ -66,3 +66,19 @@ func Chebyshev2LP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 func Chebyshev2HP(freq float64, order int, rippleDB, sampleRate float64) []biquad.Coefficients {
 	return pass.Chebyshev2HP(freq, order, rippleDB, sampleRate)
 }
+
+// EllipticLP designs a lowpass elliptic (Cauer) cascade.
+//
+// rippleDB controls passband ripple in dB, and stopbandDB controls minimum
+// stopband attenuation in dB.
+func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float64) []biquad.Coefficients {
+	return pass.EllipticLP(freq, order, rippleDB, stopbandDB, sampleRate)
+}
+
+// EllipticHP designs a highpass elliptic (Cauer) cascade.
+//
+// rippleDB controls passband ripple in dB, and stopbandDB controls minimum
+// stopband attenuation in dB.
+func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float64) []biquad.Coefficients {
+	return pass.EllipticHP(freq, order, rippleDB, stopbandDB, sampleRate)
+}

@@ -10,6 +10,8 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/design/shelving"
 )
 
+const eqEllipticStopbandDB = 40.0
+
 // SetEQ updates EQ parameters and rebuilds the filters.
 func (e *Engine) SetEQ(eq EQParams) error {
 	eq.HPFreq = clamp(eq.HPFreq, 20, e.sampleRate*0.49)
@@ -140,6 +142,10 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 		}
 	case "elliptic":
 		switch kind {
+		case "highpass":
+			return chainFromCoeffs(design.EllipticHP(freq, order, ripple, eqEllipticStopbandDB, sampleRate), linGain)
+		case "lowpass":
+			return chainFromCoeffs(design.EllipticLP(freq, order, ripple, eqEllipticStopbandDB, sampleRate), linGain)
 		case "peak":
 			bw := peakBandwidthHz(kind, family, freq, sampleRate, q)
 			coeffs, err := band.EllipticBand(sampleRate, freq, bw, gainDB, order)
@@ -202,6 +208,9 @@ func eqShapeMode(kind, family string) string {
 		(kind == "highpass" || kind == "lowpass" || kind == "highshelf" || kind == "lowshelf") {
 		return "ripple"
 	}
+	if family == "elliptic" && (kind == "highpass" || kind == "lowpass") {
+		return "ripple"
+	}
 	return "q"
 }
 
@@ -258,7 +267,7 @@ func supportsEQFamily(kind, family string) bool {
 	case "butterworth", "chebyshev1", "chebyshev2":
 		return kind == "highpass" || kind == "lowpass" || kind == "peak" || kind == "lowshelf" || kind == "highshelf"
 	case "elliptic":
-		return kind == "peak"
+		return kind == "highpass" || kind == "lowpass" || kind == "peak"
 	default:
 		return false
 	}
@@ -276,7 +285,7 @@ func supportsEQOrder(kind, family string) bool {
 		return false
 	}
 	if family == "elliptic" {
-		return kind == "peak"
+		return kind == "highpass" || kind == "lowpass" || kind == "peak"
 	}
 	if family == "butterworth" || family == "chebyshev1" || family == "chebyshev2" {
 		return kind == "highpass" || kind == "lowpass" || kind == "peak" || kind == "lowshelf" || kind == "highshelf"
