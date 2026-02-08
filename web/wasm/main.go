@@ -79,34 +79,34 @@ func main() {
 		}
 		p := args[0]
 		err := engine.SetEQ(webdemo.EQParams{
-				HPFamily:   p.Get("hpFamily").String(),
-				HPType:     p.Get("hpType").String(),
-				HPOrder:    p.Get("hpOrder").Int(),
-				HPFreq:     p.Get("hpFreq").Float(),
-				HPGain:     p.Get("hpGain").Float(),
-				HPQ:        p.Get("hpQ").Float(),
-				LowFamily:  p.Get("lowFamily").String(),
-				LowType:    p.Get("lowType").String(),
-				LowOrder:   p.Get("lowOrder").Int(),
-				LowFreq:    p.Get("lowFreq").Float(),
-				LowGain:    p.Get("lowGain").Float(),
-				LowQ:       p.Get("lowQ").Float(),
-				MidFamily:  p.Get("midFamily").String(),
-				MidType:    p.Get("midType").String(),
-				MidOrder:   p.Get("midOrder").Int(),
-				MidFreq:    p.Get("midFreq").Float(),
-				MidGain:    p.Get("midGain").Float(),
-				MidQ:       p.Get("midQ").Float(),
-				HighFamily: p.Get("highFamily").String(),
-				HighType:   p.Get("highType").String(),
-				HighOrder:  p.Get("highOrder").Int(),
-				HighFreq:   p.Get("highFreq").Float(),
-				HighGain:   p.Get("highGain").Float(),
-				HighQ:      p.Get("highQ").Float(),
-				LPFamily:   p.Get("lpFamily").String(),
-				LPType:     p.Get("lpType").String(),
-				LPOrder:    p.Get("lpOrder").Int(),
-				LPFreq:     p.Get("lpFreq").Float(),
+			HPFamily:   p.Get("hpFamily").String(),
+			HPType:     p.Get("hpType").String(),
+			HPOrder:    p.Get("hpOrder").Int(),
+			HPFreq:     p.Get("hpFreq").Float(),
+			HPGain:     p.Get("hpGain").Float(),
+			HPQ:        p.Get("hpQ").Float(),
+			LowFamily:  p.Get("lowFamily").String(),
+			LowType:    p.Get("lowType").String(),
+			LowOrder:   p.Get("lowOrder").Int(),
+			LowFreq:    p.Get("lowFreq").Float(),
+			LowGain:    p.Get("lowGain").Float(),
+			LowQ:       p.Get("lowQ").Float(),
+			MidFamily:  p.Get("midFamily").String(),
+			MidType:    p.Get("midType").String(),
+			MidOrder:   p.Get("midOrder").Int(),
+			MidFreq:    p.Get("midFreq").Float(),
+			MidGain:    p.Get("midGain").Float(),
+			MidQ:       p.Get("midQ").Float(),
+			HighFamily: p.Get("highFamily").String(),
+			HighType:   p.Get("highType").String(),
+			HighOrder:  p.Get("highOrder").Int(),
+			HighFreq:   p.Get("highFreq").Float(),
+			HighGain:   p.Get("highGain").Float(),
+			HighQ:      p.Get("highQ").Float(),
+			LPFamily:   p.Get("lpFamily").String(),
+			LPType:     p.Get("lpType").String(),
+			LPOrder:    p.Get("lpOrder").Int(),
+			LPFreq:     p.Get("lpFreq").Float(),
 			LPGain:     p.Get("lpGain").Float(),
 			LPQ:        p.Get("lpQ").Float(),
 			Master:     p.Get("master").Float(),
@@ -219,6 +219,24 @@ func main() {
 			freqs[i] = input.Index(i).Float()
 		}
 		resp := engine.ResponseCurveDB(freqs)
+		arr := js.Global().Get("Float32Array").New(len(resp))
+		for i := range resp {
+			arr.SetIndex(i, resp[i])
+		}
+		return arr
+	}))
+
+	api.Set("nodeResponseCurve", export(func(args []js.Value) any {
+		if engine == nil || len(args) < 2 {
+			return js.Global().Get("Float32Array").New(0)
+		}
+		node := args[0].String()
+		input := args[1]
+		freqs := make([]float64, input.Length())
+		for i := 0; i < input.Length(); i++ {
+			freqs[i] = input.Index(i).Float()
+		}
+		resp := engine.NodeResponseCurveDB(node, freqs)
 		arr := js.Global().Get("Float32Array").New(len(resp))
 		for i := range resp {
 			arr.SetIndex(i, resp[i])

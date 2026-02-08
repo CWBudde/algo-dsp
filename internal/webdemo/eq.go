@@ -247,44 +247,49 @@ func normalizeEQOrder(kind, family string, order int) int {
 }
 
 func normalizeEQType(node, kind string) string {
-	switch strings.ToLower(strings.TrimSpace(kind)) {
+	normalized := strings.ToLower(strings.TrimSpace(kind))
+	switch normalized {
+	case "bandeq", "band-eq", "bandeqpeak", "bell", "bandbell":
+		normalized = "bandpass"
+	}
+	switch normalized {
 	case "highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "highshelf", "lowshelf":
 	default:
-		kind = ""
+		normalized = ""
 	}
 	switch node {
 	case "hp":
-		switch kind {
+		switch normalized {
 		case "highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf":
-			return kind
+			return normalized
 		default:
 			return "highpass"
 		}
 	case "low":
-		switch kind {
+		switch normalized {
 		case "highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf":
-			return kind
+			return normalized
 		default:
 			return "lowshelf"
 		}
 	case "mid":
-		switch kind {
+		switch normalized {
 		case "highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf":
-			return kind
+			return normalized
 		default:
 			return "peak"
 		}
 	case "high":
-		switch kind {
+		switch normalized {
 		case "highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf":
-			return kind
+			return normalized
 		default:
 			return "highshelf"
 		}
 	case "lp":
-		switch kind {
+		switch normalized {
 		case "highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf":
-			return kind
+			return normalized
 		default:
 			return "lowpass"
 		}

@@ -330,6 +330,31 @@ func (e *Engine) ResponseCurveDB(freqs []float64) []float64 {
 	return out
 }
 
+// NodeResponseCurveDB returns one EQ node magnitude response in dB for freqs.
+func (e *Engine) NodeResponseCurveDB(node string, freqs []float64) []float64 {
+	chain := e.hp
+	switch node {
+	case "hp":
+		chain = e.hp
+	case "low":
+		chain = e.low
+	case "mid":
+		chain = e.mid
+	case "high":
+		chain = e.high
+	case "lp":
+		chain = e.lp
+	}
+	out := make([]float64, len(freqs))
+	for i, f := range freqs {
+		f = clamp(f, 1, e.sampleRate*0.49)
+		h := chain.Response(f, e.sampleRate)
+		mag := cmplx.Abs(h)
+		out[i] = 20 * math.Log10(math.Max(1e-12, mag))
+	}
+	return out
+}
+
 func clamp(v, minV, maxV float64) float64 {
 	if v < minV {
 		return minV

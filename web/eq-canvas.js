@@ -17,7 +17,7 @@
   const TYPE_LABELS = {
     highpass: "Highpass",
     lowpass: "Lowpass",
-    bandpass: "Bandpass",
+    bandpass: "Band EQ",
     notch: "Notch",
     allpass: "Allpass",
     peak: "Peak",
@@ -189,6 +189,7 @@
       this.onHover = options.onHover || (() => {});
       this.getSampleRate = options.getSampleRate || (() => 48000);
       this.getResponseDB = options.getResponseDB || null;
+      this.getNodeResponseDB = options.getNodeResponseDB || null;
       this.getSpectrumDB = options.getSpectrumDB || null;
       this.params = {
         hpFamily: "rbj",
@@ -497,6 +498,12 @@
     }
 
     computeSingleFilterDB(key, freqs) {
+      if (this.getNodeResponseDB) {
+        const response = this.getNodeResponseDB(key, Float32Array.from(freqs));
+        if (response && typeof response.length === "number" && response.length === freqs.length) {
+          return response;
+        }
+      }
       return freqs.map((freq) => 20 * Math.log10(Math.max(1e-6, this.filterMagnitude(key, freq))));
     }
 
