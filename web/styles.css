@@ -485,12 +485,41 @@ button.active {
   background: var(--surface);
   display: grid;
   gap: 0.45rem;
+  align-content: start;
+}
+
+.fx-card label:not(.fx-toggle) {
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+}
+
+.fx-card label:not(.fx-toggle) span:last-child {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+  font-size: 0.82rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.fx-card label:not(.fx-toggle) input[type="range"] {
+  grid-column: span 2;
+  grid-row: 2;
+}
+
+.fx-toggle-row {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0;
 }
 
 .fx-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 0.2rem;
 }
 
 .fx-head h3 {
