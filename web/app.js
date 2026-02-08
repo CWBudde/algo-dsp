@@ -61,6 +61,8 @@ const state = {
     sampleRate: 0,
   },
   waveform: "sine",
+  eqDrawLoopHandle: null,
+  eqLastDrawTimeMS: 0,
 };
 
 const el = {
@@ -363,6 +365,21 @@ function initEQCanvas() {
   });
 }
 
+function startEQDrawLoop() {
+  if (state.eqDrawLoopHandle !== null) return;
+  const targetFrameMS = 1000 / 24;
+
+  const tick = (now) => {
+    if (state.eqUI && now-state.eqLastDrawTimeMS >= targetFrameMS) {
+      state.eqUI.draw();
+      state.eqLastDrawTimeMS = now;
+    }
+    state.eqDrawLoopHandle = requestAnimationFrame(tick);
+  };
+
+  state.eqDrawLoopHandle = requestAnimationFrame(tick);
+}
+
 function bindEvents() {
   el.runToggle.addEventListener("click", async () => {
     if (!state.audioCtx) {
@@ -425,6 +442,7 @@ function bindEvents() {
 
 buildStepUI();
 initEQCanvas();
+startEQDrawLoop();
 bindEvents();
 ensureDSP(48000)
   .then(() => state.eqUI?.draw())
