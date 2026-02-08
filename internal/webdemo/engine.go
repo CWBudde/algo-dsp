@@ -147,12 +147,13 @@ func (e *Engine) SetTransport(tempoBPM, decaySec, shuffle float64) {
 		decaySec = minDecaySeconds
 	}
 	e.decaySec = decaySec
-	e.shuffle = clamp(shuffle, 0, 0.95)
+	e.shuffle = clamp(shuffle, 0, 1)
 }
 
 // SetRunning starts or stops new step triggering.
 func (e *Engine) SetRunning(running bool) {
 	if running && !e.running {
+		e.currentStep = 0
 		e.samplesUntilNextStep = 0
 	}
 	e.running = running
@@ -311,14 +312,19 @@ func (e *Engine) stepDurationSamples() float64 {
 
 func (e *Engine) stepDurationSamplesForStep(stepIndex int) float64 {
 	base := e.stepDurationSamples()
-	if e.shuffle <= 0 {
+	ratio := shuffleRatio(e.shuffle)
+	if ratio <= 0 {
 		return base
 	}
-	ratio := e.shuffle * 0.5
 	if stepIndex%2 == 0 {
-		return base * (1 - ratio)
+		return base * (1 + ratio)
 	}
-	return base * (1 + ratio)
+	return base * (1 - ratio)
+}
+
+func shuffleRatio(shuffle float64) float64 {
+	// Map 0..1 control to 0..1/3 timing ratio with a gentle curve.
+	return (1.0 / 3.0) * math.Pow(clamp(shuffle, 0, 1), 1.6)
 }
 
 func (e *Engine) rebuildEQ() error {

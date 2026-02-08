@@ -190,10 +190,15 @@ function updateEQText() {
 
 function stepDurationSeconds(stepIndex) {
   const base = 60 / Number(el.tempo.value) / 4;
-  const shuffle = Math.max(0, Math.min(0.95, Number(el.shuffle.value)));
-  if (shuffle <= 0) return base;
-  const ratio = shuffle * 0.5;
-  return stepIndex % 2 === 0 ? base * (1 - ratio) : base * (1 + ratio);
+  const ratio = shuffleRatio(Number(el.shuffle.value));
+  if (ratio <= 0) return base;
+  return stepIndex % 2 === 0 ? base * (1 + ratio) : base * (1 - ratio);
+}
+
+function shuffleRatio(shuffleValue) {
+  const shuffle = Math.max(0, Math.min(1, shuffleValue));
+  // Map 0..1 control to 0..1/3 timing ratio with a gentle curve.
+  return (1 / 3) * Math.pow(shuffle, 1.6);
 }
 
 function schedule() {
