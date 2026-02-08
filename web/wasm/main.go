@@ -157,6 +157,23 @@ func main() {
 		return arr
 	}))
 
+	api.Set("spectrumCurve", export(func(args []js.Value) any {
+		if engine == nil || len(args) < 1 {
+			return js.Global().Get("Float32Array").New(0)
+		}
+		input := args[0]
+		freqs := make([]float64, input.Length())
+		for i := 0; i < input.Length(); i++ {
+			freqs[i] = input.Index(i).Float()
+		}
+		resp := engine.SpectrumCurveDB(freqs)
+		arr := js.Global().Get("Float32Array").New(len(resp))
+		for i := range resp {
+			arr.SetIndex(i, resp[i])
+		}
+		return arr
+	}))
+
 	api.Set("currentStep", export(func(args []js.Value) any {
 		if engine == nil {
 			return -1

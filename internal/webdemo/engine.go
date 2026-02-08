@@ -5,15 +5,19 @@ import (
 	"math"
 	"math/cmplx"
 
+	algofft "github.com/MeKo-Christian/algo-fft"
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
+	"github.com/cwbudde/algo-dsp/dsp/window"
 )
 
 const (
 	stepCount       = 16
 	minDecaySeconds = 0.01
 	maxVoices       = 64
+	spectrumFFTSize = 2048
+	spectrumHopSize = spectrumFFTSize / 2
 )
 
 // StepConfig defines one sequencer step.
@@ -103,6 +107,18 @@ type Engine struct {
 	effects EffectsParams
 	chorus  *effects.Chorus
 	reverb  *effects.Reverb
+
+	spectrumWindow       []float64
+	spectrumWindowGain   float64
+	spectrumPlan         *algofft.Plan[complex128]
+	spectrumInput        []complex128
+	spectrumOutput       []complex128
+	spectrumRing         []float64
+	spectrumWrite        int
+	spectrumFilled       int
+	spectrumSamplesToHop int
+	spectrumDB           []float64
+	spectrumReady        bool
 }
 
 // NewEngine creates a configured audio engine.
@@ -136,17 +152,20 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		},
 		effects: EffectsParams{
 			ChorusEnabled:  false,
-			ChorusMix:      0.25,
-			ChorusDepth:    0.5,
-			ChorusSpeedHz:  1.5,
-			ChorusStages:   2,
+			ChorusMix:      0.18,
+			ChorusDepth:    0.02,
+			ChorusSpeedHz:  0.35,
+			ChorusStages:   3,
 			ReverbEnabled:  false,
-			ReverbWet:      0.25,
+			ReverbWet:      0.22,
 			ReverbDry:      1.0,
-			ReverbRoomSize: 0.6,
-			ReverbDamp:     0.4,
+			ReverbRoomSize: 0.72,
+			ReverbDamp:     0.45,
 			ReverbGain:     0.015,
 		},
+	}
+	if err := e.initSpectrumAnalyzer(); err != nil {
+		return nil, err
 	}
 	chorus, err := effects.NewChorus()
 	if err != nil {
@@ -252,8 +271,8 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	prevReverbEnabled := e.effects.ReverbEnabled
 
 	p.ChorusMix = clamp(p.ChorusMix, 0, 1)
-	p.ChorusDepth = clamp(p.ChorusDepth, 0, 2)
-	p.ChorusSpeedHz = clamp(p.ChorusSpeedHz, 0.05, 10)
+	p.ChorusDepth = clamp(p.ChorusDepth, 0, 0.1)
+	p.ChorusSpeedHz = clamp(p.ChorusSpeedHz, 0.05, 5)
 	if p.ChorusStages < 1 {
 		p.ChorusStages = 1
 	}
@@ -313,6 +332,7 @@ func (e *Engine) Render(dst []float32) {
 		x = e.lp.ProcessSample(x)
 		x *= e.lpG
 		x *= e.eq.Master
+		e.pushSpectrumSample(x)
 		dst[i] = float32(clamp(x, -1, 1))
 	}
 }
@@ -358,6 +378,128 @@ func (e *Engine) ResponseCurveDB(freqs []float64) []float64 {
 		out[i] = 20 * math.Log10(math.Max(1e-12, mag))
 	}
 	return out
+}
+
+// SpectrumCurveDB returns a smoothed real-time spectrum in dBFS for freqs.
+func (e *Engine) SpectrumCurveDB(freqs []float64) []float64 {
+	out := make([]float64, len(freqs))
+	if !e.spectrumReady || len(e.spectrumDB) == 0 {
+		for i := range out {
+			out[i] = -120
+		}
+		return out
+	}
+
+	nyquist := e.sampleRate * 0.5
+	lastBin := len(e.spectrumDB) - 1
+	if lastBin < 1 {
+		for i := range out {
+			out[i] = -120
+		}
+		return out
+	}
+	binHz := e.sampleRate / float64(spectrumFFTSize)
+	for i, f := range freqs {
+		f = clamp(f, 0, nyquist)
+		bin := f / binHz
+		if bin <= 0 {
+			out[i] = e.spectrumDB[0]
+			continue
+		}
+		if bin >= float64(lastBin) {
+			out[i] = e.spectrumDB[lastBin]
+			continue
+		}
+		base := int(bin)
+		frac := bin - float64(base)
+		d0 := e.spectrumDB[base]
+		d1 := e.spectrumDB[base+1]
+		out[i] = d0 + frac*(d1-d0)
+	}
+	return out
+}
+
+func (e *Engine) initSpectrumAnalyzer() error {
+	win, err := window.Hann(spectrumFFTSize, window.WithPeriodic())
+	if err != nil {
+		return fmt.Errorf("spectrum init: %w", err)
+	}
+	sum := 0.0
+	for _, w := range win {
+		sum += w
+	}
+	plan, err := algofft.NewPlan64(spectrumFFTSize)
+	if err != nil {
+		return fmt.Errorf("spectrum init fft plan: %w", err)
+	}
+	e.spectrumWindow = win
+	e.spectrumWindowGain = sum / float64(spectrumFFTSize)
+	e.spectrumPlan = plan
+	e.spectrumInput = make([]complex128, spectrumFFTSize)
+	e.spectrumOutput = make([]complex128, spectrumFFTSize)
+	e.spectrumRing = make([]float64, spectrumFFTSize)
+	e.spectrumDB = make([]float64, spectrumFFTSize/2+1)
+	for i := range e.spectrumDB {
+		e.spectrumDB[i] = -120
+	}
+	return nil
+}
+
+func (e *Engine) pushSpectrumSample(x float64) {
+	e.spectrumRing[e.spectrumWrite] = x
+	e.spectrumWrite++
+	if e.spectrumWrite >= spectrumFFTSize {
+		e.spectrumWrite = 0
+	}
+	if e.spectrumFilled < spectrumFFTSize {
+		e.spectrumFilled++
+	}
+	e.spectrumSamplesToHop++
+	if e.spectrumFilled < spectrumFFTSize || e.spectrumSamplesToHop < spectrumHopSize {
+		return
+	}
+	e.spectrumSamplesToHop = 0
+	e.updateSpectrumFrame()
+}
+
+func (e *Engine) updateSpectrumFrame() {
+	const (
+		smooth = 0.65
+		minDB  = -120.0
+		eps    = 1e-12
+	)
+
+	read := e.spectrumWrite
+	for i := 0; i < spectrumFFTSize; i++ {
+		s := e.spectrumRing[read]
+		e.spectrumInput[i] = complex(s*e.spectrumWindow[i], 0)
+		read++
+		if read >= spectrumFFTSize {
+			read = 0
+		}
+	}
+	if err := e.spectrumPlan.Forward(e.spectrumOutput, e.spectrumInput); err != nil {
+		return
+	}
+
+	norm := float64(spectrumFFTSize) * math.Max(e.spectrumWindowGain, eps)
+	last := len(e.spectrumDB) - 1
+	for k := 0; k <= last; k++ {
+		mag := cmplx.Abs(e.spectrumOutput[k]) / norm
+		if k > 0 && k < last {
+			mag *= 2
+		}
+		db := 20 * math.Log10(math.Max(eps, mag))
+		if db < minDB {
+			db = minDB
+		}
+		if !e.spectrumReady {
+			e.spectrumDB[k] = db
+			continue
+		}
+		e.spectrumDB[k] = smooth*e.spectrumDB[k] + (1-smooth)*db
+	}
+	e.spectrumReady = true
 }
 
 func (e *Engine) triggerCurrentStep() {
