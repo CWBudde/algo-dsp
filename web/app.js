@@ -48,7 +48,7 @@ const state = {
     chorusSpeedHz: 0.35,
     chorusStages: 3,
     reverbEnabled: false,
-    reverbWet: 0.22,
+    reverbWet: 0.42,
     reverbDry: 1.0,
     reverbRoomSize: 0.72,
     reverbDamp: 0.45,
@@ -111,13 +111,52 @@ const el = {
 };
 
 const THEME_STORAGE_KEY = "algo-dsp-theme";
+const THEME_MODES = ["system", "light", "dark"];
+
+function getThemeIconMarkup(mode) {
+  if (mode === "light") {
+    return `
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    `;
+  }
+  if (mode === "dark") {
+    return `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
+  }
+  return `
+    <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+    <line x1="8" y1="20" x2="16" y2="20"></line>
+    <line x1="12" y1="16" x2="12" y2="20"></line>
+  `;
+}
+
+function updateThemeToggleButton(mode) {
+  if (!el.themeToggle) return;
+  const icon = el.themeToggle.querySelector(".theme-toggle-icon");
+  const label = el.themeToggle.querySelector(".theme-toggle-label");
+  const labels = { system: "Auto", light: "Light", dark: "Dark" };
+  const text = labels[mode] || labels.system;
+  if (icon) icon.innerHTML = getThemeIconMarkup(mode);
+  if (label) label.textContent = text;
+  el.themeToggle.setAttribute("aria-label", `Theme: ${text}. Click to cycle.`);
+}
 
 function resolveTheme(theme, mql) {
   return theme === "system" ? (mql.matches ? "dark" : "light") : theme;
 }
 
 function applyTheme(theme, mql) {
-  const selected = theme === "light" || theme === "dark" || theme === "system" ? theme : "system";
+  const selected =
+    theme === "light" || theme === "dark" || theme === "system"
+      ? theme
+      : "system";
   const resolved = resolveTheme(selected, mql);
   const root = document.documentElement;
   root.dataset.theme = selected;
@@ -133,16 +172,17 @@ function initTheme() {
   } catch {
     stored = null;
   }
-  const hasManualTheme = stored === "light" || stored === "dark";
-  const initialTheme = hasManualTheme ? stored : "system";
-  applyTheme(initialTheme, mql);
-  el.themeToggle.checked = document.documentElement.dataset.resolvedTheme === "dark";
+  let currentTheme = THEME_MODES.includes(stored) ? stored : "system";
+  applyTheme(currentTheme, mql);
+  updateThemeToggleButton(currentTheme);
 
-  el.themeToggle.addEventListener("change", () => {
-    const next = el.themeToggle.checked ? "dark" : "light";
-    applyTheme(next, mql);
+  el.themeToggle.addEventListener("click", () => {
+    const currentIdx = THEME_MODES.indexOf(currentTheme);
+    currentTheme = THEME_MODES[(currentIdx + 1) % THEME_MODES.length];
+    applyTheme(currentTheme, mql);
+    updateThemeToggleButton(currentTheme);
     try {
-      localStorage.setItem(THEME_STORAGE_KEY, next);
+      localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
     } catch {
       // Ignore storage failures (private mode / disabled storage).
     }
@@ -150,10 +190,9 @@ function initTheme() {
   });
 
   mql.addEventListener("change", () => {
-    const selected = document.documentElement.dataset.theme || "system";
-    if (selected !== "system") return;
+    if (currentTheme !== "system") return;
     applyTheme("system", mql);
-    el.themeToggle.checked = document.documentElement.dataset.resolvedTheme === "dark";
+    updateThemeToggleButton("system");
     state.eqUI?.draw();
   });
 }
@@ -197,7 +236,8 @@ async function ensureDSP(sampleRate) {
   if (state.dsp.ready) {
     if (Math.abs(state.dsp.sampleRate - sampleRate) > 1) {
       const initErr = state.dsp.api.init(sampleRate);
-      if (typeof initErr === "string" && initErr.length > 0) throw new Error(initErr);
+      if (typeof initErr === "string" && initErr.length > 0)
+        throw new Error(initErr);
       state.dsp.sampleRate = sampleRate;
       syncTransportToDSP();
       syncWaveformToDSP();
@@ -209,12 +249,16 @@ async function ensureDSP(sampleRate) {
     }
     return;
   }
-  if (typeof Go === "undefined") throw new Error("wasm_exec.js missing. Build wasm assets first.");
+  if (typeof Go === "undefined")
+    throw new Error("wasm_exec.js missing. Build wasm assets first.");
 
   const go = new Go();
   let result;
   try {
-    result = await WebAssembly.instantiateStreaming(fetch("algo_dsp_demo.wasm"), go.importObject);
+    result = await WebAssembly.instantiateStreaming(
+      fetch("algo_dsp_demo.wasm"),
+      go.importObject,
+    );
   } catch {
     const response = await fetch("algo_dsp_demo.wasm");
     const bytes = await response.arrayBuffer();
@@ -227,7 +271,8 @@ async function ensureDSP(sampleRate) {
   if (!api) throw new Error("AlgoDSPDemo API not found after wasm init");
 
   const initErr = api.init(sampleRate);
-  if (typeof initErr === "string" && initErr.length > 0) throw new Error(initErr);
+  if (typeof initErr === "string" && initErr.length > 0)
+    throw new Error(initErr);
 
   state.dsp.ready = true;
   state.dsp.api = api;
@@ -270,7 +315,8 @@ async function setupAudio() {
 function updateEQText() {
   const h = state.hoverInfo;
   if (!h) {
-    el.eqReadout.textContent = "Hover a node for details. Mouse wheel adjusts that node Q.";
+    el.eqReadout.textContent =
+      "Hover a node for details. Mouse wheel adjusts that node Q.";
     return;
   }
 
@@ -313,7 +359,11 @@ function highlightStep(index) {
 
 function syncTransportToDSP() {
   if (!state.dsp.ready || !state.dsp.api) return;
-  state.dsp.api.setTransport(Number(el.tempo.value), Number(el.decay.value), Number(el.shuffle.value));
+  state.dsp.api.setTransport(
+    Number(el.tempo.value),
+    Number(el.decay.value),
+    Number(el.shuffle.value),
+  );
 }
 
 function syncWaveformToDSP() {
@@ -335,19 +385,22 @@ function syncStepsToDSP() {
 function syncEQToDSP() {
   if (!state.dsp.ready || !state.dsp.api) return;
   const err = state.dsp.api.setEQ(state.eqParams);
-  if (typeof err === "string" && err.length > 0) console.error("setEQ failed", err);
+  if (typeof err === "string" && err.length > 0)
+    console.error("setEQ failed", err);
 }
 
 function syncEffectsToDSP() {
   if (!state.dsp.ready || !state.dsp.api) return;
   const err = state.dsp.api.setEffects(state.effectsParams);
-  if (typeof err === "string" && err.length > 0) console.error("setEffects failed", err);
+  if (typeof err === "string" && err.length > 0)
+    console.error("setEffects failed", err);
 }
 
 function syncSpectrumToDSP() {
   if (!state.dsp.ready || !state.dsp.api) return;
   const err = state.dsp.api.setSpectrum(state.analyzerParams);
-  if (typeof err === "string" && err.length > 0) console.error("setSpectrum failed", err);
+  if (typeof err === "string" && err.length > 0)
+    console.error("setSpectrum failed", err);
 }
 
 function readSpectrumFromUI() {
@@ -363,7 +416,9 @@ function updateSpectrumText() {
   const overlapPct = Math.round(Number(el.analyzerOverlap.value));
   const hopPct = Math.max(1, 100 - overlapPct);
   el.analyzerOverlapValue.textContent = `${overlapPct}% overlap (${hopPct}% hop)`;
-  el.analyzerSmoothingValue.textContent = Number(el.analyzerSmoothing.value).toFixed(2);
+  el.analyzerSmoothingValue.textContent = Number(
+    el.analyzerSmoothing.value,
+  ).toFixed(2);
 }
 
 function readEffectsFromUI() {
@@ -451,7 +506,7 @@ function startEQDrawLoop() {
   const targetFrameMS = 1000 / 24;
 
   const tick = (now) => {
-    if (state.eqUI && now-state.eqLastDrawTimeMS >= targetFrameMS) {
+    if (state.eqUI && now - state.eqLastDrawTimeMS >= targetFrameMS) {
       state.eqUI.draw();
       state.eqLastDrawTimeMS = now;
     }
@@ -531,7 +586,9 @@ function bindEvents() {
   updateEffectsText();
   readEffectsFromUI();
   el.analyzerFFT.value = String(state.analyzerParams.fftSize);
-  el.analyzerOverlap.value = String(Math.round(state.analyzerParams.overlap * 100));
+  el.analyzerOverlap.value = String(
+    Math.round(state.analyzerParams.overlap * 100),
+  );
   el.analyzerWindow.value = state.analyzerParams.window;
   el.analyzerSmoothing.value = String(state.analyzerParams.smoothing);
   readSpectrumFromUI();
