@@ -7,8 +7,6 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
 
-const ellipticTol = 2.2e-16
-
 // EllipticLP designs a lowpass elliptic (Cauer) filter cascade.
 //
 // Elliptic filters provide the sharpest transition from passband to stopband
@@ -33,20 +31,15 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)
 	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1)
 	k1 := e / es
-	kEllip := ellipdeg(order, k1, ellipticTol)
-	v0 := asne(complex(0, 1)/complex(e, 0), k1, ellipticTol) / complex(float64(order), 0)
+	kEllip := ellipdeg(order, k1, 1e-9)
+	v0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
 
 	r := order % 2
 	L := (order - r) / 2
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
-	uiVals := make([]float64, L)
-	for i := range L {
-		uiVals[i] = (2.0*float64(i+1) - 1.0) / float64(order)
-	}
-	snVals := sne(uiVals, kEllip, ellipticTol)
 
 	if r == 1 {
-		p0 := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, ellipticTol))
+		p0 := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, 1e-9))
 		denom := k + p0
 		norm := 1 / denom
 		sections = append(sections, biquad.Coefficients{
@@ -59,14 +52,15 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	}
 
 	for i := 1; i <= L; i++ {
-		ui := uiVals[i-1]
+		ui := (2.0*float64(i) - 1.0) / float64(order)
 
-		// Finite elliptic LP zeros are on the imaginary axis at +/-j/(k*sn(ui,k)).
-		sn := snVals[i-1]
-		zre := 0.0
-		zabs2 := 1.0 / (kEllip * kEllip * sn * sn)
+		zi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
+		invZero := 1.0 / zi
+		zre := real(invZero)
+		zabs2 := cmplx.Abs(invZero)
+		zabs2 *= zabs2
 
-		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, ellipticTol)
+		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
 		invPole := 1.0 / pi
 		sigmaP := -real(invPole)
 		omegaP := imag(invPole)
@@ -88,19 +82,15 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		a2 := ad2 / ad0
 
 		dcGain := (b0 + b1 + b2) / (1 + a1 + a2)
-		if dcGain != 0 && !math.IsNaN(dcGain) && !math.IsInf(dcGain, 0) {
-			b0 /= dcGain
-			b1 /= dcGain
-			b2 /= dcGain
-		}
+		b0 /= dcGain
+		b1 /= dcGain
+		b2 /= dcGain
 
 		sections = append(sections, biquad.Coefficients{
 			B0: b0, B1: b1, B2: b2,
 			A1: a1, A2: a2,
 		})
 	}
-
-	normalizeCascadeLP(sections)
 
 	return sections
 }
@@ -125,53 +115,54 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)
 	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1)
 	k1 := e / es
-	kEllip := ellipdeg(order, k1, ellipticTol)
-	v0 := asne(complex(0, 1)/complex(e, 0), k1, ellipticTol) / complex(float64(order), 0)
+	kEllip := ellipdeg(order, k1, 1e-9)
+	v0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
 
 	r := order % 2
 	L := (order - r) / 2
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
-	uiVals := make([]float64, L)
-	for i := range L {
-		uiVals[i] = (2.0*float64(i+1) - 1.0) / float64(order)
-	}
-	snVals := sne(uiVals, kEllip, ellipticTol)
 
 	if r == 1 {
-		p0LP := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, ellipticTol))
-		p0HP := 1.0 / p0LP
-		denom := k + p0HP
+		p0LP := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, 1e-9))
+		p0HP := -1.0 / p0LP
+		denom := k - p0HP
 		norm := 1 / denom
 		sections = append(sections, biquad.Coefficients{
 			B0: k * norm,
 			B1: -k * norm,
 			B2: 0,
-			A1: (p0HP - k) * norm,
+			A1: (-k - p0HP) * norm,
 			A2: 0,
 		})
 	}
 
 	for i := 1; i <= L; i++ {
-		ui := uiVals[i-1]
+		ui := (2.0*float64(i) - 1.0) / float64(order)
 
-		sn := snVals[i-1]
-		zre := 0.0
-		zabs2 := 1.0 / (kEllip * kEllip * sn * sn)
+		zi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
+		invZero := 1.0 / zi
+		zre := real(invZero)
+		zabs2 := cmplx.Abs(invZero)
+		zabs2 *= zabs2
 
-		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, ellipticTol)
+		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
 		invPole := 1.0 / pi
-		sigmaP := -real(invPole)
-		omegaP := imag(invPole)
-		pabs2 := sigmaP*sigmaP + omegaP*omegaP
+		sigmaPLP := -real(invPole)
+		omegaPLP := imag(invPole)
+
+		pabs2LP := sigmaPLP*sigmaPLP + omegaPLP*omegaPLP
+		sigmaPHP := sigmaPLP / pabs2LP
+		omegaPHP := omegaPLP / pabs2LP
 
 		k2 := k * k
 		bn0 := zabs2*k2 - 2*k*zre + 1
 		bn1 := 2 * (1 - zabs2*k2)
 		bn2 := zabs2*k2 + 2*k*zre + 1
 
-		ad0 := pabs2*k2 + 2*k*sigmaP + 1
-		ad1 := 2 * (1 - pabs2*k2)
-		ad2 := pabs2*k2 - 2*k*sigmaP + 1
+		pabs2HP := sigmaPHP*sigmaPHP + omegaPHP*omegaPHP
+		ad0 := pabs2HP*k2 + 2*k*sigmaPHP + 1
+		ad1 := 2 * (1 - pabs2HP*k2)
+		ad2 := pabs2HP*k2 - 2*k*sigmaPHP + 1
 
 		b0 := bn0 / ad0
 		b1 := bn1 / ad0
@@ -191,8 +182,6 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 			A1: a1, A2: a2,
 		})
 	}
-
-	normalizeCascadeHP(sections)
 
 	return sections
 }
