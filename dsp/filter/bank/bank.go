@@ -1,20 +1,23 @@
 package bank
 
 import (
-	"math"
-	"sort"
+    "math"
+    "sort"
 
-	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
-	"github.com/cwbudde/algo-dsp/dsp/filter/design"
+    "github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+    "github.com/cwbudde/algo-dsp/dsp/filter/design"
+    "github.com/cwbudde/algo-dsp/dsp/resample"
 )
 
 // octaveRatio is G = 10^(3/10) per IEC 61260.
 var octaveRatio = math.Pow(10, 0.3)
 
 const (
-	defaultOrder     = 4
-	defaultLowerFreq = 20.0
-	defaultUpperFreq = 20000.0
+    defaultOrder     = 4
+    defaultLowerFreq = 20.0
+    defaultUpperFreq = 20000.0
+    defaultAnalyzerEnvelopeHz  = 100.0
+    defaultAnalyzerMaxDownsample = 64
 )
 
 // Band represents one frequency band in a filter bank.
@@ -40,9 +43,26 @@ type Bank struct {
 }
 
 type bankConfig struct {
-	order   int
-	lowerHz float64
-	upperHz float64
+    order   int
+    lowerHz float64
+    upperHz float64
+
+    analyzerEnvelopeHz   float64
+    analyzerResample     bool
+    analyzerResampleQual resample.Quality
+    analyzerMaxDownsample int
+}
+
+func defaultBankConfig() bankConfig {
+    return bankConfig{
+        order:               defaultOrder,
+        lowerHz:             defaultLowerFreq,
+        upperHz:             defaultUpperFreq,
+        analyzerEnvelopeHz:  defaultAnalyzerEnvelopeHz,
+        analyzerResample:    true,
+        analyzerResampleQual: resample.QualityBalanced,
+        analyzerMaxDownsample: defaultAnalyzerMaxDownsample,
+    }
 }
 
 // Option configures a Bank.
@@ -80,48 +100,26 @@ func WithFrequencyRange(lower, upper float64) Option {
 //	f_upper = f_center * G^(1/(2*N))
 //	f_lower = f_center * G^(-1/(2*N))
 func Octave(fraction int, sampleRate float64, opts ...Option) *Bank {
-	if fraction <= 0 {
-		fraction = 1
-	}
-	cfg := bankConfig{
-		order:   defaultOrder,
-		lowerHz: defaultLowerFreq,
-		upperHz: defaultUpperFreq,
-	}
-	for _, o := range opts {
-		o(&cfg)
-	}
-
-	n := float64(fraction)
-	halfBW := math.Pow(octaveRatio, 1/(2*n))
-	nyquist := sampleRate / 2
-
-	// Determine the range of band indices k such that
-	// 1000 * G^(k/N) falls within [lowerHz, upperHz].
-	kMin := int(math.Ceil(n * math.Log(cfg.lowerHz/1000) / math.Log(octaveRatio)))
-	kMax := int(math.Floor(n * math.Log(cfg.upperHz/1000) / math.Log(octaveRatio)))
-
-	var bands []Band
-	for k := kMin; k <= kMax; k++ {
-		fc := 1000 * math.Pow(octaveRatio, float64(k)/n)
-		fLo := fc / halfBW
-		fHi := fc * halfBW
-
-		// Skip bands whose edges exceed Nyquist.
-		if fHi >= nyquist || fLo <= 0 {
-			continue
-		}
-
-		lp := biquad.NewChain(design.ButterworthLP(fHi, cfg.order, sampleRate))
-		hp := biquad.NewChain(design.ButterworthHP(fLo, cfg.order, sampleRate))
-		bands = append(bands, Band{
-			CenterFreq: fc,
-			LowCutoff:  fLo,
-			HighCutoff: fHi,
-			LP:         lp,
-			HP:         hp,
-		})
-	}
+    if fraction <= 0 {
+        fraction = 1
+    }
+    cfg := defaultBankConfig()
+    for _, o := range opts {
+        o(&cfg)
+    }
+    specs := octaveBandSpecs(fraction, sampleRate, cfg)
+    bands := make([]Band, 0, len(specs))
+    for _, spec := range specs {
+        lp := biquad.NewChain(design.ButterworthLP(spec.high, cfg.order, sampleRate))
+        hp := biquad.NewChain(design.ButterworthHP(spec.low, cfg.order, sampleRate))
+        bands = append(bands, Band{
+            CenterFreq: spec.center,
+            LowCutoff:  spec.low,
+            HighCutoff: spec.high,
+            LP:         lp,
+            HP:         hp,
+        })
+    }
 
 	sort.Slice(bands, func(i, j int) bool {
 		return bands[i].CenterFreq < bands[j].CenterFreq
@@ -137,13 +135,13 @@ func Octave(fraction int, sampleRate float64, opts ...Option) *Bank {
 // Custom builds a filter bank from arbitrary center frequencies and a
 // specified bandwidth in octaves.
 func Custom(centers []float64, bandwidth float64, sampleRate float64, opts ...Option) *Bank {
-	if bandwidth <= 0 {
-		bandwidth = 1
-	}
-	cfg := bankConfig{order: defaultOrder}
-	for _, o := range opts {
-		o(&cfg)
-	}
+    if bandwidth <= 0 {
+        bandwidth = 1
+    }
+    cfg := defaultBankConfig()
+    for _, o := range opts {
+        o(&cfg)
+    }
 
 	halfBW := math.Pow(2, bandwidth/2)
 	nyquist := sampleRate / 2
