@@ -109,12 +109,26 @@ const state = {
     chorusDepth: 0.003,
     chorusSpeedHz: 0.35,
     chorusStages: 3,
+    harmonicBassEnabled: false,
+    harmonicBassFrequency: 80,
+    harmonicBassInputGain: 1,
+    harmonicBassHighGain: 1,
+    harmonicBassOriginal: 1,
+    harmonicBassHarmonic: 0,
+    harmonicBassDecay: 0,
+    harmonicBassResponseMs: 20,
+    harmonicBassHighpass: 0,
     reverbEnabled: false,
+    reverbModel: "freeverb",
     reverbWet: 0.42,
     reverbDry: 1.0,
     reverbRoomSize: 0.72,
     reverbDamp: 0.45,
     reverbGain: 0.015,
+    reverbRT60: 1.8,
+    reverbPreDelay: 0.01,
+    reverbModDepth: 0.002,
+    reverbModRate: 0.1,
   },
   compParams: {
     enabled: false,
@@ -172,7 +186,25 @@ const el = {
   chorusSpeedValue: document.getElementById("chorus-speed-value"),
   chorusStages: document.getElementById("chorus-stages"),
   chorusStagesValue: document.getElementById("chorus-stages-value"),
+  harmonicEnabled: document.getElementById("harmonic-enabled"),
+  harmonicFrequency: document.getElementById("harmonic-frequency"),
+  harmonicFrequencyValue: document.getElementById("harmonic-frequency-value"),
+  harmonicInput: document.getElementById("harmonic-input"),
+  harmonicInputValue: document.getElementById("harmonic-input-value"),
+  harmonicHigh: document.getElementById("harmonic-high"),
+  harmonicHighValue: document.getElementById("harmonic-high-value"),
+  harmonicOriginal: document.getElementById("harmonic-original"),
+  harmonicOriginalValue: document.getElementById("harmonic-original-value"),
+  harmonicHarmonic: document.getElementById("harmonic-harmonic"),
+  harmonicHarmonicValue: document.getElementById("harmonic-harmonic-value"),
+  harmonicDecay: document.getElementById("harmonic-decay"),
+  harmonicDecayValue: document.getElementById("harmonic-decay-value"),
+  harmonicResponse: document.getElementById("harmonic-response"),
+  harmonicResponseValue: document.getElementById("harmonic-response-value"),
+  harmonicHighpass: document.getElementById("harmonic-highpass"),
+  harmonicHighpassValue: document.getElementById("harmonic-highpass-value"),
   reverbEnabled: document.getElementById("reverb-enabled"),
+  reverbModel: document.getElementById("reverb-model"),
   reverbWet: document.getElementById("reverb-wet"),
   reverbWetValue: document.getElementById("reverb-wet-value"),
   reverbDry: document.getElementById("reverb-dry"),
@@ -181,6 +213,14 @@ const el = {
   reverbRoomValue: document.getElementById("reverb-room-value"),
   reverbDamp: document.getElementById("reverb-damp"),
   reverbDampValue: document.getElementById("reverb-damp-value"),
+  reverbRT60: document.getElementById("reverb-rt60"),
+  reverbRT60Value: document.getElementById("reverb-rt60-value"),
+  reverbPreDelay: document.getElementById("reverb-predelay"),
+  reverbPreDelayValue: document.getElementById("reverb-predelay-value"),
+  reverbModDepth: document.getElementById("reverb-mod-depth"),
+  reverbModDepthValue: document.getElementById("reverb-mod-depth-value"),
+  reverbModRate: document.getElementById("reverb-mod-rate"),
+  reverbModRateValue: document.getElementById("reverb-mod-rate-value"),
   compEnabled: document.getElementById("comp-enabled"),
   compThresh: document.getElementById("comp-thresh"),
   compThreshValue: document.getElementById("comp-thresh-value"),
@@ -251,11 +291,34 @@ function loadSettings() {
     if (el.chorusDepth) el.chorusDepth.value = state.effectsParams.chorusDepth;
     if (el.chorusSpeed) el.chorusSpeed.value = state.effectsParams.chorusSpeedHz;
     if (el.chorusStages) el.chorusStages.value = state.effectsParams.chorusStages;
+    if (el.harmonicEnabled)
+      el.harmonicEnabled.checked = !!state.effectsParams.harmonicBassEnabled;
+    if (el.harmonicFrequency)
+      el.harmonicFrequency.value = state.effectsParams.harmonicBassFrequency;
+    if (el.harmonicInput)
+      el.harmonicInput.value = state.effectsParams.harmonicBassInputGain;
+    if (el.harmonicHigh)
+      el.harmonicHigh.value = state.effectsParams.harmonicBassHighGain;
+    if (el.harmonicOriginal)
+      el.harmonicOriginal.value = state.effectsParams.harmonicBassOriginal;
+    if (el.harmonicHarmonic)
+      el.harmonicHarmonic.value = state.effectsParams.harmonicBassHarmonic;
+    if (el.harmonicDecay)
+      el.harmonicDecay.value = state.effectsParams.harmonicBassDecay;
+    if (el.harmonicResponse)
+      el.harmonicResponse.value = state.effectsParams.harmonicBassResponseMs;
+    if (el.harmonicHighpass)
+      el.harmonicHighpass.value = state.effectsParams.harmonicBassHighpass;
     if (el.reverbEnabled) el.reverbEnabled.checked = !!state.effectsParams.reverbEnabled;
+    if (el.reverbModel) el.reverbModel.value = state.effectsParams.reverbModel || "freeverb";
     if (el.reverbWet) el.reverbWet.value = state.effectsParams.reverbWet;
     if (el.reverbDry) el.reverbDry.value = state.effectsParams.reverbDry;
     if (el.reverbRoom) el.reverbRoom.value = state.effectsParams.reverbRoomSize;
     if (el.reverbDamp) el.reverbDamp.value = state.effectsParams.reverbDamp;
+    if (el.reverbRT60) el.reverbRT60.value = state.effectsParams.reverbRT60;
+    if (el.reverbPreDelay) el.reverbPreDelay.value = state.effectsParams.reverbPreDelay;
+    if (el.reverbModDepth) el.reverbModDepth.value = state.effectsParams.reverbModDepth;
+    if (el.reverbModRate) el.reverbModRate.value = state.effectsParams.reverbModRate;
     updateEffectsText();
   }
 
@@ -606,12 +669,26 @@ function readEffectsFromUI() {
     chorusDepth: Number(el.chorusDepth.value),
     chorusSpeedHz: Number(el.chorusSpeed.value),
     chorusStages: Number(el.chorusStages.value),
+    harmonicBassEnabled: el.harmonicEnabled.checked,
+    harmonicBassFrequency: Number(el.harmonicFrequency.value),
+    harmonicBassInputGain: Number(el.harmonicInput.value),
+    harmonicBassHighGain: Number(el.harmonicHigh.value),
+    harmonicBassOriginal: Number(el.harmonicOriginal.value),
+    harmonicBassHarmonic: Number(el.harmonicHarmonic.value),
+    harmonicBassDecay: Number(el.harmonicDecay.value),
+    harmonicBassResponseMs: Number(el.harmonicResponse.value),
+    harmonicBassHighpass: Number(el.harmonicHighpass.value),
     reverbEnabled: el.reverbEnabled.checked,
+    reverbModel: String(el.reverbModel.value || "freeverb"),
     reverbWet: Number(el.reverbWet.value),
     reverbDry: Number(el.reverbDry.value),
     reverbRoomSize: Number(el.reverbRoom.value),
     reverbDamp: Number(el.reverbDamp.value),
     reverbGain: state.effectsParams.reverbGain,
+    reverbRT60: Number(el.reverbRT60.value),
+    reverbPreDelay: Number(el.reverbPreDelay.value),
+    reverbModDepth: Number(el.reverbModDepth.value),
+    reverbModRate: Number(el.reverbModRate.value),
   };
 }
 
@@ -620,10 +697,46 @@ function updateEffectsText() {
   el.chorusDepthValue.textContent = `${(Number(el.chorusDepth.value) * 1000).toFixed(1)} ms`;
   el.chorusSpeedValue.textContent = `${Number(el.chorusSpeed.value).toFixed(2)} Hz`;
   el.chorusStagesValue.textContent = `${Number(el.chorusStages.value)}`;
+  el.harmonicFrequencyValue.textContent = `${Number(el.harmonicFrequency.value).toFixed(0)} Hz`;
+  el.harmonicInputValue.textContent = Number(el.harmonicInput.value).toFixed(2);
+  el.harmonicHighValue.textContent = Number(el.harmonicHigh.value).toFixed(2);
+  el.harmonicOriginalValue.textContent = Number(el.harmonicOriginal.value).toFixed(2);
+  el.harmonicHarmonicValue.textContent = Number(el.harmonicHarmonic.value).toFixed(2);
+  el.harmonicDecayValue.textContent = Number(el.harmonicDecay.value).toFixed(2);
+  el.harmonicResponseValue.textContent = `${Number(el.harmonicResponse.value).toFixed(0)} ms`;
+  if (el.harmonicHighpassValue) {
+    const mode = Number(el.harmonicHighpass.value);
+    const labels = ["DC", "1st Order", "2nd Order"];
+    el.harmonicHighpassValue.textContent = labels[mode] || "DC";
+  }
   el.reverbWetValue.textContent = `${Math.round(Number(el.reverbWet.value) * 100)}%`;
   el.reverbDryValue.textContent = Number(el.reverbDry.value).toFixed(2);
   el.reverbRoomValue.textContent = Number(el.reverbRoom.value).toFixed(2);
   el.reverbDampValue.textContent = Number(el.reverbDamp.value).toFixed(2);
+  if (el.reverbRT60Value) {
+    el.reverbRT60Value.textContent = `${Number(el.reverbRT60.value).toFixed(2)} s`;
+  }
+  if (el.reverbPreDelayValue) {
+    el.reverbPreDelayValue.textContent = `${(Number(el.reverbPreDelay.value) * 1000).toFixed(1)} ms`;
+  }
+  if (el.reverbModDepthValue) {
+    el.reverbModDepthValue.textContent = `${(Number(el.reverbModDepth.value) * 1000).toFixed(1)} ms`;
+  }
+  if (el.reverbModRateValue) {
+    el.reverbModRateValue.textContent = `${Number(el.reverbModRate.value).toFixed(2)} Hz`;
+  }
+  updateReverbModelUI();
+}
+
+function updateReverbModelUI() {
+  const model = el.reverbModel?.value || "freeverb";
+  const fdnVisible = model === "fdn";
+  document.querySelectorAll(".reverb-fdn").forEach((node) => {
+    node.hidden = !fdnVisible;
+  });
+  document.querySelectorAll(".reverb-freeverb").forEach((node) => {
+    node.hidden = fdnVisible;
+  });
 }
 
 function syncCompressorToDSP() {
@@ -864,13 +977,28 @@ function bindEvents() {
     el.chorusDepth,
     el.chorusSpeed,
     el.chorusStages,
+    el.harmonicEnabled,
+    el.harmonicFrequency,
+    el.harmonicInput,
+    el.harmonicHigh,
+    el.harmonicOriginal,
+    el.harmonicHarmonic,
+    el.harmonicDecay,
+    el.harmonicResponse,
+    el.harmonicHighpass,
     el.reverbEnabled,
+    el.reverbModel,
     el.reverbWet,
     el.reverbDry,
     el.reverbRoom,
     el.reverbDamp,
+    el.reverbRT60,
+    el.reverbPreDelay,
+    el.reverbModDepth,
+    el.reverbModRate,
   ].forEach((control) => {
-    const eventName = control.type === "checkbox" ? "change" : "input";
+    const eventName =
+      control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
     control.addEventListener(eventName, () => {
       readEffectsFromUI();
       updateEffectsText();

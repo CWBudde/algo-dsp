@@ -11,6 +11,8 @@
 //     filter banks with center frequencies per IEC 61260 (base-10 system).
 //   - [Custom] builds a bank from arbitrary center frequencies and a
 //     specified bandwidth in octaves.
+//   - [NewOctaveAnalyzer] builds a streaming analyzer that applies the
+//     same band definitions with envelope smoothing and optional downsampling.
 //
 // Band edge frequencies follow the IEC 61260 standard:
 //

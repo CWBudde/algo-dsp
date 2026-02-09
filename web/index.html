@@ -222,12 +222,73 @@
 
           <div class="fx-card">
             <div class="fx-head">
+              <h3>Harmonic Bass</h3>
+              <label class="fx-toggle">
+                <input id="harmonic-enabled" type="checkbox" />
+                <span>On</span>
+              </label>
+            </div>
+            <label>
+              Frequency
+              <input id="harmonic-frequency" type="range" min="30" max="200" step="1" value="80" />
+              <span id="harmonic-frequency-value">80 Hz</span>
+            </label>
+            <label>
+              Input
+              <input id="harmonic-input" type="range" min="0" max="2" step="0.01" value="1" />
+              <span id="harmonic-input-value">1.00</span>
+            </label>
+            <label>
+              High
+              <input id="harmonic-high" type="range" min="0" max="2" step="0.01" value="1" />
+              <span id="harmonic-high-value">1.00</span>
+            </label>
+            <label>
+              Original
+              <input id="harmonic-original" type="range" min="0" max="2" step="0.01" value="1" />
+              <span id="harmonic-original-value">1.00</span>
+            </label>
+            <label>
+              Harmonics
+              <input id="harmonic-harmonic" type="range" min="0" max="2" step="0.01" value="0" />
+              <span id="harmonic-harmonic-value">0.00</span>
+            </label>
+            <label>
+              Decay
+              <input id="harmonic-decay" type="range" min="-1" max="1" step="0.01" value="0" />
+              <span id="harmonic-decay-value">0.00</span>
+            </label>
+            <label>
+              Response
+              <input id="harmonic-response" type="range" min="1" max="200" step="1" value="20" />
+              <span id="harmonic-response-value">20 ms</span>
+            </label>
+            <label>
+              Highpass
+              <select id="harmonic-highpass">
+                <option value="0">DC</option>
+                <option value="1">1st Order</option>
+                <option value="2">2nd Order</option>
+              </select>
+              <span id="harmonic-highpass-value">DC</span>
+            </label>
+          </div>
+
+          <div class="fx-card">
+            <div class="fx-head">
               <h3>Reverb</h3>
               <label class="fx-toggle">
                 <input id="reverb-enabled" type="checkbox" />
                 <span>On</span>
               </label>
             </div>
+            <label>
+              Model
+              <select id="reverb-model">
+                <option value="freeverb" selected>Freeverb</option>
+                <option value="fdn">FDN</option>
+              </select>
+            </label>
             <label>
               Wet
               <input id="reverb-wet" type="range" min="0" max="1" step="0.01" value="0.22" />
@@ -238,7 +299,7 @@
               <input id="reverb-dry" type="range" min="0" max="1.5" step="0.01" value="1" />
               <span id="reverb-dry-value">1.00</span>
             </label>
-            <label>
+            <label class="reverb-freeverb">
               Room
               <input id="reverb-room" type="range" min="0" max="0.98" step="0.01" value="0.72" />
               <span id="reverb-room-value">0.72</span>
@@ -247,6 +308,26 @@
               Damp
               <input id="reverb-damp" type="range" min="0" max="0.99" step="0.01" value="0.45" />
               <span id="reverb-damp-value">0.45</span>
+            </label>
+            <label class="reverb-fdn" hidden>
+              RT60
+              <input id="reverb-rt60" type="range" min="0.2" max="8" step="0.05" value="1.8" />
+              <span id="reverb-rt60-value">1.80 s</span>
+            </label>
+            <label class="reverb-fdn" hidden>
+              Pre-delay
+              <input id="reverb-predelay" type="range" min="0" max="0.08" step="0.001" value="0.01" />
+              <span id="reverb-predelay-value">10.0 ms</span>
+            </label>
+            <label class="reverb-fdn" hidden>
+              Mod depth
+              <input id="reverb-mod-depth" type="range" min="0" max="0.01" step="0.0001" value="0.002" />
+              <span id="reverb-mod-depth-value">2.0 ms</span>
+            </label>
+            <label class="reverb-fdn" hidden>
+              Mod rate
+              <input id="reverb-mod-rate" type="range" min="0" max="1" step="0.01" value="0.1" />
+              <span id="reverb-mod-rate-value">0.10 Hz</span>
             </label>
           </div>
         </div>

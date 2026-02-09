@@ -2,6 +2,7 @@ package bank_test
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/bank"
 )
@@ -34,4 +35,20 @@ func ExampleOctave_thirdOctave() {
 	fmt.Printf("1/3-octave bands (100–10 kHz): %d\n", b.NumBands())
 	// Output:
 	// 1/3-octave bands (100–10 kHz): 21
+}
+
+func ExampleNewOctaveAnalyzer() {
+	// Build a 1/3-octave analyzer restricted to 100–10000 Hz.
+	an, _ := bank.NewOctaveAnalyzer(3, 48000, bank.WithAnalyzerFrequencyRange(100, 10000))
+
+	// Process a short 1 kHz sine block.
+	input := make([]float64, 480)
+	for i := range input {
+		input[i] = math.Sin(2 * math.Pi * 1000 * float64(i) / 48000)
+	}
+	peaks := an.ProcessBlock(input)
+
+	fmt.Printf("bands=%d peaks=%d\n", len(an.Bands()), len(peaks))
+	// Output:
+	// bands=21 peaks=21
 }
