@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/cmplx"
 	"testing"
+
+	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
 
 // ============================================================
@@ -149,6 +151,142 @@ func TestChebyshev2HighShelf_DCGain(t *testing.T) {
 			expected := gainDB - math.Copysign(rippleDB, gainDB)
 			if !almostEqual(dcMag, expected, 0.2) {
 				t.Errorf("DC gain = %.4f dB, expected ~%.4f dB (ripple=%.1f)", dcMag, expected, rippleDB)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Chebyshev Type II: ideal endpoint behavior verification
+// ============================================================
+
+// TestChebyshev2LowShelf_NyquistGainIdeal verifies the ideal behavior:
+// For a low-shelf filter, the high-frequency region (near Nyquist) should
+// remain unaffected at 0 dB (unity gain), regardless of boost amount or ripple.
+// This test documents the expected ideal behavior and will expose any deviation
+// from this ideal in the current implementation.
+func TestChebyshev2LowShelf_NyquistGainIdeal(t *testing.T) {
+	testCases := []struct {
+		name     string
+		gainDB   float64
+		rippleDB float64
+		order    int
+	}{
+		// Vary boost amounts with fixed ripple
+		{"boost_6dB_ripple_0.5", 6, 0.5, 4},
+		{"boost_12dB_ripple_0.5", 12, 0.5, 4},
+		{"boost_18dB_ripple_0.5", 18, 0.5, 4},
+		{"boost_24dB_ripple_0.5", 24, 0.5, 4},
+
+		// Vary ripple amounts with fixed boost
+		{"boost_12dB_ripple_0.1", 12, 0.1, 4},
+		{"boost_12dB_ripple_0.25", 12, 0.25, 4},
+		{"boost_12dB_ripple_1.0", 12, 1.0, 4},
+		{"boost_12dB_ripple_2.0", 12, 2.0, 4},
+		{"boost_12dB_ripple_3.0", 12, 3.0, 4},
+
+		// Vary order with fixed boost/ripple
+		{"boost_12dB_order_2", 12, 0.5, 2},
+		{"boost_12dB_order_6", 12, 0.5, 6},
+		{"boost_12dB_order_8", 12, 0.5, 8},
+		{"boost_12dB_order_10", 12, 0.5, 10},
+
+		// Edge cases
+		{"small_boost_3dB", 3, 0.5, 4},
+		{"large_boost_30dB", 30, 0.5, 4},
+		{"small_ripple_0.05", 12, 0.05, 4},
+		{"large_ripple_5.0", 12, 5.0, 4},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			sections, err := Chebyshev2LowShelf(testSR, 1000, tc.gainDB, tc.rippleDB, tc.order)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Check Nyquist gain (ideal: should be 0 dB for low-shelf boost)
+			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
+
+			// Also check far stopband (well above cutoff) for consistency
+			farStopband := cascadeMagnitudeDB(sections, 10000, testSR)
+
+			// Ideal expectation: both should be at 0 dB (±0.1 dB tolerance)
+			idealDB := 0.0
+			tolerance := 0.1
+
+			if !almostEqual(nyqMag, idealDB, tolerance) {
+				t.Errorf("Nyquist gain = %.4f dB, ideal expectation is %.4f dB (±%.1f dB)\n"+
+					"  Configuration: gain=%.1f dB, ripple=%.2f dB, order=%d\n"+
+					"  Deviation from ideal: %.4f dB",
+					nyqMag, idealDB, tolerance, tc.gainDB, tc.rippleDB, tc.order, nyqMag-idealDB)
+			}
+
+			if !almostEqual(farStopband, idealDB, tolerance) {
+				t.Errorf("Far stopband (10 kHz) gain = %.4f dB, ideal expectation is %.4f dB (±%.1f dB)\n"+
+					"  Configuration: gain=%.1f dB, ripple=%.2f dB, order=%d\n"+
+					"  Deviation from ideal: %.4f dB",
+					farStopband, idealDB, tolerance, tc.gainDB, tc.rippleDB, tc.order, farStopband-idealDB)
+			}
+		})
+	}
+}
+
+// TestChebyshev2HighShelf_DCGainIdeal verifies the ideal behavior:
+// For a high-shelf filter, the low-frequency region (near DC) should
+// remain unaffected at 0 dB (unity gain), regardless of boost amount or ripple.
+func TestChebyshev2HighShelf_DCGainIdeal(t *testing.T) {
+	testCases := []struct {
+		name     string
+		gainDB   float64
+		rippleDB float64
+		order    int
+	}{
+		// Vary boost amounts with fixed ripple
+		{"boost_6dB_ripple_0.5", 6, 0.5, 4},
+		{"boost_12dB_ripple_0.5", 12, 0.5, 4},
+		{"boost_18dB_ripple_0.5", 18, 0.5, 4},
+
+		// Vary ripple amounts with fixed boost
+		{"boost_12dB_ripple_0.1", 12, 0.1, 4},
+		{"boost_12dB_ripple_1.0", 12, 1.0, 4},
+		{"boost_12dB_ripple_2.0", 12, 2.0, 4},
+
+		// Vary order
+		{"boost_12dB_order_2", 12, 0.5, 2},
+		{"boost_12dB_order_6", 12, 0.5, 6},
+		{"boost_12dB_order_8", 12, 0.5, 8},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			sections, err := Chebyshev2HighShelf(testSR, 1000, tc.gainDB, tc.rippleDB, tc.order)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Check DC gain (ideal: should be 0 dB for high-shelf boost)
+			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
+
+			// Also check far stopband (well below cutoff) for consistency
+			farStopband := cascadeMagnitudeDB(sections, 50, testSR)
+
+			// Ideal expectation: both should be at 0 dB (±0.1 dB tolerance)
+			idealDB := 0.0
+			tolerance := 0.1
+
+			if !almostEqual(dcMag, idealDB, tolerance) {
+				t.Errorf("DC gain = %.4f dB, ideal expectation is %.4f dB (±%.1f dB)\n"+
+					"  Configuration: gain=%.1f dB, ripple=%.2f dB, order=%d\n"+
+					"  Deviation from ideal: %.4f dB",
+					dcMag, idealDB, tolerance, tc.gainDB, tc.rippleDB, tc.order, dcMag-idealDB)
+			}
+
+			if !almostEqual(farStopband, idealDB, tolerance) {
+				t.Errorf("Far stopband (50 Hz) gain = %.4f dB, ideal expectation is %.4f dB (±%.1f dB)\n"+
+					"  Configuration: gain=%.1f dB, ripple=%.2f dB, order=%d\n"+
+					"  Deviation from ideal: %.4f dB",
+					farStopband, idealDB, tolerance, tc.gainDB, tc.rippleDB, tc.order, farStopband-idealDB)
 			}
 		})
 	}
@@ -446,5 +584,111 @@ func TestChebyshev2_FlatStopband(t *testing.T) {
 	}
 	if maxDev > rippleDB+0.2 {
 		t.Errorf("stopband max deviation = %.4f dB from %.4f dB, exceeds bound %.1f dB", maxDev, expected, rippleDB)
+	}
+}
+
+// ============================================================
+// Chebyshev Type II: math verification tests
+// ============================================================
+
+// chebyshev2SectionsNoDCCorrection mirrors chebyshev2Sections but intentionally
+// skips the final DC gain correction so we can test where endpoint behavior
+// diverges.
+func chebyshev2SectionsNoDCCorrection(K float64, gainDB, stopbandDB float64, order int) []biquad.Coefficients {
+	G0 := 1.0
+	G := db2Lin(gainDB)
+	Gb := db2Lin(stopbandDB)
+	g := math.Pow(G, 1.0/float64(order))
+
+	e := math.Sqrt((G*G - Gb*Gb) / (Gb*Gb - G0*G0))
+	eu := math.Pow(e+math.Sqrt(1+e*e), 1.0/float64(order))
+	ew := math.Pow(G0*e+Gb*math.Sqrt(1.0+e*e), 1.0/float64(order))
+	A := (eu - 1.0/eu) * 0.5
+	B := (ew - g*g/ew) * 0.5
+
+	L := order / 2
+	hasFirstOrder := order%2 == 1
+	n := L
+	if hasFirstOrder {
+		n++
+	}
+	sections := make([]biquad.Coefficients, 0, n)
+
+	for m := 1; m <= L; m++ {
+		theta := float64(2*m-1) / float64(2*order) * math.Pi
+		si := math.Sin(theta)
+		ci := math.Cos(theta)
+		sp := sosParams{
+			den: poleParams{sigma: A * si, r2: A*A + ci*ci},
+			num: poleParams{sigma: B * si, r2: B*B + g*g*ci*ci},
+		}
+		sections = append(sections, bilinearSOS(K, sp))
+	}
+
+	if hasFirstOrder {
+		sections = append(sections, bilinearFOS(K, fosParams{denSigma: A, numSigma: B}))
+	}
+
+	return sections
+}
+
+func TestChebyshev2Math_DCCorrectionScalesAllFrequencies(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+	order := 6
+	gainDB := 12.0
+	rippleDB := 0.5
+	K := math.Tan(math.Pi * fc / sr)
+
+	stopbandDB := rippleDB
+	raw := chebyshev2SectionsNoDCCorrection(K, gainDB, stopbandDB, order)
+	corrected := chebyshev2Sections(K, gainDB, stopbandDB, order)
+
+	rawDC := cmplx.Abs(cascadeResponse(raw, 1, sr))
+	corrDC := cmplx.Abs(cascadeResponse(corrected, 1, sr))
+	rawNyq := cmplx.Abs(cascadeResponse(raw, sr/2-1, sr))
+	corrNyq := cmplx.Abs(cascadeResponse(corrected, sr/2-1, sr))
+
+	dcScale := corrDC / rawDC
+	nyqScale := corrNyq / rawNyq
+
+	if !almostEqual(dcScale, nyqScale, 1e-6) {
+		t.Fatalf("expected uniform scale from correction: dcScale=%.8f nyqScale=%.8f", dcScale, nyqScale)
+	}
+}
+
+func TestChebyshev2Math_RawAndCorrectedEndpointAnchors(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+	order := 6
+	gainDB := 12.0
+	rippleDB := 0.5
+	K := math.Tan(math.Pi * fc / sr)
+	stopbandDB := rippleDB
+
+	raw := chebyshev2SectionsNoDCCorrection(K, gainDB, stopbandDB, order)
+	corrected := chebyshev2Sections(K, gainDB, stopbandDB, order)
+
+	rawDC := cascadeMagnitudeDB(raw, 1, sr)
+	rawNyq := cascadeMagnitudeDB(raw, sr/2-1, sr)
+	corrDC := cascadeMagnitudeDB(corrected, 1, sr)
+	corrNyq := cascadeMagnitudeDB(corrected, sr/2-1, sr)
+
+	// Diagnostic expectations for current implementation behavior:
+	// 1) Raw sections are anchored near stopbandDB at DC.
+	// 2) Raw sections are anchored near 0 dB at Nyquist.
+	// 3) After correction, DC is moved to gainDB and Nyquist is shifted by
+	//    roughly gainDB-stopbandDB.
+	if !almostEqual(rawDC, stopbandDB, 0.2) {
+		t.Fatalf("raw DC = %.4f dB, expected near stopband %.4f dB", rawDC, stopbandDB)
+	}
+	if math.Abs(rawNyq) > 0.2 {
+		t.Fatalf("raw Nyquist = %.4f dB, expected near 0 dB", rawNyq)
+	}
+	if !almostEqual(corrDC, gainDB, 0.2) {
+		t.Fatalf("corrected DC = %.4f dB, expected near gain %.4f dB", corrDC, gainDB)
+	}
+	if !almostEqual(corrNyq, gainDB-stopbandDB, 0.2) {
+		t.Fatalf("corrected Nyquist = %.4f dB, expected near gain-stopband %.4f dB", corrNyq, gainDB-stopbandDB)
 	}
 }
