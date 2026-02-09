@@ -20,32 +20,26 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	if order <= 0 {
 		return nil
 	}
+	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+		return nil
+	}
 	k, ok := bilinearK(freq, sampleRate)
 	if !ok {
 		return nil
 	}
 
-	// Convert ripple specifications to linear selectivity parameters.
-	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)    // Passband ripple
-	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1) // Stopband selectivity
+	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)
+	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1)
 	k1 := e / es
-
-	// Solve elliptic degree equation to find discrimination parameter.
 	kEllip := ellipdeg(order, k1, 1e-9)
-
-	// Compute pole argument for analog prototype.
 	v0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
 
 	r := order % 2
 	L := (order - r) / 2
-
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
 
-	// First-order section for odd orders.
 	if r == 1 {
-		// Real LP prototype pole magnitude for odd-order first-order section.
 		p0 := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, 1e-9))
-		// Bilinear transform of H(s)=1/(s+p0) using s=k*(1-z^-1)/(1+z^-1).
 		denom := k + p0
 		norm := 1 / denom
 		sections = append(sections, biquad.Coefficients{
@@ -57,48 +51,40 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		})
 	}
 
-	// Second-order sections for conjugate pole/zero pairs.
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1.0) / float64(order)
 
-		// Evaluate cd to get the i-th conjugate LP prototype zero/pole pair.
 		zi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
-		// Invert to get normalized zero location.
 		invZero := 1.0 / zi
 		zre := real(invZero)
 		zabs2 := cmplx.Abs(invZero)
 		zabs2 *= zabs2
 
-		// Evaluate cd with pole argument to get the i-th pole.
 		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
 		invPole := 1.0 / pi
 		sigmaP := -real(invPole)
 		omegaP := imag(invPole)
-
-		// Analog prototype second-order section:
-		// Numerator: s² + omegaZ²
-		// Denominator: s² + 2·sigmaP·s + (sigmaP² + omegaP²)
 		pabs2 := sigmaP*sigmaP + omegaP*omegaP
 
-		// Apply bilinear transform s -> k·(z-1)/(z+1).
 		k2 := k * k
-
-		// Numerator from N(s)=s²-2·zre·s+|z|² after bilinear transform.
 		bn0 := k2 - 2*k*zre + zabs2
 		bn1 := 2 * (zabs2 - k2)
 		bn2 := k2 + 2*k*zre + zabs2
 
-		// Denominator after bilinear transform.
 		ad0 := k2 + 2*k*sigmaP + pabs2
-		ad1 := 2 * (pabs2 - k2)
+		ad1 := 2 * (k2 - pabs2)
 		ad2 := k2 - 2*k*sigmaP + pabs2
 
-		// Normalize denominator leading coefficient to 1.
 		b0 := bn0 / ad0
 		b1 := bn1 / ad0
 		b2 := bn2 / ad0
 		a1 := ad1 / ad0
 		a2 := ad2 / ad0
+
+		dcGain := (b0 + b1 + b2) / (1 + a1 + a2)
+		b0 /= dcGain
+		b1 /= dcGain
+		b2 /= dcGain
 
 		sections = append(sections, biquad.Coefficients{
 			B0: b0, B1: b1, B2: b2,
@@ -106,7 +92,6 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		})
 	}
 
-	normalizeCascadeLP(sections)
 	return sections
 }
 
@@ -119,34 +104,27 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	if order <= 0 {
 		return nil
 	}
+	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+		return nil
+	}
 	k, ok := bilinearK(freq, sampleRate)
 	if !ok {
 		return nil
 	}
 
-	// Convert ripple specifications to linear selectivity parameters.
 	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)
 	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1)
 	k1 := e / es
-
-	// Solve elliptic degree equation.
 	kEllip := ellipdeg(order, k1, 1e-9)
-
-	// Compute pole argument.
 	v0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
 
 	r := order % 2
 	L := (order - r) / 2
-
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
 
-	// First-order section for odd orders with LP-to-HP transform.
 	if r == 1 {
-		// LP pole.
 		p0LP := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, 1e-9))
-		// LP-to-HP: s -> 1/s gives pole at -1/p0LP.
 		p0HP := -1.0 / p0LP
-		// Bilinear transform of H(s)=s/(s-p0HP) with s=k*(1-z^-1)/(1+z^-1).
 		denom := k - p0HP
 		norm := 1 / denom
 		sections = append(sections, biquad.Coefficients{
@@ -158,50 +136,46 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		})
 	}
 
-	// Second-order sections with LP-to-HP transform.
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1.0) / float64(order)
 
-		zi := complex(0, 1) * cde(complex(ui, 0), kEllip, 1e-9)
+		zi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
 		invZero := 1.0 / zi
 		zre := real(invZero)
 		zabs2 := cmplx.Abs(invZero)
 		zabs2 *= zabs2
 
-		// Get LP poles.
 		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
 		invPole := 1.0 / pi
 		sigmaPLP := -real(invPole)
 		omegaPLP := imag(invPole)
 
-		// LP-to-HP transformation: s -> 1/s.
-		// LP zero at s=j·omegaZ becomes HP zero at s=0 (DC).
-		// LP pole at s=sigmaP+j·omegaP becomes HP pole at s=1/(sigmaP+j·omegaP).
-		// This gives s = sigmaP/(sigmaP²+omegaP²) - j·omegaP/(sigmaP²+omegaP²).
 		pabs2LP := sigmaPLP*sigmaPLP + omegaPLP*omegaPLP
 		sigmaPHP := sigmaPLP / pabs2LP
 		omegaPHP := omegaPLP / pabs2LP
 
 		k2 := k * k
-
-		// HP analog section from LP-to-HP coefficient reversal:
-		// N(s)=|z|²·s²-2·zre·s+1, D(s)=|p|²·s²+2·sigmaP·s+1.
 		bn0 := zabs2*k2 - 2*k*zre + 1
 		bn1 := 2 * (1 - zabs2*k2)
 		bn2 := zabs2*k2 + 2*k*zre + 1
 
-		// Denominator: LP pattern with HP pole.
 		pabs2HP := sigmaPHP*sigmaPHP + omegaPHP*omegaPHP
 		ad0 := pabs2HP*k2 + 2*k*sigmaPHP + 1
 		ad1 := 2 * (1 - pabs2HP*k2)
 		ad2 := pabs2HP*k2 - 2*k*sigmaPHP + 1
 
-		// Normalize denominator.
 		b0 := bn0 / ad0
 		b1 := bn1 / ad0
 		b2 := bn2 / ad0
 		a1 := ad1 / ad0
 		a2 := ad2 / ad0
+
+		nyqGain := (b0 - b1 + b2) / (1 - a1 + a2)
+		if nyqGain != 0 && !math.IsNaN(nyqGain) && !math.IsInf(nyqGain, 0) {
+			b0 /= nyqGain
+			b1 /= nyqGain
+			b2 /= nyqGain
+		}
 
 		sections = append(sections, biquad.Coefficients{
 			B0: b0, B1: b1, B2: b2,
@@ -209,7 +183,6 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		})
 	}
 
-	normalizeCascadeHP(sections)
 	return sections
 }
 
