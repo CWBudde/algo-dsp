@@ -140,6 +140,13 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		}
+	case "bessel":
+		switch kind {
+		case "highpass":
+			return chainFromCoeffs(design.BesselHP(freq, order, sampleRate), linGain)
+		case "lowpass":
+			return chainFromCoeffs(design.BesselLP(freq, order, sampleRate), linGain)
+		}
 	case "elliptic":
 		switch kind {
 		case "highpass":
@@ -253,7 +260,7 @@ func rbjQFromShape(kind, family string, freq, shape float64) float64 {
 
 func normalizeEQFamily(family string) string {
 	switch strings.ToLower(strings.TrimSpace(family)) {
-	case "rbj", "butterworth", "chebyshev1", "chebyshev2", "elliptic":
+	case "rbj", "butterworth", "bessel", "chebyshev1", "chebyshev2", "elliptic":
 		return strings.ToLower(strings.TrimSpace(family))
 	default:
 		return "rbj"
@@ -264,6 +271,8 @@ func supportsEQFamily(kind, family string) bool {
 	switch family {
 	case "rbj":
 		return true
+	case "bessel":
+		return kind == "highpass" || kind == "lowpass"
 	case "butterworth", "chebyshev1", "chebyshev2":
 		return kind == "highpass" || kind == "lowpass" || kind == "peak" || kind == "lowshelf" || kind == "highshelf"
 	case "elliptic":
@@ -284,6 +293,9 @@ func supportsEQOrder(kind, family string) bool {
 	if family == "rbj" {
 		return false
 	}
+	if family == "bessel" {
+		return kind == "highpass" || kind == "lowpass"
+	}
 	if family == "elliptic" {
 		return kind == "highpass" || kind == "lowpass" || kind == "peak"
 	}
@@ -300,14 +312,18 @@ func normalizeEQOrder(kind, family string, order int) int {
 	if order <= 0 {
 		order = eqDefaultOrder
 	}
+	maxOrder := 12.0
+	if family == "bessel" {
+		maxOrder = 10
+	}
 	if kind == "peak" {
-		order = int(clamp(float64(order), 4, 12))
+		order = int(clamp(float64(order), 4, maxOrder))
 		if order%2 != 0 {
 			order++
 		}
 		return order
 	}
-	return int(clamp(float64(order), 1, 12))
+	return int(clamp(float64(order), 1, maxOrder))
 }
 
 func normalizeEQType(node, kind string) string {

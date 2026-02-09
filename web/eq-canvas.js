@@ -24,10 +24,11 @@
     highshelf: "High Shelf",
     lowshelf: "Low Shelf",
   };
-  const FAMILY_OPTIONS = ["rbj", "butterworth", "chebyshev1", "chebyshev2", "elliptic"];
+  const FAMILY_OPTIONS = ["rbj", "butterworth", "bessel", "chebyshev1", "chebyshev2", "elliptic"];
   const FAMILY_LABELS = {
     rbj: "RBJ",
     butterworth: "Butterworth",
+    bessel: "Bessel",
     chebyshev1: "Chebyshev 1",
     chebyshev2: "Chebyshev 2",
     elliptic: "Elliptic",
@@ -335,6 +336,7 @@
 
     supportsFamilyForType(type, family) {
       if (family === "rbj") return true;
+      if (family === "bessel") return type === "highpass" || type === "lowpass";
       if (family === "elliptic") return type === "highpass" || type === "lowpass" || type === "peak";
       if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2") {
         return type === "highpass" || type === "lowpass" || type === "peak" || type === "lowshelf" || type === "highshelf";
@@ -344,6 +346,7 @@
 
     supportsOrderForTypeFamily(type, family) {
       if (family === "rbj") return false;
+      if (family === "bessel") return type === "highpass" || type === "lowpass";
       if (family === "elliptic") return type === "highpass" || type === "lowpass" || type === "peak";
       if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2") {
         return type === "highpass" || type === "lowpass" || type === "peak" || type === "lowshelf" || type === "highshelf";
@@ -355,7 +358,8 @@
       if (!this.supportsOrderForTypeFamily(type, family)) return 1;
       let v = Number(order);
       if (!Number.isFinite(v) || v <= 0) v = ORDER_DEFAULT;
-      v = Math.round(clamp(v, ORDER_MIN, ORDER_MAX));
+      const maxOrder = family === "bessel" ? 10 : ORDER_MAX;
+      v = Math.round(clamp(v, ORDER_MIN, maxOrder));
       if (type === "peak" && family !== "rbj") {
         if (v < 4) v = 4;
         if (v % 2 !== 0) v += 1;
