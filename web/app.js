@@ -104,6 +104,7 @@ const state = {
     master: 1,
   },
   effectsParams: {
+    effectsMode: "chorus",
     chorusEnabled: false,
     chorusMix: 0.18,
     chorusDepth: 0.003,
@@ -186,6 +187,7 @@ const el = {
   chorusSpeedValue: document.getElementById("chorus-speed-value"),
   chorusStages: document.getElementById("chorus-stages"),
   chorusStagesValue: document.getElementById("chorus-stages-value"),
+  effectsMode: document.getElementById("effects-mode"),
   harmonicEnabled: document.getElementById("harmonic-enabled"),
   harmonicFrequency: document.getElementById("harmonic-frequency"),
   harmonicFrequencyValue: document.getElementById("harmonic-frequency-value"),
@@ -286,6 +288,8 @@ function loadSettings() {
 
   if (settings.effectsParams) {
     Object.assign(state.effectsParams, settings.effectsParams);
+    if (el.effectsMode)
+      el.effectsMode.value = state.effectsParams.effectsMode || "chorus";
     if (el.chorusEnabled) el.chorusEnabled.checked = !!state.effectsParams.chorusEnabled;
     if (el.chorusMix) el.chorusMix.value = state.effectsParams.chorusMix;
     if (el.chorusDepth) el.chorusDepth.value = state.effectsParams.chorusDepth;
@@ -319,6 +323,7 @@ function loadSettings() {
     if (el.reverbPreDelay) el.reverbPreDelay.value = state.effectsParams.reverbPreDelay;
     if (el.reverbModDepth) el.reverbModDepth.value = state.effectsParams.reverbModDepth;
     if (el.reverbModRate) el.reverbModRate.value = state.effectsParams.reverbModRate;
+    updateEffectsModeUI();
     updateEffectsText();
   }
 
@@ -663,13 +668,15 @@ function updateSpectrumText() {
 }
 
 function readEffectsFromUI() {
+  const effectsMode = String(el.effectsMode?.value || "chorus");
   state.effectsParams = {
-    chorusEnabled: el.chorusEnabled.checked,
+    effectsMode,
+    chorusEnabled: effectsMode === "chorus" && el.chorusEnabled.checked,
     chorusMix: Number(el.chorusMix.value),
     chorusDepth: Number(el.chorusDepth.value),
     chorusSpeedHz: Number(el.chorusSpeed.value),
     chorusStages: Number(el.chorusStages.value),
-    harmonicBassEnabled: el.harmonicEnabled.checked,
+    harmonicBassEnabled: effectsMode === "bass" && el.harmonicEnabled.checked,
     harmonicBassFrequency: Number(el.harmonicFrequency.value),
     harmonicBassInputGain: Number(el.harmonicInput.value),
     harmonicBassHighGain: Number(el.harmonicHigh.value),
@@ -726,6 +733,13 @@ function updateEffectsText() {
     el.reverbModRateValue.textContent = `${Number(el.reverbModRate.value).toFixed(2)} Hz`;
   }
   updateReverbModelUI();
+}
+
+function updateEffectsModeUI() {
+  const mode = el.effectsMode?.value || "chorus";
+  document.querySelectorAll(".fx-option").forEach((node) => {
+    node.hidden = node.dataset.mode !== mode;
+  });
 }
 
 function updateReverbModelUI() {
@@ -972,6 +986,7 @@ function bindEvents() {
   });
 
   [
+    el.effectsMode,
     el.chorusEnabled,
     el.chorusMix,
     el.chorusDepth,
@@ -1000,6 +1015,9 @@ function bindEvents() {
     const eventName =
       control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
     control.addEventListener(eventName, () => {
+      if (control === el.effectsMode) {
+        updateEffectsModeUI();
+      }
       readEffectsFromUI();
       updateEffectsText();
       syncEffectsToDSP();
@@ -1056,6 +1074,7 @@ function bindEvents() {
   el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
   el.shuffleValue.textContent = `${Math.round(Number(el.shuffle.value) * 100)}%`;
   el.waveform.value = state.waveform;
+  updateEffectsModeUI();
   updateEffectsText();
   readEffectsFromUI();
   updateCompressorText();

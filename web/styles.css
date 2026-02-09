@@ -507,6 +507,32 @@ button.active {
   grid-row: 2;
 }
 
+.fx-mode {
+  gap: 0.5rem;
+}
+
+.fx-mode select {
+  min-width: 9rem;
+}
+
+.fx-option {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.fx-option[hidden] {
+  display: none;
+}
+
+.fx-option-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
 .fx-toggle-row {
   display: flex !important;
   flex-direction: row !important;

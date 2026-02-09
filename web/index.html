@@ -190,88 +190,99 @@
       <section class="panel effects-panel">
         <h2>Effects</h2>
         <div class="effects-grid">
-          <div class="fx-card">
+          <div class="fx-card fx-select-card">
             <div class="fx-head">
-              <h3>Chorus</h3>
-              <label class="fx-toggle">
-                <input id="chorus-enabled" type="checkbox" />
-                <span>On</span>
+              <h3>Enhancer</h3>
+              <label class="fx-toggle fx-mode">
+                <span>Mode</span>
+                <select id="effects-mode">
+                  <option value="chorus" selected>Chorus</option>
+                  <option value="bass">Psychoacoustic Bass</option>
+                </select>
               </label>
             </div>
-            <label>
-              Mix
-              <input id="chorus-mix" type="range" min="0" max="0.6" step="0.01" value="0.18" />
-              <span id="chorus-mix-value">18%</span>
-            </label>
-            <label>
-              Depth
-              <input id="chorus-depth" type="range" min="0" max="0.01" step="0.0001" value="0.003" />
-              <span id="chorus-depth-value">3.0 ms</span>
-            </label>
-            <label>
-              Speed
-              <input id="chorus-speed" type="range" min="0.05" max="5" step="0.01" value="0.35" />
-              <span id="chorus-speed-value">0.35 Hz</span>
-            </label>
-            <label>
-              Stages
-              <input id="chorus-stages" type="range" min="1" max="6" step="1" value="3" />
-              <span id="chorus-stages-value">3</span>
-            </label>
-          </div>
-
-          <div class="fx-card">
-            <div class="fx-head">
-              <h3>Harmonic Bass</h3>
-              <label class="fx-toggle">
-                <input id="harmonic-enabled" type="checkbox" />
-                <span>On</span>
+            <div class="fx-option" data-mode="chorus">
+              <div class="fx-option-head">
+                <span>Chorus</span>
+                <label class="fx-toggle">
+                  <input id="chorus-enabled" type="checkbox" />
+                  <span>On</span>
+                </label>
+              </div>
+              <label>
+                Mix
+                <input id="chorus-mix" type="range" min="0" max="0.6" step="0.01" value="0.18" />
+                <span id="chorus-mix-value">18%</span>
+              </label>
+              <label>
+                Depth
+                <input id="chorus-depth" type="range" min="0" max="0.01" step="0.0001" value="0.003" />
+                <span id="chorus-depth-value">3.0 ms</span>
+              </label>
+              <label>
+                Speed
+                <input id="chorus-speed" type="range" min="0.05" max="5" step="0.01" value="0.35" />
+                <span id="chorus-speed-value">0.35 Hz</span>
+              </label>
+              <label>
+                Stages
+                <input id="chorus-stages" type="range" min="1" max="6" step="1" value="3" />
+                <span id="chorus-stages-value">3</span>
               </label>
             </div>
-            <label>
-              Frequency
-              <input id="harmonic-frequency" type="range" min="30" max="200" step="1" value="80" />
-              <span id="harmonic-frequency-value">80 Hz</span>
-            </label>
-            <label>
-              Input
-              <input id="harmonic-input" type="range" min="0" max="2" step="0.01" value="1" />
-              <span id="harmonic-input-value">1.00</span>
-            </label>
-            <label>
-              High
-              <input id="harmonic-high" type="range" min="0" max="2" step="0.01" value="1" />
-              <span id="harmonic-high-value">1.00</span>
-            </label>
-            <label>
-              Original
-              <input id="harmonic-original" type="range" min="0" max="2" step="0.01" value="1" />
-              <span id="harmonic-original-value">1.00</span>
-            </label>
-            <label>
-              Harmonics
-              <input id="harmonic-harmonic" type="range" min="0" max="2" step="0.01" value="0" />
-              <span id="harmonic-harmonic-value">0.00</span>
-            </label>
-            <label>
-              Decay
-              <input id="harmonic-decay" type="range" min="-1" max="1" step="0.01" value="0" />
-              <span id="harmonic-decay-value">0.00</span>
-            </label>
-            <label>
-              Response
-              <input id="harmonic-response" type="range" min="1" max="200" step="1" value="20" />
-              <span id="harmonic-response-value">20 ms</span>
-            </label>
-            <label>
-              Highpass
-              <select id="harmonic-highpass">
-                <option value="0">DC</option>
-                <option value="1">1st Order</option>
-                <option value="2">2nd Order</option>
-              </select>
-              <span id="harmonic-highpass-value">DC</span>
-            </label>
+            <div class="fx-option" data-mode="bass" hidden>
+              <div class="fx-option-head">
+                <span>Psychoacoustic Bass</span>
+                <label class="fx-toggle">
+                  <input id="harmonic-enabled" type="checkbox" />
+                  <span>On</span>
+                </label>
+              </div>
+              <label>
+                Frequency
+                <input id="harmonic-frequency" type="range" min="30" max="200" step="1" value="80" />
+                <span id="harmonic-frequency-value">80 Hz</span>
+              </label>
+              <label>
+                Input
+                <input id="harmonic-input" type="range" min="0" max="2" step="0.01" value="1" />
+                <span id="harmonic-input-value">1.00</span>
+              </label>
+              <label>
+                High
+                <input id="harmonic-high" type="range" min="0" max="2" step="0.01" value="1" />
+                <span id="harmonic-high-value">1.00</span>
+              </label>
+              <label>
+                Original
+                <input id="harmonic-original" type="range" min="0" max="2" step="0.01" value="1" />
+                <span id="harmonic-original-value">1.00</span>
+              </label>
+              <label>
+                Harmonics
+                <input id="harmonic-harmonic" type="range" min="0" max="2" step="0.01" value="0" />
+                <span id="harmonic-harmonic-value">0.00</span>
+              </label>
+              <label>
+                Decay
+                <input id="harmonic-decay" type="range" min="-1" max="1" step="0.01" value="0" />
+                <span id="harmonic-decay-value">0.00</span>
+              </label>
+              <label>
+                Response
+                <input id="harmonic-response" type="range" min="1" max="200" step="1" value="20" />
+                <span id="harmonic-response-value">20 ms</span>
+              </label>
+              <label>
+                Highpass
+                <select id="harmonic-highpass">
+                  <option value="0">DC</option>
+                  <option value="1">1st Order</option>
+                  <option value="2">2nd Order</option>
+                </select>
+                <span id="harmonic-highpass-value">DC</span>
+              </label>
+            </div>
           </div>
 
           <div class="fx-card">
