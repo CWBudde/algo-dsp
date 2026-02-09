@@ -67,11 +67,26 @@ type EffectsParams struct {
 	ChorusStages  int
 
 	ReverbEnabled  bool
+	ReverbModel    string
 	ReverbWet      float64
 	ReverbDry      float64
 	ReverbRoomSize float64
 	ReverbDamp     float64
 	ReverbGain     float64
+	ReverbRT60     float64
+	ReverbPreDelay float64
+	ReverbModDepth float64
+	ReverbModRate  float64
+
+	HarmonicBassEnabled    bool
+	HarmonicBassFrequency  float64
+	HarmonicBassInputGain  float64
+	HarmonicBassHighGain   float64
+	HarmonicBassOriginal   float64
+	HarmonicBassHarmonic   float64
+	HarmonicBassDecay      float64
+	HarmonicBassResponseMs float64
+	HarmonicBassHighpass   int
 }
 
 // CompressorParams defines compressor settings.
@@ -126,6 +141,8 @@ type Engine struct {
 	effects EffectsParams
 	chorus  *effects.Chorus
 	reverb  *effects.Reverb
+	fdn     *effects.FDNReverb
+	bass    *effects.HarmonicBass
 
 	compParams CompressorParams
 	compressor *effects.Compressor
@@ -194,17 +211,31 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			Master:     0.75,
 		},
 		effects: EffectsParams{
-			ChorusEnabled:  false,
-			ChorusMix:      0.18,
-			ChorusDepth:    0.003,
-			ChorusSpeedHz:  0.35,
-			ChorusStages:   3,
-			ReverbEnabled:  false,
-			ReverbWet:      0.22,
-			ReverbDry:      1.0,
-			ReverbRoomSize: 0.72,
-			ReverbDamp:     0.45,
-			ReverbGain:     0.015,
+			ChorusEnabled:          false,
+			ChorusMix:              0.18,
+			ChorusDepth:            0.003,
+			ChorusSpeedHz:          0.35,
+			ChorusStages:           3,
+			ReverbEnabled:          false,
+			ReverbModel:            "freeverb",
+			ReverbWet:              0.22,
+			ReverbDry:              1.0,
+			ReverbRoomSize:         0.72,
+			ReverbDamp:             0.45,
+			ReverbGain:             0.015,
+			ReverbRT60:             1.8,
+			ReverbPreDelay:         0.01,
+			ReverbModDepth:         0.002,
+			ReverbModRate:          0.1,
+			HarmonicBassEnabled:    false,
+			HarmonicBassFrequency:  80,
+			HarmonicBassInputGain:  1,
+			HarmonicBassHighGain:   1,
+			HarmonicBassOriginal:   1,
+			HarmonicBassHarmonic:   0,
+			HarmonicBassDecay:      0,
+			HarmonicBassResponseMs: 20,
+			HarmonicBassHighpass:   0,
 		},
 		compParams: CompressorParams{
 			Enabled:      false,
@@ -237,6 +268,16 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 	}
 	e.chorus = chorus
 	e.reverb = effects.NewReverb()
+	fdn, err := effects.NewFDNReverb(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.fdn = fdn
+	bass, err := effects.NewHarmonicBass(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.bass = bass
 	comp, err := effects.NewCompressor(sampleRate)
 	if err != nil {
 		return nil, err
@@ -287,11 +328,18 @@ func (e *Engine) Render(dst []float32) {
 		}
 
 		x := e.nextSample()
+		if e.effects.HarmonicBassEnabled {
+			x = e.bass.ProcessSample(x)
+		}
 		if e.effects.ChorusEnabled {
 			x = e.chorus.ProcessSample(x)
 		}
 		if e.effects.ReverbEnabled {
-			x = e.reverb.ProcessSample(x)
+			if e.effects.ReverbModel == "fdn" {
+				x = e.fdn.ProcessSample(x)
+			} else {
+				x = e.reverb.ProcessSample(x)
+			}
 		}
 		x = e.hp.ProcessSample(x)
 		x = e.low.ProcessSample(x)
