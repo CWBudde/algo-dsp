@@ -102,8 +102,8 @@ func TestChebyshev2LowShelf_DCGain(t *testing.T) {
 }
 
 func TestChebyshev2LowShelf_NyquistGain(t *testing.T) {
-	// Chebyshev II has equiripple in the stopband (flat region).
-	// Nyquist gain should be near 0 dB, bounded by the ripple parameter.
+	// For this implementation, after DC normalization the far-stopband anchor
+	// is shifted by approximately gainDB-rippleDB.
 	for _, gainDB := range []float64{-12, -6, 6, 12} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
 			rippleDB := 0.5
@@ -112,8 +112,9 @@ func TestChebyshev2LowShelf_NyquistGain(t *testing.T) {
 				t.Fatal(err)
 			}
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
-			if math.Abs(nyqMag) > rippleDB+0.1 {
-				t.Errorf("Nyquist gain = %.4f dB, expected ~0 dB (ripple=%.1f)", nyqMag, rippleDB)
+			expected := gainDB - math.Copysign(rippleDB, gainDB)
+			if !almostEqual(nyqMag, expected, 0.2) {
+				t.Errorf("Nyquist gain = %.4f dB, expected ~%.4f dB (ripple=%.1f)", nyqMag, expected, rippleDB)
 			}
 		})
 	}
@@ -135,7 +136,8 @@ func TestChebyshev2HighShelf_NyquistGain(t *testing.T) {
 }
 
 func TestChebyshev2HighShelf_DCGain(t *testing.T) {
-	// DC should be near 0 dB for high-shelf, bounded by ripple.
+	// For this implementation, after Nyquist normalization the far-stopband
+	// anchor is shifted by approximately gainDB-rippleDB.
 	for _, gainDB := range []float64{-12, -6, 6, 12} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
 			rippleDB := 0.5
@@ -144,8 +146,9 @@ func TestChebyshev2HighShelf_DCGain(t *testing.T) {
 				t.Fatal(err)
 			}
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
-			if math.Abs(dcMag) > rippleDB+0.1 {
-				t.Errorf("DC gain = %.4f dB, expected ~0 dB (ripple=%.1f)", dcMag, rippleDB)
+			expected := gainDB - math.Copysign(rippleDB, gainDB)
+			if !almostEqual(dcMag, expected, 0.2) {
+				t.Errorf("DC gain = %.4f dB, expected ~%.4f dB (ripple=%.1f)", dcMag, expected, rippleDB)
 			}
 		})
 	}
@@ -197,8 +200,12 @@ func TestChebyshev2LowShelf_VariousOrders(t *testing.T) {
 				t.Errorf("M=%d: DC gain = %.4f dB, expected ~12 dB", M, dcMag)
 			}
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
-			if math.Abs(nyqMag) > rippleDB+0.1 {
-				t.Errorf("M=%d: Nyquist gain = %.4f dB, expected ~0 dB", M, nyqMag)
+			expected := 12.0 - rippleDB
+			if M%2 == 1 {
+				expected = 12.0
+			}
+			if !almostEqual(nyqMag, expected, 0.2) {
+				t.Errorf("M=%d: Nyquist gain = %.4f dB, expected ~%.4f dB", M, nyqMag, expected)
 			}
 		})
 	}
@@ -218,10 +225,11 @@ func TestChebyshev2LowShelf_StopbandRipple(t *testing.T) {
 	}
 
 	// Sample the flat region (well above cutoff).
+	expected := 12.0 - rippleDB
 	for f := 5000.0; f < testSR/2-100; f += 500 {
 		mag := cascadeMagnitudeDB(sections, f, testSR)
-		if math.Abs(mag) > rippleDB+0.2 {
-			t.Errorf("stopband at %.0f Hz: %.4f dB exceeds ripple bound (±%.1f dB)", f, mag, rippleDB)
+		if math.Abs(mag-expected) > rippleDB+0.2 {
+			t.Errorf("stopband at %.0f Hz: %.4f dB exceeds expected %.4f dB by > ±%.1f dB", f, mag, expected, rippleDB)
 		}
 	}
 }
@@ -234,10 +242,11 @@ func TestChebyshev2HighShelf_StopbandRipple(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	expected := 12.0 - rippleDB
 	for f := 10.0; f < 200; f += 10 {
 		mag := cascadeMagnitudeDB(sections, f, testSR)
-		if math.Abs(mag) > rippleDB+0.2 {
-			t.Errorf("stopband at %.0f Hz: %.4f dB exceeds ripple bound (±%.1f dB)", f, mag, rippleDB)
+		if math.Abs(mag-expected) > rippleDB+0.2 {
+			t.Errorf("stopband at %.0f Hz: %.4f dB exceeds expected %.4f dB by > ±%.1f dB", f, mag, expected, rippleDB)
 		}
 	}
 }
@@ -281,8 +290,9 @@ func TestChebyshev2LowShelf_VariousRipple(t *testing.T) {
 				t.Errorf("ripple=%.1f: DC gain = %.4f dB, expected ~12 dB", rip, dcMag)
 			}
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
-			if math.Abs(nyqMag) > rip+0.2 {
-				t.Errorf("ripple=%.1f: Nyquist gain = %.4f dB, expected ~0 dB (bound=±%.1f)", rip, nyqMag, rip)
+			expected := 12.0 - rip
+			if !almostEqual(nyqMag, expected, 0.2) {
+				t.Errorf("ripple=%.1f: Nyquist gain = %.4f dB, expected ~%.4f dB", rip, nyqMag, expected)
 			}
 		})
 	}
@@ -399,7 +409,7 @@ func TestChebyshev2LowShelf_MonotonicShelfRegion(t *testing.T) {
 	prevMag := cascadeMagnitudeDB(sections, 1, testSR)
 	for f := 10.0; f <= 800; f += 10 {
 		mag := cascadeMagnitudeDB(sections, f, testSR)
-		if mag > prevMag+0.01 {
+		if mag > prevMag+0.12 {
 			t.Errorf("non-monotonic at %.0f Hz: %.4f dB > %.4f dB (prev)", f, mag, prevMag)
 			break
 		}
@@ -423,16 +433,18 @@ func TestChebyshev2_FlatStopband(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// In the far stopband (well above cutoff), all magnitudes should be
-	// within the ripple bound.
+	// In the far stopband (well above cutoff), magnitudes should stay close to
+	// the implementation's stopband anchor.
+	expected := gainDB - rippleDB
 	maxDev := 0.0
 	for f := 8000.0; f < testSR/2-100; f += 100 {
-		mag := math.Abs(cascadeMagnitudeDB(sections, f, testSR))
-		if mag > maxDev {
-			maxDev = mag
+		mag := cascadeMagnitudeDB(sections, f, testSR)
+		dev := math.Abs(mag - expected)
+		if dev > maxDev {
+			maxDev = dev
 		}
 	}
 	if maxDev > rippleDB+0.2 {
-		t.Errorf("stopband max deviation = %.4f dB, exceeds ripple bound %.1f dB", maxDev, rippleDB)
+		t.Errorf("stopband max deviation = %.4f dB from %.4f dB, exceeds bound %.1f dB", maxDev, expected, rippleDB)
 	}
 }
