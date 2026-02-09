@@ -49,6 +49,24 @@ func Chebyshev1HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 	return pass.Chebyshev1HP(freq, order, rippleDB, sampleRate)
 }
 
+// BesselLP designs a lowpass Bessel (Thomson) cascade.
+// The Bessel filter has maximally flat group delay in the passband.
+// Supported orders: 1 to 10. Returns nil for unsupported or invalid parameters.
+//
+// For odd orders, the final section is first-order (B2=A2=0).
+func BesselLP(freq float64, order int, sampleRate float64) []biquad.Coefficients {
+	return pass.BesselLP(freq, order, sampleRate)
+}
+
+// BesselHP designs a highpass Bessel (Thomson) cascade.
+// The Bessel filter has maximally flat group delay in the passband.
+// Supported orders: 1 to 10. Returns nil for unsupported or invalid parameters.
+//
+// For odd orders, the final section is first-order (B2=A2=0).
+func BesselHP(freq float64, order int, sampleRate float64) []biquad.Coefficients {
+	return pass.BesselHP(freq, order, sampleRate)
+}
+
 // Chebyshev2LP designs a lowpass Chebyshev Type II (inverse Chebyshev) cascade.
 //
 // Uses an analog prototype with inverted Chebyshev Type I poles and
