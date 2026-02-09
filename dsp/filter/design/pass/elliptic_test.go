@@ -3,7 +3,41 @@ package pass
 import (
 	"math"
 	"testing"
+
+	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
+
+func bandMaxMin(sections []biquad.Coefficients, fStart, fEnd, step, sr float64) (float64, float64) {
+	maxDB := -math.MaxFloat64
+	minDB := math.MaxFloat64
+	for f := fStart; f <= fEnd; f += step {
+		d := cascadeMagDB(sections, f, sr)
+		if d > maxDB {
+			maxDB = d
+		}
+		if d < minDB {
+			minDB = d
+		}
+	}
+	return maxDB, minDB
+}
+
+func interiorExtremaCount(sections []biquad.Coefficients, fStart, fEnd, step, sr float64) int {
+	var vals []float64
+	for f := fStart; f <= fEnd; f += step {
+		vals = append(vals, cascadeMagDB(sections, f, sr))
+	}
+	if len(vals) < 3 {
+		return 0
+	}
+	count := 0
+	for i := 1; i < len(vals)-1; i++ {
+		if (vals[i] > vals[i-1] && vals[i] > vals[i+1]) || (vals[i] < vals[i-1] && vals[i] < vals[i+1]) {
+			count++
+		}
+	}
+	return count
+}
 
 // TestEllipticLP_ValidOrders tests that elliptic lowpass produces correct section counts.
 func TestEllipticLP_ValidOrders(t *testing.T) {
@@ -79,18 +113,26 @@ func TestEllipticLP_PassbandRipple(t *testing.T) {
 	// Test passband up to 80% of cutoff frequency.
 	maxRipple := 0.0
 	minGain := 100.0
+	maxRippleFreq := 0.0
+	minGainFreq := 0.0
 	for freq := 10.0; freq < fc*0.8; freq += 10 {
 		magDB := cascadeMagDB(sections, freq, sr)
-		maxRipple = math.Max(maxRipple, math.Abs(magDB))
-		minGain = math.Min(minGain, magDB)
+		if absDB := math.Abs(magDB); absDB > maxRipple {
+			maxRipple = absDB
+			maxRippleFreq = freq
+		}
+		if magDB < minGain {
+			minGain = magDB
+			minGainFreq = freq
+		}
 	}
 
 	// Passband ripple should be within the specified dB range.
 	if maxRipple > rippleDB+0.1 {
-		t.Errorf("passband ripple %.3f dB exceeds spec %.3f dB", maxRipple, rippleDB)
+		t.Errorf("passband ripple %.3f dB at %.1f Hz exceeds spec %.3f dB", maxRipple, maxRippleFreq, rippleDB)
 	}
 	if minGain < -rippleDB-0.1 {
-		t.Errorf("passband minimum %.3f dB exceeds ripple spec %.3f dB", minGain, rippleDB)
+		t.Errorf("passband minimum %.3f dB at %.1f Hz exceeds ripple spec %.3f dB", minGain, minGainFreq, rippleDB)
 	}
 }
 
@@ -105,14 +147,18 @@ func TestEllipticLP_StopbandAttenuation(t *testing.T) {
 
 	// Test stopband from 2x cutoff to Nyquist.
 	maxStopband := -200.0
+	maxStopbandFreq := 0.0
 	for freq := fc * 2; freq < sr*0.45; freq += 100 {
 		magDB := cascadeMagDB(sections, freq, sr)
-		maxStopband = math.Max(maxStopband, magDB)
+		if magDB > maxStopband {
+			maxStopband = magDB
+			maxStopbandFreq = freq
+		}
 	}
 
 	// Stopband should be at least as attenuated as specified.
 	if maxStopband > -stopbandDB+1.0 {
-		t.Errorf("stopband peak %.1f dB, expected below %.1f dB", maxStopband, -stopbandDB)
+		t.Errorf("stopband peak %.1f dB at %.1f Hz, expected below %.1f dB", maxStopband, maxStopbandFreq, -stopbandDB)
 	}
 }
 
@@ -128,18 +174,26 @@ func TestEllipticHP_PassbandRipple(t *testing.T) {
 	// Test passband from 1.2x cutoff to 80% Nyquist.
 	maxRipple := 0.0
 	minGain := 100.0
+	maxRippleFreq := 0.0
+	minGainFreq := 0.0
 	for freq := fc * 1.2; freq < sr*0.4; freq += 100 {
 		magDB := cascadeMagDB(sections, freq, sr)
-		maxRipple = math.Max(maxRipple, math.Abs(magDB))
-		minGain = math.Min(minGain, magDB)
+		if absDB := math.Abs(magDB); absDB > maxRipple {
+			maxRipple = absDB
+			maxRippleFreq = freq
+		}
+		if magDB < minGain {
+			minGain = magDB
+			minGainFreq = freq
+		}
 	}
 
 	// Passband ripple should be within spec.
 	if maxRipple > rippleDB+0.2 {
-		t.Errorf("HP passband ripple %.3f dB exceeds spec %.3f dB", maxRipple, rippleDB)
+		t.Errorf("HP passband ripple %.3f dB at %.1f Hz exceeds spec %.3f dB", maxRipple, maxRippleFreq, rippleDB)
 	}
 	if minGain < -rippleDB-0.2 {
-		t.Errorf("HP passband minimum %.3f dB exceeds ripple spec %.3f dB", minGain, rippleDB)
+		t.Errorf("HP passband minimum %.3f dB at %.1f Hz exceeds ripple spec %.3f dB", minGain, minGainFreq, rippleDB)
 	}
 }
 
@@ -154,14 +208,18 @@ func TestEllipticHP_StopbandAttenuation(t *testing.T) {
 
 	// Test stopband from 10 Hz to 0.5x cutoff.
 	maxStopband := -200.0
+	maxStopbandFreq := 0.0
 	for freq := 10.0; freq < fc*0.5; freq += 10 {
 		magDB := cascadeMagDB(sections, freq, sr)
-		maxStopband = math.Max(maxStopband, magDB)
+		if magDB > maxStopband {
+			maxStopband = magDB
+			maxStopbandFreq = freq
+		}
 	}
 
 	// Stopband should meet spec.
 	if maxStopband > -stopbandDB+1.0 {
-		t.Errorf("HP stopband peak %.1f dB, expected below %.1f dB", maxStopband, -stopbandDB)
+		t.Errorf("HP stopband peak %.1f dB at %.1f Hz, expected below %.1f dB", maxStopband, maxStopbandFreq, -stopbandDB)
 	}
 }
 
@@ -286,7 +344,7 @@ func TestEllipticHP_NyquistGain(t *testing.T) {
 
 	nyqDB := cascadeMagDB(sections, sr*0.49, sr) // Test near Nyquist
 	if math.Abs(nyqDB) > 0.1 {
-		t.Errorf("Nyquist gain %.3f dB, expected ~0 dB", nyqDB)
+		t.Errorf("Nyquist gain %.3f dB at %.1f Hz, expected ~0 dB", nyqDB, sr*0.49)
 	}
 }
 
@@ -333,5 +391,61 @@ func TestEllipticHP_FiniteResponses(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// TestEllipticLP_RippleParameterAffectsPassband enforces a core elliptic property:
+// increasing rippleDB must increase passband ripple extent for fixed order/stopband.
+func TestEllipticLP_RippleParameterAffectsPassband(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+	order := 4
+	stopbandDB := 40.0
+
+	lowRipple := EllipticLP(fc, order, 0.1, stopbandDB, sr)
+	highRipple := EllipticLP(fc, order, 1.0, stopbandDB, sr)
+
+	lowMax, lowMin := bandMaxMin(lowRipple, 10, 0.9*fc, 10, sr)
+	highMax, highMin := bandMaxMin(highRipple, 10, 0.9*fc, 10, sr)
+
+	lowSpan := lowMax - lowMin
+	highSpan := highMax - highMin
+
+	if highSpan <= lowSpan+0.2 {
+		t.Fatalf("rippleDB does not affect LP passband as expected: span@0.1dB=%.3f, span@1.0dB=%.3f", lowSpan, highSpan)
+	}
+}
+
+// TestEllipticHP_RippleParameterAffectsPassband enforces the same for highpass.
+func TestEllipticHP_RippleParameterAffectsPassband(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+	order := 4
+	stopbandDB := 40.0
+
+	lowRipple := EllipticHP(fc, order, 0.1, stopbandDB, sr)
+	highRipple := EllipticHP(fc, order, 1.0, stopbandDB, sr)
+
+	lowMax, lowMin := bandMaxMin(lowRipple, 1.2*fc, 0.4*sr, 100, sr)
+	highMax, highMin := bandMaxMin(highRipple, 1.2*fc, 0.4*sr, 100, sr)
+
+	lowSpan := lowMax - lowMin
+	highSpan := highMax - highMin
+
+	if highSpan <= lowSpan+0.2 {
+		t.Fatalf("rippleDB does not affect HP passband as expected: span@0.1dB=%.3f, span@1.0dB=%.3f", lowSpan, highSpan)
+	}
+}
+
+// TestEllipticLP_PassbandHasInteriorRippleExtrema checks the passband shape is not
+// a purely monotonic roll-off for order>=4; elliptic passbands should be equiripple.
+func TestEllipticLP_PassbandHasInteriorRippleExtrema(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+	sections := EllipticLP(fc, 4, 0.5, 40, sr)
+
+	extrema := interiorExtremaCount(sections, 50, 0.95*fc, 10, sr)
+	if extrema < 1 {
+		t.Fatalf("LP passband appears monotonic (no interior extrema), expected equiripple behavior")
 	}
 }
