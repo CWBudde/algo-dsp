@@ -5,6 +5,7 @@ import (
 	"math/cmplx"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+	"github.com/cwbudde/algo-dsp/internal/ellipticmath"
 )
 
 // soSection represents a second-order analog prototype section
@@ -239,38 +240,13 @@ func isZero(v float64) bool {
 // otherwise it is interpreted as the fixed number of iterations M.
 // The sequence converges to zero and is used by ellipk, cde, sne, and acde.
 func landen(k, tol float64) []float64 {
-	var v []float64
-	if k == 0 || k == 1.0 {
-		return []float64{k}
-	}
-	if tol < 1 {
-		// Iterate until the modulus drops below the tolerance.
-		for k > tol {
-			t := k / (1.0 + math.Sqrt((1-k)*(1+k)))
-			k = t * t
-			v = append(v, k)
-		}
-	} else {
-		// Fixed number of iterations specified by the caller.
-		M := int(tol)
-		for i := 1; i <= M; i++ {
-			t := k / (1.0 + math.Sqrt((1-k)*(1+k)))
-			k = t * t
-			v = append(v, k)
-		}
-	}
-
-	return v
+	return ellipticmath.Landen(k, tol)
 }
 
 // landenK computes K from a precomputed Landen sequence using the product formula
 // K(k) = (pi/2) * product(1 + v[i]). The sequence is not modified.
 func landenK(v []float64) float64 {
-	prod := 1.0
-	for _, x := range v {
-		prod *= 1.0 + x
-	}
-	return prod * math.Pi * 0.5
+	return ellipticmath.LandenK(v)
 }
 
 // ellipk computes the complete elliptic integral of the first kind K(k)
@@ -278,46 +254,14 @@ func landenK(v []float64) float64 {
 // Uses the Landen transformation for the general case, with asymptotic
 // approximations near k=0 and k=1 where the transform is ill-conditioned.
 func ellipk(k, tol float64) (float64, float64) {
-	return ellipkReuse(k, tol, nil)
+	return ellipticmath.EllipK(k, tol)
 }
 
 // ellipkReuse is like ellipk but accepts an optional precomputed Landen sequence
 // for k (used for the K half). If vk is nil, it computes the sequence internally.
 // The slice is consumed and must not be reused by the caller.
 func ellipkReuse(k, tol float64, vk []float64) (float64, float64) {
-	kmin := 1e-6
-	kmax := math.Sqrt(1 - kmin*kmin)
-
-	// Compute K(k): handle singularity at k=1, asymptotic for k near 1,
-	// and the Landen product formula for the general case.
-	var K, Kp float64
-	if k == 1.0 {
-		K = math.Inf(1)
-	} else if k > kmax {
-		// Asymptotic expansion for k near 1 using the complementary modulus.
-		kp := math.Sqrt((1 - k) * (1 + k))
-		L := -math.Log(kp / 4.0)
-		K = L + (L-1)*kp*kp/4.0
-	} else {
-		if vk == nil {
-			vk = landen(k, tol)
-		}
-		K = landenK(vk)
-	}
-
-	// Compute K'(k) = K(k') analogously: singularity at k=0,
-	// asymptotic near k=0, and Landen product for the general case.
-	if k == 0.0 {
-		Kp = math.Inf(1)
-	} else if k < kmin {
-		L := -math.Log(k / 4.0)
-		Kp = L + (L-1.0)*k*k/4.0
-	} else {
-		kp := math.Sqrt((1 - k) * (1 + k))
-		Kp = landenK(landen(kp, tol))
-	}
-
-	return K, Kp
+	return ellipticmath.EllipKReuse(k, tol, vk)
 }
 
 // ellipdeg2 computes the elliptic degree equation k1 = ellipdeg2(n, k)
@@ -325,43 +269,14 @@ func ellipkReuse(k, tol float64, vk []float64) (float64, float64) {
 // This is the fallback when k1 is very small and the direct sne-based
 // method in ellipdeg would lose precision.
 func ellipdeg2(n, k, tol float64) float64 {
-	const M = 7
-	K, Kp := ellipk(k, tol)
-	q := math.Exp(-math.Pi * Kp / K)
-	q1 := math.Pow(q, n)
-
-	// Accumulate the theta-function series using incremental powers
-	// instead of calling math.Pow each iteration.
-	// q1pow = q1^i, q1sq = q1^(i*i), q1gap = q1^(2i+1) (the step ratio).
-	var s1, s2 float64
-	q1sq := q1      // q1^(1*1) = q1
-	q1pow := q1     // q1^1
-	q1gap := q1     // will become q1^(2i+1) before advancing q1sq
-	q1_2 := q1 * q1 // q1^2, constant factor for incrementing the gap
-	for i := 1; i <= M; i++ {
-		s2 += q1sq         // += q1^(i*i)
-		s1 += q1sq * q1pow // += q1^(i*(i+1))
-		// Advance: q1^((i+1)^2) = q1^(i^2) * q1^(2i+1)
-		q1gap *= q1_2 // q1^(2i+1)
-		q1sq *= q1gap
-		q1pow *= q1 // q1^(i+1)
-	}
-
-	r := (1.0 + s1) / (1.0 + 2*s2)
-	return 4 * math.Sqrt(q1) * r * r
+	return ellipticmath.EllipDeg2(n, k, tol)
 }
 
 // srem computes a symmetric remainder of x modulo y, adjusting the standard
 // math.Remainder result so the output lies in [-y/2, y/2]. This is needed
 // for normalizing elliptic function arguments to their fundamental period.
 func srem(x, y float64) float64 {
-	z := math.Remainder(x, y)
-	correction := 0.0
-	if math.Abs(z) > y/2.0 {
-		correction = 1.0
-	}
-
-	return z - y*math.Copysign(correction, z)
+	return ellipticmath.SymmetricRemainder(x, y)
 }
 
 // acde computes the inverse cd elliptic function acd(w, k) using the
@@ -369,65 +284,26 @@ func srem(x, y float64) float64 {
 // quarter-period rectangle using srem to keep real and imaginary parts
 // within the fundamental domain.
 func acde(w complex128, k, tol float64) complex128 {
-	// Descend through the Landen sequence, transforming w at each step
-	// to reduce the modulus toward zero where acos gives the answer.
-	v := landen(k, tol)
-	for i := range v {
-		v1 := k
-		if i > 0 {
-			v1 = v[i-1]
-		}
-		w = w / (1.0 + cmplx.Sqrt(1.0-w*w*complex(v1*v1, 0))) * 2.0 / (1 + complex(v[i], 0))
-	}
-
-	// At the bottom of the Landen chain, k ~ 0 so cd ~ cos;
-	// recover the argument via acos and normalize to the period rectangle.
-	// Reuse the already-computed Landen sequence for K to avoid redundant work.
-	u := 2.0 / math.Pi * cmplx.Acos(w)
-	K, Kp := ellipkReuse(k, tol, v)
-
-	return complex(srem(real(u), 4), 0) + complex(0, 1)*complex(srem(imag(u), 2*(Kp/K)), 0)
+	return ellipticmath.ACDE(w, k, tol)
 }
 
 // asne computes the inverse sn elliptic function asn(w, k) = 1 - acd(w, k).
 // This identity relates the Jacobi sn and cd functions via their quarter-period shift.
 func asne(w complex128, k, tol float64) complex128 {
-	return 1.0 - acde(w, k, tol)
+	return ellipticmath.ASNE(w, k, tol)
 }
 
 // cde evaluates the Jacobi cd elliptic function cd(u, k) using the
 // ascending Landen transformation. Starting from cos(u*pi/2) at the
 // smallest modulus, it iterates back up through the Landen sequence.
 func cde(u complex128, k, tol float64) complex128 {
-	v := landen(k, tol)
-	// Start with the trigonometric approximation valid at near-zero modulus.
-	w := cmplx.Cos(u * math.Pi * 0.5)
-	// Ascend back through the Landen sequence, inverting each descent step.
-	for i := len(v) - 1; i >= 0; i-- {
-		w = (1 + complex(v[i], 0)) * w / (1.0 + complex(v[i], 0)*w*w)
-	}
-
-	return w
+	return ellipticmath.CDE(u, k, tol)
 }
 
 // sne evaluates the Jacobi sn elliptic function for a vector of real arguments u.
 // Uses the ascending Landen transformation starting from sin(u*pi/2).
 func sne(u []float64, k, tol float64) []float64 {
-	v := landen(k, tol)
-	// Initialize with the sine approximation valid at near-zero modulus.
-	w := make([]float64, len(u))
-	for i := range u {
-		w[i] = math.Sin(u[i] * math.Pi * 0.5)
-	}
-	// Ascend through the Landen sequence, applying the inverse descent
-	// transformation to each element of the result vector.
-	for i := len(v) - 1; i >= 0; i-- {
-		for j := range w {
-			w[j] = ((1 + v[i]) * w[j]) / (1 + v[i]*w[j]*w[j])
-		}
-	}
-
-	return w
+	return ellipticmath.SNE(u, k, tol)
 }
 
 // ellipdeg solves the degree equation for elliptic filter design:
@@ -435,28 +311,5 @@ func sne(u []float64, k, tol float64) []float64 {
 // Uses sne evaluation at uniformly spaced points on the complementary modulus,
 // falling back to ellipdeg2 when k1 is very small.
 func ellipdeg(N int, k1, tol float64) float64 {
-	L := N / 2
-	// Generate uniformly spaced sample points ui = (2i-1)/N for i=1..L.
-	ui := make([]float64, 0, L)
-	for i := 1; i <= L; i++ {
-		ui = append(ui, (2.0*float64(i)-1.0)/float64(N))
-	}
-	kmin := 1e-6
-	if k1 < kmin {
-		// For very small k1 the direct method loses precision;
-		// use the nome-based series expansion instead.
-		return ellipdeg2(1.0/float64(N), k1, tol)
-	}
-
-	// Evaluate sn at the sample points using the complementary modulus kc,
-	// then compute k from the product formula k' = kc^N * prod(w)^4.
-	kc := math.Sqrt((1 - k1) * (1 + k1))
-	w := sne(ui, kc, tol)
-	prod := 1.0
-	for _, x := range w {
-		prod *= x
-	}
-	kp := math.Pow(kc, float64(N)) * math.Pow(prod, 4)
-
-	return math.Sqrt(1 - kp*kp)
+	return ellipticmath.EllipDeg(N, k1, tol)
 }
