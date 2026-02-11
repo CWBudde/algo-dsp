@@ -495,7 +495,7 @@ func arcJacSC1(w, m, tol float64) float64 {
 }
 
 func jacobiComplement(k complex128) complex128 {
-	return cmplx.Sqrt((1.0-k)*(1.0+k))
+	return cmplx.Sqrt((1.0 - k) * (1.0 + k))
 }
 
 func arcJacSN(w complex128, m, tol float64) complex128 {
