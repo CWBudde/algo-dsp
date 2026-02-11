@@ -3,8 +3,18 @@ package pass
 import (
 	"math"
 	"math/cmplx"
+	"sort"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+)
+
+const (
+	ellipticTol       = 2.2e-16
+	ellipticRootTol   = 1e-9
+	ellipticEpsilon   = 2.220446049250313e-16
+	arcJacSNMaxIter   = 10
+	arcJacImagCheck   = 1e-7
+	ellipticSeriesLen = 7
 )
 
 // EllipticLP designs a lowpass elliptic (Cauer) filter cascade.
@@ -23,75 +33,27 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return nil
 	}
+	if rippleDB <= 0 || stopbandDB <= rippleDB {
+		return nil
+	}
 	k, ok := bilinearK(freq, sampleRate)
 	if !ok {
 		return nil
 	}
 
-	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)
-	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1)
-	k1 := e / es
-	kEllip := ellipdeg(order, k1, 1e-9)
-	v0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
-
-	r := order % 2
-	L := (order - r) / 2
-	sections := make([]biquad.Coefficients, 0, (order+1)/2)
-
-	if r == 1 {
-		p0 := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, 1e-9))
-		denom := k + p0
-		norm := 1 / denom
-		sections = append(sections, biquad.Coefficients{
-			B0: k * norm,
-			B1: k * norm,
-			B2: 0,
-			A1: (p0 - k) * norm,
-			A2: 0,
-		})
+	az, ap, ak, ok := ellipticAnalogPrototype(order, rippleDB, stopbandDB)
+	if !ok {
+		return nil
 	}
-
-	for i := 1; i <= L; i++ {
-		ui := (2.0*float64(i) - 1.0) / float64(order)
-
-		zi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
-		invZero := 1.0 / zi
-		zre := real(invZero)
-		zabs2 := cmplx.Abs(invZero)
-		zabs2 *= zabs2
-
-		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
-		invPole := 1.0 / pi
-		sigmaP := -real(invPole)
-		omegaP := imag(invPole)
-		pabs2 := sigmaP*sigmaP + omegaP*omegaP
-
-		k2 := k * k
-		bn0 := k2 - 2*k*zre + zabs2
-		bn1 := 2 * (zabs2 - k2)
-		bn2 := k2 + 2*k*zre + zabs2
-
-		ad0 := k2 + 2*k*sigmaP + pabs2
-		ad1 := 2 * (k2 - pabs2)
-		ad2 := k2 - 2*k*sigmaP + pabs2
-
-		b0 := bn0 / ad0
-		b1 := bn1 / ad0
-		b2 := bn2 / ad0
-		a1 := ad1 / ad0
-		a2 := ad2 / ad0
-
-		dcGain := (b0 + b1 + b2) / (1 + a1 + a2)
-		b0 /= dcGain
-		b1 /= dcGain
-		b2 /= dcGain
-
-		sections = append(sections, biquad.Coefficients{
-			B0: b0, B1: b1, B2: b2,
-			A1: a1, A2: a2,
-		})
+	dz, dp, dk, ok := bilinearZPK(az, ap, ak, k)
+	if !ok {
+		return nil
 	}
-
+	sections := zpkToSections(dz, dp, dk)
+	if len(sections) == 0 {
+		return nil
+	}
+	normalizeCascadeLP(sections)
 	return sections
 }
 
@@ -107,83 +69,501 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return nil
 	}
+	if rippleDB <= 0 || stopbandDB <= rippleDB {
+		return nil
+	}
 	k, ok := bilinearK(freq, sampleRate)
 	if !ok {
 		return nil
 	}
 
-	e := math.Sqrt(math.Pow(10, rippleDB/10) - 1)
-	es := math.Sqrt(math.Pow(10, stopbandDB/10) - 1)
-	k1 := e / es
-	kEllip := ellipdeg(order, k1, 1e-9)
-	v0 := asne(complex(0, 1)/complex(e, 0), k1, 1e-9) / complex(float64(order), 0)
+	az, ap, ak, ok := ellipticAnalogPrototype(order, rippleDB, stopbandDB)
+	if !ok {
+		return nil
+	}
+	hz, hp, hk, ok := lpToHPZPK(az, ap, ak)
+	if !ok {
+		return nil
+	}
+	dz, dp, dk, ok := bilinearZPK(hz, hp, hk, k)
+	if !ok {
+		return nil
+	}
+	sections := zpkToSections(dz, dp, dk)
+	if len(sections) == 0 {
+		return nil
+	}
+	normalizeCascadeHP(sections)
+	return sections
+}
 
-	r := order % 2
-	L := (order - r) / 2
-	sections := make([]biquad.Coefficients, 0, (order+1)/2)
-
-	if r == 1 {
-		p0LP := -1.0 / real(complex(0, 1)*cde(-1.0+v0, kEllip, 1e-9))
-		p0HP := -1.0 / p0LP
-		denom := k - p0HP
-		norm := 1 / denom
-		sections = append(sections, biquad.Coefficients{
-			B0: k * norm,
-			B1: -k * norm,
-			B2: 0,
-			A1: (-k - p0HP) * norm,
-			A2: 0,
-		})
+func ellipticAnalogPrototype(order int, rippleDB, stopbandDB float64) ([]complex128, []complex128, float64, bool) {
+	if order <= 0 {
+		return nil, nil, 0, false
+	}
+	epsSq := dbToMinusOne(rippleDB)
+	stopSq := dbToMinusOne(stopbandDB)
+	if epsSq <= 0 || stopSq <= 0 {
+		return nil, nil, 0, false
+	}
+	ck1Sq := epsSq / stopSq
+	if !(ck1Sq > 0 && ck1Sq < 1) {
+		return nil, nil, 0, false
 	}
 
-	for i := 1; i <= L; i++ {
-		ui := (2.0*float64(i) - 1.0) / float64(order)
+	if order == 1 {
+		p := -math.Sqrt(1.0 / epsSq)
+		return nil, []complex128{complex(p, 0)}, -p, true
+	}
 
-		zi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
-		invZero := 1.0 / zi
-		zre := real(invZero)
-		zabs2 := cmplx.Abs(invZero)
-		zabs2 *= zabs2
+	m := ellipdegParam(order, ck1Sq, ellipticTol)
+	if !(m > 0 && m < 1) {
+		return nil, nil, 0, false
+	}
+	kmod := math.Sqrt(m)
+	capk, _ := ellipk(kmod, ellipticTol)
+	ck1 := math.Sqrt(ck1Sq)
+	val0, _ := ellipk(ck1, ellipticTol)
+	if capk == 0 || val0 == 0 || math.IsNaN(capk) || math.IsNaN(val0) || math.IsInf(capk, 0) || math.IsInf(val0, 0) {
+		return nil, nil, 0, false
+	}
 
-		pi := complex(0, 1) * cde(complex(ui, 0)-v0, kEllip, 1e-9)
-		invPole := 1.0 / pi
-		sigmaPLP := -real(invPole)
-		omegaPLP := imag(invPole)
+	start := 1 - order%2
+	svals := make([]float64, 0, (order+1)/2)
+	cvals := make([]float64, 0, (order+1)/2)
+	dvals := make([]float64, 0, (order+1)/2)
+	zerosBase := make([]complex128, 0, order)
 
-		pabs2LP := sigmaPLP*sigmaPLP + omegaPLP*omegaPLP
-		sigmaPHP := sigmaPLP / pabs2LP
-		omegaPHP := omegaPLP / pabs2LP
+	for j := start; j < order; j += 2 {
+		u := float64(j) * capk / float64(order)
+		sn, cn, dn, ok := jacobiSCDFloat(u, kmod, ellipticTol)
+		if !ok {
+			return nil, nil, 0, false
+		}
+		svals = append(svals, sn)
+		cvals = append(cvals, cn)
+		dvals = append(dvals, dn)
+		if math.Abs(sn) > ellipticEpsilon {
+			zerosBase = append(zerosBase, complex(0, 1)/(complex(kmod*sn, 0)))
+		}
+	}
 
-		k2 := k * k
-		bn0 := zabs2*k2 - 2*k*zre + 1
-		bn1 := 2 * (1 - zabs2*k2)
-		bn2 := zabs2*k2 + 2*k*zre + 1
+	eps := math.Sqrt(epsSq)
+	r := arcJacSC1(1.0/eps, ck1Sq, ellipticTol)
+	if !(r > 0) || math.IsNaN(r) || math.IsInf(r, 0) {
+		return nil, nil, 0, false
+	}
+	v0 := capk * r / (float64(order) * val0)
+	sv, cv, dv, ok := jacobiSCDFloat(v0, math.Sqrt(1.0-m), ellipticTol)
+	if !ok {
+		return nil, nil, 0, false
+	}
 
-		pabs2HP := sigmaPHP*sigmaPHP + omegaPHP*omegaPHP
-		ad0 := pabs2HP*k2 + 2*k*sigmaPHP + 1
-		ad1 := 2 * (1 - pabs2HP*k2)
-		ad2 := pabs2HP*k2 - 2*k*sigmaPHP + 1
+	polesBase := make([]complex128, len(svals))
+	for i := range svals {
+		den := 1.0 - (dvals[i]*sv)*(dvals[i]*sv)
+		if math.Abs(den) <= ellipticEpsilon {
+			return nil, nil, 0, false
+		}
+		num := complex(cvals[i]*dvals[i]*sv*cv, svals[i]*dv)
+		polesBase[i] = -num / complex(den, 0)
+	}
 
-		b0 := bn0 / ad0
-		b1 := bn1 / ad0
-		b2 := bn2 / ad0
-		a1 := ad1 / ad0
-		a2 := ad2 / ad0
+	poles := make([]complex128, 0, order)
+	if order%2 == 1 {
+		norm2 := 0.0
+		for _, p := range polesBase {
+			norm2 += real(p * cmplx.Conj(p))
+		}
+		thr := ellipticEpsilon * math.Sqrt(norm2)
+		poles = append(poles, polesBase...)
+		for _, p := range polesBase {
+			if math.Abs(imag(p)) > thr {
+				poles = append(poles, cmplx.Conj(p))
+			}
+		}
+	} else {
+		poles = append(poles, polesBase...)
+		for _, p := range polesBase {
+			poles = append(poles, cmplx.Conj(p))
+		}
+	}
 
-		nyqGain := (b0 - b1 + b2) / (1 - a1 + a2)
-		if nyqGain != 0 && !math.IsNaN(nyqGain) && !math.IsInf(nyqGain, 0) {
-			b0 /= nyqGain
-			b1 /= nyqGain
-			b2 /= nyqGain
+	zeros := make([]complex128, 0, len(zerosBase)*2)
+	for _, z := range zerosBase {
+		zeros = append(zeros, z, cmplx.Conj(z))
+	}
+
+	prodP := complexProductNeg(poles)
+	prodZ := complex(1, 0)
+	if len(zeros) > 0 {
+		prodZ = complexProductNeg(zeros)
+	}
+	if prodZ == 0 {
+		return nil, nil, 0, false
+	}
+	gain := real(prodP / prodZ)
+	if order%2 == 0 {
+		gain /= math.Sqrt(1.0 + epsSq)
+	}
+	if gain == 0 || math.IsNaN(gain) || math.IsInf(gain, 0) {
+		return nil, nil, 0, false
+	}
+	return zeros, poles, gain, true
+}
+
+func lpToHPZPK(z, p []complex128, k float64) ([]complex128, []complex128, float64, bool) {
+	degree := len(p) - len(z)
+	if degree < 0 {
+		return nil, nil, 0, false
+	}
+
+	zh := make([]complex128, 0, len(z)+degree)
+	for _, zr := range z {
+		if zr == 0 {
+			return nil, nil, 0, false
+		}
+		zh = append(zh, 1.0/zr)
+	}
+	for i := 0; i < degree; i++ {
+		zh = append(zh, 0)
+	}
+
+	ph := make([]complex128, 0, len(p))
+	for _, pr := range p {
+		if pr == 0 {
+			return nil, nil, 0, false
+		}
+		ph = append(ph, 1.0/pr)
+	}
+
+	kh := k
+	if len(z) > 0 {
+		kh *= real(complexProductNeg(z))
+	}
+	if len(p) > 0 {
+		den := real(complexProductNeg(p))
+		if den == 0 || math.IsNaN(den) || math.IsInf(den, 0) {
+			return nil, nil, 0, false
+		}
+		kh /= den
+	}
+	if kh == 0 || math.IsNaN(kh) || math.IsInf(kh, 0) {
+		return nil, nil, 0, false
+	}
+	return zh, ph, kh, true
+}
+
+func bilinearZPK(z, p []complex128, kGain, k float64) ([]complex128, []complex128, float64, bool) {
+	degree := len(p) - len(z)
+	if degree < 0 {
+		return nil, nil, 0, false
+	}
+
+	zd := make([]complex128, 0, len(z)+degree)
+	for _, zr := range z {
+		den := 1.0 - complex(k, 0)*zr
+		if den == 0 {
+			return nil, nil, 0, false
+		}
+		zd = append(zd, (1.0+complex(k, 0)*zr)/den)
+	}
+	for i := 0; i < degree; i++ {
+		zd = append(zd, -1)
+	}
+
+	pd := make([]complex128, 0, len(p))
+	for _, pr := range p {
+		den := 1.0 - complex(k, 0)*pr
+		if den == 0 {
+			return nil, nil, 0, false
+		}
+		pd = append(pd, (1.0+complex(k, 0)*pr)/den)
+	}
+
+	num := complexProductOneMinusK(z, k)
+	den := complexProductOneMinusK(p, k)
+	if den == 0 {
+		return nil, nil, 0, false
+	}
+	kd := kGain * real(num/den)
+	if kd == 0 || math.IsNaN(kd) || math.IsInf(kd, 0) {
+		return nil, nil, 0, false
+	}
+
+	return zd, pd, kd, true
+}
+
+func zpkToSections(z, p []complex128, gain float64) []biquad.Coefficients {
+	if len(p) == 0 {
+		return nil
+	}
+	pGroups := groupRoots(p)
+	zGroups := groupRoots(z)
+	if len(pGroups) == 0 {
+		return nil
+	}
+
+	sort.Slice(pGroups, func(i, j int) bool {
+		if len(pGroups[i]) != len(pGroups[j]) {
+			return len(pGroups[i]) > len(pGroups[j])
+		}
+		return groupImagAbs(pGroups[i]) > groupImagAbs(pGroups[j])
+	})
+
+	var zComplex, zSingle [][]complex128
+	for _, g := range zGroups {
+		if len(g) == 2 {
+			zComplex = append(zComplex, g)
+		} else {
+			zSingle = append(zSingle, g)
+		}
+	}
+
+	out := make([]biquad.Coefficients, 0, len(pGroups))
+	for _, pg := range pGroups {
+		var zg []complex128
+		if len(pg) == 2 {
+			if len(zComplex) > 0 {
+				zg = zComplex[0]
+				zComplex = zComplex[1:]
+			} else if len(zSingle) > 0 {
+				zg = zSingle[0]
+				zSingle = zSingle[1:]
+			}
+		} else {
+			if len(zSingle) > 0 {
+				zg = zSingle[0]
+				zSingle = zSingle[1:]
+			} else if len(zComplex) > 0 {
+				zg = zComplex[0]
+				zComplex = zComplex[1:]
+			}
 		}
 
-		sections = append(sections, biquad.Coefficients{
+		b0, b1, b2 := quadFromRoots(zg)
+		_, a1, a2 := quadFromRoots(pg)
+		out = append(out, biquad.Coefficients{
 			B0: b0, B1: b1, B2: b2,
 			A1: a1, A2: a2,
 		})
 	}
 
-	return sections
+	if len(out) > 0 && !math.IsNaN(gain) && !math.IsInf(gain, 0) && gain != 0 {
+		out[0].B0 *= gain
+		out[0].B1 *= gain
+		out[0].B2 *= gain
+	}
+
+	return out
+}
+
+func groupRoots(roots []complex128) [][]complex128 {
+	if len(roots) == 0 {
+		return nil
+	}
+	sortedRoots := append([]complex128(nil), roots...)
+	sort.Slice(sortedRoots, func(i, j int) bool {
+		ii := imag(sortedRoots[i])
+		jj := imag(sortedRoots[j])
+		if ii != jj {
+			return ii > jj
+		}
+		return real(sortedRoots[i]) < real(sortedRoots[j])
+	})
+
+	used := make([]bool, len(sortedRoots))
+	groups := make([][]complex128, 0, (len(sortedRoots)+1)/2)
+	reals := make([]complex128, 0, len(sortedRoots))
+
+	for i, r := range sortedRoots {
+		if used[i] {
+			continue
+		}
+		if math.Abs(imag(r)) <= ellipticRootTol {
+			used[i] = true
+			reals = append(reals, complex(real(r), 0))
+			continue
+		}
+		target := cmplx.Conj(r)
+		best := -1
+		bestDist := math.MaxFloat64
+		for j, rr := range sortedRoots {
+			if i == j || used[j] {
+				continue
+			}
+			d := cmplx.Abs(rr - target)
+			if d < bestDist {
+				bestDist = d
+				best = j
+			}
+		}
+		used[i] = true
+		if best != -1 && bestDist <= 1e-4 {
+			used[best] = true
+			groups = append(groups, []complex128{r, sortedRoots[best]})
+		} else {
+			groups = append(groups, []complex128{r})
+		}
+	}
+
+	sort.Slice(reals, func(i, j int) bool { return real(reals[i]) < real(reals[j]) })
+	for i := 0; i+1 < len(reals); i += 2 {
+		groups = append(groups, []complex128{reals[i], reals[i+1]})
+	}
+	if len(reals)%2 == 1 {
+		groups = append(groups, []complex128{reals[len(reals)-1]})
+	}
+
+	return groups
+}
+
+func groupImagAbs(g []complex128) float64 {
+	if len(g) == 0 {
+		return 0
+	}
+	maxImag := 0.0
+	for _, r := range g {
+		if a := math.Abs(imag(r)); a > maxImag {
+			maxImag = a
+		}
+	}
+	return maxImag
+}
+
+func quadFromRoots(group []complex128) (float64, float64, float64) {
+	switch len(group) {
+	case 0:
+		return 1, 0, 0
+	case 1:
+		r := group[0]
+		return 1, -real(r), 0
+	default:
+		r1, r2 := group[0], group[1]
+		return 1, -real(r1 + r2), real(r1 * r2)
+	}
+}
+
+func complexProductNeg(v []complex128) complex128 {
+	out := complex(1, 0)
+	for _, x := range v {
+		out *= -x
+	}
+	return out
+}
+
+func complexProductOneMinusK(v []complex128, k float64) complex128 {
+	out := complex(1, 0)
+	for _, x := range v {
+		out *= 1.0 - complex(k, 0)*x
+	}
+	return out
+}
+
+func jacobiSCDFloat(uAbs, k, tol float64) (float64, float64, float64, bool) {
+	if !(k >= 0 && k < 1) {
+		return 0, 0, 0, false
+	}
+	K, _ := ellipk(k, tol)
+	if K == 0 || math.IsNaN(K) || math.IsInf(K, 0) {
+		return 0, 0, 0, false
+	}
+	uNorm := uAbs / K
+	sn := sne([]float64{uNorm}, k, tol)[0]
+	if math.IsNaN(sn) || math.IsInf(sn, 0) {
+		return 0, 0, 0, false
+	}
+	dn2 := 1.0 - k*k*sn*sn
+	if dn2 < -1e-12 {
+		return 0, 0, 0, false
+	}
+	if dn2 < 0 {
+		dn2 = 0
+	}
+	dn := math.Sqrt(dn2)
+	cd := real(cde(complex(uNorm, 0), k, tol))
+	cn := cd * dn
+	return sn, cn, dn, true
+}
+
+func arcJacSC1(w, m, tol float64) float64 {
+	z := arcJacSN(complex(0, w), m, tol)
+	if math.Abs(real(z)) > arcJacImagCheck*math.Max(1.0, math.Abs(imag(z))) {
+		return math.NaN()
+	}
+	return imag(z)
+}
+
+func jacobiComplement(k complex128) complex128 {
+	return cmplx.Sqrt((1.0-k)*(1.0+k))
+}
+
+func arcJacSN(w complex128, m, tol float64) complex128 {
+	if m < 0 || m > 1 {
+		return complex(math.NaN(), math.NaN())
+	}
+	k := complex(math.Sqrt(m), 0)
+	if real(k) == 1 {
+		return cmplx.Atanh(w)
+	}
+
+	ks := []complex128{k}
+	for i := 0; i < arcJacSNMaxIter-1; i++ {
+		kn := ks[len(ks)-1]
+		if cmplx.Abs(kn) == 0 {
+			break
+		}
+		kp := jacobiComplement(kn)
+		ks = append(ks, (1.0-kp)/(1.0+kp))
+	}
+
+	K := 1.0
+	for i := 1; i < len(ks); i++ {
+		K *= real(1.0 + ks[i])
+	}
+	K *= math.Pi * 0.5
+
+	wn := w
+	for i := 0; i < len(ks)-1; i++ {
+		kn := ks[i]
+		knext := ks[i+1]
+		den := (1.0 + knext) * (1.0 + jacobiComplement(kn*wn))
+		if den == 0 {
+			return complex(math.NaN(), math.NaN())
+		}
+		wn = 2.0 * wn / den
+	}
+
+	u := (2.0 / math.Pi) * cmplx.Asin(wn)
+	return complex(K, 0) * u
+}
+
+func ellipdegParam(n int, m1, tol float64) float64 {
+	if n <= 0 || !(m1 > 0 && m1 < 1) {
+		return math.NaN()
+	}
+	k1 := math.Sqrt(m1)
+	K1, _ := ellipk(k1, tol)
+	K1p, _ := ellipk(math.Sqrt(1.0-m1), tol)
+	if K1 <= 0 || K1p <= 0 || math.IsNaN(K1) || math.IsNaN(K1p) || math.IsInf(K1, 0) || math.IsInf(K1p, 0) {
+		return math.NaN()
+	}
+
+	q1 := math.Exp(-math.Pi * K1p / K1)
+	q := math.Pow(q1, 1.0/float64(n))
+	num := 0.0
+	for mnum := 0; mnum < ellipticSeriesLen; mnum++ {
+		num += math.Pow(q, float64(mnum*(mnum+1)))
+	}
+	den := 1.0
+	for mnum := 1; mnum < ellipticSeriesLen; mnum++ {
+		den += 2.0 * math.Pow(q, float64(mnum*mnum))
+	}
+	return 16.0 * q * math.Pow(num/den, 4.0)
+}
+
+func dbToMinusOne(db float64) float64 {
+	return math.Expm1(math.Ln10 * db / 10.0)
 }
 
 func normalizeCascadeLP(sections []biquad.Coefficients) {
