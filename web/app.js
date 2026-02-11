@@ -325,6 +325,7 @@ function loadSettings() {
     if (el.reverbModRate) el.reverbModRate.value = state.effectsParams.reverbModRate;
     updateEffectsModeUI();
     updateEffectsText();
+    readEffectsFromUI();
   }
 
   if (settings.compParams) {
