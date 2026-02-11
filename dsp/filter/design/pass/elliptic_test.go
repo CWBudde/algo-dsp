@@ -449,3 +449,40 @@ func TestEllipticLP_PassbandHasInteriorRippleExtrema(t *testing.T) {
 		t.Fatalf("LP passband appears monotonic (no interior extrema), expected equiripple behavior")
 	}
 }
+
+// TestEllipticLPHP_EdgeCasesNearLimits validates stable, finite behavior near
+// frequency and ripple extremes without relying on diagnostic logging tests.
+func TestEllipticLPHP_EdgeCasesNearLimits(t *testing.T) {
+	const sr = 48000.0
+
+	cases := []struct {
+		name       string
+		fc         float64
+		order      int
+		rippleDB   float64
+		stopbandDB float64
+	}{
+		{name: "tiny cutoff", fc: 5.0, order: 4, rippleDB: 0.1, stopbandDB: 40},
+		{name: "low cutoff", fc: 20.0, order: 6, rippleDB: 0.5, stopbandDB: 60},
+		{name: "near nyquist", fc: sr * 0.499, order: 4, rippleDB: 0.5, stopbandDB: 40},
+		{name: "very small ripple", fc: 1000.0, order: 4, rippleDB: 0.01, stopbandDB: 40},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			lp := EllipticLP(tc.fc, tc.order, tc.rippleDB, tc.stopbandDB, sr)
+			hp := EllipticHP(tc.fc, tc.order, tc.rippleDB, tc.stopbandDB, sr)
+			if len(lp) == 0 || len(hp) == 0 {
+				t.Fatalf("expected non-empty sections for %+v", tc)
+			}
+			for _, s := range lp {
+				assertFiniteCoefficients(t, s)
+				assertStableSection(t, s)
+			}
+			for _, s := range hp {
+				assertFiniteCoefficients(t, s)
+				assertStableSection(t, s)
+			}
+		})
+	}
+}
