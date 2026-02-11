@@ -43,12 +43,12 @@ func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffici
 	e := math.Sqrt((G*G - Gb*Gb) / (Gb*Gb - G0*G0))
 	es := math.Sqrt((G*G - Gs*Gs) / (Gs*Gs - G0*G0))
 	k1 := e / es
-	k := ellipdeg(order, k1, 2.2e-16)
+	k := ellipticmath.EllipDeg(order, k1, 2.2e-16)
 
 	// Compute Jacobi elliptic function arguments for pole/zero placement.
 	// ju0 determines zeros, jv0 determines poles in the analog prototype.
-	ju0 := asne(complex(0, 1)*complex(G/(e*G0), 0), k1, 2.2e-16) / complex(float64(order), 0)
-	jv0 := asne(complex(0, 1)/complex(e, 0), k1, 2.2e-16) / complex(float64(order), 0)
+	ju0 := ellipticmath.ASNE(complex(0, 1)*complex(G/(e*G0), 0), k1, 2.2e-16) / complex(float64(order), 0)
+	jv0 := ellipticmath.ASNE(complex(0, 1)/complex(e, 0), k1, 2.2e-16) / complex(float64(order), 0)
 
 	// Determine if order is odd (r=1) or even (r=0);
 	// L = number of conjugate pole/zero pairs.
@@ -63,11 +63,11 @@ func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffici
 	} else {
 		// Odd order: compute the real zero and pole for the first-order section
 		// using the cd elliptic function evaluated at the prototype arguments.
-		z0 := real(complex(0, 1) * cde(-1.0+ju0, k, 2.2e-16))
+		z0 := real(complex(0, 1) * ellipticmath.CDE(-1.0+ju0, k, 2.2e-16))
 		B00 := G * WB
 		B01 := -G / z0
 		A00 := WB
-		A01 := -1 / real(complex(0, 1)*cde(-1.0+jv0, k, 2.2e-16))
+		A01 := -1 / real(complex(0, 1)*ellipticmath.CDE(-1.0+jv0, k, 2.2e-16))
 		aSections = append(aSections, soSection{b0: B00, b1: B01, b2: 0, a0: A00, a1: A01, a2: 0})
 	}
 
@@ -78,8 +78,8 @@ func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffici
 			ui := (2.0*float64(i) - 1.0) / float64(order)
 
 			// Evaluate cd function to get the i-th zero and pole in the s-plane.
-			zeros := complex(0, 1) * cde(complex(ui, 0)-ju0, k, 2.2e-16)
-			poles := complex(0, 1) * cde(complex(ui, 0)-jv0, k, 2.2e-16)
+			zeros := complex(0, 1) * ellipticmath.CDE(complex(ui, 0)-ju0, k, 2.2e-16)
+			poles := complex(0, 1) * ellipticmath.CDE(complex(ui, 0)-jv0, k, 2.2e-16)
 
 			// Invert and extract real parts and magnitudes to form the
 			// second-order section coefficients from the pole/zero locations.
@@ -233,83 +233,4 @@ func blt(aSections []soSection, w0 float64) []foSection {
 // used throughout to detect numerically negligible coefficients.
 func isZero(v float64) bool {
 	return math.Abs(v) < 1e-12
-}
-
-// landen computes the Landen sequence of descending moduli for the given
-// elliptic modulus k. If tol < 1 it is used as convergence tolerance;
-// otherwise it is interpreted as the fixed number of iterations M.
-// The sequence converges to zero and is used by ellipk, cde, sne, and acde.
-func landen(k, tol float64) []float64 {
-	return ellipticmath.Landen(k, tol)
-}
-
-// landenK computes K from a precomputed Landen sequence using the product formula
-// K(k) = (pi/2) * product(1 + v[i]). The sequence is not modified.
-func landenK(v []float64) float64 {
-	return ellipticmath.LandenK(v)
-}
-
-// ellipk computes the complete elliptic integral of the first kind K(k)
-// and its complement K'(k) = K(k') where k' = sqrt(1 - k^2).
-// Uses the Landen transformation for the general case, with asymptotic
-// approximations near k=0 and k=1 where the transform is ill-conditioned.
-func ellipk(k, tol float64) (float64, float64) {
-	return ellipticmath.EllipK(k, tol)
-}
-
-// ellipkReuse is like ellipk but accepts an optional precomputed Landen sequence
-// for k (used for the K half). If vk is nil, it computes the sequence internally.
-// The slice is consumed and must not be reused by the caller.
-func ellipkReuse(k, tol float64, vk []float64) (float64, float64) {
-	return ellipticmath.EllipKReuse(k, tol, vk)
-}
-
-// ellipdeg2 computes the elliptic degree equation k1 = ellipdeg2(n, k)
-// using the nome q and a truncated theta-function series (M=7 terms).
-// This is the fallback when k1 is very small and the direct sne-based
-// method in ellipdeg would lose precision.
-func ellipdeg2(n, k, tol float64) float64 {
-	return ellipticmath.EllipDeg2(n, k, tol)
-}
-
-// srem computes a symmetric remainder of x modulo y, adjusting the standard
-// math.Remainder result so the output lies in [-y/2, y/2]. This is needed
-// for normalizing elliptic function arguments to their fundamental period.
-func srem(x, y float64) float64 {
-	return ellipticmath.SymmetricRemainder(x, y)
-}
-
-// acde computes the inverse cd elliptic function acd(w, k) using the
-// descending Landen transformation. The result is normalized to the
-// quarter-period rectangle using srem to keep real and imaginary parts
-// within the fundamental domain.
-func acde(w complex128, k, tol float64) complex128 {
-	return ellipticmath.ACDE(w, k, tol)
-}
-
-// asne computes the inverse sn elliptic function asn(w, k) = 1 - acd(w, k).
-// This identity relates the Jacobi sn and cd functions via their quarter-period shift.
-func asne(w complex128, k, tol float64) complex128 {
-	return ellipticmath.ASNE(w, k, tol)
-}
-
-// cde evaluates the Jacobi cd elliptic function cd(u, k) using the
-// ascending Landen transformation. Starting from cos(u*pi/2) at the
-// smallest modulus, it iterates back up through the Landen sequence.
-func cde(u complex128, k, tol float64) complex128 {
-	return ellipticmath.CDE(u, k, tol)
-}
-
-// sne evaluates the Jacobi sn elliptic function for a vector of real arguments u.
-// Uses the ascending Landen transformation starting from sin(u*pi/2).
-func sne(u []float64, k, tol float64) []float64 {
-	return ellipticmath.SNE(u, k, tol)
-}
-
-// ellipdeg solves the degree equation for elliptic filter design:
-// given order N and selectivity k1, compute the discrimination parameter k.
-// Uses sne evaluation at uniformly spaced points on the complementary modulus,
-// falling back to ellipdeg2 when k1 is very small.
-func ellipdeg(N int, k1, tol float64) float64 {
-	return ellipticmath.EllipDeg(N, k1, tol)
 }

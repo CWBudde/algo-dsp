@@ -122,9 +122,9 @@ func ellipticAnalogPrototype(order int, rippleDB, stopbandDB float64) ([]complex
 		return nil, nil, 0, false
 	}
 	kmod := math.Sqrt(m)
-	capk, _ := ellipk(kmod, ellipticTol)
+	capk, _ := ellipticmath.EllipK(kmod, ellipticTol)
 	ck1 := math.Sqrt(ck1Sq)
-	val0, _ := ellipk(ck1, ellipticTol)
+	val0, _ := ellipticmath.EllipK(ck1, ellipticTol)
 	if capk == 0 || val0 == 0 || math.IsNaN(capk) || math.IsNaN(val0) || math.IsInf(capk, 0) || math.IsInf(val0, 0) {
 		return nil, nil, 0, false
 	}
@@ -465,12 +465,12 @@ func jacobiSCDFloat(uAbs, k, tol float64) (float64, float64, float64, bool) {
 	if !(k >= 0 && k < 1) {
 		return 0, 0, 0, false
 	}
-	K, _ := ellipk(k, tol)
+	K, _ := ellipticmath.EllipK(k, tol)
 	if K == 0 || math.IsNaN(K) || math.IsInf(K, 0) {
 		return 0, 0, 0, false
 	}
 	uNorm := uAbs / K
-	sn := sne([]float64{uNorm}, k, tol)[0]
+	sn := ellipticmath.SNE([]float64{uNorm}, k, tol)[0]
 	if math.IsNaN(sn) || math.IsInf(sn, 0) {
 		return 0, 0, 0, false
 	}
@@ -482,7 +482,7 @@ func jacobiSCDFloat(uAbs, k, tol float64) (float64, float64, float64, bool) {
 		dn2 = 0
 	}
 	dn := math.Sqrt(dn2)
-	cd := real(cde(complex(uNorm, 0), k, tol))
+	cd := real(ellipticmath.CDE(complex(uNorm, 0), k, tol))
 	cn := cd * dn
 	return sn, cn, dn, true
 }
@@ -544,8 +544,8 @@ func ellipdegParam(n int, m1, tol float64) float64 {
 		return math.NaN()
 	}
 	k1 := math.Sqrt(m1)
-	K1, _ := ellipk(k1, tol)
-	K1p, _ := ellipk(math.Sqrt(1.0-m1), tol)
+	K1, _ := ellipticmath.EllipK(k1, tol)
+	K1p, _ := ellipticmath.EllipK(math.Sqrt(1.0-m1), tol)
 	if K1 <= 0 || K1p <= 0 || math.IsNaN(K1) || math.IsNaN(K1p) || math.IsInf(K1, 0) || math.IsInf(K1p, 0) {
 		return math.NaN()
 	}
@@ -605,56 +605,4 @@ func normalizeCascadeHP(sections []biquad.Coefficients) {
 	sections[0].B0 /= gain
 	sections[0].B1 /= gain
 	sections[0].B2 /= gain
-}
-
-// Elliptic function helpers (simplified from band package).
-
-// landen computes the Landen sequence of descending moduli.
-func landen(k, tol float64) []float64 {
-	return ellipticmath.Landen(k, tol)
-}
-
-// landenK computes K from a precomputed Landen sequence.
-func landenK(v []float64) float64 {
-	return ellipticmath.LandenK(v)
-}
-
-// srem computes symmetric remainder.
-func srem(x, y float64) float64 {
-	return ellipticmath.SymmetricRemainder(x, y)
-}
-
-// ellipk computes the complete elliptic integral K(k) and K'(k).
-func ellipk(k, tol float64) (float64, float64) {
-	return ellipticmath.EllipK(k, tol)
-}
-
-// acde computes the inverse cd elliptic function.
-func acde(w complex128, k, tol float64) complex128 {
-	return ellipticmath.ACDE(w, k, tol)
-}
-
-// asne computes the inverse sn elliptic function.
-func asne(w complex128, k, tol float64) complex128 {
-	return ellipticmath.ASNE(w, k, tol)
-}
-
-// cde evaluates the Jacobi cd elliptic function.
-func cde(u complex128, k, tol float64) complex128 {
-	return ellipticmath.CDE(u, k, tol)
-}
-
-// sne evaluates the Jacobi sn elliptic function.
-func sne(u []float64, k, tol float64) []float64 {
-	return ellipticmath.SNE(u, k, tol)
-}
-
-// ellipdeg2 computes the elliptic degree equation using nome-based series.
-func ellipdeg2(n, k, tol float64) float64 {
-	return ellipticmath.EllipDeg2(n, k, tol)
-}
-
-// ellipdeg solves the degree equation for elliptic filter design.
-func ellipdeg(N int, k1, tol float64) float64 {
-	return ellipticmath.EllipDeg(N, k1, tol)
 }
