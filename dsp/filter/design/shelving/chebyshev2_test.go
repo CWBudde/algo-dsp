@@ -25,6 +25,9 @@ func TestChebyshev2LowShelf_InvalidParams(t *testing.T) {
 		{"zero order", 48000, 1000, 6, 0.5, 0},
 		{"zero ripple", 48000, 1000, 6, 0, 2},
 		{"negative ripple", 48000, 1000, 6, -1, 2},
+		{"ripple >= boost", 48000, 1000, 1, 1.0, 4},
+		{"ripple > boost", 48000, 1000, 1, 1.5, 4},
+		{"ripple >= cut magnitude", 48000, 1000, -1, 1.0, 4},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -44,6 +47,10 @@ func TestChebyshev2HighShelf_InvalidParams(t *testing.T) {
 	_, err = Chebyshev2HighShelf(48000, 1000, 6, 0, 2)
 	if err == nil {
 		t.Error("expected error for zero ripple")
+	}
+	_, err = Chebyshev2HighShelf(48000, 1000, 1, 1.0, 4)
+	if err == nil {
+		t.Error("expected error for ripple >= gain magnitude")
 	}
 }
 
@@ -157,15 +164,12 @@ func TestChebyshev2HighShelf_DCGain(t *testing.T) {
 }
 
 // ============================================================
-// Chebyshev Type II: ideal endpoint behavior verification
+// Chebyshev Type II: endpoint anchor model verification
 // ============================================================
 
-// TestChebyshev2LowShelf_NyquistGainIdeal verifies the ideal behavior:
-// For a low-shelf filter, the high-frequency region (near Nyquist) should
-// remain unaffected at 0 dB (unity gain), regardless of boost amount or ripple.
-// This test documents the expected ideal behavior and will expose any deviation
-// from this ideal in the current implementation.
-func TestChebyshev2LowShelf_NyquistGainIdeal(t *testing.T) {
+// The current realization anchors one shelf endpoint exactly and shifts the
+// opposite endpoint by approximately gainDB-sign(gainDB)*rippleDB.
+func TestChebyshev2LowShelf_StopbandAnchorModel(t *testing.T) {
 	testCases := []struct {
 		name     string
 		gainDB   float64
@@ -177,6 +181,8 @@ func TestChebyshev2LowShelf_NyquistGainIdeal(t *testing.T) {
 		{"boost_12dB_ripple_0.5", 12, 0.5, 4},
 		{"boost_18dB_ripple_0.5", 18, 0.5, 4},
 		{"boost_24dB_ripple_0.5", 24, 0.5, 4},
+		{"cut_6dB_ripple_0.5", -6, 0.5, 4},
+		{"cut_12dB_ripple_0.5", -12, 0.5, 4},
 
 		// Vary ripple amounts with fixed boost
 		{"boost_12dB_ripple_0.1", 12, 0.1, 4},
@@ -232,10 +238,7 @@ func TestChebyshev2LowShelf_NyquistGainIdeal(t *testing.T) {
 	}
 }
 
-// TestChebyshev2HighShelf_DCGainIdeal verifies the ideal behavior:
-// For a high-shelf filter, the low-frequency region (near DC) should
-// remain unaffected at 0 dB (unity gain), regardless of boost amount or ripple.
-func TestChebyshev2HighShelf_DCGainIdeal(t *testing.T) {
+func TestChebyshev2HighShelf_StopbandAnchorModel(t *testing.T) {
 	testCases := []struct {
 		name     string
 		gainDB   float64
@@ -246,6 +249,8 @@ func TestChebyshev2HighShelf_DCGainIdeal(t *testing.T) {
 		{"boost_6dB_ripple_0.5", 6, 0.5, 4},
 		{"boost_12dB_ripple_0.5", 12, 0.5, 4},
 		{"boost_18dB_ripple_0.5", 18, 0.5, 4},
+		{"cut_6dB_ripple_0.5", -6, 0.5, 4},
+		{"cut_12dB_ripple_0.5", -12, 0.5, 4},
 
 		// Vary ripple amounts with fixed boost
 		{"boost_12dB_ripple_0.1", 12, 0.1, 4},
@@ -642,7 +647,10 @@ func TestChebyshev2Math_DCCorrectionScalesAllFrequencies(t *testing.T) {
 
 	stopbandDB := rippleDB
 	raw := chebyshev2SectionsNoDCCorrection(K, gainDB, stopbandDB, order)
-	corrected := chebyshev2Sections(K, gainDB, stopbandDB, order)
+	corrected, err := chebyshev2Sections(K, gainDB, stopbandDB, order)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	rawDC := cmplx.Abs(cascadeResponse(raw, 1, sr))
 	corrDC := cmplx.Abs(cascadeResponse(corrected, 1, sr))
@@ -667,7 +675,10 @@ func TestChebyshev2Math_RawAndCorrectedEndpointAnchors(t *testing.T) {
 	stopbandDB := rippleDB
 
 	raw := chebyshev2SectionsNoDCCorrection(K, gainDB, stopbandDB, order)
-	corrected := chebyshev2Sections(K, gainDB, stopbandDB, order)
+	corrected, err := chebyshev2Sections(K, gainDB, stopbandDB, order)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	rawDC := cascadeMagnitudeDB(raw, 1, sr)
 	rawNyq := cascadeMagnitudeDB(raw, sr/2-1, sr)

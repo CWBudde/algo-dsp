@@ -36,7 +36,7 @@ func Chebyshev2LowShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int)
 		stopbandDB = -rippleDB
 	}
 
-	return chebyshev2Sections(K, gainDB, stopbandDB, order), nil
+	return chebyshev2Sections(K, gainDB, stopbandDB, order)
 }
 
 // Chebyshev2HighShelf designs an M-th order Chebyshev Type II high-shelving filter.
@@ -63,7 +63,10 @@ func Chebyshev2HighShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int
 		stopbandDB = -rippleDB
 	}
 
-	sections := chebyshev2Sections(K, gainDB, stopbandDB, order)
+	sections, err := chebyshev2Sections(K, gainDB, stopbandDB, order)
+	if err != nil {
+		return nil, err
+	}
 	negateOddPowers(sections)
 	return sections, nil
 }
