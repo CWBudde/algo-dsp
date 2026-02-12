@@ -172,17 +172,31 @@ func lowShelfSections(K, P float64, pairs []poleParams, realSigma float64) []biq
 //
 //	den: σ = A·sin(θ_m),  R² = A² + cos²(θ_m)
 //	num: σ = B·sin(θ_m),  R² = B² + g²·cos²(θ_m)
-func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) []biquad.Coefficients {
+func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biquad.Coefficients, error) {
+	if order < 1 || K <= 0 {
+		return nil, ErrInvalidParams
+	}
+
 	G0 := 1.0
 	G := db2Lin(gainDB)
 	Gb := db2Lin(stopbandDB)
 	g := math.Pow(G, 1.0/float64(order))
 
-	e := math.Sqrt((G*G - Gb*Gb) / (Gb*Gb - G0*G0))
+	num := G*G - Gb*Gb
+	den := Gb*Gb - G0*G0
+	ratio := num / den
+	if !isFinite(ratio) || ratio <= 0 {
+		return nil, ErrInvalidParams
+	}
+
+	e := math.Sqrt(ratio)
 	eu := math.Pow(e+math.Sqrt(1+e*e), 1.0/float64(order))
 	ew := math.Pow(G0*e+Gb*math.Sqrt(1.0+e*e), 1.0/float64(order))
 	A := (eu - 1.0/eu) * 0.5
 	B := (ew - g*g/ew) * 0.5
+	if !isFinite(A) || !isFinite(B) {
+		return nil, ErrInvalidParams
+	}
 
 	L := order / 2
 	hasFirstOrder := order%2 == 1
@@ -201,13 +215,21 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) []biqu
 			den: poleParams{sigma: A * si, r2: A*A + ci*ci},
 			num: poleParams{sigma: B * si, r2: B*B + g*g*ci*ci},
 		}
-		sections = append(sections, bilinearSOS(K, sp))
+		section := bilinearSOS(K, sp)
+		if !coeffsAreFinite(section) {
+			return nil, ErrInvalidParams
+		}
+		sections = append(sections, section)
 	}
 
 	if hasFirstOrder {
 		// For odd order, the real pole/zero: θ = π/2, sin=1, cos=0.
 		// den: σ = A, num: σ = B.
-		sections = append(sections, bilinearFOS(K, fosParams{denSigma: A, numSigma: B}))
+		section := bilinearFOS(K, fosParams{denSigma: A, numSigma: B})
+		if !coeffsAreFinite(section) {
+			return nil, ErrInvalidParams
+		}
+		sections = append(sections, section)
 	}
 
 	// The Orfanidis Chebyshev II prototype does not inherently produce the
@@ -218,14 +240,22 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) []biqu
 	for _, s := range sections {
 		dcGain *= (s.B0 + s.B1 + s.B2) / (1.0 + s.A1 + s.A2)
 	}
-	if dcGain != 0 {
-		corr := G / dcGain
-		sections[0].B0 *= corr
-		sections[0].B1 *= corr
-		sections[0].B2 *= corr
+	if !isFinite(dcGain) || dcGain == 0 || len(sections) == 0 {
+		return nil, ErrInvalidParams
 	}
 
-	return sections
+	corr := G / dcGain
+	if !isFinite(corr) {
+		return nil, ErrInvalidParams
+	}
+	sections[0].B0 *= corr
+	sections[0].B1 *= corr
+	sections[0].B2 *= corr
+	if !coeffsAreFinite(sections[0]) {
+		return nil, ErrInvalidParams
+	}
+
+	return sections, nil
 }
 
 // ln10over20 is the precomputed constant ln(10)/20.
@@ -233,4 +263,16 @@ const ln10over20 = 0.11512925464970228
 
 func db2Lin(db float64) float64 {
 	return math.Exp(db * ln10over20)
+}
+
+func isFinite(v float64) bool {
+	return !math.IsNaN(v) && !math.IsInf(v, 0)
+}
+
+func coeffsAreFinite(c biquad.Coefficients) bool {
+	return isFinite(c.B0) &&
+		isFinite(c.B1) &&
+		isFinite(c.B2) &&
+		isFinite(c.A1) &&
+		isFinite(c.A2)
 }
