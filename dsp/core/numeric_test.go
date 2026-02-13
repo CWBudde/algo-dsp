@@ -38,6 +38,18 @@ func TestNearlyEqual(t *testing.T) {
 	}
 }
 
+func TestFlushDenormals(t *testing.T) {
+	if got := FlushDenormals(1e-40); got != 0 {
+		t.Fatalf("FlushDenormals(1e-40) = %v, want 0", got)
+	}
+	if got := FlushDenormals(-1e-40); got != 0 {
+		t.Fatalf("FlushDenormals(-1e-40) = %v, want 0", got)
+	}
+	if got := FlushDenormals(1e-8); got != 1e-8 {
+		t.Fatalf("FlushDenormals(1e-8) = %v, want 1e-8", got)
+	}
+}
+
 func TestDBConversions(t *testing.T) {
 	linear := DBToLinear(-6)
 	db := LinearToDB(linear)

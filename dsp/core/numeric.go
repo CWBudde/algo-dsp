@@ -34,6 +34,16 @@ func NearlyEqual(a, b, eps float64) bool {
 	return diff/largest <= eps
 }
 
+// FlushDenormals converts tiny denormal-like values to exact zero.
+// This can reduce denormal-related CPU slowdowns in hot DSP loops.
+func FlushDenormals(x float64) float64 {
+	const epsilon = 1e-30
+	if x > -epsilon && x < epsilon {
+		return 0
+	}
+	return x
+}
+
 // DBToLinear converts dB to linear amplitude (20*log10 convention).
 func DBToLinear(db float64) float64 {
 	return math.Pow(10, db/20)
