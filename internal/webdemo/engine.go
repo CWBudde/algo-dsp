@@ -5,9 +5,9 @@ import (
 	"math"
 	"math/cmplx"
 
-	algofft "github.com/cwbudde/algo-fft"
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 const (
@@ -149,6 +149,8 @@ type Engine struct {
 
 	limParams LimiterParams
 	limiter   *effects.Limiter
+
+	renderBlock []float64
 
 	spectrum             SpectrumParams
 	spectrumWindow       []float64
@@ -316,6 +318,11 @@ func (e *Engine) CurrentStep() int {
 
 // Render fills dst with mono PCM samples in [-1, 1].
 func (e *Engine) Render(dst []float32) {
+	if len(dst) == 0 {
+		return
+	}
+	block := e.ensureRenderBlock(len(dst))
+
 	for i := range dst {
 		if e.running {
 			e.samplesUntilNextStep -= 1
@@ -327,38 +334,55 @@ func (e *Engine) Render(dst []float32) {
 			}
 		}
 
-		x := e.nextSample()
-		if e.effects.HarmonicBassEnabled {
-			x = e.bass.ProcessSample(x)
-		}
-		if e.effects.ChorusEnabled {
-			x = e.chorus.ProcessSample(x)
-		}
-		if e.effects.ReverbEnabled {
-			if e.effects.ReverbModel == "fdn" {
-				x = e.fdn.ProcessSample(x)
-			} else {
-				x = e.reverb.ProcessSample(x)
-			}
-		}
-		x = e.hp.ProcessSample(x)
-		x = e.low.ProcessSample(x)
-		x = e.mid.ProcessSample(x)
-		x = e.high.ProcessSample(x)
-		x = e.lp.ProcessSample(x)
-		x *= e.eq.Master
+		block[i] = e.nextSample()
+	}
 
-		if e.compParams.Enabled {
-			x = e.compressor.ProcessSample(x)
+	if e.effects.HarmonicBassEnabled {
+		e.bass.ProcessInPlace(block)
+	}
+	if e.effects.ChorusEnabled {
+		e.chorus.ProcessInPlace(block)
+	}
+	if e.effects.ReverbEnabled {
+		if e.effects.ReverbModel == "fdn" {
+			e.fdn.ProcessInPlace(block)
+		} else {
+			e.reverb.ProcessInPlace(block)
 		}
+	}
+	e.hp.ProcessBlock(block)
+	e.low.ProcessBlock(block)
+	e.mid.ProcessBlock(block)
+	e.high.ProcessBlock(block)
+	e.lp.ProcessBlock(block)
 
-		if e.limParams.Enabled {
-			x = e.limiter.ProcessSample(x)
+	if e.eq.Master != 1 {
+		for i := range block {
+			block[i] *= e.eq.Master
 		}
+	}
 
+	if e.compParams.Enabled {
+		e.compressor.ProcessInPlace(block)
+	}
+
+	if e.limParams.Enabled {
+		e.limiter.ProcessInPlace(block)
+	}
+
+	for i, x := range block {
 		e.pushSpectrumSample(x)
 		dst[i] = float32(clamp(x, -1, 1))
 	}
+}
+
+func (e *Engine) ensureRenderBlock(n int) []float64 {
+	if cap(e.renderBlock) < n {
+		e.renderBlock = make([]float64, n)
+		return e.renderBlock
+	}
+	e.renderBlock = e.renderBlock[:n]
+	return e.renderBlock
 }
 
 // ResponseCurveDB returns EQ magnitude response in dB for freqs.

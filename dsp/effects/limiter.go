@@ -54,6 +54,11 @@ func (l *Limiter) ProcessSample(input float64) float64 {
 	return l.comp.ProcessSample(input)
 }
 
+// ProcessInPlace processes a block through the limiter in place.
+func (l *Limiter) ProcessInPlace(buf []float64) {
+	l.comp.ProcessInPlace(buf)
+}
+
 // CalculateOutputLevel computes the steady-state output level for a given input magnitude.
 func (l *Limiter) CalculateOutputLevel(inputMagnitude float64) float64 {
 	return l.comp.CalculateOutputLevel(inputMagnitude)
