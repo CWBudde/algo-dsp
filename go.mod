@@ -3,11 +3,9 @@ module github.com/cwbudde/algo-dsp
 go 1.25.0
 
 require (
-	github.com/MeKo-Christian/algo-fft v0.6.6
+	github.com/cwbudde/algo-approx v0.1.0
+	github.com/cwbudde/algo-fft v0.6.8
 	github.com/cwbudde/algo-vecmath v0.1.0
 )
 
-require (
-	github.com/meko-christian/algo-approx v0.0.0-20251231144736-63e2f0802054 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-)
+require golang.org/x/sys v0.40.0 // indirect

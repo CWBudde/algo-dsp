@@ -1,6 +1,6 @@
 # Fast Math Approximations for Compressor
 
-The compressor implementation supports optional fast math approximations via the [algo-approx](https://github.com/MeKo-Christian/algo-approx) library.
+The compressor implementation supports optional fast math approximations via the [algo-approx](https://github.com/cwbudde/algo-approx) library.
 
 ## Performance Comparison
 
@@ -103,5 +103,5 @@ go test -tags=fastmath -bench=Compressor ./dsp/effects/ > bench-fast.txt
 
 ## References
 
-- [algo-approx](https://github.com/MeKo-Christian/algo-approx) - Fast mathematical approximations library
-- [algo-approx ACCURACY.md](https://github.com/MeKo-Christian/algo-approx/blob/main/ACCURACY.md) - Detailed accuracy metrics
+- [algo-approx](https://github.com/cwbudde/algo-approx) - Fast mathematical approximations library
+- [algo-approx ACCURACY.md](https://github.com/cwbudde/algo-approx/blob/main/ACCURACY.md) - Detailed accuracy metrics

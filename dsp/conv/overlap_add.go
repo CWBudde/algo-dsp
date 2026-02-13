@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 // Pool of OverlapAdd instances to reduce allocations in one-shot convolutions.

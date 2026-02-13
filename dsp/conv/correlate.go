@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 // Correlate computes the full cross-correlation of a and b.
