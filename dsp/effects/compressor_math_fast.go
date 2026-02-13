@@ -5,7 +5,7 @@ package effects
 import (
 	"math"
 
-	"github.com/meko-christian/algo-approx"
+	"github.com/cwbudde/algo-approx"
 )
 
 // ln2 is the natural logarithm of 2, used for log base conversions.

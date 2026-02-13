@@ -5,7 +5,7 @@ import (
 	"math"
 	"math/cmplx"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
+	algofft "github.com/cwbudde/algo-fft"
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )

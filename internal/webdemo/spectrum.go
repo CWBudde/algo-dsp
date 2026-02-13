@@ -6,7 +6,7 @@ import (
 	"math/cmplx"
 	"strings"
 
-	algofft "github.com/MeKo-Christian/algo-fft"
+	algofft "github.com/cwbudde/algo-fft"
 	"github.com/cwbudde/algo-dsp/dsp/window"
 )
 

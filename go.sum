@@ -1,8 +1,8 @@
-github.com/MeKo-Christian/algo-fft v0.6.6 h1:oQg68D6PQKDxgnxbsWI9jDOsG40ie1vT9Q2sVSZuKss=
-github.com/MeKo-Christian/algo-fft v0.6.6/go.mod h1:kOyncsY00JWPZZrmtRo4+1AckmOzvVhTqvQP7CE1ylI=
+github.com/cwbudde/algo-approx v0.1.0 h1:0i+ogADelGMNKx82mOes80ikmdA8SNdSM5UDJ27G/TY=
+github.com/cwbudde/algo-approx v0.1.0/go.mod h1:Bz0OrNQt5WJFTjbrOrNjg1JOZCPDZsjfSYfkSmBeNUc=
+github.com/cwbudde/algo-fft v0.6.8 h1:RhuSaw7JzIYNsRsy9ApwpapHW1uA2fFCZ1LiOkwBSdM=
+github.com/cwbudde/algo-fft v0.6.8/go.mod h1:H5rJ7JNXvhe3kT4yc41TJB9DEnO7KlhHN7toLO+ZZXU=
 github.com/cwbudde/algo-vecmath v0.1.0 h1:RjZLXt3BAu1f3UmdWWXbgw3Xscyh+bsg31PkS5K4y4c=
 github.com/cwbudde/algo-vecmath v0.1.0/go.mod h1:lc9dLv41D4RCmhXG/CsIesfJXmONI7pQXcFrkxQSfeQ=
-github.com/meko-christian/algo-approx v0.0.0-20251231144736-63e2f0802054 h1:qFBrF97HAKLgxNSoBGUozPtfYUb+yn2LkcigsyPJg2A=
-github.com/meko-christian/algo-approx v0.0.0-20251231144736-63e2f0802054/go.mod h1:Iutd1S5RugbZlF6zDkrcjUWFHuXLV4iscKmZbSTL4tk=
 golang.org/x/sys v0.40.0 h1:DBZZqJ2Rkml6QMQsZywtnjnnGvHza6BTfYFWY9kjEWQ=
 golang.org/x/sys v0.40.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
