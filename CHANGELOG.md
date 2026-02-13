@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- New public package `dsp/interp` with reusable cubic Hermite interpolation (`Hermite4`) and a configurable `LagrangeInterpolator`.
+- New public package `dsp/delay` with reusable circular delay-line primitives, including integer and fractional-delay reads.
+- Added `core.FlushDenormals` for denormal-safe hot loops.
+
 - Phase 14 API stabilization artifacts: `API_REVIEW.md`, `MIGRATION.md`, and `BENCHMARKS.md`.
 - Runnable examples for previously uncovered major public packages:
   - `dsp/buffer`
