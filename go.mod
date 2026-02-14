@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/cwbudde/algo-approx v0.1.0
-	github.com/cwbudde/algo-fft v0.6.8
+	github.com/cwbudde/algo-fft v0.6.10
 	github.com/cwbudde/algo-vecmath v0.1.0
 )
 
