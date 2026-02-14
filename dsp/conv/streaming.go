@@ -47,24 +47,65 @@ type StreamingConvolverT[F algofft.Float, C algofft.Complex] interface {
 // StreamingConvolver is the float64 specialization of StreamingConvolverT.
 type StreamingConvolver = StreamingConvolverT[float64, complex128]
 
-// toComplex converts a float value to its corresponding complex type.
-func toComplex[F algofft.Float, C algofft.Complex](f F) C {
-	switch v := any(f).(type) {
-	case float32:
-		return any(complex(v, 0)).(C)
-	case float64:
-		return any(complex(v, 0)).(C)
-	}
-	panic("unreachable")
+// fftRunner is an internal interface that abstracts over Plan and FastPlan.
+// Both Forward and Inverse take dst, src slices of at least fftSize length.
+type fftRunner[C algofft.Complex] interface {
+	Forward(dst, src []C)
+	Inverse(dst, src []C)
 }
 
-// toFloat extracts the real part of a complex value as the corresponding float type.
-func toFloat[F algofft.Float, C algofft.Complex](c C) F {
-	switch v := any(c).(type) {
-	case complex64:
-		return any(real(v)).(F)
-	case complex128:
-		return any(real(v)).(F)
+// planAdapter wraps algofft.Plan to satisfy fftRunner (ignores errors since
+// the plan is pre-validated and buffer sizes are guaranteed by construction).
+type planAdapter[C algofft.Complex] struct {
+	plan *algofft.Plan[C]
+}
+
+func (a *planAdapter[C]) Forward(dst, src []C) { _ = a.plan.Forward(dst, src) }
+func (a *planAdapter[C]) Inverse(dst, src []C) { _ = a.plan.Inverse(dst, src) }
+
+// newFFTRunner tries to create a FastPlan for zero-overhead FFT.
+// Falls back to a regular Plan if FastPlan is unavailable for the given size.
+func newFFTRunner[C algofft.Complex](n int) (fftRunner[C], error) {
+	fp, err := algofft.NewFastPlan[C](n)
+	if err == nil {
+		return fp, nil
 	}
-	panic("unreachable")
+	// FastPlan unavailable (e.g. no codelet for this size), fall back to Plan.
+	plan, err := algofft.NewPlanT[C](n)
+	if err != nil {
+		return nil, err
+	}
+	return &planAdapter[C]{plan: plan}, nil
+}
+
+// copyToComplex copies a float slice into a complex slice (one type switch per call).
+func copyToComplex[F algofft.Float, C algofft.Complex](dst []C, src []F) {
+	switch s := any(src).(type) {
+	case []float32:
+		d := any(dst).([]complex64)
+		for i, v := range s {
+			d[i] = complex(v, 0)
+		}
+	case []float64:
+		d := any(dst).([]complex128)
+		for i, v := range s {
+			d[i] = complex(v, 0)
+		}
+	}
+}
+
+// copyFromComplex copies real parts of a complex slice into a float slice.
+func copyFromComplex[F algofft.Float, C algofft.Complex](dst []F, src []C) {
+	switch s := any(src).(type) {
+	case []complex64:
+		d := any(dst).([]float32)
+		for i, v := range s {
+			d[i] = real(v)
+		}
+	case []complex128:
+		d := any(dst).([]float64)
+		for i, v := range s {
+			d[i] = real(v)
+		}
+	}
 }

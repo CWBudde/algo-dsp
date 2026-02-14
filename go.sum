@@ -2,6 +2,8 @@ github.com/cwbudde/algo-approx v0.1.0 h1:0i+ogADelGMNKx82mOes80ikmdA8SNdSM5UDJ27
 github.com/cwbudde/algo-approx v0.1.0/go.mod h1:Bz0OrNQt5WJFTjbrOrNjg1JOZCPDZsjfSYfkSmBeNUc=
 github.com/cwbudde/algo-fft v0.6.8 h1:RhuSaw7JzIYNsRsy9ApwpapHW1uA2fFCZ1LiOkwBSdM=
 github.com/cwbudde/algo-fft v0.6.8/go.mod h1:H5rJ7JNXvhe3kT4yc41TJB9DEnO7KlhHN7toLO+ZZXU=
+github.com/cwbudde/algo-fft v0.6.10 h1:xEtl2oHC3SQjGwzu/bdecLEw50hJYF9brhcFuUHQ2I8=
+github.com/cwbudde/algo-fft v0.6.10/go.mod h1:H5rJ7JNXvhe3kT4yc41TJB9DEnO7KlhHN7toLO+ZZXU=
 github.com/cwbudde/algo-vecmath v0.1.0 h1:RjZLXt3BAu1f3UmdWWXbgw3Xscyh+bsg31PkS5K4y4c=
 github.com/cwbudde/algo-vecmath v0.1.0/go.mod h1:lc9dLv41D4RCmhXG/CsIesfJXmONI7pQXcFrkxQSfeQ=
 golang.org/x/sys v0.40.0 h1:DBZZqJ2Rkml6QMQsZywtnjnnGvHza6BTfYFWY9kjEWQ=

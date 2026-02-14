@@ -23,8 +23,8 @@ type StreamingOverlapAddT[F algofft.Float, C algofft.Complex] struct {
 	blockSize int // Input/output block size (fixed)
 	fftSize   int // FFT size (blockSize + kernelLen - 1, rounded to power of 2)
 
-	// FFT plan
-	plan *algofft.Plan[C]
+	// FFT runner (FastPlan when available, Plan as fallback)
+	fft fftRunner[C]
 
 	// Reusable buffers (pre-allocated to avoid allocations per block)
 	inputPadded  []C
@@ -54,8 +54,8 @@ func NewStreamingOverlapAddT[F algofft.Float, C algofft.Complex](kernel []F, blo
 	minFFTSize := blockSize + kernelLen - 1
 	fftSize := nextPowerOf2(minFFTSize)
 
-	// Create FFT plan
-	plan, err := algofft.NewPlanT[C](fftSize)
+	// Create FFT runner (tries FastPlan first, falls back to Plan)
+	fft, err := newFFTRunner[C](fftSize)
 	if err != nil {
 		return nil, fmt.Errorf("conv: failed to create FFT plan: %w", err)
 	}
@@ -65,7 +65,7 @@ func NewStreamingOverlapAddT[F algofft.Float, C algofft.Complex](kernel []F, blo
 		kernelLen:    kernelLen,
 		blockSize:    blockSize,
 		fftSize:      fftSize,
-		plan:         plan,
+		fft:          fft,
 		inputPadded:  make([]C, fftSize),
 		outputPadded: make([]C, fftSize),
 		convResult:   make([]F, blockSize+kernelLen-1),
@@ -74,14 +74,9 @@ func NewStreamingOverlapAddT[F algofft.Float, C algofft.Complex](kernel []F, blo
 
 	// Compute kernel FFT
 	kernelPadded := make([]C, fftSize)
-	for i, v := range kernel {
-		kernelPadded[i] = toComplex[F, C](v)
-	}
+	copyToComplex[F, C](kernelPadded, kernel)
 
-	err = plan.Forward(soa.kernelFFT, kernelPadded)
-	if err != nil {
-		return nil, fmt.Errorf("conv: failed to compute kernel FFT: %w", err)
-	}
+	fft.Forward(soa.kernelFFT, kernelPadded)
 
 	return soa, nil
 }
@@ -98,6 +93,45 @@ func NewStreamingOverlapAdd32(kernel []float32, blockSize int) (*StreamingOverla
 	return NewStreamingOverlapAddT[float32, complex64](kernel, blockSize)
 }
 
+// processBlockCore performs the core convolution. Output is written to convResult.
+func (soa *StreamingOverlapAddT[F, C]) processBlockCore(input []F) {
+	// Zero-pad input to FFT size
+	for i := range soa.inputPadded {
+		soa.inputPadded[i] = 0
+	}
+	copyToComplex[F, C](soa.inputPadded[:soa.blockSize], input)
+
+	// Forward FFT of input block
+	soa.fft.Forward(soa.inputPadded, soa.inputPadded)
+
+	// Multiply in frequency domain
+	for i := range soa.outputPadded {
+		soa.outputPadded[i] = soa.inputPadded[i] * soa.kernelFFT[i]
+	}
+
+	// Inverse FFT
+	soa.fft.Inverse(soa.outputPadded, soa.outputPadded)
+
+	// Extract real part into convResult
+	resultLen := soa.blockSize + soa.kernelLen - 1
+	copyFromComplex[F, C](soa.convResult[:resultLen], soa.outputPadded[:resultLen])
+
+	// Add tail from previous block
+	tailLen := len(soa.tail)
+	for i := 0; i < tailLen && i < resultLen; i++ {
+		soa.convResult[i] += soa.tail[i]
+	}
+
+	// Update tail for next block
+	newTailLen := resultLen - soa.blockSize
+	for i := range newTailLen {
+		soa.tail[i] = soa.convResult[soa.blockSize+i]
+	}
+	for i := newTailLen; i < len(soa.tail); i++ {
+		soa.tail[i] = 0
+	}
+}
+
 // ProcessBlock convolves a single block and returns the output block.
 // Input and output are both of size blockSize.
 // State is maintained between calls to ensure continuity.
@@ -106,57 +140,10 @@ func (soa *StreamingOverlapAddT[F, C]) ProcessBlock(input []F) ([]F, error) {
 		return nil, fmt.Errorf("%w: expected %d samples, got %d", ErrLengthMismatch, soa.blockSize, len(input))
 	}
 
-	// Zero-pad input to FFT size
-	for i := range soa.inputPadded {
-		soa.inputPadded[i] = 0
-	}
-	for i := range soa.blockSize {
-		soa.inputPadded[i] = toComplex[F, C](input[i])
-	}
+	soa.processBlockCore(input)
 
-	// Forward FFT of input block
-	err := soa.plan.Forward(soa.inputPadded, soa.inputPadded)
-	if err != nil {
-		return nil, fmt.Errorf("conv: forward FFT failed: %w", err)
-	}
-
-	// Multiply in frequency domain
-	for i := range soa.outputPadded {
-		soa.outputPadded[i] = soa.inputPadded[i] * soa.kernelFFT[i]
-	}
-
-	// Inverse FFT
-	err = soa.plan.Inverse(soa.outputPadded, soa.outputPadded)
-	if err != nil {
-		return nil, fmt.Errorf("conv: inverse FFT failed: %w", err)
-	}
-
-	// Extract real part into convResult
-	resultLen := soa.blockSize + soa.kernelLen - 1
-	for i := range resultLen {
-		soa.convResult[i] = toFloat[F, C](soa.outputPadded[i])
-	}
-
-	// Add tail from previous block
-	tailLen := len(soa.tail)
-	for i := 0; i < tailLen && i < resultLen; i++ {
-		soa.convResult[i] += soa.tail[i]
-	}
-
-	// Prepare output and new tail
 	output := make([]F, soa.blockSize)
 	copy(output, soa.convResult[:soa.blockSize])
-
-	// Update tail for next block
-	newTailLen := resultLen - soa.blockSize
-	for i := range newTailLen {
-		soa.tail[i] = soa.convResult[soa.blockSize+i]
-	}
-	// Zero remaining tail if kernel is shorter
-	for i := newTailLen; i < len(soa.tail); i++ {
-		soa.tail[i] = 0
-	}
-
 	return output, nil
 }
 
@@ -171,54 +158,9 @@ func (soa *StreamingOverlapAddT[F, C]) ProcessBlockTo(output, input []F) error {
 		return fmt.Errorf("%w: expected %d output samples, got %d", ErrLengthMismatch, soa.blockSize, len(output))
 	}
 
-	// Zero-pad input to FFT size
-	for i := range soa.inputPadded {
-		soa.inputPadded[i] = 0
-	}
-	for i := range soa.blockSize {
-		soa.inputPadded[i] = toComplex[F, C](input[i])
-	}
+	soa.processBlockCore(input)
 
-	// Forward FFT of input block
-	err := soa.plan.Forward(soa.inputPadded, soa.inputPadded)
-	if err != nil {
-		return fmt.Errorf("conv: forward FFT failed: %w", err)
-	}
-
-	// Multiply in frequency domain
-	for i := range soa.outputPadded {
-		soa.outputPadded[i] = soa.inputPadded[i] * soa.kernelFFT[i]
-	}
-
-	// Inverse FFT
-	err = soa.plan.Inverse(soa.outputPadded, soa.outputPadded)
-	if err != nil {
-		return fmt.Errorf("conv: inverse FFT failed: %w", err)
-	}
-
-	// Extract real part and add tail from previous block
-	resultLen := soa.blockSize + soa.kernelLen - 1
-	for i := range resultLen {
-		soa.convResult[i] = toFloat[F, C](soa.outputPadded[i])
-	}
-
-	tailLen := len(soa.tail)
-	for i := 0; i < tailLen && i < resultLen; i++ {
-		soa.convResult[i] += soa.tail[i]
-	}
-
-	// Write output block
 	copy(output, soa.convResult[:soa.blockSize])
-
-	// Update tail for next block
-	newTailLen := resultLen - soa.blockSize
-	for i := range newTailLen {
-		soa.tail[i] = soa.convResult[soa.blockSize+i]
-	}
-	for i := newTailLen; i < len(soa.tail); i++ {
-		soa.tail[i] = 0
-	}
-
 	return nil
 }
 
