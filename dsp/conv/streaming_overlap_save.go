@@ -26,8 +26,8 @@ type StreamingOverlapSaveT[F algofft.Float, C algofft.Complex] struct {
 	blockSize int // Input/output block size (fixed)
 	fftSize   int // FFT size (power of 2, >= blockSize + kernelLen - 1)
 
-	// FFT runner (FastPlan when available, Plan as fallback)
-	fft fftRunner[C]
+	// FFT engine (FastPlan when available, Plan as fallback)
+	fft *fftEngine[C]
 
 	// Reusable buffers (pre-allocated to avoid allocations per block)
 	inputBuffer  []C
@@ -56,8 +56,8 @@ func NewStreamingOverlapSaveT[F algofft.Float, C algofft.Complex](kernel []F, bl
 	minFFTSize := blockSize + kernelLen - 1
 	fftSize := nextPowerOf2(minFFTSize)
 
-	// Create FFT runner (tries FastPlan first, falls back to Plan)
-	fft, err := newFFTRunner[C](fftSize)
+	// Create FFT engine (tries FastPlan first, falls back to Plan)
+	fft, err := newFFTEngine[C](fftSize)
 	if err != nil {
 		return nil, fmt.Errorf("conv: failed to create FFT plan: %w", err)
 	}
@@ -75,7 +75,7 @@ func NewStreamingOverlapSaveT[F algofft.Float, C algofft.Complex](kernel []F, bl
 
 	// Compute kernel FFT (zero-padded to fftSize)
 	kernelPadded := make([]C, fftSize)
-	copyToComplex[F, C](kernelPadded, kernel)
+	packReal[F, C](kernelPadded, kernel)
 
 	fft.Forward(sos.kernelFFT, kernelPadded)
 
@@ -98,15 +98,13 @@ func NewStreamingOverlapSave32(kernel []float32, blockSize int) (*StreamingOverl
 // Writes blockSize valid output samples to dst.
 func (sos *StreamingOverlapSaveT[F, C]) processBlockCore(dst, input []F) {
 	// Build input buffer: history + new samples, zero-padded to FFT size
-	for i := range sos.inputBuffer {
-		sos.inputBuffer[i] = 0
-	}
+	clear(sos.inputBuffer)
 
 	// Copy history (kernelLen - 1 samples)
-	copyToComplex[F, C](sos.inputBuffer[:sos.kernelLen-1], sos.history)
+	packReal[F, C](sos.inputBuffer[:sos.kernelLen-1], sos.history)
 
 	// Copy new input samples
-	copyToComplex[F, C](sos.inputBuffer[sos.kernelLen-1:sos.kernelLen-1+sos.blockSize], input)
+	packReal[F, C](sos.inputBuffer[sos.kernelLen-1:sos.kernelLen-1+sos.blockSize], input)
 
 	// Forward FFT
 	sos.fft.Forward(sos.inputBuffer, sos.inputBuffer)
@@ -122,7 +120,7 @@ func (sos *StreamingOverlapSaveT[F, C]) processBlockCore(dst, input []F) {
 	// Discard first kernelLen-1 samples (circular convolution artifacts)
 	// and extract blockSize valid samples
 	validStart := sos.kernelLen - 1
-	copyFromComplex[F, C](dst[:sos.blockSize], sos.outputBuffer[validStart:validStart+sos.blockSize])
+	unpackReal[F, C](dst[:sos.blockSize], sos.outputBuffer[validStart:validStart+sos.blockSize])
 
 	// Update history for next block
 	if sos.blockSize >= sos.kernelLen-1 {
@@ -163,9 +161,7 @@ func (sos *StreamingOverlapSaveT[F, C]) ProcessBlockTo(output, input []F) error 
 
 // Reset clears the history buffer (overlap state from previous blocks).
 func (sos *StreamingOverlapSaveT[F, C]) Reset() {
-	for i := range sos.history {
-		sos.history[i] = 0
-	}
+	clear(sos.history)
 }
 
 // BlockSize returns the block size.
