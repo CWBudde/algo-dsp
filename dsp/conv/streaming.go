@@ -1,6 +1,10 @@
 package conv
 
-import algofft "github.com/cwbudde/algo-fft"
+import (
+	"unsafe"
+
+	algofft "github.com/cwbudde/algo-fft"
+)
 
 // StreamingConvolverT performs block-by-block convolution with persistent state.
 // The type parameters F and C select the floating-point precision:
@@ -47,63 +51,78 @@ type StreamingConvolverT[F algofft.Float, C algofft.Complex] interface {
 // StreamingConvolver is the float64 specialization of StreamingConvolverT.
 type StreamingConvolver = StreamingConvolverT[float64, complex128]
 
-// fftRunner is an internal interface that abstracts over Plan and FastPlan.
-// Both Forward and Inverse take dst, src slices of at least fftSize length.
-type fftRunner[C algofft.Complex] interface {
-	Forward(dst, src []C)
-	Inverse(dst, src []C)
-}
-
-// planAdapter wraps algofft.Plan to satisfy fftRunner (ignores errors since
-// the plan is pre-validated and buffer sizes are guaranteed by construction).
-type planAdapter[C algofft.Complex] struct {
+// fftEngine is a concrete FFT dispatch that avoids interface overhead.
+// It stores both a FastPlan (preferred) and a Plan (fallback), using a nil
+// check for dispatch instead of a vtable call.
+type fftEngine[C algofft.Complex] struct {
+	fast *algofft.FastPlan[C]
 	plan *algofft.Plan[C]
 }
 
-func (a *planAdapter[C]) Forward(dst, src []C) { _ = a.plan.Forward(dst, src) }
-func (a *planAdapter[C]) Inverse(dst, src []C) { _ = a.plan.Inverse(dst, src) }
+func (e *fftEngine[C]) Forward(dst, src []C) {
+	if e.fast != nil {
+		e.fast.Forward(dst, src)
+		return
+	}
+	_ = e.plan.Forward(dst, src)
+}
 
-// newFFTRunner tries to create a FastPlan for zero-overhead FFT.
-// Falls back to a regular Plan if FastPlan is unavailable for the given size.
-func newFFTRunner[C algofft.Complex](n int) (fftRunner[C], error) {
+func (e *fftEngine[C]) Inverse(dst, src []C) {
+	if e.fast != nil {
+		e.fast.Inverse(dst, src)
+		return
+	}
+	_ = e.plan.Inverse(dst, src)
+}
+
+// newFFTEngine creates an fftEngine that prefers FastPlan over Plan.
+func newFFTEngine[C algofft.Complex](n int) (*fftEngine[C], error) {
+	e := &fftEngine[C]{}
 	fp, err := algofft.NewFastPlan[C](n)
 	if err == nil {
-		return fp, nil
+		e.fast = fp
+		return e, nil
 	}
 	// FastPlan unavailable (e.g. no codelet for this size), fall back to Plan.
 	plan, err := algofft.NewPlanT[C](n)
 	if err != nil {
 		return nil, err
 	}
-	return &planAdapter[C]{plan: plan}, nil
+	e.plan = plan
+	return e, nil
 }
 
-// copyToComplex copies a float slice into a complex slice (one type switch per call).
-func copyToComplex[F algofft.Float, C algofft.Complex](dst []C, src []F) {
-	switch s := any(src).(type) {
-	case []float32:
-		d := any(dst).([]complex64)
+// packReal writes float values into the real parts of a complex slice.
+// Uses unsafe.Sizeof for compile-time-resolvable dispatch instead of any() boxing.
+// The destination must be zeroed beforehand if imaginary parts should be zero.
+func packReal[F algofft.Float, C algofft.Complex](dst []C, src []F) {
+	if unsafe.Sizeof(F(0)) == 4 {
+		d := unsafe.Slice((*complex64)(unsafe.Pointer(unsafe.SliceData(dst))), len(src))
+		s := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(src))), len(src))
 		for i, v := range s {
 			d[i] = complex(v, 0)
 		}
-	case []float64:
-		d := any(dst).([]complex128)
+	} else {
+		d := unsafe.Slice((*complex128)(unsafe.Pointer(unsafe.SliceData(dst))), len(src))
+		s := unsafe.Slice((*float64)(unsafe.Pointer(unsafe.SliceData(src))), len(src))
 		for i, v := range s {
 			d[i] = complex(v, 0)
 		}
 	}
 }
 
-// copyFromComplex copies real parts of a complex slice into a float slice.
-func copyFromComplex[F algofft.Float, C algofft.Complex](dst []F, src []C) {
-	switch s := any(src).(type) {
-	case []complex64:
-		d := any(dst).([]float32)
+// unpackReal extracts real parts from a complex slice into a float slice.
+// Uses unsafe reinterpretation to avoid any() boxing overhead.
+func unpackReal[F algofft.Float, C algofft.Complex](dst []F, src []C) {
+	if unsafe.Sizeof(F(0)) == 4 {
+		d := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(dst))), len(dst))
+		s := unsafe.Slice((*complex64)(unsafe.Pointer(unsafe.SliceData(src))), len(dst))
 		for i, v := range s {
 			d[i] = real(v)
 		}
-	case []complex128:
-		d := any(dst).([]float64)
+	} else {
+		d := unsafe.Slice((*float64)(unsafe.Pointer(unsafe.SliceData(dst))), len(dst))
+		s := unsafe.Slice((*complex128)(unsafe.Pointer(unsafe.SliceData(src))), len(dst))
 		for i, v := range s {
 			d[i] = real(v)
 		}

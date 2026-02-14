@@ -23,8 +23,8 @@ type StreamingOverlapAddT[F algofft.Float, C algofft.Complex] struct {
 	blockSize int // Input/output block size (fixed)
 	fftSize   int // FFT size (blockSize + kernelLen - 1, rounded to power of 2)
 
-	// FFT runner (FastPlan when available, Plan as fallback)
-	fft fftRunner[C]
+	// FFT engine (FastPlan when available, Plan as fallback)
+	fft *fftEngine[C]
 
 	// Reusable buffers (pre-allocated to avoid allocations per block)
 	inputPadded  []C
@@ -54,8 +54,8 @@ func NewStreamingOverlapAddT[F algofft.Float, C algofft.Complex](kernel []F, blo
 	minFFTSize := blockSize + kernelLen - 1
 	fftSize := nextPowerOf2(minFFTSize)
 
-	// Create FFT runner (tries FastPlan first, falls back to Plan)
-	fft, err := newFFTRunner[C](fftSize)
+	// Create FFT engine (tries FastPlan first, falls back to Plan)
+	fft, err := newFFTEngine[C](fftSize)
 	if err != nil {
 		return nil, fmt.Errorf("conv: failed to create FFT plan: %w", err)
 	}
@@ -74,7 +74,7 @@ func NewStreamingOverlapAddT[F algofft.Float, C algofft.Complex](kernel []F, blo
 
 	// Compute kernel FFT
 	kernelPadded := make([]C, fftSize)
-	copyToComplex[F, C](kernelPadded, kernel)
+	packReal[F, C](kernelPadded, kernel)
 
 	fft.Forward(soa.kernelFFT, kernelPadded)
 
@@ -96,10 +96,8 @@ func NewStreamingOverlapAdd32(kernel []float32, blockSize int) (*StreamingOverla
 // processBlockCore performs the core convolution. Output is written to convResult.
 func (soa *StreamingOverlapAddT[F, C]) processBlockCore(input []F) {
 	// Zero-pad input to FFT size
-	for i := range soa.inputPadded {
-		soa.inputPadded[i] = 0
-	}
-	copyToComplex[F, C](soa.inputPadded[:soa.blockSize], input)
+	clear(soa.inputPadded)
+	packReal[F, C](soa.inputPadded[:soa.blockSize], input)
 
 	// Forward FFT of input block
 	soa.fft.Forward(soa.inputPadded, soa.inputPadded)
@@ -114,7 +112,7 @@ func (soa *StreamingOverlapAddT[F, C]) processBlockCore(input []F) {
 
 	// Extract real part into convResult
 	resultLen := soa.blockSize + soa.kernelLen - 1
-	copyFromComplex[F, C](soa.convResult[:resultLen], soa.outputPadded[:resultLen])
+	unpackReal[F, C](soa.convResult[:resultLen], soa.outputPadded[:resultLen])
 
 	// Add tail from previous block
 	tailLen := len(soa.tail)
@@ -166,9 +164,7 @@ func (soa *StreamingOverlapAddT[F, C]) ProcessBlockTo(output, input []F) error {
 
 // Reset clears the tail buffer (overlap state from previous blocks).
 func (soa *StreamingOverlapAddT[F, C]) Reset() {
-	for i := range soa.tail {
-		soa.tail[i] = 0
-	}
+	clear(soa.tail)
 }
 
 // BlockSize returns the block size.
