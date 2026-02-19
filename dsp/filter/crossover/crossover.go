@@ -70,6 +70,9 @@ func (c *Crossover) ProcessSample(x float64) (lo, hi float64) {
 // have the same length.
 func (c *Crossover) ProcessBlock(input, lo, hi []float64) {
 	n := len(input)
+	if n == 0 {
+		return
+	}
 	_ = lo[n-1]
 	_ = hi[n-1]
 	copy(lo, input)
@@ -104,8 +107,13 @@ func (c *Crossover) Reset() {
 // Linkwitz-Riley crossovers. It splits an input signal into N+1 frequency
 // bands for N crossover frequencies.
 //
-// The bands are ordered from lowest to highest frequency. The sum of all
-// band outputs reconstructs the input with allpass characteristics.
+// The bands are ordered from lowest to highest frequency. The cascade
+// topology passes each stage's highpass output as the next stage's input,
+// so the sum of all band outputs equals LP₁ + HP₁·AP₂·…·APₙ rather than a
+// single allpass. For a two-band (one crossover) network this is exact. For
+// three or more bands, the magnitude flatness degrades as crossover
+// frequencies become closer; the error is negligible when crossovers are
+// spaced at least an octave apart.
 type MultiBand struct {
 	stages []*Crossover
 	bands  int
@@ -152,9 +160,10 @@ func (m *MultiBand) Stages() []*Crossover { return m.stages }
 // The returned slice has NumBands() elements, ordered from lowest to
 // highest frequency band.
 //
-// The splitting strategy cascades through each crossover point: at each
-// stage the highpass output becomes the next stage's input, and the
-// lowpass output is the band output. The final highpass is the highest band.
+// At each stage the highpass output becomes the next stage's input, and the
+// lowpass output is the current band output. The final highpass is the
+// highest band. See the MultiBand documentation for the reconstruction
+// accuracy of this cascade topology.
 func (m *MultiBand) ProcessSample(x float64) []float64 {
 	out := make([]float64, m.bands)
 	remainder := x

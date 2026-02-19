@@ -150,6 +150,13 @@ func TestCrossover_AllpassImpulseSum(t *testing.T) {
 	}
 }
 
+// TestCrossover_ProcessBlock_Empty verifies that an empty input slice is a no-op.
+func TestCrossover_ProcessBlock_Empty(t *testing.T) {
+	xo, _ := New(1000, 4, 48000)
+	// Must not panic.
+	xo.ProcessBlock([]float64{}, []float64{}, []float64{})
+}
+
 // TestCrossover_ProcessBlock verifies block processing matches sample-by-sample.
 func TestCrossover_ProcessBlock(t *testing.T) {
 	sr := 48000.0
