@@ -68,9 +68,14 @@ type EffectsParams struct {
 
 	TimePitchEnabled   bool
 	TimePitchSemitones float64
+	TimePitchSequence  float64
+	TimePitchOverlap   float64
+	TimePitchSearch    float64
 
 	SpectralPitchEnabled   bool
 	SpectralPitchSemitones float64
+	SpectralPitchFrameSize int
+	SpectralPitchHop       int
 
 	ReverbEnabled  bool
 	ReverbModel    string
@@ -228,8 +233,13 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			ChorusStages:           3,
 			TimePitchEnabled:       false,
 			TimePitchSemitones:     0,
+			TimePitchSequence:      40,
+			TimePitchOverlap:       10,
+			TimePitchSearch:        15,
 			SpectralPitchEnabled:   false,
 			SpectralPitchSemitones: 0,
+			SpectralPitchFrameSize: 1024,
+			SpectralPitchHop:       256,
 			ReverbEnabled:          false,
 			ReverbModel:            "freeverb",
 			ReverbWet:              0.22,
