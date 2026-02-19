@@ -10,11 +10,16 @@
 //
 // Time-based effects:
 //   - Chorus: Modulated delay effect for ensemble sounds.
+//   - PitchShifter: Time-domain WSOLA-style pitch shifting.
 //   - Reverb: Algorithmic reverb using Schroeder/Freeverb architecture.
 //   - FDNReverb: Feedback delay network reverb with modulation and damping.
 //
 // Spectral/psychoacoustic effects:
 //   - HarmonicBass: Psychoacoustic bass enhancer with harmonic generation.
+//   - SpectralPitchShifter: Frequency-domain phase-vocoder pitch shifter.
+//
+// Shared abstractions:
+//   - PitchProcessor: Common interface for interchangeable pitch shifters.
 //
 // All effects are designed for real-time processing with zero-allocation
 // hot paths and support both single-sample and buffer-based processing.
