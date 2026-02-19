@@ -117,6 +117,7 @@ func NewGate(sampleRate float64) (*Gate, error) {
 		releaseMs:   defaultGateReleaseMs,
 		rangeDB:     defaultGateRangeDB,
 		sampleRate:  sampleRate,
+		metrics:     GateMetrics{GainReduction: 1.0},
 	}
 
 	g.updateCoefficients()
