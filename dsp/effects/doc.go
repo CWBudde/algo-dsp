@@ -4,6 +4,9 @@
 // Dynamics processors:
 //   - Compressor: Soft-knee compressor with log2-domain gain calculation
 //     for smooth compression curves and transparent dynamic range control.
+//   - Gate: Soft-knee noise gate with log2-domain gain calculation using
+//     the same quadratic knee smoothing as the Compressor, with hold time
+//     support to prevent chattering.
 //
 // Time-based effects:
 //   - Chorus: Modulated delay effect for ensemble sounds.
