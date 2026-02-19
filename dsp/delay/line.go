@@ -166,7 +166,7 @@ func (d *Line) readLagrange(delay float64, size int) float64 {
 
 func (d *Line) readLanczos(delay float64, size int) float64 {
 	const a = 3
-	maxDelay := float64(size - (2*a - 1))
+	maxDelay := float64(size - 1 - a)
 	if maxDelay < 0 {
 		maxDelay = 0
 	}
@@ -189,7 +189,7 @@ func (d *Line) readLanczos(delay float64, size int) float64 {
 func (d *Line) readSinc(delay float64, size int) float64 {
 	n := d.sincHalfN
 	taps := 2 * n
-	maxDelay := float64(size - taps)
+	maxDelay := float64(size - 1 - n)
 	if maxDelay < 0 {
 		maxDelay = 0
 	}
