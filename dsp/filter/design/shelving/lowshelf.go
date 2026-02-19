@@ -206,14 +206,24 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 	}
 	sections := make([]biquad.Coefficients, 0, n)
 
+	// Empirical damping for the Orfanidis Chebyshev II shelving realization.
+	// Boost and cut need different damping to keep the low-shelf region
+	// monotonic while preserving boost/cut inversion behavior.
+	denSigmaScale := 3.65
+	numSigmaScale := 16.499
+	if gainDB < 0 {
+		denSigmaScale = 0.2
+		numSigmaScale = 0.2
+	}
+
 	for m := 1; m <= L; m++ {
 		theta := float64(2*m-1) / float64(2*order) * math.Pi
 		si := math.Sin(theta)
 		ci := math.Cos(theta)
 
 		sp := sosParams{
-			den: poleParams{sigma: A * si, r2: A*A + ci*ci},
-			num: poleParams{sigma: B * si, r2: B*B + g*g*ci*ci},
+			den: poleParams{sigma: denSigmaScale * A * si, r2: A*A + ci*ci},
+			num: poleParams{sigma: numSigmaScale * B * si, r2: B*B + g*g*ci*ci},
 		}
 		section := bilinearSOS(K, sp)
 		if !coeffsAreFinite(section) {
@@ -223,9 +233,10 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 	}
 
 	if hasFirstOrder {
-		// For odd order, the real pole/zero: θ = π/2, sin=1, cos=0.
-		// den: σ = A, num: σ = B.
-		section := bilinearFOS(K, fosParams{denSigma: A, numSigma: B})
+		// For odd order, the unpaired real branch requires an additional Gb
+		// factor on the numerator real zero to keep the DC shelf anchor at
+		// gainDB-stopbandDB while Nyquist remains unity.
+		section := bilinearFOS(K, fosParams{denSigma: A, numSigma: Gb * B})
 		if !coeffsAreFinite(section) {
 			return nil, ErrInvalidParams
 		}

@@ -530,6 +530,70 @@ Moved to [`algo-vecmath/PLAN.md`](../algo-vecmath/PLAN.md) §3.
 - [ ] `go test ./...` and `go test -tags purego ./...` pass.
 - [ ] `BENCHMARKS.md` updated with current baselines and notable changes.
 
+#### 13.4 Modal oscillator SIMD track (algo-piano dependency)
+
+Goal: add a reusable, SIMD-friendly modal/quadrature oscillator bank in `algo-dsp` to accelerate modal string synthesis workloads (first consumer: `algo-piano`).
+
+- [ ] Add a new high-level package (candidate: `dsp/osc` or `dsp/modal`) with block APIs for damped complex rotators.
+  - [ ] `ProcessDampedComplexBlock32(...)` as the primary path (`float32` hot path for realtime synth use).
+  - [ ] Optional `ProcessDampedComplexBlock64(...)` for analysis/offline parity.
+  - [ ] API should update `(re, im)` state and optionally accumulate output with per-mode gains.
+- [ ] Keep a scalar reference implementation as canonical behavior for correctness and fallback.
+- [ ] Integrate architecture-dispatched acceleration via `algo-vecmath` kernels where beneficial.
+- [ ] Add microbenchmarks that match modal-bank workloads (e.g. 8-32 modes, 1-3 strings, block size 128).
+- [ ] Add parity tests vs scalar reference across damped/undamped transitions, varied frequencies, and long-tail decay behavior.
+- [ ] Document denormal strategy and verify behavior with long release tails.
+- [ ] Add user-facing docs/example showing the oscillator-bank loop in a modal synth context.
+
+Dependencies and sequencing:
+
+- [ ] First land required low-level kernels in `../algo-vecmath` (see `../algo-vecmath/PLAN.md` section 5).
+- [ ] Then wire the high-level DSP API in `algo-dsp`.
+- [ ] After release, consume in `algo-piano` modal path and compare CPU/alloc metrics against current scalar implementation.
+
+#### 13.5 Extended Exit Criteria
+
+- [ ] Oscillator-bank API exists with scalar fallback and deterministic tests.
+- [ ] At least one architecture-accelerated backend shows measurable speedup on representative modal-bank benchmarks.
+- [ ] Benchmarks include modal-bank scenarios and are tracked in `BENCHMARKS.md`.
+
+#### 13.6 Concrete issue backlog (modal/SIMD)
+
+These are implementation-ready tickets for the modal/quadrature SIMD track.
+
+- [ ] `DSP-201` — Add `dsp/osc` package skeleton and scalar reference kernels.
+  - Scope: package layout, public API stubs, scalar `float32` reference implementation.
+  - Acceptance: deterministic unit tests for reference kernels; public docs with usage example.
+  - Depends on: none.
+- [ ] `DSP-202` — Add block API for damped complex bank update (`float32`).
+  - Scope: `ProcessDampedComplexBlock32(...)` API + in-place state update semantics.
+  - Acceptance: parity tests vs scalar reference for random vectors and fixed vectors.
+  - Depends on: `DSP-201`.
+- [ ] `DSP-203` — Add optional `float64` API parity path.
+  - Scope: `ProcessDampedComplexBlock64(...)` for offline/analysis use.
+  - Acceptance: API docs + cross-precision behavior tests + no regressions in existing benches.
+  - Depends on: `DSP-201`.
+- [ ] `DSP-204` — Integrate vecmath-dispatched acceleration in hot loop.
+  - Scope: fast path using `algo-vecmath` kernels where profitable.
+  - Acceptance: measurable speedup on at least one target CPU vs scalar baseline.
+  - Depends on: `VEC-301`, `VEC-302`, `DSP-202`.
+- [ ] `DSP-205` — Modal-bank benchmark suite.
+  - Scope: dedicated benchmarks for 8/16/24/32 modes, block 128/256, 1-3 strings.
+  - Acceptance: benchmark outputs recorded in `BENCHMARKS.md` with date + Go version + machine info.
+  - Depends on: `DSP-202`.
+- [ ] `DSP-206` — Numerical/stability hardening for long tails.
+  - Scope: denormal policy docs + long-release stress tests (NaN/Inf/denormal resistance).
+  - Acceptance: stress suite passes under default and `-tags=purego` builds.
+  - Depends on: `DSP-202`.
+- [ ] `DSP-207` — Public integration example for modal synthesis.
+  - Scope: runnable example showing oscillator-bank update and summed output render loop.
+  - Acceptance: `go test ./...` executes example tests cleanly and docs link from README/package docs.
+  - Depends on: `DSP-202`.
+
+Tracking note:
+
+- `algo-piano` integration ticket group is tracked in `algo-piano/PLAN.md` Phase 12.5.
+
 ### Phase 14: API Stabilization and v1.0 (In Progress)
 
 Remaining TODOs:
