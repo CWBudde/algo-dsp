@@ -1,8 +1,10 @@
 package shelving
 
 import (
+	"fmt"
 	"math"
 	"math/cmplx"
+	"strings"
 	"testing"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
@@ -16,7 +18,7 @@ func TestChebyshev2LowShelf_InvalidParams(t *testing.T) {
 	tests := []struct {
 		name             string
 		sr, freq, gainDB float64
-		stopbandDB         float64
+		stopbandDB       float64
 		order            int
 	}{
 		{"zero sample rate", 0, 1000, 6, 0.5, 2},
@@ -169,10 +171,10 @@ func TestChebyshev2HighShelf_DCGain(t *testing.T) {
 // endpoint near gainDB-sign(gainDB)*stopbandDB.
 func TestChebyshev2LowShelf_StopbandAnchorModel(t *testing.T) {
 	testCases := []struct {
-		name     string
-		gainDB   float64
+		name       string
+		gainDB     float64
 		stopbandDB float64
-		order    int
+		order      int
 	}{
 		{"boost_6dB_stopband_0.5", 6, 0.5, 4},
 		{"boost_12dB_stopband_0.5", 12, 0.5, 4},
@@ -223,10 +225,10 @@ func TestChebyshev2LowShelf_StopbandAnchorModel(t *testing.T) {
 
 func TestChebyshev2HighShelf_StopbandAnchorModel(t *testing.T) {
 	testCases := []struct {
-		name     string
-		gainDB   float64
+		name       string
+		gainDB     float64
 		stopbandDB float64
-		order    int
+		order      int
 	}{
 		{"boost_6dB_stopband_0.5", 6, 0.5, 4},
 		{"boost_12dB_stopband_0.5", 12, 0.5, 4},
@@ -291,6 +293,56 @@ func TestChebyshev2HighShelf_Stability(t *testing.T) {
 				t.Fatal(err)
 			}
 			allPolesStable(t, sections)
+		})
+	}
+}
+
+func TestChebyshev2LowShelf_PoleZeroPairs(t *testing.T) {
+	for _, M := range []int{1, 3, 5, 8} {
+		t.Run(orderName(M), func(t *testing.T) {
+			sections, err := Chebyshev2LowShelf(testSR, 1000, 12, 0.5, M)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pairs := biquad.PoleZeroPairs(sections)
+			if len(pairs) != len(sections) {
+				t.Fatalf("got %d pole/zero pairs, expected %d", len(pairs), len(sections))
+			}
+			for i, pair := range pairs {
+				for j, pole := range pair.Poles {
+					if math.IsNaN(real(pole)) || math.IsNaN(imag(pole)) {
+						t.Fatalf("section %d pole %d is NaN: %v", i, j, pole)
+					}
+					if cmplx.Abs(pole) >= 1.0+1e-9 {
+						t.Fatalf("section %d pole %d unstable: |p|=%.8f p=%v", i, j, cmplx.Abs(pole), pole)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestChebyshev2HighShelf_PoleZeroPairs(t *testing.T) {
+	for _, M := range []int{1, 3, 5, 8} {
+		t.Run(orderName(M), func(t *testing.T) {
+			sections, err := Chebyshev2HighShelf(testSR, 1000, 12, 0.5, M)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pairs := biquad.PoleZeroPairs(sections)
+			if len(pairs) != len(sections) {
+				t.Fatalf("got %d pole/zero pairs, expected %d", len(pairs), len(sections))
+			}
+			for i, pair := range pairs {
+				for j, pole := range pair.Poles {
+					if math.IsNaN(real(pole)) || math.IsNaN(imag(pole)) {
+						t.Fatalf("section %d pole %d is NaN: %v", i, j, pole)
+					}
+					if cmplx.Abs(pole) >= 1.0+1e-9 {
+						t.Fatalf("section %d pole %d unstable: |p|=%.8f p=%v", i, j, cmplx.Abs(pole), pole)
+					}
+				}
+			}
 		})
 	}
 }
@@ -672,5 +724,362 @@ func TestChebyshev2Math_RawAndCorrectedEndpointAnchors(t *testing.T) {
 	}
 	if math.Abs(corrNyq) > 0.2 {
 		t.Fatalf("corrected Nyquist = %.4f dB, expected near 0 dB", corrNyq)
+	}
+}
+
+const cheby2GridMaxExamples = 8
+
+// cheby2GridCaseName formats a deterministic identifier for grid sweeps.
+func cheby2GridCaseName(gainDB, stopbandDB float64, order int, cutoffHz float64) string {
+	return fmt.Sprintf("G%+.1f_SB%.2f_M%d_F%.0f", gainDB, stopbandDB, order, cutoffHz)
+}
+
+func cheby2AppendFailure(examples *[]string, msg string) {
+	if len(*examples) < cheby2GridMaxExamples {
+		*examples = append(*examples, msg)
+	}
+}
+
+// ============================================================
+// Chebyshev Type II: low-shelf grid/property tests
+// ============================================================
+
+func TestChebyshev2LowShelf_EndpointAnchorsGrid(t *testing.T) {
+	orders := []int{1, 2, 4, 6}
+	cutoffs := []float64{300, 1000, 3000}
+	stopbands := []float64{0.1, 0.5, 1.0}
+	gains := []float64{-24, -12, -6, -3, 3, 6, 12, 24}
+
+	total := 0
+	failed := 0
+	examples := make([]string, 0, cheby2GridMaxExamples)
+
+	for _, order := range orders {
+		for _, cutoffHz := range cutoffs {
+			for _, stopbandDB := range stopbands {
+				for _, gainDB := range gains {
+					if stopbandDB >= math.Abs(gainDB) {
+						continue
+					}
+					total++
+					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
+
+					sections, err := Chebyshev2LowShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
+					if err != nil {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: design error: %v", caseName, err))
+						continue
+					}
+
+					expectedDC := gainDB - math.Copysign(stopbandDB, gainDB)
+					dcMag := cascadeMagnitudeDB(sections, 1, testSR)
+					nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
+
+					if !almostEqual(dcMag, expectedDC, 0.35) {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: DC gain %.4f dB, expected %.4f dB", caseName, dcMag, expectedDC))
+						continue
+					}
+					if !almostEqual(nyqMag, 0, stopbandDB+0.25) {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: Nyquist gain %.4f dB, expected ~0 dB", caseName, nyqMag))
+					}
+				}
+			}
+		}
+	}
+
+	if failed > 0 {
+		t.Fatalf("endpoint-anchor grid failures: %d/%d cases failed. First %d:\n%s", failed, total, len(examples), strings.Join(examples, "\n"))
+	}
+}
+
+func TestChebyshev2LowShelf_MonotonicGrid_Boost(t *testing.T) {
+	orders := []int{2, 3, 4, 6, 8}
+	cutoffs := []float64{300, 1000, 3000}
+	stopbands := []float64{0.1, 0.5, 1.0}
+	gains := []float64{3, 6, 12, 24}
+
+	total := 0
+	failed := 0
+	examples := make([]string, 0, cheby2GridMaxExamples)
+
+	for _, order := range orders {
+		for _, cutoffHz := range cutoffs {
+			upperHz := math.Min(cutoffHz*0.8, 800)
+			if upperHz <= 20 {
+				continue
+			}
+			stepHz := math.Max(5, upperHz/80)
+
+			for _, stopbandDB := range stopbands {
+				for _, gainDB := range gains {
+					if stopbandDB >= math.Abs(gainDB) {
+						continue
+					}
+					total++
+					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
+
+					sections, err := Chebyshev2LowShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
+					if err != nil {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: design error: %v", caseName, err))
+						continue
+					}
+
+					prevMag := cascadeMagnitudeDB(sections, 1, testSR)
+					for f := stepHz; f <= upperHz; f += stepHz {
+						mag := cascadeMagnitudeDB(sections, f, testSR)
+						if mag > prevMag+0.12 {
+							failed++
+							cheby2AppendFailure(&examples, fmt.Sprintf("%s: non-monotonic at %.2f Hz: %.4f dB > %.4f dB", caseName, f, mag, prevMag))
+							break
+						}
+						prevMag = mag
+					}
+				}
+			}
+		}
+	}
+
+	if failed > 0 {
+		t.Fatalf("monotonic-grid failures: %d/%d cases failed. First %d:\n%s", failed, total, len(examples), strings.Join(examples, "\n"))
+	}
+}
+
+func TestChebyshev2LowShelf_BoostCutInversionGrid(t *testing.T) {
+	orders := []int{2, 4, 6, 8}
+	cutoffs := []float64{300, 1000, 3000}
+	stopbands := []float64{0.1, 0.5, 1.0}
+	gains := []float64{3, 6, 12, 24}
+
+	total := 0
+	failed := 0
+	examples := make([]string, 0, cheby2GridMaxExamples)
+
+	for _, order := range orders {
+		for _, cutoffHz := range cutoffs {
+			for _, stopbandDB := range stopbands {
+				for _, gainDB := range gains {
+					if stopbandDB >= gainDB {
+						continue
+					}
+					total++
+					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
+
+					boost, err := Chebyshev2LowShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
+					if err != nil {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: boost design error: %v", caseName, err))
+						continue
+					}
+					cut, err := Chebyshev2LowShelf(testSR, cutoffHz, -gainDB, stopbandDB, order)
+					if err != nil {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: cut design error: %v", caseName, err))
+						continue
+					}
+
+					probeFreqs := []float64{
+						1,
+						math.Max(10, cutoffHz*0.1),
+						cutoffHz,
+						math.Min(15000, testSR/2-200),
+						testSR/2 - 1,
+					}
+
+					for _, freq := range probeFreqs {
+						hBoost := cascadeResponse(boost, freq, testSR)
+						hCut := cascadeResponse(cut, freq, testSR)
+						errDB := math.Abs(20 * math.Log10(cmplx.Abs(hBoost*hCut)))
+						tolDB := 1.0
+						if freq <= 1.5 || math.Abs(freq-(testSR/2-1)) < 1e-9 {
+							tolDB = 0.6
+						}
+						if errDB > tolDB {
+							failed++
+							cheby2AppendFailure(&examples, fmt.Sprintf("%s: freq=%.2f Hz inversion error %.4f dB > %.2f dB", caseName, freq, errDB, tolDB))
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if failed > 0 {
+		t.Fatalf("boost/cut inversion-grid failures: %d/%d cases failed. First %d:\n%s", failed, total, len(examples), strings.Join(examples, "\n"))
+	}
+}
+
+// ============================================================
+// Chebyshev Type II: high-shelf grid/property tests
+// ============================================================
+
+func TestChebyshev2HighShelf_EndpointAnchorsGrid(t *testing.T) {
+	orders := []int{1, 2, 4, 6}
+	cutoffs := []float64{300, 1000, 3000}
+	stopbands := []float64{0.1, 0.5, 1.0}
+	gains := []float64{-24, -12, -6, -3, 3, 6, 12, 24}
+
+	total := 0
+	failed := 0
+	examples := make([]string, 0, cheby2GridMaxExamples)
+
+	for _, order := range orders {
+		for _, cutoffHz := range cutoffs {
+			for _, stopbandDB := range stopbands {
+				for _, gainDB := range gains {
+					if stopbandDB >= math.Abs(gainDB) {
+						continue
+					}
+					total++
+					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
+
+					sections, err := Chebyshev2HighShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
+					if err != nil {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: design error: %v", caseName, err))
+						continue
+					}
+
+					expectedNyq := gainDB - math.Copysign(stopbandDB, gainDB)
+					dcMag := cascadeMagnitudeDB(sections, 1, testSR)
+					nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
+
+					if !almostEqual(dcMag, 0, stopbandDB+0.25) {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: DC gain %.4f dB, expected ~0 dB", caseName, dcMag))
+						continue
+					}
+					if !almostEqual(nyqMag, expectedNyq, 0.35) {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: Nyquist gain %.4f dB, expected %.4f dB", caseName, nyqMag, expectedNyq))
+					}
+				}
+			}
+		}
+	}
+
+	if failed > 0 {
+		t.Fatalf("high-shelf endpoint-anchor grid failures: %d/%d cases failed. First %d:\n%s", failed, total, len(examples), strings.Join(examples, "\n"))
+	}
+}
+
+func TestChebyshev2HighShelf_MonotonicGrid_Boost(t *testing.T) {
+	orders := []int{2, 3, 4, 6, 8}
+	cutoffs := []float64{300, 1000, 3000}
+	stopbands := []float64{0.1, 0.5, 1.0}
+	gains := []float64{3, 6, 12, 24}
+
+	total := 0
+	failed := 0
+	examples := make([]string, 0, cheby2GridMaxExamples)
+
+	for _, order := range orders {
+		for _, cutoffHz := range cutoffs {
+			upperHz := math.Min(cutoffHz*0.8, 800)
+			if upperHz <= 20 {
+				continue
+			}
+			stepHz := math.Max(5, upperHz/80)
+
+			for _, stopbandDB := range stopbands {
+				for _, gainDB := range gains {
+					if stopbandDB >= math.Abs(gainDB) {
+						continue
+					}
+					total++
+					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
+
+					sections, err := Chebyshev2HighShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
+					if err != nil {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: design error: %v", caseName, err))
+						continue
+					}
+
+					prevMag := cascadeMagnitudeDB(sections, 1, testSR)
+					for f := stepHz; f <= upperHz; f += stepHz {
+						mag := cascadeMagnitudeDB(sections, f, testSR)
+						if mag < prevMag-0.12 {
+							failed++
+							cheby2AppendFailure(&examples, fmt.Sprintf("%s: non-monotonic at %.2f Hz: %.4f dB < %.4f dB", caseName, f, mag, prevMag))
+							break
+						}
+						prevMag = mag
+					}
+				}
+			}
+		}
+	}
+
+	if failed > 0 {
+		t.Fatalf("high-shelf monotonic-grid failures: %d/%d cases failed. First %d:\n%s", failed, total, len(examples), strings.Join(examples, "\n"))
+	}
+}
+
+func TestChebyshev2HighShelf_BoostCutInversionGrid(t *testing.T) {
+	orders := []int{2, 4, 6, 8}
+	cutoffs := []float64{300, 1000, 3000}
+	stopbands := []float64{0.1, 0.5, 1.0}
+	gains := []float64{3, 6, 12, 24}
+
+	total := 0
+	failed := 0
+	examples := make([]string, 0, cheby2GridMaxExamples)
+
+	for _, order := range orders {
+		for _, cutoffHz := range cutoffs {
+			for _, stopbandDB := range stopbands {
+				for _, gainDB := range gains {
+					if stopbandDB >= gainDB {
+						continue
+					}
+					total++
+					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
+
+					boost, err := Chebyshev2HighShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
+					if err != nil {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: boost design error: %v", caseName, err))
+						continue
+					}
+					cut, err := Chebyshev2HighShelf(testSR, cutoffHz, -gainDB, stopbandDB, order)
+					if err != nil {
+						failed++
+						cheby2AppendFailure(&examples, fmt.Sprintf("%s: cut design error: %v", caseName, err))
+						continue
+					}
+
+					probeFreqs := []float64{
+						1,
+						math.Max(10, cutoffHz*0.1),
+						cutoffHz,
+						math.Min(15000, testSR/2-200),
+						testSR/2 - 1,
+					}
+
+					for _, freq := range probeFreqs {
+						hBoost := cascadeResponse(boost, freq, testSR)
+						hCut := cascadeResponse(cut, freq, testSR)
+						errDB := math.Abs(20 * math.Log10(cmplx.Abs(hBoost*hCut)))
+						tolDB := 1.0
+						if freq <= 1.5 || math.Abs(freq-(testSR/2-1)) < 1e-9 {
+							tolDB = 0.6
+						}
+						if errDB > tolDB {
+							failed++
+							cheby2AppendFailure(&examples, fmt.Sprintf("%s: freq=%.2f Hz inversion error %.4f dB > %.2f dB", caseName, freq, errDB, tolDB))
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if failed > 0 {
+		t.Fatalf("high-shelf boost/cut inversion-grid failures: %d/%d cases failed. First %d:\n%s", failed, total, len(examples), strings.Join(examples, "\n"))
 	}
 }

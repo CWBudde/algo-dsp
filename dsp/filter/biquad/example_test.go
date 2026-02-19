@@ -85,3 +85,26 @@ func ExampleCoefficients_MagnitudeDB() {
 	//  10000 Hz: -3.39 dB
 	//  20000 Hz: -25.07 dB
 }
+
+func ExamplePoleZeroPairs() {
+	coeffs := []biquad.Coefficients{
+		{B0: 1, B1: -0.6, B2: 0.25, A1: -1.4, A2: 0.53},
+		{B0: 1, B1: -0.2, B2: 0.0, A1: -0.8, A2: 0.0},
+	}
+
+	for i, pair := range biquad.PoleZeroPairs(coeffs) {
+		fmt.Printf("section %d poles: %.2f%+.2fi, %.2f%+.2fi\n",
+			i,
+			real(pair.Poles[0]), imag(pair.Poles[0]),
+			real(pair.Poles[1]), imag(pair.Poles[1]))
+		fmt.Printf("section %d zeros: %.2f%+.2fi, %.2f%+.2fi\n",
+			i,
+			real(pair.Zeros[0]), imag(pair.Zeros[0]),
+			real(pair.Zeros[1]), imag(pair.Zeros[1]))
+	}
+	// Output:
+	// section 0 poles: 0.70+0.20i, 0.70-0.20i
+	// section 0 zeros: 0.30+0.40i, 0.30-0.40i
+	// section 1 poles: 0.80+0.00i, 0.00-0.00i
+	// section 1 zeros: 0.20+0.00i, 0.00-0.00i
+}

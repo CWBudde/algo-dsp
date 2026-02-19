@@ -13,10 +13,12 @@ func TestLinkwitzRileyLP_Basic(t *testing.T) {
 		order    int
 		sections int
 	}{
-		{2, 2},  // LR2: two 1st-order Butterworth = 2 sections (1 each)
-		{4, 2},  // LR4: two 2nd-order Butterworth = 2 sections (1 each)
-		{8, 4},  // LR8: two 4th-order Butterworth = 4 sections (2 each)
-		{12, 6}, // LR12: two 6th-order Butterworth = 6 sections (3 each)
+		{2, 2},  // LR2: two 1st-order Butterworth filters
+		{3, 2},  // LR3: 1st + 2nd-order Butterworth
+		{4, 2},  // LR4: two 2nd-order Butterworth filters
+		{5, 3},  // LR5: 2nd + 3rd-order Butterworth
+		{8, 4},  // LR8: two 4th-order Butterworth filters
+		{12, 6}, // LR12: two 6th-order Butterworth filters
 	}
 	for _, tt := range tests {
 		sections := LinkwitzRileyLP(1000, tt.order, sr)
@@ -42,7 +44,9 @@ func TestLinkwitzRileyHP_Basic(t *testing.T) {
 		sections int
 	}{
 		{2, 2},
+		{3, 2},
 		{4, 2},
+		{5, 3},
 		{8, 4},
 		{12, 6},
 	}
@@ -63,7 +67,7 @@ func TestLinkwitzRileyHP_Basic(t *testing.T) {
 
 func TestLinkwitzRileyLP_InvalidOrder(t *testing.T) {
 	sr := 48000.0
-	invalid := []int{0, -1, 1, 3, 5, 7}
+	invalid := []int{0, -1, 1}
 	for _, order := range invalid {
 		if got := LinkwitzRileyLP(1000, order, sr); got != nil {
 			t.Errorf("LR LP order %d: expected nil, got %d sections", order, len(got))
@@ -73,7 +77,7 @@ func TestLinkwitzRileyLP_InvalidOrder(t *testing.T) {
 
 func TestLinkwitzRileyHP_InvalidOrder(t *testing.T) {
 	sr := 48000.0
-	invalid := []int{0, -1, 1, 3, 5, 7}
+	invalid := []int{0, -1, 1}
 	for _, order := range invalid {
 		if got := LinkwitzRileyHP(1000, order, sr); got != nil {
 			t.Errorf("LR HP order %d: expected nil, got %d sections", order, len(got))
@@ -117,7 +121,7 @@ func TestLinkwitzRiley_CrossoverMagnitude(t *testing.T) {
 	expectedDB := -6.02 // Linkwitz-Riley: -6 dB at crossover
 	tolerance := 0.05   // dB
 
-	orders := []int{2, 4, 8, 12, 16}
+	orders := []int{2, 3, 4, 5, 8, 12, 16}
 	for _, order := range orders {
 		lpSections := LinkwitzRileyLP(fc, order, sr)
 		hpSections := LinkwitzRileyHP(fc, order, sr)
@@ -177,8 +181,12 @@ func TestLinkwitzRiley_NeedsHPInvert(t *testing.T) {
 		order int
 		want  bool
 	}{
+		{0, false},
+		{1, false},
 		{2, true},   // LR2: half-order 1 is odd → needs invert
+		{3, false},  // Odd order: simple polarity flip is insufficient
 		{4, false},  // LR4: half-order 2 is even → no invert
+		{5, false},  // Odd order: simple polarity flip is insufficient
 		{6, true},   // LR6: half-order 3 is odd → needs invert
 		{8, false},  // LR8: half-order 4 is even → no invert
 		{10, true},  // LR10: half-order 5 is odd → needs invert
@@ -213,7 +221,7 @@ func TestLinkwitzRiley_FamilySignature(t *testing.T) {
 	}
 }
 
-// TestLinkwitzRiley_DoubledSections verifies sections are exactly doubled Butterworth.
+// TestLinkwitzRiley_DoubledSections verifies that even orders are exactly doubled Butterworth.
 func TestLinkwitzRiley_DoubledSections(t *testing.T) {
 	sr := 48000.0
 	fc := 1000.0
@@ -239,12 +247,62 @@ func TestLinkwitzRiley_DoubledSections(t *testing.T) {
 	}
 }
 
-// TestLinkwitzRiley_HighOrders verifies that very high even orders work.
+// TestLinkwitzRiley_OddOrderSections verifies odd orders are built from
+// adjacent Butterworth orders.
+func TestLinkwitzRiley_OddOrderSections(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+	order := 5
+
+	bwLow := ButterworthLP(fc, order/2, sr)
+	bwHigh := ButterworthLP(fc, (order+1)/2, sr)
+	lrLP := LinkwitzRileyLP(fc, order, sr)
+
+	if len(lrLP) != len(bwLow)+len(bwHigh) {
+		t.Fatalf("LR%d LP: expected %d sections, got %d", order, len(bwLow)+len(bwHigh), len(lrLP))
+	}
+	for i, bwCoeff := range bwLow {
+		if !coeffEqual(bwCoeff, lrLP[i]) {
+			t.Errorf("section %d: Butterworth-low %+v != LR %+v", i, bwCoeff, lrLP[i])
+		}
+	}
+	for i, bwCoeff := range bwHigh {
+		j := len(bwLow) + i
+		if !coeffEqual(bwCoeff, lrLP[j]) {
+			t.Errorf("section %d: Butterworth-high %+v != LR %+v", j, bwCoeff, lrLP[j])
+		}
+	}
+}
+
+// TestLinkwitzRiley_OddOrderSumNotAllpass verifies odd-order LP/HP pairs do
+// not form an exact allpass response via polarity inversion alone.
+func TestLinkwitzRiley_OddOrderSumNotAllpass(t *testing.T) {
+	sr := 48000.0
+	fc := 1000.0
+	for _, order := range []int{3, 5, 7} {
+		lp := biquad.NewChain(LinkwitzRileyLP(fc, order, sr))
+		hp := biquad.NewChain(LinkwitzRileyHP(fc, order, sr))
+		hpInv := biquad.NewChain(LinkwitzRileyHPInverted(fc, order, sr))
+
+		lpH := lp.Response(fc, sr)
+		sum := 20 * math.Log10(cmplxAbs(lpH+hp.Response(fc, sr)))
+		sumInv := 20 * math.Log10(cmplxAbs(lpH+hpInv.Response(fc, sr)))
+
+		if math.Abs(sum) < 0.5 {
+			t.Errorf("LR%d odd-order sum unexpectedly near allpass at crossover: %.3f dB", order, sum)
+		}
+		if math.Abs(sumInv) < 0.5 {
+			t.Errorf("LR%d odd-order inverted sum unexpectedly near allpass at crossover: %.3f dB", order, sumInv)
+		}
+	}
+}
+
+// TestLinkwitzRiley_HighOrders verifies that very high orders work.
 func TestLinkwitzRiley_HighOrders(t *testing.T) {
 	sr := 48000.0
 	fc := 1000.0
 
-	for _, order := range []int{20, 24, 32, 48} {
+	for _, order := range []int{20, 21, 24, 33, 48} {
 		lp := LinkwitzRileyLP(fc, order, sr)
 		hp := LinkwitzRileyHP(fc, order, sr)
 		if lp == nil {
@@ -256,18 +314,21 @@ func TestLinkwitzRiley_HighOrders(t *testing.T) {
 			continue
 		}
 
-		// Each Butterworth of order N needs ceil(N/2) sections. LR doubles that.
-		halfOrder := order / 2
-		bwSections := (halfOrder + 1) / 2
-		expectedSections := 2 * bwSections
+		lowOrder := order / 2
+		highOrder := (order + 1) / 2
+		expectedSections := len(ButterworthLP(fc, lowOrder, sr)) + len(ButterworthLP(fc, highOrder, sr))
 		if len(lp) != expectedSections {
 			t.Errorf("LR%d LP: expected %d sections, got %d", order, expectedSections, len(lp))
 		}
 
 		// Verify crossover magnitude.
 		lpMag := cascadeMagDB(lp, fc, sr)
+		hpMag := cascadeMagDB(hp, fc, sr)
 		if math.Abs(lpMag-(-6.02)) > 0.1 {
 			t.Errorf("LR%d LP at crossover: %.3f dB, want -6.02 dB", order, lpMag)
+		}
+		if math.Abs(hpMag-(-6.02)) > 0.1 {
+			t.Errorf("LR%d HP at crossover: %.3f dB, want -6.02 dB", order, hpMag)
 		}
 	}
 }

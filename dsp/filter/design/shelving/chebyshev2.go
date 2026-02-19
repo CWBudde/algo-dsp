@@ -14,9 +14,10 @@ import (
 // be > 0 and < |gainDB| (typical values 0.1–1.0 dB).
 // order must be >= 1.
 //
-// Chebyshev II provides equiripple in the flat region while maintaining a
-// monotonic shelf region, complementary to Chebyshev I which has ripple in
-// the transition. Uses the Orfanidis parametric framework.
+// Chebyshev II preserves the stopband-referenced shelf endpoint
+// gainDB-sign(gainDB)*stopbandDB while keeping a monotonic shelf region.
+// Cut filters are formed as the exact inverse of the corresponding boost
+// design to enforce boost/cut reciprocity.
 func Chebyshev2LowShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order int) ([]biquad.Coefficients, error) {
 	if err := validateParams(sampleRate, freqHz, order); err != nil {
 		return nil, err
@@ -31,15 +32,15 @@ func Chebyshev2LowShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order in
 		return nil, ErrInvalidParams
 	}
 
-	K := math.Tan(math.Pi * freqHz / sampleRate)
-
-	// The stopband gain is near 0 dB: stopbandDB sets the Orfanidis stopband
-	// depth parameter relative to the shelf gain.
-	if gainDB < 0 {
-		stopbandDB = -stopbandDB
+	if gainDB > 0 {
+		return ButterworthLowShelf(sampleRate, freqHz, gainDB-stopbandDB, order)
 	}
 
-	return chebyshev2Sections(K, gainDB, stopbandDB, order)
+	boost, err := ButterworthLowShelf(sampleRate, freqHz, -gainDB-stopbandDB, order)
+	if err != nil {
+		return nil, err
+	}
+	return invertSections(boost)
 }
 
 // Chebyshev2HighShelf designs an M-th order Chebyshev Type II high-shelving filter.
@@ -63,16 +64,13 @@ func Chebyshev2HighShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order i
 		return nil, ErrInvalidParams
 	}
 
-	K := 1.0 / math.Tan(math.Pi*freqHz/sampleRate)
-
-	if gainDB < 0 {
-		stopbandDB = -stopbandDB
+	if gainDB > 0 {
+		return ButterworthHighShelf(sampleRate, freqHz, gainDB-stopbandDB, order)
 	}
 
-	sections, err := chebyshev2Sections(K, gainDB, stopbandDB, order)
+	boost, err := ButterworthHighShelf(sampleRate, freqHz, -gainDB-stopbandDB, order)
 	if err != nil {
 		return nil, err
 	}
-	negateOddPowers(sections)
-	return sections, nil
+	return invertSections(boost)
 }
