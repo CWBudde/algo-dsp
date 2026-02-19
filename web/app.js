@@ -110,6 +110,10 @@ const state = {
     chorusDepth: 0.003,
     chorusSpeedHz: 0.35,
     chorusStages: 3,
+    timePitchEnabled: false,
+    timePitchSemitones: 0,
+    spectralPitchEnabled: false,
+    spectralPitchSemitones: 0,
     harmonicBassEnabled: false,
     harmonicBassFrequency: 80,
     harmonicBassInputGain: 1,
@@ -187,6 +191,12 @@ const el = {
   chorusSpeedValue: document.getElementById("chorus-speed-value"),
   chorusStages: document.getElementById("chorus-stages"),
   chorusStagesValue: document.getElementById("chorus-stages-value"),
+  timePitchEnabled: document.getElementById("time-pitch-enabled"),
+  timePitchSemitones: document.getElementById("time-pitch-semitones"),
+  timePitchSemitonesValue: document.getElementById("time-pitch-semitones-value"),
+  spectralPitchEnabled: document.getElementById("spectral-pitch-enabled"),
+  spectralPitchSemitones: document.getElementById("spectral-pitch-semitones"),
+  spectralPitchSemitonesValue: document.getElementById("spectral-pitch-semitones-value"),
   effectsMode: document.getElementById("effects-mode"),
   harmonicEnabled: document.getElementById("harmonic-enabled"),
   harmonicFrequency: document.getElementById("harmonic-frequency"),
@@ -295,6 +305,14 @@ function loadSettings() {
     if (el.chorusDepth) el.chorusDepth.value = state.effectsParams.chorusDepth;
     if (el.chorusSpeed) el.chorusSpeed.value = state.effectsParams.chorusSpeedHz;
     if (el.chorusStages) el.chorusStages.value = state.effectsParams.chorusStages;
+    if (el.timePitchEnabled)
+      el.timePitchEnabled.checked = !!state.effectsParams.timePitchEnabled;
+    if (el.timePitchSemitones)
+      el.timePitchSemitones.value = state.effectsParams.timePitchSemitones;
+    if (el.spectralPitchEnabled)
+      el.spectralPitchEnabled.checked = !!state.effectsParams.spectralPitchEnabled;
+    if (el.spectralPitchSemitones)
+      el.spectralPitchSemitones.value = state.effectsParams.spectralPitchSemitones;
     if (el.harmonicEnabled)
       el.harmonicEnabled.checked = !!state.effectsParams.harmonicBassEnabled;
     if (el.harmonicFrequency)
@@ -677,6 +695,12 @@ function readEffectsFromUI() {
     chorusDepth: Number(el.chorusDepth.value),
     chorusSpeedHz: Number(el.chorusSpeed.value),
     chorusStages: Number(el.chorusStages.value),
+    timePitchEnabled:
+      effectsMode === "pitch-time" && el.timePitchEnabled.checked,
+    timePitchSemitones: Number(el.timePitchSemitones.value),
+    spectralPitchEnabled:
+      effectsMode === "pitch-spectral" && el.spectralPitchEnabled.checked,
+    spectralPitchSemitones: Number(el.spectralPitchSemitones.value),
     harmonicBassEnabled: effectsMode === "bass" && el.harmonicEnabled.checked,
     harmonicBassFrequency: Number(el.harmonicFrequency.value),
     harmonicBassInputGain: Number(el.harmonicInput.value),
@@ -705,6 +729,9 @@ function updateEffectsText() {
   el.chorusDepthValue.textContent = `${(Number(el.chorusDepth.value) * 1000).toFixed(1)} ms`;
   el.chorusSpeedValue.textContent = `${Number(el.chorusSpeed.value).toFixed(2)} Hz`;
   el.chorusStagesValue.textContent = `${Number(el.chorusStages.value)}`;
+  el.timePitchSemitonesValue.textContent = `${Number(el.timePitchSemitones.value).toFixed(1)} st`;
+  el.spectralPitchSemitonesValue.textContent =
+    `${Number(el.spectralPitchSemitones.value).toFixed(1)} st`;
   el.harmonicFrequencyValue.textContent = `${Number(el.harmonicFrequency.value).toFixed(0)} Hz`;
   el.harmonicInputValue.textContent = Number(el.harmonicInput.value).toFixed(2);
   el.harmonicHighValue.textContent = Number(el.harmonicHigh.value).toFixed(2);
@@ -993,6 +1020,10 @@ function bindEvents() {
     el.chorusDepth,
     el.chorusSpeed,
     el.chorusStages,
+    el.timePitchEnabled,
+    el.timePitchSemitones,
+    el.spectralPitchEnabled,
+    el.spectralPitchSemitones,
     el.harmonicEnabled,
     el.harmonicFrequency,
     el.harmonicInput,

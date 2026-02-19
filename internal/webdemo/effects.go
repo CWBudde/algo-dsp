@@ -38,12 +38,14 @@ func (e *Engine) SetLimiter(p LimiterParams) error {
 	return nil
 }
 
-// SetEffects updates chorus/reverb/harmonic bass settings.
+// SetEffects updates effect settings.
 func (e *Engine) SetEffects(p EffectsParams) error {
 	prevChorusEnabled := e.effects.ChorusEnabled
 	prevReverbEnabled := e.effects.ReverbEnabled
 	prevReverbModel := e.effects.ReverbModel
 	prevBassEnabled := e.effects.HarmonicBassEnabled
+	prevTimePitchEnabled := e.effects.TimePitchEnabled
+	prevSpectralPitchEnabled := e.effects.SpectralPitchEnabled
 
 	p.ChorusMix = clamp(p.ChorusMix, 0, 1)
 	p.ChorusDepth = clamp(p.ChorusDepth, 0, 0.01)
@@ -54,6 +56,9 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	if p.ChorusStages > 6 {
 		p.ChorusStages = 6
 	}
+
+	p.TimePitchSemitones = clamp(p.TimePitchSemitones, -24, 24)
+	p.SpectralPitchSemitones = clamp(p.SpectralPitchSemitones, -24, 24)
 
 	if p.ReverbModel != "fdn" && p.ReverbModel != "freeverb" {
 		p.ReverbModel = "freeverb"
@@ -99,6 +104,12 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	}
 	if prevBassEnabled && !p.HarmonicBassEnabled {
 		e.bass.Reset()
+	}
+	if prevTimePitchEnabled && !p.TimePitchEnabled {
+		e.tp.Reset()
+	}
+	if prevSpectralPitchEnabled && !p.SpectralPitchEnabled {
+		e.sp.Reset()
 	}
 	return nil
 }
@@ -161,6 +172,20 @@ func (e *Engine) rebuildEffects() error {
 		return err
 	}
 	if err := e.chorus.SetStages(e.effects.ChorusStages); err != nil {
+		return err
+	}
+
+	if err := e.tp.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.tp.SetPitchSemitones(e.effects.TimePitchSemitones); err != nil {
+		return err
+	}
+
+	if err := e.sp.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.sp.SetPitchSemitones(e.effects.SpectralPitchSemitones); err != nil {
 		return err
 	}
 

@@ -58,13 +58,19 @@ type EQParams struct {
 	Master     float64
 }
 
-// EffectsParams defines chorus and reverb parameters for the demo chain.
+// EffectsParams defines effect parameters for the demo chain.
 type EffectsParams struct {
 	ChorusEnabled bool
 	ChorusMix     float64
 	ChorusDepth   float64
 	ChorusSpeedHz float64
 	ChorusStages  int
+
+	TimePitchEnabled   bool
+	TimePitchSemitones float64
+
+	SpectralPitchEnabled   bool
+	SpectralPitchSemitones float64
 
 	ReverbEnabled  bool
 	ReverbModel    string
@@ -143,6 +149,8 @@ type Engine struct {
 	reverb  *effects.Reverb
 	fdn     *effects.FDNReverb
 	bass    *effects.HarmonicBass
+	tp      *effects.PitchShifter
+	sp      *effects.SpectralPitchShifter
 
 	compParams CompressorParams
 	compressor *effects.Compressor
@@ -218,6 +226,10 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			ChorusDepth:            0.003,
 			ChorusSpeedHz:          0.35,
 			ChorusStages:           3,
+			TimePitchEnabled:       false,
+			TimePitchSemitones:     0,
+			SpectralPitchEnabled:   false,
+			SpectralPitchSemitones: 0,
 			ReverbEnabled:          false,
 			ReverbModel:            "freeverb",
 			ReverbWet:              0.22,
@@ -280,6 +292,16 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		return nil, err
 	}
 	e.bass = bass
+	tp, err := effects.NewPitchShifter(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.tp = tp
+	sp, err := effects.NewSpectralPitchShifter(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.sp = sp
 	comp, err := effects.NewCompressor(sampleRate)
 	if err != nil {
 		return nil, err
@@ -342,6 +364,12 @@ func (e *Engine) Render(dst []float32) {
 	}
 	if e.effects.ChorusEnabled {
 		e.chorus.ProcessInPlace(block)
+	}
+	if e.effects.TimePitchEnabled {
+		e.tp.ProcessInPlace(block)
+	}
+	if e.effects.SpectralPitchEnabled {
+		e.sp.ProcessInPlace(block)
 	}
 	if e.effects.ReverbEnabled {
 		if e.effects.ReverbModel == "fdn" {
