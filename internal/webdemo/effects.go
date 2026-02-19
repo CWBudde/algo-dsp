@@ -58,7 +58,21 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	}
 
 	p.TimePitchSemitones = clamp(p.TimePitchSemitones, -24, 24)
+	p.TimePitchSequence = clamp(p.TimePitchSequence, 20, 120)
+	p.TimePitchOverlap = clamp(p.TimePitchOverlap, 4, 60)
+	if p.TimePitchOverlap >= p.TimePitchSequence {
+		p.TimePitchOverlap = p.TimePitchSequence - 1
+	}
+	p.TimePitchSearch = clamp(p.TimePitchSearch, 2, 40)
+
 	p.SpectralPitchSemitones = clamp(p.SpectralPitchSemitones, -24, 24)
+	p.SpectralPitchFrameSize = sanitizeSpectralPitchFrameSize(p.SpectralPitchFrameSize)
+	if p.SpectralPitchHop < 1 || p.SpectralPitchHop >= p.SpectralPitchFrameSize {
+		p.SpectralPitchHop = p.SpectralPitchFrameSize / 4
+	}
+	if p.SpectralPitchHop < 1 {
+		p.SpectralPitchHop = 1
+	}
 
 	if p.ReverbModel != "fdn" && p.ReverbModel != "freeverb" {
 		p.ReverbModel = "freeverb"
@@ -181,11 +195,26 @@ func (e *Engine) rebuildEffects() error {
 	if err := e.tp.SetPitchSemitones(e.effects.TimePitchSemitones); err != nil {
 		return err
 	}
+	if err := e.tp.SetSequence(e.effects.TimePitchSequence); err != nil {
+		return err
+	}
+	if err := e.tp.SetOverlap(e.effects.TimePitchOverlap); err != nil {
+		return err
+	}
+	if err := e.tp.SetSearch(e.effects.TimePitchSearch); err != nil {
+		return err
+	}
 
 	if err := e.sp.SetSampleRate(e.sampleRate); err != nil {
 		return err
 	}
 	if err := e.sp.SetPitchSemitones(e.effects.SpectralPitchSemitones); err != nil {
+		return err
+	}
+	if err := e.sp.SetFrameSize(e.effects.SpectralPitchFrameSize); err != nil {
+		return err
+	}
+	if err := e.sp.SetAnalysisHop(e.effects.SpectralPitchHop); err != nil {
 		return err
 	}
 
@@ -250,4 +279,33 @@ func (e *Engine) rebuildEffects() error {
 		return err
 	}
 	return nil
+}
+
+func sanitizeSpectralPitchFrameSize(n int) int {
+	if n < 256 {
+		return 256
+	}
+	if n > 4096 {
+		return 4096
+	}
+	if n > 0 && (n&(n-1)) == 0 {
+		return n
+	}
+
+	lower := 256
+	for lower < n {
+		lower <<= 1
+	}
+	upper := lower
+	lower >>= 1
+	if lower < 256 {
+		lower = 256
+	}
+	if upper > 4096 {
+		upper = 4096
+	}
+	if n-lower <= upper-n {
+		return lower
+	}
+	return upper
 }

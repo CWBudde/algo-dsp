@@ -112,8 +112,14 @@ const state = {
     chorusStages: 3,
     timePitchEnabled: false,
     timePitchSemitones: 0,
+    timePitchSequence: 40,
+    timePitchOverlap: 10,
+    timePitchSearch: 15,
     spectralPitchEnabled: false,
     spectralPitchSemitones: 0,
+    spectralPitchFrameSize: 1024,
+    spectralPitchHopRatio: 0.25,
+    spectralPitchHop: 256,
     harmonicBassEnabled: false,
     harmonicBassFrequency: 80,
     harmonicBassInputGain: 1,
@@ -194,9 +200,19 @@ const el = {
   timePitchEnabled: document.getElementById("time-pitch-enabled"),
   timePitchSemitones: document.getElementById("time-pitch-semitones"),
   timePitchSemitonesValue: document.getElementById("time-pitch-semitones-value"),
+  timePitchSequence: document.getElementById("time-pitch-sequence"),
+  timePitchSequenceValue: document.getElementById("time-pitch-sequence-value"),
+  timePitchOverlap: document.getElementById("time-pitch-overlap"),
+  timePitchOverlapValue: document.getElementById("time-pitch-overlap-value"),
+  timePitchSearch: document.getElementById("time-pitch-search"),
+  timePitchSearchValue: document.getElementById("time-pitch-search-value"),
   spectralPitchEnabled: document.getElementById("spectral-pitch-enabled"),
   spectralPitchSemitones: document.getElementById("spectral-pitch-semitones"),
   spectralPitchSemitonesValue: document.getElementById("spectral-pitch-semitones-value"),
+  spectralPitchFrame: document.getElementById("spectral-pitch-frame"),
+  spectralPitchFrameValue: document.getElementById("spectral-pitch-frame-value"),
+  spectralPitchHopRatio: document.getElementById("spectral-pitch-hop-ratio"),
+  spectralPitchHopRatioValue: document.getElementById("spectral-pitch-hop-ratio-value"),
   effectsMode: document.getElementById("effects-mode"),
   harmonicEnabled: document.getElementById("harmonic-enabled"),
   harmonicFrequency: document.getElementById("harmonic-frequency"),
@@ -309,10 +325,22 @@ function loadSettings() {
       el.timePitchEnabled.checked = !!state.effectsParams.timePitchEnabled;
     if (el.timePitchSemitones)
       el.timePitchSemitones.value = state.effectsParams.timePitchSemitones;
+    if (el.timePitchSequence)
+      el.timePitchSequence.value = state.effectsParams.timePitchSequence;
+    if (el.timePitchOverlap)
+      el.timePitchOverlap.value = state.effectsParams.timePitchOverlap;
+    if (el.timePitchSearch)
+      el.timePitchSearch.value = state.effectsParams.timePitchSearch;
     if (el.spectralPitchEnabled)
       el.spectralPitchEnabled.checked = !!state.effectsParams.spectralPitchEnabled;
     if (el.spectralPitchSemitones)
       el.spectralPitchSemitones.value = state.effectsParams.spectralPitchSemitones;
+    if (el.spectralPitchFrame)
+      el.spectralPitchFrame.value = state.effectsParams.spectralPitchFrameSize;
+    if (el.spectralPitchHopRatio)
+      el.spectralPitchHopRatio.value = String(
+        state.effectsParams.spectralPitchHopRatio ?? 0.25,
+      );
     if (el.harmonicEnabled)
       el.harmonicEnabled.checked = !!state.effectsParams.harmonicBassEnabled;
     if (el.harmonicFrequency)
@@ -686,8 +714,26 @@ function updateSpectrumText() {
   ).toFixed(2);
 }
 
+function spectralPitchHopSamples() {
+  const frame = Number(el.spectralPitchFrame.value);
+  const ratio = Number(el.spectralPitchHopRatio.value);
+  const hop = Math.round(frame * ratio);
+  return Math.max(1, Math.min(frame - 1, hop));
+}
+
 function readEffectsFromUI() {
   const effectsMode = String(el.effectsMode?.value || "chorus");
+  const spectralFrameSize = Number(el.spectralPitchFrame.value);
+  const spectralHopRatio = Number(el.spectralPitchHopRatio.value);
+  const spectralHop = spectralPitchHopSamples();
+
+  const timeSequence = Number(el.timePitchSequence.value);
+  const timeOverlapRaw = Number(el.timePitchOverlap.value);
+  const timeOverlap = Math.min(timeSequence - 1, Math.max(4, timeOverlapRaw));
+  if (timeOverlap !== timeOverlapRaw) {
+    el.timePitchOverlap.value = String(timeOverlap);
+  }
+
   state.effectsParams = {
     effectsMode,
     chorusEnabled: effectsMode === "chorus" && el.chorusEnabled.checked,
@@ -698,9 +744,15 @@ function readEffectsFromUI() {
     timePitchEnabled:
       effectsMode === "pitch-time" && el.timePitchEnabled.checked,
     timePitchSemitones: Number(el.timePitchSemitones.value),
+    timePitchSequence,
+    timePitchOverlap: timeOverlap,
+    timePitchSearch: Number(el.timePitchSearch.value),
     spectralPitchEnabled:
       effectsMode === "pitch-spectral" && el.spectralPitchEnabled.checked,
     spectralPitchSemitones: Number(el.spectralPitchSemitones.value),
+    spectralPitchFrameSize,
+    spectralPitchHopRatio,
+    spectralPitchHop: spectralHop,
     harmonicBassEnabled: effectsMode === "bass" && el.harmonicEnabled.checked,
     harmonicBassFrequency: Number(el.harmonicFrequency.value),
     harmonicBassInputGain: Number(el.harmonicInput.value),
@@ -730,8 +782,17 @@ function updateEffectsText() {
   el.chorusSpeedValue.textContent = `${Number(el.chorusSpeed.value).toFixed(2)} Hz`;
   el.chorusStagesValue.textContent = `${Number(el.chorusStages.value)}`;
   el.timePitchSemitonesValue.textContent = `${Number(el.timePitchSemitones.value).toFixed(1)} st`;
+  el.timePitchSequenceValue.textContent = `${Number(el.timePitchSequence.value).toFixed(0)} ms`;
+  el.timePitchOverlapValue.textContent = `${Number(el.timePitchOverlap.value).toFixed(0)} ms`;
+  el.timePitchSearchValue.textContent = `${Number(el.timePitchSearch.value).toFixed(0)} ms`;
   el.spectralPitchSemitonesValue.textContent =
     `${Number(el.spectralPitchSemitones.value).toFixed(1)} st`;
+  const spectralFrame = Number(el.spectralPitchFrame.value);
+  const spectralRatio = Number(el.spectralPitchHopRatio.value);
+  const spectralHop = spectralPitchHopSamples();
+  el.spectralPitchFrameValue.textContent = `${spectralFrame} samples`;
+  el.spectralPitchHopRatioValue.textContent =
+    `${spectralHop} samples (${Math.round(spectralRatio * 100)}%)`;
   el.harmonicFrequencyValue.textContent = `${Number(el.harmonicFrequency.value).toFixed(0)} Hz`;
   el.harmonicInputValue.textContent = Number(el.harmonicInput.value).toFixed(2);
   el.harmonicHighValue.textContent = Number(el.harmonicHigh.value).toFixed(2);
@@ -1022,8 +1083,13 @@ function bindEvents() {
     el.chorusStages,
     el.timePitchEnabled,
     el.timePitchSemitones,
+    el.timePitchSequence,
+    el.timePitchOverlap,
+    el.timePitchSearch,
     el.spectralPitchEnabled,
     el.spectralPitchSemitones,
+    el.spectralPitchFrame,
+    el.spectralPitchHopRatio,
     el.harmonicEnabled,
     el.harmonicFrequency,
     el.harmonicInput,

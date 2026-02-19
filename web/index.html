@@ -298,6 +298,21 @@
                 <input id="time-pitch-semitones" type="range" min="-24" max="24" step="0.1" value="0" />
                 <span id="time-pitch-semitones-value">0.0 st</span>
               </label>
+              <label>
+                Sequence
+                <input id="time-pitch-sequence" type="range" min="20" max="120" step="1" value="40" />
+                <span id="time-pitch-sequence-value">40 ms</span>
+              </label>
+              <label>
+                Overlap
+                <input id="time-pitch-overlap" type="range" min="4" max="60" step="1" value="10" />
+                <span id="time-pitch-overlap-value">10 ms</span>
+              </label>
+              <label>
+                Search
+                <input id="time-pitch-search" type="range" min="2" max="40" step="1" value="15" />
+                <span id="time-pitch-search-value">15 ms</span>
+              </label>
             </div>
             <div class="fx-option" data-mode="pitch-spectral" hidden>
               <div class="fx-option-head">
@@ -311,6 +326,26 @@
                 Semitones
                 <input id="spectral-pitch-semitones" type="range" min="-24" max="24" step="0.1" value="0" />
                 <span id="spectral-pitch-semitones-value">0.0 st</span>
+              </label>
+              <label>
+                Frame
+                <select id="spectral-pitch-frame">
+                  <option value="256">256</option>
+                  <option value="512">512</option>
+                  <option value="1024" selected>1024</option>
+                  <option value="2048">2048</option>
+                  <option value="4096">4096</option>
+                </select>
+                <span id="spectral-pitch-frame-value">1024 samples</span>
+              </label>
+              <label>
+                Hop
+                <select id="spectral-pitch-hop-ratio">
+                  <option value="0.125">12.5%</option>
+                  <option value="0.25" selected>25%</option>
+                  <option value="0.5">50%</option>
+                </select>
+                <span id="spectral-pitch-hop-ratio-value">256 samples (25%)</span>
               </label>
             </div>
           </div>
