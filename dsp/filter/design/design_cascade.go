@@ -103,33 +103,33 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 
 // LinkwitzRileyLP designs a lowpass Linkwitz-Riley cascade of the given order.
 //
-// A Linkwitz-Riley filter of order 2N is constructed by cascading two
-// Butterworth filters of order N. At the crossover frequency the magnitude
-// is -6.02 dB.
+// For even order 2N, the cascade uses two identical Butterworth filters of
+// order N. For odd order 2N+1, it uses adjacent Butterworth orders N and N+1.
+// In both cases the magnitude at the crossover frequency is -6.02 dB.
 //
-// The order must be a positive even integer (2, 4, 6, 8, …). Returns nil
-// for invalid parameters.
+// The order must be an integer >= 2. Returns nil for invalid parameters.
 //
 // For orders divisible by 4 (LR4, LR8, …), summing the LP and HP outputs
 // directly yields an allpass response. For orders ≡ 2 mod 4 (LR2, LR6, …),
 // the HP output must be inverted; use [LinkwitzRileyHPInverted] or the
-// crossover package which handles polarity automatically.
+// crossover package which handles polarity automatically. Odd orders do not
+// provide exact allpass summation with a polarity flip alone.
 func LinkwitzRileyLP(freq float64, order int, sampleRate float64) []biquad.Coefficients {
 	return pass.LinkwitzRileyLP(freq, order, sampleRate)
 }
 
 // LinkwitzRileyHP designs a highpass Linkwitz-Riley cascade of the given order.
 //
-// A Linkwitz-Riley filter of order 2N is constructed by cascading two
-// Butterworth filters of order N. At the crossover frequency the magnitude
-// is -6.02 dB.
+// For even order 2N, the cascade uses two identical Butterworth filters of
+// order N. For odd order 2N+1, it uses adjacent Butterworth orders N and N+1.
+// In both cases the magnitude at the crossover frequency is -6.02 dB.
 //
-// The order must be a positive even integer (2, 4, 6, 8, …). Returns nil
-// for invalid parameters.
+// The order must be an integer >= 2. Returns nil for invalid parameters.
 //
 // For orders divisible by 4, this output is in-phase with [LinkwitzRileyLP]
 // and their sum is allpass. For orders ≡ 2 mod 4, the highpass is 180° out
-// of phase; use [LinkwitzRileyHPInverted] for allpass summation.
+// of phase; use [LinkwitzRileyHPInverted] for allpass summation. Odd orders
+// do not provide exact allpass summation with a polarity flip alone.
 func LinkwitzRileyHP(freq float64, order int, sampleRate float64) []biquad.Coefficients {
 	return pass.LinkwitzRileyHP(freq, order, sampleRate)
 }
@@ -142,14 +142,18 @@ func LinkwitzRileyHP(freq float64, order int, sampleRate float64) []biquad.Coeff
 // inverted polarity so that LP + HP_inv = allpass.
 //
 // For orders divisible by 4, the inversion is unnecessary (the standard HP
-// already sums to allpass with LP), but this function still applies it.
+// already sums to allpass with LP), but this function still applies it. For
+// odd orders, this applies a polarity inversion but does not guarantee exact
+// allpass summation with [LinkwitzRileyLP].
 func LinkwitzRileyHPInverted(freq float64, order int, sampleRate float64) []biquad.Coefficients {
 	return pass.LinkwitzRileyHPInverted(freq, order, sampleRate)
 }
 
 // LinkwitzRileyNeedsHPInvert reports whether the given Linkwitz-Riley order
 // requires HP polarity inversion for allpass summation. Returns true for
-// orders ≡ 2 mod 4 (LR2, LR6, LR10, …).
+// even orders ≡ 2 mod 4 (LR2, LR6, LR10, …). For odd orders this returns
+// false because simple polarity inversion is not sufficient for exact allpass
+// summation.
 func LinkwitzRileyNeedsHPInvert(order int) bool {
 	return pass.LinkwitzRileyNeedsHPInvert(order)
 }

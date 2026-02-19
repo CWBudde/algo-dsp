@@ -2,6 +2,7 @@ package shelving
 
 import (
 	"errors"
+	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
@@ -32,4 +33,31 @@ func negateOddPowers(sections []biquad.Coefficients) {
 		sections[i].B1 = -sections[i].B1
 		sections[i].A1 = -sections[i].A1
 	}
+}
+
+// invertSections builds a cascade whose transfer function is the exact
+// reciprocal of the input cascade, section-by-section.
+func invertSections(sections []biquad.Coefficients) ([]biquad.Coefficients, error) {
+	if len(sections) == 0 {
+		return nil, ErrInvalidParams
+	}
+	out := make([]biquad.Coefficients, len(sections))
+	for i, s := range sections {
+		if s.B0 == 0 || math.IsNaN(s.B0) || math.IsInf(s.B0, 0) {
+			return nil, ErrInvalidParams
+		}
+		invB0 := 1.0 / s.B0
+		inv := biquad.Coefficients{
+			B0: invB0,
+			B1: s.A1 * invB0,
+			B2: s.A2 * invB0,
+			A1: s.B1 * invB0,
+			A2: s.B2 * invB0,
+		}
+		if !coeffsAreFinite(inv) {
+			return nil, ErrInvalidParams
+		}
+		out[i] = inv
+	}
+	return out, nil
 }
