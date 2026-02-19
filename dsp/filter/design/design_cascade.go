@@ -100,3 +100,56 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float64) []biquad.Coefficients {
 	return pass.EllipticHP(freq, order, rippleDB, stopbandDB, sampleRate)
 }
+
+// LinkwitzRileyLP designs a lowpass Linkwitz-Riley cascade of the given order.
+//
+// A Linkwitz-Riley filter of order 2N is constructed by cascading two
+// Butterworth filters of order N. At the crossover frequency the magnitude
+// is -6.02 dB.
+//
+// The order must be a positive even integer (2, 4, 6, 8, …). Returns nil
+// for invalid parameters.
+//
+// For orders divisible by 4 (LR4, LR8, …), summing the LP and HP outputs
+// directly yields an allpass response. For orders ≡ 2 mod 4 (LR2, LR6, …),
+// the HP output must be inverted; use [LinkwitzRileyHPInverted] or the
+// crossover package which handles polarity automatically.
+func LinkwitzRileyLP(freq float64, order int, sampleRate float64) []biquad.Coefficients {
+	return pass.LinkwitzRileyLP(freq, order, sampleRate)
+}
+
+// LinkwitzRileyHP designs a highpass Linkwitz-Riley cascade of the given order.
+//
+// A Linkwitz-Riley filter of order 2N is constructed by cascading two
+// Butterworth filters of order N. At the crossover frequency the magnitude
+// is -6.02 dB.
+//
+// The order must be a positive even integer (2, 4, 6, 8, …). Returns nil
+// for invalid parameters.
+//
+// For orders divisible by 4, this output is in-phase with [LinkwitzRileyLP]
+// and their sum is allpass. For orders ≡ 2 mod 4, the highpass is 180° out
+// of phase; use [LinkwitzRileyHPInverted] for allpass summation.
+func LinkwitzRileyHP(freq float64, order int, sampleRate float64) []biquad.Coefficients {
+	return pass.LinkwitzRileyHP(freq, order, sampleRate)
+}
+
+// LinkwitzRileyHPInverted designs a highpass Linkwitz-Riley cascade with
+// inverted polarity for allpass summation with [LinkwitzRileyLP].
+//
+// For orders ≡ 2 mod 4 (LR2, LR6, LR10, …), the standard HP is 180° out
+// of phase with the LP at the crossover. This function returns the HP with
+// inverted polarity so that LP + HP_inv = allpass.
+//
+// For orders divisible by 4, the inversion is unnecessary (the standard HP
+// already sums to allpass with LP), but this function still applies it.
+func LinkwitzRileyHPInverted(freq float64, order int, sampleRate float64) []biquad.Coefficients {
+	return pass.LinkwitzRileyHPInverted(freq, order, sampleRate)
+}
+
+// LinkwitzRileyNeedsHPInvert reports whether the given Linkwitz-Riley order
+// requires HP polarity inversion for allpass summation. Returns true for
+// orders ≡ 2 mod 4 (LR2, LR6, LR10, …).
+func LinkwitzRileyNeedsHPInvert(order int) bool {
+	return pass.LinkwitzRileyNeedsHPInvert(order)
+}
