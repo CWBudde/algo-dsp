@@ -198,6 +198,8 @@
                 <select id="effects-mode">
                   <option value="chorus" selected>Chorus</option>
                   <option value="bass">Psychoacoustic Bass</option>
+                  <option value="pitch-time">Pitch Shifter (Time)</option>
+                  <option value="pitch-spectral">Pitch Shifter (Spectral)</option>
                 </select>
               </label>
             </div>
@@ -281,6 +283,34 @@
                   <option value="2">2nd Order</option>
                 </select>
                 <span id="harmonic-highpass-value">DC</span>
+              </label>
+            </div>
+            <div class="fx-option" data-mode="pitch-time" hidden>
+              <div class="fx-option-head">
+                <span>Pitch Shifter (Time)</span>
+                <label class="fx-toggle">
+                  <input id="time-pitch-enabled" type="checkbox" />
+                  <span>On</span>
+                </label>
+              </div>
+              <label>
+                Semitones
+                <input id="time-pitch-semitones" type="range" min="-24" max="24" step="0.1" value="0" />
+                <span id="time-pitch-semitones-value">0.0 st</span>
+              </label>
+            </div>
+            <div class="fx-option" data-mode="pitch-spectral" hidden>
+              <div class="fx-option-head">
+                <span>Pitch Shifter (Spectral)</span>
+                <label class="fx-toggle">
+                  <input id="spectral-pitch-enabled" type="checkbox" />
+                  <span>On</span>
+                </label>
+              </div>
+              <label>
+                Semitones
+                <input id="spectral-pitch-semitones" type="range" min="-24" max="24" step="0.1" value="0" />
+                <span id="spectral-pitch-semitones-value">0.0 st</span>
               </label>
             </div>
           </div>
