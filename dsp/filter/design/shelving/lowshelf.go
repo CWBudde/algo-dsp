@@ -166,7 +166,7 @@ func lowShelfSections(K, P float64, pairs []poleParams, realSigma float64) []biq
 //	ew = (G0·e + Gb·sqrt(1 + e²))^(1/M), B = (ew − g²/ew) / 2
 //
 // where e = sqrt((G² − Gb²)/(Gb² − G0²)), g = G^(1/M), G0 = 1 (0 dB reference),
-// G = 10^(gainDB/20), and Gb = 10^(stopbandDB/20).
+// G = 10^(gainDB/20), and Gb = 10^((gainDB-stopbandDB)/20).
 //
 // Per section m = 1..L, θ_m = (2m−1)/(2M)·π:
 //
@@ -179,7 +179,7 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 
 	G0 := 1.0
 	G := db2Lin(gainDB)
-	Gb := db2Lin(stopbandDB)
+	Gb := db2Lin(gainDB - stopbandDB)
 	g := math.Pow(G, 1.0/float64(order))
 
 	num := G*G - Gb*Gb
@@ -232,19 +232,16 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 		sections = append(sections, section)
 	}
 
-	// The Orfanidis Chebyshev II prototype does not inherently produce the
-	// correct DC gain when used with a direct lowpass bilinear transform
-	// (unlike the bandpass case where the BP transform embeds the gain).
-	// Correct by computing the actual DC gain and scaling the first section.
-	dcGain := 1.0
+	// Normalize at Nyquist (stopband anchor), matching DSPFilters behavior.
+	nyqGain := 1.0
 	for _, s := range sections {
-		dcGain *= (s.B0 + s.B1 + s.B2) / (1.0 + s.A1 + s.A2)
+		nyqGain *= (s.B0 - s.B1 + s.B2) / (1.0 - s.A1 + s.A2)
 	}
-	if !isFinite(dcGain) || dcGain == 0 || len(sections) == 0 {
+	if !isFinite(nyqGain) || nyqGain == 0 || len(sections) == 0 {
 		return nil, ErrInvalidParams
 	}
 
-	corr := G / dcGain
+	corr := 1.0 / nyqGain
 	if !isFinite(corr) {
 		return nil, ErrInvalidParams
 	}
