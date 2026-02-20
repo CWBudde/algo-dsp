@@ -297,7 +297,7 @@ func TestSpectralPitchShifterSignalQuality(t *testing.T) {
 
 			snr := 100.0
 			if noisePower > 1e-30 {
-				snr = 10 * math.Log10(sigPower / noisePower)
+				snr = 10 * math.Log10(sigPower/noisePower)
 			}
 
 			t.Logf("ratio=%.2f  inFreq=%.1f Hz  outFreq=%.1f Hz  SNR=%.1f dB",
@@ -308,6 +308,109 @@ func TestSpectralPitchShifterSignalQuality(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSpectralPitchShifterSignalQualityOverlap(t *testing.T) {
+	// Tests a small pitch shift (1.1x) across different overlap factors.
+	// Small ratios are harder for the phase vocoder, and the overlap factor
+	// (frameSize / analysisHop) significantly affects quality.
+	const (
+		sampleRate = 48000.0
+		n          = 32768
+		fftLen     = 16384
+		ratio      = 1.1
+	)
+
+	cases := []struct {
+		name        string
+		frameSize   int
+		analysisHop int
+	}{
+		{name: "2x_overlap", frameSize: 1024, analysisHop: 512},
+		{name: "4x_overlap", frameSize: 1024, analysisHop: 256},
+		{name: "8x_overlap", frameSize: 1024, analysisHop: 128},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := NewSpectralPitchShifter(sampleRate)
+			if err != nil {
+				t.Fatalf("NewSpectralPitchShifter() error = %v", err)
+			}
+			if err := s.SetFrameSize(tc.frameSize); err != nil {
+				t.Fatalf("SetFrameSize() error = %v", err)
+			}
+			if err := s.SetAnalysisHop(tc.analysisHop); err != nil {
+				t.Fatalf("SetAnalysisHop() error = %v", err)
+			}
+			if err := s.SetPitchRatio(ratio); err != nil {
+				t.Fatalf("SetPitchRatio() error = %v", err)
+			}
+
+			// Choose input freq so the output freq lands on an exact FFT bin.
+			outBin := 100
+			outFreq := float64(outBin) * sampleRate / float64(fftLen)
+			inFreq := outFreq / ratio
+
+			input := make([]float64, n)
+			for i := range input {
+				input[i] = 0.8 * math.Sin(2*math.Pi*inFreq*float64(i)/sampleRate)
+			}
+
+			out := s.Process(input)
+
+			snr := measureSNR(t, out, outFreq, sampleRate, fftLen)
+			t.Logf("overlap=%d/%d  inFreq=%.1f Hz  outFreq=%.1f Hz  SNR=%.1f dB",
+				tc.frameSize, tc.analysisHop, inFreq, outFreq, snr)
+
+			if snr < 45 {
+				t.Errorf("signal quality too low: SNR = %.1f dB, want >= 45 dB", snr)
+			}
+		})
+	}
+}
+
+// measureSNR runs a windowed FFT on the center of out and returns the SNR in dB
+// relative to a ±10 bin band around targetFreq.
+func measureSNR(t *testing.T, out []float64, targetFreq, sampleRate float64, fftLen int) float64 {
+	t.Helper()
+
+	mid := len(out)/2 - fftLen/2
+	if mid < 0 {
+		mid = 0
+	}
+	chunk := out[mid : mid+fftLen]
+
+	plan, err := algofft.NewPlan64(fftLen)
+	if err != nil {
+		t.Fatalf("NewPlan64 error: %v", err)
+	}
+	fftIn := make([]complex128, fftLen)
+	fftOut := make([]complex128, fftLen)
+	for i, v := range chunk {
+		fftIn[i] = complex(v, 0)
+	}
+	if err := plan.Forward(fftOut, fftIn); err != nil {
+		t.Fatalf("Forward FFT error: %v", err)
+	}
+
+	targetBin := int(math.Round(targetFreq * float64(fftLen) / sampleRate))
+	const sigBW = 10
+	sigPower := 0.0
+	noisePower := 0.0
+	for k := 1; k <= fftLen/2; k++ {
+		mag2 := real(fftOut[k])*real(fftOut[k]) + imag(fftOut[k])*imag(fftOut[k])
+		if k >= targetBin-sigBW && k <= targetBin+sigBW {
+			sigPower += mag2
+		} else {
+			noisePower += mag2
+		}
+	}
+
+	if noisePower <= 1e-30 {
+		return 100.0
+	}
+	return 10 * math.Log10(sigPower/noisePower)
 }
 
 func dominantFrequencyHz(t *testing.T, signal []float64, sampleRate float64) float64 {
