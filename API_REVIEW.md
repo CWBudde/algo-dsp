@@ -1,9 +1,9 @@
-# API Review Checklist (Phase 14)
+# API Review Checklist (Phase 25)
 
 Date: 2026-02-07
 Scope: `github.com/cwbudde/algo-dsp` public packages
 
-## 14.1 API Review
+## 25.1 API Review
 
 - [x] Review exported types/functions/methods for consistency across `dsp/*`, `measure/*`, `stats/*`.
 - [x] Verify naming follows Go conventions (MixedCaps, no package stutter).
@@ -12,7 +12,7 @@ Scope: `github.com/cwbudde/algo-dsp` public packages
 - [x] Validate error semantics and wrapping strategy in public APIs.
 - [x] Review option patterns (`core.ProcessorOption`, package-local options) for forward compatibility.
 
-## 14.2 Decisions and Notes
+## 25.2 Decisions and Notes
 
 - `dsp/core` is kept as the shared configuration contract for package-level generators/processors.
 - Odd-order Chebyshev first-order sections remain deterministic compatibility behavior (fallback to Butterworth first-order sections) and are explicitly documented in code comments.

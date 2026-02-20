@@ -169,19 +169,19 @@ Phase 9:  Signal Generation and Utilities             [2 weeks]  ✅ Complete
 Phase 10: Measurement Kernels (THD)                   [3 weeks]  ✅ Complete
 Phase 11: Measurement Kernels (Sweep/IR)              [3 weeks]  ✅ Complete
 Phase 12: Stats Packages                              [2 weeks]  ✅ Complete
-Phase 13: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
-Phase 14: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
-Phase 15: Advanced Parametric EQ Design               [2 weeks]  ✅ Complete
-Phase 16: High-Order Graphic EQ Bands                 [4 weeks]  ✅ Complete
-Phase 17: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
-Phase 18: Effects — High-Priority Modulation          [2 weeks]  📋 Planned
-Phase 19: Effects — High-Priority Dynamics            [2 weeks]  📋 Planned
-Phase 20: Effects — High-Priority Spatial             [1 week]   📋 Planned
-Phase 21: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  📋 Planned
-Phase 22: Effects — Medium-Priority Modulation        [2 weeks]  📋 Planned
-Phase 23: Effects — Medium-Priority Dynamics          [2 weeks]  📋 Planned
-Phase 24: Effects — Spatial and Convolution Reverb    [2 weeks]  📋 Planned
-Phase 25: Effects — Specialized / Lower-Priority      [4 weeks]  📋 Planned
+Phase 13: Advanced Parametric EQ Design               [2 weeks]  ✅ Complete
+Phase 14: High-Order Graphic EQ Bands                 [4 weeks]  ✅ Complete
+Phase 15: Effects — High-Priority Modulation          [2 weeks]  📋 Planned
+Phase 16: Effects — High-Priority Dynamics            [2 weeks]  📋 Planned
+Phase 17: Effects — High-Priority Spatial             [1 week]   📋 Planned
+Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  📋 Planned
+Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  📋 Planned
+Phase 20: Effects — Medium-Priority Dynamics          [2 weeks]  📋 Planned
+Phase 21: Effects — Spatial and Convolution Reverb    [2 weeks]  📋 Planned
+Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  📋 Planned
+Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
+Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
+Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
 ```
 
 ---
@@ -275,55 +275,7 @@ Completed phases are summarized as short bullet lists. In-progress and planned p
 - `stats/frequency`: centroid/spread/flatness/rolloff/bandwidth + basic spectrum stats.
 - Zero-alloc hot paths; tests + benchmarks; coverage targets achieved.
 
-### Phase 13: Optimization and SIMD Paths (In Progress)
-
-Status:
-
-- Core optimization work exists; remaining work is making performance regression detection repeatable.
-
-Tasks (must-do):
-
-- [x] Remove avoidable allocations in spectrum helpers caused by temporary unpacking.
-  - [x] Add/extend a zero-alloc fast path.
-  - [x] Wire spectrum code to prefer the fast path.
-  - [x] Record before/after numbers in `BENCHMARKS.md`.
-- [ ] Add a benchmark regression guard (advisory at first).
-  - [x] Choose a stable, small benchmark subset covering hot paths.
-  - [ ] Define regression thresholds (`ns/op`, `allocs/op`) and baseline update workflow.
-  - [x] Add a CI-friendly target (e.g. `just bench-ci`) emitting a report.
-  - [ ] Wire it into CI as advisory output.
-- [ ] Re-run full benchmarks on at least 2 machines and update `BENCHMARKS.md`.
-
-Optional SIMD track (modal oscillator bank; depends on `algo-vecmath`):
-
-- [ ] Add `dsp/osc` (or `dsp/modal`) package skeleton with scalar reference.
-  - [ ] Define block APIs for damped complex rotators (primary `float32`).
-  - [ ] Add parity tests vs scalar reference.
-  - [ ] Add microbenchmarks for modal workloads.
-  - [ ] Document denormal strategy.
-
-Exit criteria:
-
-- [ ] Key hot paths show no major regressions in allocations/op.
-- [ ] `go test ./...` and `go test -tags purego ./...` pass.
-- [ ] `BENCHMARKS.md` baselines updated with date + Go version + machine info.
-
-### Phase 14: API Stabilization and v1.0 (In Progress)
-
-Tasks:
-
-- [ ] Run full benchmark pass and confirm no major regressions vs baselines.
-- [ ] Run full CI locally (`just ci`) including race (`go test -race ./...`).
-- [ ] Confirm `CHANGELOG.md` and `MIGRATION.md` are complete for `v1.0.0`.
-- [ ] Complete `API_REVIEW.md` checklist.
-- [ ] Tag and publish `v1.0.0` (tag + release notes).
-- [ ] Verify module proxy indexing (`go get` via `GOPROXY`).
-
-Exit criteria:
-
-- [ ] `v1.0.0` tag exists and release notes are published.
-
-### Phase 15: Advanced Parametric EQ Design (Orfanidis) (Complete)
+### Phase 13: Advanced Parametric EQ Design (Orfanidis) (Complete)
 
 - `dsp/filter/design/orfanidis`: Orfanidis-family parametric EQ coefficient design.
 - Expert + audio-friendly APIs.
@@ -331,7 +283,7 @@ Exit criteria:
 - Validation + response sanity tests.
 - Docs + runnable example.
 
-### Phase 16: High-Order Graphic EQ Bands (Complete)
+### Phase 14: High-Order Graphic EQ Bands (Complete)
 
 - `dsp/filter/design/band`: gain-adjustable high-order band designers for graphic EQ.
 - Topologies: Butterworth, Chebyshev I, Chebyshev II, Elliptic.
@@ -339,7 +291,146 @@ Exit criteria:
 - Stability + response conformance tests.
 - Docs + runnable example.
 
-### Phase 17: High-Order Shelving Filters (Holters/Zölzer + Orfanidis) (In Progress)
+---
+
+### Phase 15: Effects — High-Priority Modulation (Flanger, Phaser, Tremolo) (Planned)
+
+Rules:
+
+- Algorithm-only; no I/O.
+- Constructor + options; `Process` + `ProcessInPlace` + `Reset`.
+- Tests + runnable example per effect.
+
+Tasks:
+
+- [ ] Flanger
+  - Algorithm: short modulated delay (0.1–10 ms) with feedback and wet/dry.
+  - API sketch:
+
+    ```go
+    func NewFlanger(sampleRate float64, opts ...Option) (*Flanger, error)
+    func (f *Flanger) Process(sample float64) float64
+    func (f *Flanger) ProcessInPlace(buf []float64) error
+    func (f *Flanger) Reset()
+    ```
+
+  - [ ] Implement core algorithm (short modulated delay, feedback, mix).
+  - [ ] Implement interpolation tap (reuse chorus approach).
+  - [ ] Add tests (parameter validation + basic response sanity).
+  - [ ] Add runnable example.
+
+- [ ] Phaser
+  - Algorithm: allpass cascade with LFO modulation.
+  - [ ] Implement allpass cascade (4–12 stages) with LFO modulation.
+  - [ ] Add tests + example.
+- [ ] Tremolo
+  - Algorithm: amplitude modulation with LFO and optional smoothing.
+  - [ ] Implement LFO amplitude mod + smoothing.
+  - [ ] Add tests + example.
+
+Exit criteria:
+
+- [ ] `go test -race ./dsp/effects/` passes with new effects.
+
+### Phase 16: Effects — High-Priority Dynamics (Planned)
+
+Tasks:
+
+- [ ] De-esser
+  - [ ] Implement split-band detection and reduction.
+  - [ ] Add tests + example.
+- [ ] Expander
+  - [ ] Implement downward expander (envelope + gain computer).
+  - [ ] Add tests + example.
+- [ ] Multiband compressor
+  - [ ] Implement crossover + per-band compressor + recombine.
+  - [ ] Add tests + example.
+
+### Phase 17: Effects — High-Priority Spatial (Planned)
+
+Tasks:
+
+- [ ] Stereo widener
+  - [ ] Implement M/S gain controls with safe bounds.
+  - [ ] Add mono-compatibility tests + example.
+
+### Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi (Planned)
+
+Tasks:
+
+- [ ] Distortion
+  - [ ] Implement waveshapers (soft/hard clip, tanh).
+  - [ ] Add tests + example.
+- [ ] Bit crusher
+  - [ ] Implement bit depth + sample rate reduction.
+  - [ ] Add tests + example.
+
+### Phase 19: Effects — Medium-Priority Modulation (Planned)
+
+Tasks:
+
+- [ ] Auto-wah
+  - [ ] Implement envelope follower modulating a filter.
+  - [ ] Add tests + example.
+- [ ] Ring modulator
+  - [ ] Implement carrier multiply + mix.
+  - [ ] Add tests + example.
+
+### Phase 20: Effects — Medium-Priority Dynamics (Planned)
+
+Tasks:
+
+- [ ] Transient shaper
+  - [ ] Implement attack/release split + shaping.
+  - [ ] Add tests + example.
+- [ ] Lookahead limiter
+  - [ ] Implement delay + detector + gain.
+  - [ ] Add tests + example.
+
+### Phase 21: Effects — Spatial and Convolution Reverb (Planned)
+
+Tasks:
+
+- [ ] Convolution reverb
+  - [ ] Implement partitioned convolution wrapper specialized for reverb usage.
+  - [ ] Add tests + example.
+- [ ] Haas delay
+  - [ ] Implement short stereo delay + constraints.
+  - [ ] Add tests + example.
+
+### Phase 22: Effects — Specialized / Lower-Priority (Planned)
+
+Tasks:
+
+- [ ] Spectral freeze
+  - [ ] Implement STFT magnitude hold + phase strategy.
+  - [ ] Add tests + example.
+- [ ] Granular
+  - [ ] Implement grain scheduling + overlap-add.
+  - [ ] Add tests + example.
+- [ ] Dynamic EQ
+  - [ ] Implement band filter + detector + gain mapping.
+  - [ ] Add tests + example.
+- [ ] Stereo panner
+  - [ ] Implement equal-power pan law.
+  - [ ] Add tests + example.
+- [ ] Vocoder
+  - [ ] Implement analysis bank + envelopes + carrier shaping.
+  - [ ] Add tests + example.
+- [ ] Pitch correction
+  - [ ] Implement YIN helper + integrate with spectral shifter.
+  - [ ] Add tests + example.
+- [ ] Noise reduction
+  - [ ] Implement profiling + spectral subtraction/Wiener.
+  - [ ] Add tests + example.
+
+Exit criteria:
+
+- [ ] New effects meet minimum coverage and include runnable examples.
+
+---
+
+### Phase 23: High-Order Shelving Filters (Holters/Zölzer + Orfanidis) (In Progress)
 
 Goal:
 
@@ -381,142 +472,53 @@ Exit criteria:
 - [ ] All shelving topologies produce correct shelf shape.
 - [ ] All shelving tests pass.
 
----
+### Phase 24: Optimization and SIMD Paths (In Progress)
 
-### Phase 18: Effects — High-Priority Modulation (Flanger, Phaser, Tremolo) (Planned)
+Status:
 
-Rules:
+- Core optimization work exists; remaining work is making performance regression detection repeatable.
 
-- Algorithm-only; no I/O.
-- Constructor + options; `Process` + `ProcessInPlace` + `Reset`.
-- Tests + runnable example per effect.
+Tasks (must-do):
 
-Tasks:
+- [x] Remove avoidable allocations in spectrum helpers caused by temporary unpacking.
+  - [x] Add/extend a zero-alloc fast path.
+  - [x] Wire spectrum code to prefer the fast path.
+  - [x] Record before/after numbers in `BENCHMARKS.md`.
+- [ ] Add a benchmark regression guard (advisory at first).
+  - [x] Choose a stable, small benchmark subset covering hot paths.
+  - [ ] Define regression thresholds (`ns/op`, `allocs/op`) and baseline update workflow.
+  - [x] Add a CI-friendly target (e.g. `just bench-ci`) emitting a report.
+  - [ ] Wire it into CI as advisory output.
+- [ ] Re-run full benchmarks on at least 2 machines and update `BENCHMARKS.md`.
 
-- [ ] Flanger
-  - Algorithm: short modulated delay (0.1–10 ms) with feedback and wet/dry.
-  - API sketch:
+Optional SIMD track (modal oscillator bank; depends on `algo-vecmath`):
 
-    ```go
-    func NewFlanger(sampleRate float64, opts ...Option) (*Flanger, error)
-    func (f *Flanger) Process(sample float64) float64
-    func (f *Flanger) ProcessInPlace(buf []float64) error
-    func (f *Flanger) Reset()
-    ```
-
-  - [ ] Implement core algorithm (short modulated delay, feedback, mix).
-  - [ ] Implement interpolation tap (reuse chorus approach).
-  - [ ] Add tests (parameter validation + basic response sanity).
-  - [ ] Add runnable example.
-
-- [ ] Phaser
-  - Algorithm: allpass cascade with LFO modulation.
-  - [ ] Implement allpass cascade (4–12 stages) with LFO modulation.
-  - [ ] Add tests + example.
-- [ ] Tremolo
-  - Algorithm: amplitude modulation with LFO and optional smoothing.
-  - [ ] Implement LFO amplitude mod + smoothing.
-  - [ ] Add tests + example.
+- [ ] Add `dsp/osc` (or `dsp/modal`) package skeleton with scalar reference.
+  - [ ] Define block APIs for damped complex rotators (primary `float32`).
+  - [ ] Add parity tests vs scalar reference.
+  - [ ] Add microbenchmarks for modal workloads.
+  - [ ] Document denormal strategy.
 
 Exit criteria:
 
-- [ ] `go test -race ./dsp/effects/` passes with new effects.
+- [ ] Key hot paths show no major regressions in allocations/op.
+- [ ] `go test ./...` and `go test -tags purego ./...` pass.
+- [ ] `BENCHMARKS.md` baselines updated with date + Go version + machine info.
 
-### Phase 19: Effects — High-Priority Dynamics (Planned)
-
-Tasks:
-
-- [ ] De-esser
-  - [ ] Implement split-band detection and reduction.
-  - [ ] Add tests + example.
-- [ ] Expander
-  - [ ] Implement downward expander (envelope + gain computer).
-  - [ ] Add tests + example.
-- [ ] Multiband compressor
-  - [ ] Implement crossover + per-band compressor + recombine.
-  - [ ] Add tests + example.
-
-### Phase 20: Effects — High-Priority Spatial (Planned)
+### Phase 25: API Stabilization and v1.0 (In Progress)
 
 Tasks:
 
-- [ ] Stereo widener
-  - [ ] Implement M/S gain controls with safe bounds.
-  - [ ] Add mono-compatibility tests + example.
-
-### Phase 21: Effects — Medium-Priority Waveshaping/Lo-fi (Planned)
-
-Tasks:
-
-- [ ] Distortion
-  - [ ] Implement waveshapers (soft/hard clip, tanh).
-  - [ ] Add tests + example.
-- [ ] Bit crusher
-  - [ ] Implement bit depth + sample rate reduction.
-  - [ ] Add tests + example.
-
-### Phase 22: Effects — Medium-Priority Modulation (Planned)
-
-Tasks:
-
-- [ ] Auto-wah
-  - [ ] Implement envelope follower modulating a filter.
-  - [ ] Add tests + example.
-- [ ] Ring modulator
-  - [ ] Implement carrier multiply + mix.
-  - [ ] Add tests + example.
-
-### Phase 23: Effects — Medium-Priority Dynamics (Planned)
-
-Tasks:
-
-- [ ] Transient shaper
-  - [ ] Implement attack/release split + shaping.
-  - [ ] Add tests + example.
-- [ ] Lookahead limiter
-  - [ ] Implement delay + detector + gain.
-  - [ ] Add tests + example.
-
-### Phase 24: Effects — Spatial and Convolution Reverb (Planned)
-
-Tasks:
-
-- [ ] Convolution reverb
-  - [ ] Implement partitioned convolution wrapper specialized for reverb usage.
-  - [ ] Add tests + example.
-- [ ] Haas delay
-  - [ ] Implement short stereo delay + constraints.
-  - [ ] Add tests + example.
-
-### Phase 25: Effects — Specialized / Lower-Priority (Planned)
-
-Tasks:
-
-- [ ] Spectral freeze
-  - [ ] Implement STFT magnitude hold + phase strategy.
-  - [ ] Add tests + example.
-- [ ] Granular
-  - [ ] Implement grain scheduling + overlap-add.
-  - [ ] Add tests + example.
-- [ ] Dynamic EQ
-  - [ ] Implement band filter + detector + gain mapping.
-  - [ ] Add tests + example.
-- [ ] Stereo panner
-  - [ ] Implement equal-power pan law.
-  - [ ] Add tests + example.
-- [ ] Vocoder
-  - [ ] Implement analysis bank + envelopes + carrier shaping.
-  - [ ] Add tests + example.
-- [ ] Pitch correction
-  - [ ] Implement YIN helper + integrate with spectral shifter.
-  - [ ] Add tests + example.
-- [ ] Noise reduction
-  - [ ] Implement profiling + spectral subtraction/Wiener.
-  - [ ] Add tests + example.
+- [ ] Run full benchmark pass and confirm no major regressions vs baselines.
+- [ ] Run full CI locally (`just ci`) including race (`go test -race ./...`).
+- [ ] Confirm `CHANGELOG.md` and `MIGRATION.md` are complete for `v1.0.0`.
+- [ ] Complete `API_REVIEW.md` checklist.
+- [ ] Tag and publish `v1.0.0` (tag + release notes).
+- [ ] Verify module proxy indexing (`go get` via `GOPROXY`).
 
 Exit criteria:
 
-- [ ] New effects meet minimum coverage and include runnable examples.
+- [ ] `v1.0.0` tag exists and release notes are published.
 
 ---
 
@@ -647,7 +649,7 @@ Quarter-end success criteria:
 | ------- | ---------- | ------- | ------------------------------------------------------------- |
 | 0.1     | 2026-02-06 | Codex   | Initial comprehensive plan                                    |
 | 0.2     | 2026-02-06 | Claude  | Expanded early phases + migration notes                       |
-| 0.3     | 2026-02-08 | Claude  | Added Phase 17 shelving filters + known Chebyshev II bug      |
+| 0.3     | 2026-02-08 | Claude  | Added shelving filter design phase + known Chebyshev II bug   |
 | 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases |
 
 ---

@@ -10,7 +10,7 @@ All notable changes to this project are documented in this file.
 - New public package `dsp/delay` with reusable circular delay-line primitives, including integer and fractional-delay reads.
 - Added `core.FlushDenormals` for denormal-safe hot loops.
 
-- Phase 14 API stabilization artifacts: `API_REVIEW.md`, `MIGRATION.md`, and `BENCHMARKS.md`.
+- Phase 25 API stabilization artifacts: `API_REVIEW.md`, `MIGRATION.md`, and `BENCHMARKS.md`.
 - Runnable examples for previously uncovered major public packages:
   - `dsp/buffer`
   - `dsp/core`
@@ -21,7 +21,7 @@ All notable changes to this project are documented in this file.
 ### Changed
 
 - Benchmark code in `measure/ir` and `measure/sweep` now handles returned errors to satisfy release lint gates.
-- Public implementation comments were cleaned to remove open work-item markers in Phase 14-facing code.
+- Public implementation comments were cleaned to remove open work-item markers in Phase 25-facing code.
 
 ### Fixed
 
