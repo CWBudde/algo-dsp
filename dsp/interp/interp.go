@@ -65,9 +65,9 @@ func Lagrange4(t, xm1, x0, x1, x2 float64) float64 {
 	d1 := t - 1
 	d2 := t + 1
 	l0 := -d0 * d1 * (t - 2) / 6.0 // basis for xm1 at node -1
-	l1 := d2 * d1 * (t - 2) / 2.0   // basis for x0 at node 0
-	l2 := -d2 * d0 * (t - 2) / 2.0  // basis for x1 at node 1
-	l3 := d2 * d0 * d1 / 6.0         // basis for x2 at node 2
+	l1 := d2 * d1 * (t - 2) / 2.0  // basis for x0 at node 0
+	l2 := -d2 * d0 * (t - 2) / 2.0 // basis for x1 at node 1
+	l3 := d2 * d0 * d1 / 6.0       // basis for x2 at node 2
 	return l0*xm1 + l1*x0 + l2*x1 + l3*x2
 }
 

@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 
+	algofft "github.com/cwbudde/algo-fft"
+
 	"github.com/cwbudde/algo-dsp/internal/testutil"
 )
 
@@ -283,6 +285,159 @@ func estimateFrequencyAutoCorrelation(x []float64, sampleRate, minHz, maxHz floa
 		return 0
 	}
 	return sampleRate / lag
+}
+
+func TestPitchShifterSignalQuality(t *testing.T) {
+	const (
+		sampleRate = 48000.0
+		n          = 32768
+		fftLen     = 16384
+	)
+
+	cases := []struct {
+		name  string
+		ratio float64
+	}{
+		{name: "down_octave", ratio: 0.5},
+		{name: "down_fourth", ratio: 0.75},
+		{name: "up_fifth", ratio: 1.5},
+		{name: "up_octave", ratio: 2.0},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p, err := NewPitchShifter(sampleRate)
+			if err != nil {
+				t.Fatalf("NewPitchShifter() error = %v", err)
+			}
+			if err := p.SetPitchRatio(tc.ratio); err != nil {
+				t.Fatalf("SetPitchRatio() error = %v", err)
+			}
+
+			// Choose input freq so the shifted output lands on an exact FFT bin,
+			// avoiding spectral leakage in the SNR measurement.
+			outBin := 100
+			outFreq := float64(outBin) * sampleRate / float64(fftLen)
+			inFreq := outFreq / tc.ratio
+
+			input := make([]float64, n)
+			for i := range input {
+				input[i] = 0.8 * math.Sin(2*math.Pi*inFreq*float64(i)/sampleRate)
+			}
+
+			out := p.Process(input)
+
+			snr := measureTimeDomainSNR(t, out, outFreq, sampleRate, fftLen)
+			t.Logf("ratio=%.2f  inFreq=%.1f Hz  outFreq=%.1f Hz  SNR=%.1f dB",
+				tc.ratio, inFreq, outFreq, snr)
+
+			if snr < 45 {
+				t.Errorf("signal quality too low: SNR = %.1f dB, want >= 45 dB", snr)
+			}
+		})
+	}
+}
+
+func TestPitchShifterSignalQualityWSSOLAParams(t *testing.T) {
+	// Tests a small pitch shift (1.1x) across different WSOLA sequence/overlap
+	// configurations. Small ratios stress the overlap-add algorithm most, and
+	// varying these parameters changes quality/latency trade-offs.
+	const (
+		sampleRate = 48000.0
+		n          = 32768
+		fftLen     = 16384
+		ratio      = 1.1
+	)
+
+	cases := []struct {
+		name       string
+		sequenceMs float64
+		overlapMs  float64
+	}{
+		{name: "seq20_ovl5", sequenceMs: 20, overlapMs: 5},
+		{name: "seq40_ovl10", sequenceMs: 40, overlapMs: 10},
+		{name: "seq80_ovl20", sequenceMs: 80, overlapMs: 20},
+	}
+
+	outBin := 100
+	outFreq := float64(outBin) * sampleRate / float64(fftLen)
+	inFreq := outFreq / ratio
+
+	input := make([]float64, n)
+	for i := range input {
+		input[i] = 0.8 * math.Sin(2*math.Pi*inFreq*float64(i)/sampleRate)
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p, err := NewPitchShifter(sampleRate)
+			if err != nil {
+				t.Fatalf("NewPitchShifter() error = %v", err)
+			}
+			if err := p.SetSequence(tc.sequenceMs); err != nil {
+				t.Fatalf("SetSequence() error = %v", err)
+			}
+			if err := p.SetOverlap(tc.overlapMs); err != nil {
+				t.Fatalf("SetOverlap() error = %v", err)
+			}
+			if err := p.SetPitchRatio(ratio); err != nil {
+				t.Fatalf("SetPitchRatio() error = %v", err)
+			}
+
+			out := p.Process(input)
+
+			snr := measureTimeDomainSNR(t, out, outFreq, sampleRate, fftLen)
+			t.Logf("seq=%.0fms ovl=%.0fms  inFreq=%.1f Hz  outFreq=%.1f Hz  SNR=%.1f dB",
+				tc.sequenceMs, tc.overlapMs, inFreq, outFreq, snr)
+
+			if snr < 45 {
+				t.Errorf("signal quality too low: SNR = %.1f dB, want >= 45 dB", snr)
+			}
+		})
+	}
+}
+
+// measureTimeDomainSNR runs a windowed FFT on the center of out and returns
+// the SNR in dB relative to a ±10 bin band around targetFreq.
+func measureTimeDomainSNR(t *testing.T, out []float64, targetFreq, sampleRate float64, fftLen int) float64 {
+	t.Helper()
+
+	mid := len(out)/2 - fftLen/2
+	if mid < 0 {
+		mid = 0
+	}
+	chunk := out[mid : mid+fftLen]
+
+	plan, err := algofft.NewPlan64(fftLen)
+	if err != nil {
+		t.Fatalf("NewPlan64 error: %v", err)
+	}
+	fftIn := make([]complex128, fftLen)
+	fftOut := make([]complex128, fftLen)
+	for i, v := range chunk {
+		fftIn[i] = complex(v, 0)
+	}
+	if err := plan.Forward(fftOut, fftIn); err != nil {
+		t.Fatalf("Forward FFT error: %v", err)
+	}
+
+	targetBin := int(math.Round(targetFreq * float64(fftLen) / sampleRate))
+	const sigBW = 10
+	sigPower := 0.0
+	noisePower := 0.0
+	for k := 1; k <= fftLen/2; k++ {
+		mag2 := real(fftOut[k])*real(fftOut[k]) + imag(fftOut[k])*imag(fftOut[k])
+		if k >= targetBin-sigBW && k <= targetBin+sigBW {
+			sigPower += mag2
+		} else {
+			noisePower += mag2
+		}
+	}
+
+	if noisePower <= 1e-30 {
+		return 100.0
+	}
+	return 10 * math.Log10(sigPower/noisePower)
 }
 
 func normalizedAutocorrelation(x []float64, lag int) float64 {

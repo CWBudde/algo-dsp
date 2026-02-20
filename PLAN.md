@@ -151,26 +151,34 @@ func (p *Processor) ProcessInPlace(buf []float64) error
 ## 5. Phase Overview
 
 ```plain
-Phase 0:  Bootstrap & Governance                     [1 week]
-Phase 1:  Numeric Foundations & Core Utilities       [2 weeks]
-Phase 2:  Window Functions                            [2 weeks]
-Phase 3:  Filter Runtime Primitives                   [3 weeks]
-Phase 4:  Filter Design Toolkit                       [3 weeks]
-Phase 5:  Filter Banks and Weighting                  [2 weeks]
-Phase 6:  Spectrum Utilities                          [2 weeks]
-Phase 7:  Convolution and Correlation                 [2 weeks]
-Phase 8:  Resampling                                  [3 weeks]
-Phase 9:  Signal Generation and Utilities             [2 weeks]
-Phase 10: Measurement Kernels (THD)                   [3 weeks]
-Phase 11: Measurement Kernels (Sweep/IR)              [3 weeks]
-Phase 12: Stats Packages                              [2 weeks]
-Phase 13: Optimization and SIMD Paths                 [3 weeks]
-Phase 14: API Stabilization and v1.0                  [2 weeks]
-Phase 15: Advanced Parametric EQ Design               [2 weeks]
-Phase 16: High-Order Graphic EQ Bands                 [4 weeks]
-Phase 17: High-Order Shelving Filters                  [2 weeks]
+Phase 0:  Bootstrap & Governance                     [1 week]   ✅ Complete
+Phase 1:  Numeric Foundations & Core Utilities       [2 weeks]  ✅ Complete
+Phase 2:  Window Functions                            [2 weeks]  ✅ Complete
+Phase 3:  Filter Runtime Primitives                   [3 weeks]  ✅ Complete
+Phase 4:  Filter Design Toolkit                       [3 weeks]  ✅ Complete
+Phase 5:  Filter Banks and Weighting                  [2 weeks]  ✅ Complete
+Phase 6:  Spectrum Utilities                          [2 weeks]  ✅ Complete
+Phase 7:  Convolution and Correlation                 [2 weeks]  ✅ Complete
+Phase 8:  Resampling                                  [3 weeks]  ✅ Complete
+Phase 9:  Signal Generation and Utilities             [2 weeks]  ✅ Complete
+Phase 10: Measurement Kernels (THD)                   [3 weeks]  ✅ Complete
+Phase 11: Measurement Kernels (Sweep/IR)              [3 weeks]  ✅ Complete
+Phase 12: Stats Packages                              [2 weeks]  ✅ Complete
+Phase 13: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
+Phase 14: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
+Phase 15: Advanced Parametric EQ Design               [2 weeks]  ✅ Complete
+Phase 16: High-Order Graphic EQ Bands                 [4 weeks]  ✅ Complete
+Phase 17: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
+Phase 18: Effects — High-Priority Modulation          [2 weeks]  📋 Planned
+Phase 19: Effects — High-Priority Dynamics            [2 weeks]  📋 Planned
+Phase 20: Effects — High-Priority Spatial             [1 week]   📋 Planned
+Phase 21: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  📋 Planned
+Phase 22: Effects — Medium-Priority Modulation        [2 weeks]  📋 Planned
+Phase 23: Effects — Medium-Priority Dynamics          [2 weeks]  📋 Planned
+Phase 24: Effects — Spatial and Convolution Reverb    [2 weeks]  📋 Planned
+Phase 25: Effects — Specialized / Lower-Priority      [4 weeks]  📋 Planned
 
-Total Estimated Duration: ~43 weeks
+Total Estimated Duration: ~57 weeks
 ```
 
 ---

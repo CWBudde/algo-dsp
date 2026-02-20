@@ -6,8 +6,8 @@ import (
 	"math/cmplx"
 	"strings"
 
-	algofft "github.com/cwbudde/algo-fft"
 	"github.com/cwbudde/algo-dsp/dsp/window"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 // SetSpectrum updates analyzer settings used for the EQ graph spectrum.
