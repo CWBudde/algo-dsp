@@ -45,6 +45,11 @@ type SpectralPitchShifter struct {
 	analysisSpectrum  []complex128
 	synthesisSpectrum []complex128
 	timeFrame         []complex128
+
+	// Phase-locking work buffers (allocated once in rebuildState).
+	magnitudes []float64
+	instFreqs  []float64
+	peakBins   []int
 }
 
 // NewSpectralPitchShifter creates a frequency-domain pitch shifter with defaults.
@@ -247,23 +252,74 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 			return nil, fmt.Errorf("spectral pitch shifter: forward FFT failed: %w", err)
 		}
 
+		// Pass 1: compute magnitudes and instantaneous frequencies for all bins.
 		for k := 0; k <= half; k++ {
 			re := real(s.analysisSpectrum[k])
 			im := imag(s.analysisSpectrum[k])
-			mag := math.Hypot(re, im)
+			s.magnitudes[k] = math.Hypot(re, im)
 			phase := math.Atan2(im, re)
 
 			delta := phase - s.prevPhase[k] - s.omega[k]*analysisHopF
 			delta = wrapPhase(delta)
 
-			instFreq := s.omega[k] + delta/analysisHopF
-			s.sumPhase[k] += instFreq * synthesisHopF
+			s.instFreqs[k] = s.omega[k] + delta/analysisHopF
 			s.prevPhase[k] = phase
+		}
 
-			s.synthesisSpectrum[k] = complex(
-				mag*math.Cos(s.sumPhase[k]),
-				mag*math.Sin(s.sumPhase[k]),
-			)
+		// Pass 2: identity phase locking (Laroche & Dolson 1999).
+		// Identify spectral peaks and propagate each peak's phase
+		// to its surrounding bins so that their relative phases
+		// match the analysis frame, eliminating phasiness.
+		s.peakBins = s.peakBins[:0]
+		for k := 1; k < half; k++ {
+			if s.magnitudes[k] >= s.magnitudes[k-1] && s.magnitudes[k] > s.magnitudes[k+1] {
+				s.peakBins = append(s.peakBins, k)
+			}
+		}
+
+		if len(s.peakBins) == 0 {
+			// No peaks detected — fall back to standard per-bin phase vocoder.
+			for k := 0; k <= half; k++ {
+				s.sumPhase[k] += s.instFreqs[k] * synthesisHopF
+				s.synthesisSpectrum[k] = complex(
+					s.magnitudes[k]*math.Cos(s.sumPhase[k]),
+					s.magnitudes[k]*math.Sin(s.sumPhase[k]),
+				)
+			}
+		} else {
+			// Step 1: advance all peak bins' phases using their
+			// instantaneous frequencies (standard phase vocoder update).
+			for _, pk := range s.peakBins {
+				s.sumPhase[pk] += s.instFreqs[pk] * synthesisHopF
+			}
+
+			// Step 2: for every bin, find the nearest peak and lock
+			// the phase to preserve the analysis-frame relationship.
+			peakIdx := 0
+			for k := 0; k <= half; k++ {
+				// Advance to the closest peak for bin k.
+				for peakIdx+1 < len(s.peakBins) {
+					curr := s.peakBins[peakIdx]
+					next := s.peakBins[peakIdx+1]
+					if absInt(next-k) < absInt(curr-k) {
+						peakIdx++
+					} else {
+						break
+					}
+				}
+
+				pk := s.peakBins[peakIdx]
+				if k != pk {
+					// Lock this bin's phase to preserve the analysis-frame
+					// offset relative to its nearest peak.
+					s.sumPhase[k] = s.sumPhase[pk] + (s.prevPhase[k] - s.prevPhase[pk])
+				}
+
+				s.synthesisSpectrum[k] = complex(
+					s.magnitudes[k]*math.Cos(s.sumPhase[k]),
+					s.magnitudes[k]*math.Sin(s.sumPhase[k]),
+				)
+			}
 		}
 
 		s.synthesisSpectrum[0] = complex(real(s.synthesisSpectrum[0]), 0)
@@ -372,6 +428,10 @@ func (s *SpectralPitchShifter) rebuildState() error {
 	s.synthesisSpectrum = make([]complex128, s.frameSize)
 	s.timeFrame = make([]complex128, s.frameSize)
 
+	s.magnitudes = make([]float64, bins)
+	s.instFreqs = make([]float64, bins)
+	s.peakBins = make([]int, 0, bins)
+
 	return nil
 }
 
@@ -399,4 +459,11 @@ func wrapPhase(x float64) float64 {
 
 func isPowerOf2Pitch(v int) bool {
 	return v > 0 && (v&(v-1)) == 0
+}
+
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
