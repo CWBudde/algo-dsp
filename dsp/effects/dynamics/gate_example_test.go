@@ -1,16 +1,16 @@
-package effects_test
+package dynamics_test
 
 import (
 	"fmt"
 	"math"
 
-	"github.com/cwbudde/algo-dsp/dsp/effects"
+	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
 )
 
 // ExampleGate demonstrates basic noise gate usage with default settings.
 func ExampleGate() {
 	// Create gate with 48kHz sample rate
-	gate, err := effects.NewGate(48000)
+	gate, err := dynamics.NewGate(48000)
 	if err != nil {
 		panic(err)
 	}
@@ -25,7 +25,7 @@ func ExampleGate() {
 
 // ExampleGate_configuration demonstrates configuring gate parameters.
 func ExampleGate_configuration() {
-	gate, _ := effects.NewGate(48000)
+	gate, _ := dynamics.NewGate(48000)
 
 	// Configure for aggressive noise gating
 	_ = gate.SetThreshold(-30.0) // Gate signals below -30 dB
@@ -58,7 +58,7 @@ func ExampleGate_configuration() {
 
 // ExampleGate_metering demonstrates using gate metering.
 func ExampleGate_metering() {
-	gate, _ := effects.NewGate(48000)
+	gate, _ := dynamics.NewGate(48000)
 
 	// Configure and reset metrics
 	_ = gate.SetThreshold(-10)

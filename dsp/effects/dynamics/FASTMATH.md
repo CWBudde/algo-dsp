@@ -25,7 +25,7 @@ By default, the compressor uses Go's standard library `math` package:
 
 ```bash
 go build ./...
-go test ./dsp/effects/
+go test ./dsp/effects/dynamics/
 ```
 
 ### Fast Math (Opt-in)
@@ -34,8 +34,8 @@ Enable fast approximations with the `fastmath` build tag:
 
 ```bash
 go build -tags=fastmath ./...
-go test -tags=fastmath ./dsp/effects/
-go test -tags=fastmath -bench=Compressor ./dsp/effects/
+go test -tags=fastmath ./dsp/effects/dynamics/
+go test -tags=fastmath -bench=Compressor ./dsp/effects/dynamics/
 ```
 
 ## Implementation Details
@@ -93,12 +93,12 @@ All tests pass with both standard and fast math:
 
 ```bash
 # Test both variants
-go test ./dsp/effects/
-go test -tags=fastmath ./dsp/effects/
+go test ./dsp/effects/dynamics/
+go test -tags=fastmath ./dsp/effects/dynamics/
 
 # Compare benchmarks
-go test -bench=Compressor ./dsp/effects/ > bench-standard.txt
-go test -tags=fastmath -bench=Compressor ./dsp/effects/ > bench-fast.txt
+go test -bench=Compressor ./dsp/effects/dynamics/ > bench-standard.txt
+go test -tags=fastmath -bench=Compressor ./dsp/effects/dynamics/ > bench-fast.txt
 ```
 
 ## References

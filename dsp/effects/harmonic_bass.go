@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/core"
+	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
 )
@@ -54,7 +55,7 @@ type HarmonicBass struct {
 	crossoverLP *biquad.Chain
 	crossoverHP *biquad.Chain
 	highpass    *biquad.Chain
-	limiter     *Limiter
+	limiter     *dynamics.Limiter
 }
 
 // NewHarmonicBass creates a harmonic bass enhancer with tuned defaults.
@@ -62,7 +63,7 @@ func NewHarmonicBass(sampleRate float64) (*HarmonicBass, error) {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return nil, fmt.Errorf("harmonic bass sample rate must be positive and finite: %f", sampleRate)
 	}
-	l, err := NewLimiter(sampleRate)
+	l, err := dynamics.NewLimiter(sampleRate)
 	if err != nil {
 		return nil, err
 	}

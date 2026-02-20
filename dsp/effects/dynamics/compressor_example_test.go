@@ -1,16 +1,16 @@
-package effects_test
+package dynamics_test
 
 import (
 	"fmt"
 	"math"
 
-	"github.com/cwbudde/algo-dsp/dsp/effects"
+	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
 )
 
 // ExampleCompressor demonstrates basic compressor usage with default settings.
 func ExampleCompressor() {
 	// Create compressor with 48kHz sample rate
-	comp, err := effects.NewCompressor(48000)
+	comp, err := dynamics.NewCompressor(48000)
 	if err != nil {
 		panic(err)
 	}
@@ -25,7 +25,7 @@ func ExampleCompressor() {
 
 // ExampleCompressor_configuration demonstrates configuring compressor parameters.
 func ExampleCompressor_configuration() {
-	comp, _ := effects.NewCompressor(48000)
+	comp, _ := dynamics.NewCompressor(48000)
 
 	// Configure for aggressive compression
 	_ = comp.SetThreshold(-10.0) // Compress above -10dB
@@ -54,7 +54,7 @@ func ExampleCompressor_configuration() {
 
 // ExampleCompressor_metering demonstrates using compressor metering.
 func ExampleCompressor_metering() {
-	comp, _ := effects.NewCompressor(48000)
+	comp, _ := dynamics.NewCompressor(48000)
 
 	// Reset metrics before processing
 	comp.ResetMetrics()
