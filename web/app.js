@@ -744,14 +744,14 @@ function readEffectsFromUI() {
     timePitchEnabled:
       effectsMode === "pitch-time" && el.timePitchEnabled.checked,
     timePitchSemitones: Number(el.timePitchSemitones.value),
-    timePitchSequence,
+    timePitchSequence: timeSequence,
     timePitchOverlap: timeOverlap,
     timePitchSearch: Number(el.timePitchSearch.value),
     spectralPitchEnabled:
       effectsMode === "pitch-spectral" && el.spectralPitchEnabled.checked,
     spectralPitchSemitones: Number(el.spectralPitchSemitones.value),
-    spectralPitchFrameSize,
-    spectralPitchHopRatio,
+    spectralPitchFrameSize: spectralFrameSize,
+    spectralPitchHopRatio: spectralHopRatio,
     spectralPitchHop: spectralHop,
     harmonicBassEnabled: effectsMode === "bass" && el.harmonicEnabled.checked,
     harmonicBassFrequency: Number(el.harmonicFrequency.value),
