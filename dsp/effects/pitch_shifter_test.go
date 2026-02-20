@@ -4,9 +4,8 @@ import (
 	"math"
 	"testing"
 
-	algofft "github.com/cwbudde/algo-fft"
-
 	"github.com/cwbudde/algo-dsp/internal/testutil"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 func TestNewPitchShifter(t *testing.T) {
@@ -301,6 +300,7 @@ func TestPitchShifterSignalQuality(t *testing.T) {
 		{name: "down_octave", ratio: 0.5},
 		{name: "down_fourth", ratio: 0.75},
 		{name: "up_fifth", ratio: 1.5},
+		{name: "up_near_octave", ratio: 1.9},
 		{name: "up_octave", ratio: 2.0},
 	}
 
@@ -395,6 +395,168 @@ func TestPitchShifterSignalQualityWSSOLAParams(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPitchShifterTwoToneWellSeparated(t *testing.T) {
+	// Two tones separated by a factor of 2 (an octave). WSOLA handles this well
+	// because the beat period is longer than the sequence window, so the
+	// autocorrelation-based segment selection is not confused.
+	const (
+		sampleRate = 48000.0
+		n          = 32768
+		fftLen     = 16384
+	)
+
+	cases := []struct {
+		name  string
+		ratio float64
+	}{
+		{name: "down_fourth", ratio: 0.75},
+		{name: "up_fifth", ratio: 1.5},
+		{name: "up_near_octave", ratio: 1.9},
+	}
+
+	// Place output tones on exact FFT bins with 2× separation.
+	outBin1 := 60
+	outFreq1 := float64(outBin1) * sampleRate / float64(fftLen)
+	outFreq2 := outFreq1 * 2.0 // one octave apart — no beating within the window
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			inFreq1 := outFreq1 / tc.ratio
+			inFreq2 := outFreq2 / tc.ratio
+
+			p, err := NewPitchShifter(sampleRate)
+			if err != nil {
+				t.Fatalf("NewPitchShifter() error = %v", err)
+			}
+			if err := p.SetPitchRatio(tc.ratio); err != nil {
+				t.Fatalf("SetPitchRatio() error = %v", err)
+			}
+
+			input := make([]float64, n)
+			for i := range input {
+				input[i] = 0.5*math.Sin(2*math.Pi*inFreq1*float64(i)/sampleRate) +
+					0.5*math.Sin(2*math.Pi*inFreq2*float64(i)/sampleRate)
+			}
+
+			out := p.Process(input)
+
+			snr := measureTimeDomainTwoToneSNR(t, out, outFreq1, outFreq2, sampleRate, fftLen)
+			t.Logf("ratio=%.2f  inFreqs=%.1f+%.1f Hz  outFreqs=%.1f+%.1f Hz  SNR=%.1f dB",
+				tc.ratio, inFreq1, inFreq2, outFreq1, outFreq2, snr)
+
+			if snr < 45 {
+				t.Errorf("two-tone signal quality too low: SNR = %.1f dB, want >= 45 dB", snr)
+			}
+		})
+	}
+}
+
+func TestPitchShifterTwoToneCloselySpaced(t *testing.T) {
+	// Two tones separated by only 1.2×. The resulting beat period (~5× the
+	// lower frequency period) falls within the WSOLA sequence window, degrading
+	// the autocorrelation-based segment search. This is a known limitation of
+	// time-domain pitch shifters. We only verify that the dominant energy ends
+	// up near the correct output frequencies rather than enforcing a strict SNR.
+	const (
+		sampleRate = 48000.0
+		n          = 32768
+		fftLen     = 16384
+	)
+
+	cases := []struct {
+		name  string
+		ratio float64
+	}{
+		{name: "down_fourth", ratio: 0.75},
+		{name: "up_fifth", ratio: 1.5},
+		{name: "up_near_octave", ratio: 1.9},
+	}
+
+	outBin1 := 80
+	outFreq1 := float64(outBin1) * sampleRate / float64(fftLen)
+	outFreq2 := outFreq1 * 1.2
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			inFreq1 := outFreq1 / tc.ratio
+			inFreq2 := outFreq2 / tc.ratio
+
+			p, err := NewPitchShifter(sampleRate)
+			if err != nil {
+				t.Fatalf("NewPitchShifter() error = %v", err)
+			}
+			if err := p.SetPitchRatio(tc.ratio); err != nil {
+				t.Fatalf("SetPitchRatio() error = %v", err)
+			}
+
+			input := make([]float64, n)
+			for i := range input {
+				input[i] = 0.5*math.Sin(2*math.Pi*inFreq1*float64(i)/sampleRate) +
+					0.5*math.Sin(2*math.Pi*inFreq2*float64(i)/sampleRate)
+			}
+
+			out := p.Process(input)
+
+			// Verify output is finite (no blow-ups) and that signal power
+			// around the expected bins dominates over the noise floor.
+			testutil.RequireFinite(t, out)
+			snr := measureTimeDomainTwoToneSNR(t, out, outFreq1, outFreq2, sampleRate, fftLen)
+			t.Logf("ratio=%.2f  inFreqs=%.1f+%.1f Hz  outFreqs=%.1f+%.1f Hz  SNR=%.1f dB (known limitation: beat aliasing)",
+				tc.ratio, inFreq1, inFreq2, outFreq1, outFreq2, snr)
+
+			// Lenient floor: signal at correct bins must still dominate over noise.
+			// WSOLA beat aliasing can push SNR down to ~16 dB at extreme ratios.
+			if snr < 15 {
+				t.Errorf("two-tone (closely spaced) quality too low: SNR = %.1f dB, want >= 15 dB", snr)
+			}
+		})
+	}
+}
+
+// measureTimeDomainTwoToneSNR measures SNR when two target frequencies are present.
+// Signal power is summed within ±10 bins of each target; all other bins are noise.
+func measureTimeDomainTwoToneSNR(t *testing.T, out []float64, freq1, freq2, sampleRate float64, fftLen int) float64 {
+	t.Helper()
+
+	mid := len(out)/2 - fftLen/2
+	if mid < 0 {
+		mid = 0
+	}
+	chunk := out[mid : mid+fftLen]
+
+	plan, err := algofft.NewPlan64(fftLen)
+	if err != nil {
+		t.Fatalf("NewPlan64 error: %v", err)
+	}
+	fftIn := make([]complex128, fftLen)
+	fftOut := make([]complex128, fftLen)
+	for i, v := range chunk {
+		fftIn[i] = complex(v, 0)
+	}
+	if err := plan.Forward(fftOut, fftIn); err != nil {
+		t.Fatalf("Forward FFT error: %v", err)
+	}
+
+	tb1 := int(math.Round(freq1 * float64(fftLen) / sampleRate))
+	tb2 := int(math.Round(freq2 * float64(fftLen) / sampleRate))
+	const sigBW = 10
+	sigPower := 0.0
+	noisePower := 0.0
+	for k := 1; k <= fftLen/2; k++ {
+		mag2 := real(fftOut[k])*real(fftOut[k]) + imag(fftOut[k])*imag(fftOut[k])
+		if (k >= tb1-sigBW && k <= tb1+sigBW) || (k >= tb2-sigBW && k <= tb2+sigBW) {
+			sigPower += mag2
+		} else {
+			noisePower += mag2
+		}
+	}
+
+	if noisePower <= 1e-30 {
+		return 100.0
+	}
+	return 10 * math.Log10(sigPower/noisePower)
 }
 
 // measureTimeDomainSNR runs a windowed FFT on the center of out and returns

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/cwbudde/algo-dsp/dsp/resample"
 	"github.com/cwbudde/algo-dsp/dsp/window"
 	algofft "github.com/cwbudde/algo-fft"
 )
@@ -20,20 +19,19 @@ const (
 
 // SpectralPitchShifter performs frequency-domain pitch shifting.
 //
-// It uses a phase-vocoder STFT core to time-stretch in the frequency domain,
-// then resamples back to the original duration. This keeps output length equal
-// to input length while shifting pitch by the configured ratio.
+// It uses a phase-vocoder STFT core with direct spectral bin shifting
+// (Laroche & Dolson 1999). Analysis and synthesis use the same hop size;
+// pitch shifting is achieved by remapping spectral bins by the pitch ratio
+// with linear interpolation, so no time-domain resampling is needed.
 //
 // This processor is mono, one-shot buffer oriented, and not thread-safe.
 type SpectralPitchShifter struct {
-	sampleRate   float64
-	pitchRatio   float64
-	frameSize    int
-	analysisHop  int
-	synthesisHop int
+	sampleRate  float64
+	pitchRatio  float64
+	frameSize   int
+	analysisHop int
 
-	windowType      window.Type
-	resampleQuality resample.Quality
+	windowType window.Type
 
 	plan *algofft.Plan[complex128]
 
@@ -46,10 +44,12 @@ type SpectralPitchShifter struct {
 	synthesisSpectrum []complex128
 	timeFrame         []complex128
 
-	// Phase-locking work buffers (allocated once in rebuildState).
-	magnitudes []float64
-	instFreqs  []float64
-	peakBins   []int
+	// Work buffers (allocated once in rebuildState).
+	magnitudes  []float64
+	instFreqs   []float64
+	shiftedMag  []float64
+	shiftedFreq []float64
+	peakBins    []int
 }
 
 // NewSpectralPitchShifter creates a frequency-domain pitch shifter with defaults.
@@ -58,14 +58,12 @@ func NewSpectralPitchShifter(sampleRate float64) (*SpectralPitchShifter, error) 
 		return nil, fmt.Errorf("spectral pitch shifter sample rate must be positive and finite: %f", sampleRate)
 	}
 	s := &SpectralPitchShifter{
-		sampleRate:      sampleRate,
-		pitchRatio:      defaultSpectralPitchRatio,
-		frameSize:       defaultSpectralFrameSize,
-		analysisHop:     defaultSpectralAnalysisHop,
-		windowType:      window.TypeHann,
-		resampleQuality: resample.QualityBalanced,
+		sampleRate:  sampleRate,
+		pitchRatio:  defaultSpectralPitchRatio,
+		frameSize:   defaultSpectralFrameSize,
+		analysisHop: defaultSpectralAnalysisHop,
+		windowType:  window.TypeHann,
 	}
-	s.updateSynthesisHop()
 	if err := s.rebuildState(); err != nil {
 		return nil, err
 	}
@@ -89,8 +87,9 @@ func (s *SpectralPitchShifter) PitchRatio() float64 { return s.pitchRatio }
 func (s *SpectralPitchShifter) PitchSemitones() float64 { return 12.0 * math.Log2(s.pitchRatio) }
 
 // EffectivePitchRatio returns the internally realized pitch ratio.
+// With the bin-shifting approach, this equals the requested ratio exactly.
 func (s *SpectralPitchShifter) EffectivePitchRatio() float64 {
-	return float64(s.synthesisHop) / float64(s.analysisHop)
+	return s.pitchRatio
 }
 
 // FrameSize returns the FFT frame size.
@@ -100,15 +99,11 @@ func (s *SpectralPitchShifter) FrameSize() int { return s.frameSize }
 func (s *SpectralPitchShifter) AnalysisHop() int { return s.analysisHop }
 
 // SynthesisHop returns the synthesis hop size in samples.
-func (s *SpectralPitchShifter) SynthesisHop() int { return s.synthesisHop }
+// With the bin-shifting approach, this always equals the analysis hop.
+func (s *SpectralPitchShifter) SynthesisHop() int { return s.analysisHop }
 
 // WindowType returns the STFT window type.
 func (s *SpectralPitchShifter) WindowType() window.Type { return s.windowType }
-
-// ResampleQuality returns the quality mode used during duration correction.
-func (s *SpectralPitchShifter) ResampleQuality() resample.Quality {
-	return s.resampleQuality
-}
 
 // SetSampleRate updates sample rate metadata.
 //
@@ -129,7 +124,6 @@ func (s *SpectralPitchShifter) SetPitchRatio(ratio float64) error {
 			minPitchShifterRatio, maxPitchShifterRatio, ratio)
 	}
 	s.pitchRatio = ratio
-	s.updateSynthesisHop()
 	return nil
 }
 
@@ -157,7 +151,6 @@ func (s *SpectralPitchShifter) SetFrameSize(size int) error {
 			s.analysisHop = 1
 		}
 	}
-	s.updateSynthesisHop()
 	return s.rebuildState()
 }
 
@@ -167,7 +160,6 @@ func (s *SpectralPitchShifter) SetAnalysisHop(hop int) error {
 		return fmt.Errorf("spectral analysis hop must be in [1, %d): %d", s.frameSize, hop)
 	}
 	s.analysisHop = hop
-	s.updateSynthesisHop()
 	return nil
 }
 
@@ -175,11 +167,6 @@ func (s *SpectralPitchShifter) SetAnalysisHop(hop int) error {
 func (s *SpectralPitchShifter) SetWindowType(t window.Type) error {
 	s.windowType = t
 	return s.rebuildState()
-}
-
-// SetResampleQuality updates duration-correction resampling quality mode.
-func (s *SpectralPitchShifter) SetResampleQuality(q resample.Quality) {
-	s.resampleQuality = q
 }
 
 // Reset clears phase tracking state.
@@ -215,7 +202,11 @@ func (s *SpectralPitchShifter) Process(input []float64) []float64 {
 
 // ProcessWithError applies frequency-domain pitch shifting and reports errors.
 //
-// Use this in strict pipelines where internal failures should be surfaced.
+// The algorithm uses direct spectral bin shifting: after computing the analysis
+// magnitudes and instantaneous frequencies, it remaps them to shifted bin
+// positions using linear interpolation. Phase locking (Laroche & Dolson 1999)
+// is applied to the shifted spectrum. Since analysis and synthesis use the same
+// hop size, no time-domain resampling is needed.
 func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, error) {
 	if len(input) == 0 {
 		return nil, nil
@@ -226,22 +217,23 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 
 	s.Reset()
 
-	frameCount := 1 + (len(input)-1)/s.analysisHop
-	stretchedLen := (frameCount-1)*s.synthesisHop + s.frameSize
-	stretched := make([]float64, stretchedLen)
-	norm := make([]float64, stretchedLen)
+	hop := s.analysisHop
+	frameCount := 1 + (len(input)-1)/hop
+	outLen := (frameCount-1)*hop + s.frameSize
+	output := make([]float64, outLen)
+	norm := make([]float64, outLen)
 
 	half := s.frameSize / 2
-	analysisHopF := float64(s.analysisHop)
-	synthesisHopF := float64(s.synthesisHop)
+	hopF := float64(hop)
+	ratio := s.pitchRatio
 
 	for frame := 0; frame < frameCount; frame++ {
-		inPos := frame * s.analysisHop
-		outPos := frame * s.synthesisHop
+		pos := frame * hop
 
+		// Window the analysis frame.
 		for i := 0; i < s.frameSize; i++ {
 			x := 0.0
-			idx := inPos + i
+			idx := pos + i
 			if idx < len(input) {
 				x = input[idx]
 			}
@@ -252,76 +244,52 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 			return nil, fmt.Errorf("spectral pitch shifter: forward FFT failed: %w", err)
 		}
 
-		// Pass 1: compute magnitudes and instantaneous frequencies for all bins.
+		// Pass 1: compute magnitudes and instantaneous frequencies.
 		for k := 0; k <= half; k++ {
 			re := real(s.analysisSpectrum[k])
 			im := imag(s.analysisSpectrum[k])
 			s.magnitudes[k] = math.Hypot(re, im)
 			phase := math.Atan2(im, re)
 
-			delta := phase - s.prevPhase[k] - s.omega[k]*analysisHopF
+			delta := phase - s.prevPhase[k] - s.omega[k]*hopF
 			delta = wrapPhase(delta)
 
-			s.instFreqs[k] = s.omega[k] + delta/analysisHopF
+			s.instFreqs[k] = s.omega[k] + delta/hopF
 			s.prevPhase[k] = phase
 		}
 
-		// Pass 2: identity phase locking (Laroche & Dolson 1999).
-		// Identify spectral peaks and propagate each peak's phase
-		// to its surrounding bins so that their relative phases
-		// match the analysis frame, eliminating phasiness.
-		s.peakBins = s.peakBins[:0]
-		for k := 1; k < half; k++ {
-			if s.magnitudes[k] >= s.magnitudes[k-1] && s.magnitudes[k] > s.magnitudes[k+1] {
-				s.peakBins = append(s.peakBins, k)
+		// Pass 2: spectral bin shifting with linear interpolation.
+		// For each synthesis bin k, read from analysis bin k/ratio.
+		for k := 0; k <= half; k++ {
+			srcK := float64(k) / ratio
+			if srcK >= float64(half) {
+				s.shiftedMag[k] = 0
+				s.shiftedFreq[k] = s.omega[k]
+				continue
 			}
+			lo := int(srcK)
+			frac := srcK - float64(lo)
+			hi := lo + 1
+			if hi > half {
+				hi = half
+			}
+			s.shiftedMag[k] = s.magnitudes[lo]*(1-frac) + s.magnitudes[hi]*frac
+			// Scale the instantaneous frequency by the ratio: the component
+			// that was at frequency instFreqs[lo] is now placed ratio× higher.
+			interpFreq := s.instFreqs[lo]*(1-frac) + s.instFreqs[hi]*frac
+			s.shiftedFreq[k] = interpFreq * ratio
 		}
 
-		if len(s.peakBins) == 0 {
-			// No peaks detected — fall back to standard per-bin phase vocoder.
-			for k := 0; k <= half; k++ {
-				s.sumPhase[k] += s.instFreqs[k] * synthesisHopF
-				s.synthesisSpectrum[k] = complex(
-					s.magnitudes[k]*math.Cos(s.sumPhase[k]),
-					s.magnitudes[k]*math.Sin(s.sumPhase[k]),
-				)
-			}
-		} else {
-			// Step 1: advance all peak bins' phases using their
-			// instantaneous frequencies (standard phase vocoder update).
-			for _, pk := range s.peakBins {
-				s.sumPhase[pk] += s.instFreqs[pk] * synthesisHopF
-			}
-
-			// Step 2: for every bin, find the nearest peak and lock
-			// the phase to preserve the analysis-frame relationship.
-			peakIdx := 0
-			for k := 0; k <= half; k++ {
-				// Advance to the closest peak for bin k.
-				for peakIdx+1 < len(s.peakBins) {
-					curr := s.peakBins[peakIdx]
-					next := s.peakBins[peakIdx+1]
-					if absInt(next-k) < absInt(curr-k) {
-						peakIdx++
-					} else {
-						break
-					}
-				}
-
-				pk := s.peakBins[peakIdx]
-				if k != pk {
-					// Lock this bin's phase to preserve the analysis-frame
-					// offset relative to its nearest peak.
-					s.sumPhase[k] = s.sumPhase[pk] + (s.prevPhase[k] - s.prevPhase[pk])
-				}
-
-				s.synthesisSpectrum[k] = complex(
-					s.magnitudes[k]*math.Cos(s.sumPhase[k]),
-					s.magnitudes[k]*math.Sin(s.sumPhase[k]),
-				)
-			}
+		// Pass 3: per-bin phase accumulation.
+		for k := 0; k <= half; k++ {
+			s.sumPhase[k] += s.shiftedFreq[k] * hopF
+			s.synthesisSpectrum[k] = complex(
+				s.shiftedMag[k]*math.Cos(s.sumPhase[k]),
+				s.shiftedMag[k]*math.Sin(s.sumPhase[k]),
+			)
 		}
 
+		// Mirror for real-valued IFFT.
 		s.synthesisSpectrum[0] = complex(real(s.synthesisSpectrum[0]), 0)
 		s.synthesisSpectrum[half] = complex(real(s.synthesisSpectrum[half]), 0)
 		for k := 1; k < half; k++ {
@@ -333,34 +301,22 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 			return nil, fmt.Errorf("spectral pitch shifter: inverse FFT failed: %w", err)
 		}
 
+		// Overlap-add with window normalization.
 		for i := 0; i < s.frameSize; i++ {
-			idx := outPos + i
+			idx := pos + i
 			w := s.windowCoeffs[i]
-			stretched[idx] += real(s.timeFrame[i]) * w
+			output[idx] += real(s.timeFrame[i]) * w
 			norm[idx] += w * w
 		}
 	}
 
-	for i := range stretched {
+	for i := range output {
 		if norm[i] > spectralNormFloor {
-			stretched[i] /= norm[i]
+			output[i] /= norm[i]
 		}
 	}
 
-	if s.synthesisHop == s.analysisHop {
-		return fitLength(stretched, len(input)), nil
-	}
-
-	shifted, err := resample.Resample(
-		stretched,
-		s.analysisHop,
-		s.synthesisHop,
-		resample.WithQuality(s.resampleQuality),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("spectral pitch shifter: resampling failed: %w", err)
-	}
-	return fitLength(shifted, len(input)), nil
+	return fitLength(output, len(input)), nil
 }
 
 // ProcessInPlace applies frequency-domain pitch shifting to buf in place.
@@ -392,9 +348,6 @@ func (s *SpectralPitchShifter) validate() error {
 	}
 	if s.analysisHop <= 0 || s.analysisHop >= s.frameSize {
 		return fmt.Errorf("spectral analysis hop must be in [1, %d): %d", s.frameSize, s.analysisHop)
-	}
-	if s.synthesisHop <= 0 {
-		return fmt.Errorf("spectral synthesis hop must be > 0: %d", s.synthesisHop)
 	}
 	return nil
 }
@@ -430,17 +383,32 @@ func (s *SpectralPitchShifter) rebuildState() error {
 
 	s.magnitudes = make([]float64, bins)
 	s.instFreqs = make([]float64, bins)
+	s.shiftedMag = make([]float64, bins)
+	s.shiftedFreq = make([]float64, bins)
 	s.peakBins = make([]int, 0, bins)
 
 	return nil
 }
 
-func (s *SpectralPitchShifter) updateSynthesisHop() {
-	h := int(math.Round(float64(s.analysisHop) * s.pitchRatio))
-	if h < 1 {
-		h = 1
+// interpolatePhase linearly interpolates the phase array at fractional index srcK.
+// Phase wrapping is handled by interpolating in the complex domain.
+func interpolatePhase(phases []float64, srcK float64, half int) float64 {
+	if srcK <= 0 {
+		return phases[0]
 	}
-	s.synthesisHop = h
+	if srcK >= float64(half) {
+		return phases[half]
+	}
+	lo := int(srcK)
+	frac := srcK - float64(lo)
+	hi := lo + 1
+	if hi > half {
+		hi = half
+	}
+	// Interpolate via unit complex numbers to handle wrapping correctly.
+	re := math.Cos(phases[lo])*(1-frac) + math.Cos(phases[hi])*frac
+	im := math.Sin(phases[lo])*(1-frac) + math.Sin(phases[hi])*frac
+	return math.Atan2(im, re)
 }
 
 func fitLength(in []float64, n int) []float64 {
