@@ -222,6 +222,94 @@ func TestSpectralPitchShifterMovesDominantFrequency(t *testing.T) {
 	}
 }
 
+func TestSpectralPitchShifterSignalQuality(t *testing.T) {
+	const (
+		sampleRate = 48000.0
+		n          = 32768
+		fftLen     = 16384
+	)
+
+	cases := []struct {
+		name  string
+		ratio float64
+	}{
+		{name: "down_octave", ratio: 0.5},
+		{name: "down_fourth", ratio: 0.75},
+		{name: "up_fifth", ratio: 1.5},
+		{name: "up_octave", ratio: 2.0},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := NewSpectralPitchShifter(sampleRate)
+			if err != nil {
+				t.Fatalf("NewSpectralPitchShifter() error = %v", err)
+			}
+			if err := s.SetPitchRatio(tc.ratio); err != nil {
+				t.Fatalf("SetPitchRatio() error = %v", err)
+			}
+
+			// Choose input freq so the output freq lands on an exact FFT bin
+			// of the analysis window, avoiding spectral leakage in the measurement.
+			outBin := 100
+			outFreq := float64(outBin) * sampleRate / float64(fftLen)
+			inFreq := outFreq / tc.ratio
+
+			input := make([]float64, n)
+			for i := range input {
+				input[i] = 0.8 * math.Sin(2*math.Pi*inFreq*float64(i)/sampleRate)
+			}
+
+			out := s.Process(input)
+
+			// Windowed FFT analysis of the output center.
+			mid := len(out)/2 - fftLen/2
+			if mid < 0 {
+				mid = 0
+			}
+			chunk := out[mid : mid+fftLen]
+
+			plan, err := algofft.NewPlan64(fftLen)
+			if err != nil {
+				t.Fatalf("NewPlan64 error: %v", err)
+			}
+			fftIn := make([]complex128, fftLen)
+			fftOut := make([]complex128, fftLen)
+			for i, v := range chunk {
+				fftIn[i] = complex(v, 0)
+			}
+			if err := plan.Forward(fftOut, fftIn); err != nil {
+				t.Fatalf("Forward FFT error: %v", err)
+			}
+
+			targetBin := int(math.Round(outFreq * float64(fftLen) / sampleRate))
+			sigBW := 10
+			sigPower := 0.0
+			noisePower := 0.0
+			for k := 1; k <= fftLen/2; k++ {
+				mag2 := real(fftOut[k])*real(fftOut[k]) + imag(fftOut[k])*imag(fftOut[k])
+				if k >= targetBin-sigBW && k <= targetBin+sigBW {
+					sigPower += mag2
+				} else {
+					noisePower += mag2
+				}
+			}
+
+			snr := 100.0
+			if noisePower > 1e-30 {
+				snr = 10 * math.Log10(sigPower / noisePower)
+			}
+
+			t.Logf("ratio=%.2f  inFreq=%.1f Hz  outFreq=%.1f Hz  SNR=%.1f dB",
+				tc.ratio, inFreq, outFreq, snr)
+
+			if snr < 45 {
+				t.Errorf("signal quality too low: SNR = %.1f dB, want >= 45 dB", snr)
+			}
+		})
+	}
+}
+
 func dominantFrequencyHz(t *testing.T, signal []float64, sampleRate float64) float64 {
 	t.Helper()
 	if len(signal) == 0 {
