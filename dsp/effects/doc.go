@@ -11,6 +11,7 @@
 // Time-based effects:
 //   - Chorus: Modulated delay effect for ensemble sounds.
 //   - Delay: Feedback delay with dry/wet mix.
+//   - Flanger: Short modulated delay with feedback for comb-filter sweeps.
 //   - PitchShifter: Time-domain WSOLA-style pitch shifting.
 //   - Reverb: Algorithmic reverb using Schroeder/Freeverb architecture.
 //   - FDNReverb: Feedback delay network reverb with modulation and damping.
