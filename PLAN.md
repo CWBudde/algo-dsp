@@ -303,7 +303,7 @@ Rules:
 
 Tasks:
 
-- [ ] Flanger
+- [x] Flanger
   - Algorithm: short modulated delay (0.1–10 ms) with feedback and wet/dry.
   - API sketch:
 
@@ -314,23 +314,23 @@ Tasks:
     func (f *Flanger) Reset()
     ```
 
-  - [ ] Implement core algorithm (short modulated delay, feedback, mix).
-  - [ ] Implement interpolation tap (reuse chorus approach).
-  - [ ] Add tests (parameter validation + basic response sanity).
-  - [ ] Add runnable example.
+  - [x] Implement core algorithm (short modulated delay, feedback, mix).
+  - [x] Implement interpolation tap (reuse chorus approach).
+  - [x] Add tests (parameter validation + basic response sanity).
+  - [x] Add runnable example.
 
-- [ ] Phaser
+- [x] Phaser
   - Algorithm: allpass cascade with LFO modulation.
-  - [ ] Implement allpass cascade (4–12 stages) with LFO modulation.
-  - [ ] Add tests + example.
-- [ ] Tremolo
+  - [x] Implement allpass cascade (4–12 stages) with LFO modulation.
+  - [x] Add tests + example.
+- [x] Tremolo
   - Algorithm: amplitude modulation with LFO and optional smoothing.
-  - [ ] Implement LFO amplitude mod + smoothing.
-  - [ ] Add tests + example.
+  - [x] Implement LFO amplitude mod + smoothing.
+  - [x] Add tests + example.
 
 Exit criteria:
 
-- [ ] `go test -race ./dsp/effects/` passes with new effects.
+- [x] `go test -race ./dsp/effects/` passes with new effects.
 
 ### Phase 16: Effects — High-Priority Dynamics (Planned)
 

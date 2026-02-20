@@ -41,6 +41,9 @@ func (e *Engine) SetLimiter(p LimiterParams) error {
 // SetEffects updates effect settings.
 func (e *Engine) SetEffects(p EffectsParams) error {
 	prevChorusEnabled := e.effects.ChorusEnabled
+	prevFlangerEnabled := e.effects.FlangerEnabled
+	prevPhaserEnabled := e.effects.PhaserEnabled
+	prevTremoloEnabled := e.effects.TremoloEnabled
 	prevDelayEnabled := e.effects.DelayEnabled
 	prevReverbEnabled := e.effects.ReverbEnabled
 	prevReverbModel := e.effects.ReverbModel
@@ -57,6 +60,29 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	if p.ChorusStages > 6 {
 		p.ChorusStages = 6
 	}
+	p.FlangerRateHz = clamp(p.FlangerRateHz, 0.05, 5)
+	p.FlangerDepth = clamp(p.FlangerDepth, 0, 0.0099)
+	p.FlangerBaseDelay = clamp(p.FlangerBaseDelay, 0.0001, 0.01)
+	if p.FlangerBaseDelay+p.FlangerDepth > 0.01 {
+		p.FlangerDepth = 0.01 - p.FlangerBaseDelay
+	}
+	p.FlangerFeedback = clamp(p.FlangerFeedback, -0.99, 0.99)
+	p.FlangerMix = clamp(p.FlangerMix, 0, 1)
+	p.PhaserRateHz = clamp(p.PhaserRateHz, 0.05, 5)
+	p.PhaserMinFreqHz = clamp(p.PhaserMinFreqHz, 20, e.sampleRate*0.45)
+	p.PhaserMaxFreqHz = clamp(p.PhaserMaxFreqHz, p.PhaserMinFreqHz+1, e.sampleRate*0.49)
+	if p.PhaserStages < 1 {
+		p.PhaserStages = 1
+	}
+	if p.PhaserStages > 12 {
+		p.PhaserStages = 12
+	}
+	p.PhaserFeedback = clamp(p.PhaserFeedback, -0.99, 0.99)
+	p.PhaserMix = clamp(p.PhaserMix, 0, 1)
+	p.TremoloRateHz = clamp(p.TremoloRateHz, 0.05, 20)
+	p.TremoloDepth = clamp(p.TremoloDepth, 0, 1)
+	p.TremoloSmoothingMs = clamp(p.TremoloSmoothingMs, 0, 200)
+	p.TremoloMix = clamp(p.TremoloMix, 0, 1)
 	p.DelayTime = clamp(p.DelayTime, 0.001, 2.0)
 	p.DelayFeedback = clamp(p.DelayFeedback, 0, 0.99)
 	p.DelayMix = clamp(p.DelayMix, 0, 1)
@@ -111,6 +137,15 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	}
 	if prevChorusEnabled && !p.ChorusEnabled {
 		e.chorus.Reset()
+	}
+	if prevFlangerEnabled && !p.FlangerEnabled {
+		e.flanger.Reset()
+	}
+	if prevPhaserEnabled && !p.PhaserEnabled {
+		e.phaser.Reset()
+	}
+	if prevTremoloEnabled && !p.TremoloEnabled {
+		e.tremolo.Reset()
 	}
 	if prevDelayEnabled && !p.DelayEnabled {
 		e.delay.Reset()
@@ -193,6 +228,57 @@ func (e *Engine) rebuildEffects() error {
 		return err
 	}
 	if err := e.chorus.SetStages(e.effects.ChorusStages); err != nil {
+		return err
+	}
+	if err := e.flanger.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.flanger.SetRateHz(e.effects.FlangerRateHz); err != nil {
+		return err
+	}
+	if err := e.flanger.SetDepthSeconds(e.effects.FlangerDepth); err != nil {
+		return err
+	}
+	if err := e.flanger.SetBaseDelaySeconds(e.effects.FlangerBaseDelay); err != nil {
+		return err
+	}
+	if err := e.flanger.SetFeedback(e.effects.FlangerFeedback); err != nil {
+		return err
+	}
+	if err := e.flanger.SetMix(e.effects.FlangerMix); err != nil {
+		return err
+	}
+	if err := e.phaser.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.phaser.SetRateHz(e.effects.PhaserRateHz); err != nil {
+		return err
+	}
+	if err := e.phaser.SetFrequencyRangeHz(e.effects.PhaserMinFreqHz, e.effects.PhaserMaxFreqHz); err != nil {
+		return err
+	}
+	if err := e.phaser.SetStages(e.effects.PhaserStages); err != nil {
+		return err
+	}
+	if err := e.phaser.SetFeedback(e.effects.PhaserFeedback); err != nil {
+		return err
+	}
+	if err := e.phaser.SetMix(e.effects.PhaserMix); err != nil {
+		return err
+	}
+	if err := e.tremolo.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.tremolo.SetRateHz(e.effects.TremoloRateHz); err != nil {
+		return err
+	}
+	if err := e.tremolo.SetDepth(e.effects.TremoloDepth); err != nil {
+		return err
+	}
+	if err := e.tremolo.SetSmoothingMs(e.effects.TremoloSmoothingMs); err != nil {
+		return err
+	}
+	if err := e.tremolo.SetMix(e.effects.TremoloMix); err != nil {
 		return err
 	}
 	if err := e.delay.SetSampleRate(e.sampleRate); err != nil {
