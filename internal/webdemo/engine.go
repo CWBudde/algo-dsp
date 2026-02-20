@@ -6,6 +6,7 @@ import (
 	"math/cmplx"
 
 	"github.com/cwbudde/algo-dsp/dsp/effects"
+	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	algofft "github.com/cwbudde/algo-fft"
 )
@@ -188,10 +189,10 @@ type Engine struct {
 	sp      *effects.SpectralPitchShifter
 
 	compParams CompressorParams
-	compressor *effects.Compressor
+	compressor *dynamics.Compressor
 
 	limParams LimiterParams
-	limiter   *effects.Limiter
+	limiter   *dynamics.Limiter
 
 	renderBlock []float64
 
@@ -384,13 +385,13 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		return nil, err
 	}
 	e.sp = sp
-	comp, err := effects.NewCompressor(sampleRate)
+	comp, err := dynamics.NewCompressor(sampleRate)
 	if err != nil {
 		return nil, err
 	}
 	e.compressor = comp
 
-	lim, err := effects.NewLimiter(sampleRate)
+	lim, err := dynamics.NewLimiter(sampleRate)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,6 @@
 //go:build fastmath
 
-package effects
+package dynamics
 
 import (
 	"math"

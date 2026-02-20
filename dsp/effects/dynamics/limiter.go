@@ -1,4 +1,4 @@
-package effects
+package dynamics
 
 // Limiter implements a simple peak limiter using a high-ratio compressor.
 // It is configured with a high compression ratio (100:1) and fast attack (0.1ms)
