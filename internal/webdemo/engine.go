@@ -66,6 +66,11 @@ type EffectsParams struct {
 	ChorusSpeedHz float64
 	ChorusStages  int
 
+	DelayEnabled  bool
+	DelayTime     float64
+	DelayFeedback float64
+	DelayMix      float64
+
 	TimePitchEnabled   bool
 	TimePitchSemitones float64
 	TimePitchSequence  float64
@@ -151,6 +156,7 @@ type Engine struct {
 
 	effects EffectsParams
 	chorus  *effects.Chorus
+	delay   *effects.Delay
 	reverb  *effects.Reverb
 	fdn     *effects.FDNReverb
 	bass    *effects.HarmonicBass
@@ -231,6 +237,10 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			ChorusDepth:            0.003,
 			ChorusSpeedHz:          0.35,
 			ChorusStages:           3,
+			DelayEnabled:           false,
+			DelayTime:              0.25,
+			DelayFeedback:          0.35,
+			DelayMix:               0.25,
 			TimePitchEnabled:       false,
 			TimePitchSemitones:     0,
 			TimePitchSequence:      40,
@@ -291,6 +301,11 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		return nil, err
 	}
 	e.chorus = chorus
+	delay, err := effects.NewDelay(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.delay = delay
 	e.reverb = effects.NewReverb()
 	fdn, err := effects.NewFDNReverb(sampleRate)
 	if err != nil {
@@ -371,6 +386,9 @@ func (e *Engine) Render(dst []float32) {
 
 	if e.effects.HarmonicBassEnabled {
 		e.bass.ProcessInPlace(block)
+	}
+	if e.effects.DelayEnabled {
+		e.delay.ProcessInPlace(block)
 	}
 	if e.effects.ChorusEnabled {
 		e.chorus.ProcessInPlace(block)
