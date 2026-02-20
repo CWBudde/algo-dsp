@@ -331,8 +331,8 @@ func TestPitchShifterSignalQuality(t *testing.T) {
 			t.Logf("ratio=%.2f  inFreq=%.1f Hz  outFreq=%.1f Hz  SNR=%.1f dB",
 				tc.ratio, inFreq, outFreq, snr)
 
-			if snr < 45 {
-				t.Errorf("signal quality too low: SNR = %.1f dB, want >= 45 dB", snr)
+			if snr < 50 {
+				t.Errorf("signal quality too low: SNR = %.1f dB, want >= 50 dB", snr)
 			}
 		})
 	}
@@ -454,11 +454,9 @@ func TestPitchShifterTwoToneWellSeparated(t *testing.T) {
 }
 
 func TestPitchShifterTwoToneCloselySpaced(t *testing.T) {
-	// Two tones separated by only 1.2×. The resulting beat period (~5× the
-	// lower frequency period) falls within the WSOLA sequence window, degrading
-	// the autocorrelation-based segment search. This is a known limitation of
-	// time-domain pitch shifters. We only verify that the dominant energy ends
-	// up near the correct output frequencies rather than enforcing a strict SNR.
+	// Two tones separated by only 1.2×. With the music-tuned defaults
+	// (seq=82ms), several beat cycles fit within the autocorrelation window,
+	// giving the segment search enough structure to find good splice points.
 	const (
 		sampleRate = 48000.0
 		n          = 32768
@@ -499,17 +497,13 @@ func TestPitchShifterTwoToneCloselySpaced(t *testing.T) {
 
 			out := p.Process(input)
 
-			// Verify output is finite (no blow-ups) and that signal power
-			// around the expected bins dominates over the noise floor.
 			testutil.RequireFinite(t, out)
 			snr := measureTimeDomainTwoToneSNR(t, out, outFreq1, outFreq2, sampleRate, fftLen)
-			t.Logf("ratio=%.2f  inFreqs=%.1f+%.1f Hz  outFreqs=%.1f+%.1f Hz  SNR=%.1f dB (known limitation: beat aliasing)",
+			t.Logf("ratio=%.2f  inFreqs=%.1f+%.1f Hz  outFreqs=%.1f+%.1f Hz  SNR=%.1f dB",
 				tc.ratio, inFreq1, inFreq2, outFreq1, outFreq2, snr)
 
-			// Lenient floor: signal at correct bins must still dominate over noise.
-			// WSOLA beat aliasing can push SNR down to ~16 dB at extreme ratios.
-			if snr < 15 {
-				t.Errorf("two-tone (closely spaced) quality too low: SNR = %.1f dB, want >= 15 dB", snr)
+			if snr < 45 {
+				t.Errorf("two-tone (closely spaced) signal quality too low: SNR = %.1f dB, want >= 45 dB", snr)
 			}
 		})
 	}

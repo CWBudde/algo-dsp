@@ -319,14 +319,15 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 
 				pk := s.peakBins[peakIdx]
 				if k != pk {
-					// Only phase-lock bins within the main lobe of
-					// the peak (within a few bins). Beyond that,
-					// the analysis phases at the source positions
-					// become unreliable.
-					dist := absInt(k - pk)
-					if dist <= 4 && s.shiftedMag[k] > 0 {
-						srcK := float64(k) / ratio
-						srcPk := float64(pk) / ratio
+					// Phase-lock only if the source analysis bins for
+					// k and pk are within the Hann main lobe (~4 bins).
+					// Beyond that, analysis phases are unreliable
+					// sidelobe noise and phase locking introduces
+					// spectral artifacts.
+					srcK := float64(k) / ratio
+					srcPk := float64(pk) / ratio
+					srcDist := math.Abs(srcK - srcPk)
+					if srcDist <= 4.0 && s.shiftedMag[k] > 0 {
 						phaseK := interpolatePhase(s.prevPhase, srcK, half)
 						phasePk := interpolatePhase(s.prevPhase, srcPk, half)
 						s.sumPhase[k] = s.sumPhase[pk] + (phaseK - phasePk)

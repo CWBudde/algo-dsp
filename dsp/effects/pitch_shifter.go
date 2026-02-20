@@ -9,9 +9,12 @@ import (
 
 const (
 	defaultPitchShifterRatio      = 1.0
-	defaultPitchShifterSequenceMs = 40.0
+	// Music-tuned defaults: longer sequence window ensures several beat cycles
+	// fit within the autocorrelation window, improving segment selection quality
+	// for polyphonic material. Matches SoundTouch's music preset (82/10/28 ms).
+	defaultPitchShifterSequenceMs = 82.0
 	defaultPitchShifterOverlapMs  = 10.0
-	defaultPitchShifterSearchMs   = 15.0
+	defaultPitchShifterSearchMs   = 28.0
 
 	minPitchShifterRatio = 0.25
 	maxPitchShifterRatio = 4.0
