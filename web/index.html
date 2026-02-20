@@ -197,6 +197,9 @@
                 <span>Mode</span>
                 <select id="effects-mode">
                   <option value="chorus" selected>Chorus</option>
+                  <option value="flanger">Flanger</option>
+                  <option value="phaser">Phaser</option>
+                  <option value="tremolo">Tremolo</option>
                   <option value="delay">Delay</option>
                   <option value="bass">Psychoacoustic Bass</option>
                   <option value="pitch-time">Pitch Shifter (Time)</option>
@@ -255,6 +258,108 @@
                 Mix
                 <input id="delay-mix" type="range" min="0" max="1" step="0.01" value="0.25" />
                 <span id="delay-mix-value">25%</span>
+              </label>
+            </div>
+            <div class="fx-option" data-mode="flanger" hidden>
+              <div class="fx-option-head">
+                <span>Flanger</span>
+                <label class="fx-toggle">
+                  <input id="flanger-enabled" type="checkbox" />
+                  <span>On</span>
+                </label>
+              </div>
+              <label>
+                Rate
+                <input id="flanger-rate" type="range" min="0.05" max="5" step="0.01" value="0.25" />
+                <span id="flanger-rate-value">0.25 Hz</span>
+              </label>
+              <label>
+                Depth
+                <input id="flanger-depth" type="range" min="0" max="0.009" step="0.0001" value="0.0015" />
+                <span id="flanger-depth-value">1.50 ms</span>
+              </label>
+              <label>
+                Base Delay
+                <input id="flanger-base-delay" type="range" min="0.0001" max="0.01" step="0.0001" value="0.001" />
+                <span id="flanger-base-delay-value">1.00 ms</span>
+              </label>
+              <label>
+                Feedback
+                <input id="flanger-feedback" type="range" min="-0.95" max="0.95" step="0.01" value="0.25" />
+                <span id="flanger-feedback-value">25%</span>
+              </label>
+              <label>
+                Mix
+                <input id="flanger-mix" type="range" min="0" max="1" step="0.01" value="0.5" />
+                <span id="flanger-mix-value">50%</span>
+              </label>
+            </div>
+            <div class="fx-option" data-mode="phaser" hidden>
+              <div class="fx-option-head">
+                <span>Phaser</span>
+                <label class="fx-toggle">
+                  <input id="phaser-enabled" type="checkbox" />
+                  <span>On</span>
+                </label>
+              </div>
+              <label>
+                Rate
+                <input id="phaser-rate" type="range" min="0.05" max="5" step="0.01" value="0.4" />
+                <span id="phaser-rate-value">0.40 Hz</span>
+              </label>
+              <label>
+                Min Frequency
+                <input id="phaser-min-freq" type="range" min="20" max="3000" step="1" value="300" />
+                <span id="phaser-min-freq-value">300 Hz</span>
+              </label>
+              <label>
+                Max Frequency
+                <input id="phaser-max-freq" type="range" min="40" max="8000" step="1" value="1600" />
+                <span id="phaser-max-freq-value">1600 Hz</span>
+              </label>
+              <label>
+                Stages
+                <input id="phaser-stages" type="range" min="1" max="12" step="1" value="6" />
+                <span id="phaser-stages-value">6</span>
+              </label>
+              <label>
+                Feedback
+                <input id="phaser-feedback" type="range" min="-0.95" max="0.95" step="0.01" value="0.2" />
+                <span id="phaser-feedback-value">20%</span>
+              </label>
+              <label>
+                Mix
+                <input id="phaser-mix" type="range" min="0" max="1" step="0.01" value="0.5" />
+                <span id="phaser-mix-value">50%</span>
+              </label>
+            </div>
+            <div class="fx-option" data-mode="tremolo" hidden>
+              <div class="fx-option-head">
+                <span>Tremolo</span>
+                <label class="fx-toggle">
+                  <input id="tremolo-enabled" type="checkbox" />
+                  <span>On</span>
+                </label>
+              </div>
+              <label>
+                Rate
+                <input id="tremolo-rate" type="range" min="0.1" max="20" step="0.1" value="4" />
+                <span id="tremolo-rate-value">4.00 Hz</span>
+              </label>
+              <label>
+                Depth
+                <input id="tremolo-depth" type="range" min="0" max="1" step="0.01" value="0.6" />
+                <span id="tremolo-depth-value">60%</span>
+              </label>
+              <label>
+                Smoothing
+                <input id="tremolo-smoothing" type="range" min="0" max="200" step="1" value="5" />
+                <span id="tremolo-smoothing-value">5.0 ms</span>
+              </label>
+              <label>
+                Mix
+                <input id="tremolo-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <span id="tremolo-mix-value">100%</span>
               </label>
             </div>
             <div class="fx-option" data-mode="bass" hidden>

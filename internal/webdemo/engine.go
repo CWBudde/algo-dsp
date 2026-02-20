@@ -66,6 +66,27 @@ type EffectsParams struct {
 	ChorusSpeedHz float64
 	ChorusStages  int
 
+	FlangerEnabled   bool
+	FlangerRateHz    float64
+	FlangerDepth     float64
+	FlangerBaseDelay float64
+	FlangerFeedback  float64
+	FlangerMix       float64
+
+	PhaserEnabled   bool
+	PhaserRateHz    float64
+	PhaserMinFreqHz float64
+	PhaserMaxFreqHz float64
+	PhaserStages    int
+	PhaserFeedback  float64
+	PhaserMix       float64
+
+	TremoloEnabled     bool
+	TremoloRateHz      float64
+	TremoloDepth       float64
+	TremoloSmoothingMs float64
+	TremoloMix         float64
+
 	DelayEnabled  bool
 	DelayTime     float64
 	DelayFeedback float64
@@ -156,6 +177,9 @@ type Engine struct {
 
 	effects EffectsParams
 	chorus  *effects.Chorus
+	flanger *effects.Flanger
+	phaser  *effects.Phaser
+	tremolo *effects.Tremolo
 	delay   *effects.Delay
 	reverb  *effects.Reverb
 	fdn     *effects.FDNReverb
@@ -237,6 +261,24 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			ChorusDepth:            0.003,
 			ChorusSpeedHz:          0.35,
 			ChorusStages:           3,
+			FlangerEnabled:         false,
+			FlangerRateHz:          0.25,
+			FlangerDepth:           0.0015,
+			FlangerBaseDelay:       0.001,
+			FlangerFeedback:        0.25,
+			FlangerMix:             0.5,
+			PhaserEnabled:          false,
+			PhaserRateHz:           0.4,
+			PhaserMinFreqHz:        300,
+			PhaserMaxFreqHz:        1600,
+			PhaserStages:           6,
+			PhaserFeedback:         0.2,
+			PhaserMix:              0.5,
+			TremoloEnabled:         false,
+			TremoloRateHz:          4,
+			TremoloDepth:           0.6,
+			TremoloSmoothingMs:     5,
+			TremoloMix:             1.0,
 			DelayEnabled:           false,
 			DelayTime:              0.25,
 			DelayFeedback:          0.35,
@@ -301,6 +343,21 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		return nil, err
 	}
 	e.chorus = chorus
+	flanger, err := effects.NewFlanger(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.flanger = flanger
+	phaser, err := effects.NewPhaser(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.phaser = phaser
+	tremolo, err := effects.NewTremolo(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.tremolo = tremolo
 	delay, err := effects.NewDelay(sampleRate)
 	if err != nil {
 		return nil, err
@@ -392,6 +449,15 @@ func (e *Engine) Render(dst []float32) {
 	}
 	if e.effects.ChorusEnabled {
 		e.chorus.ProcessInPlace(block)
+	}
+	if e.effects.FlangerEnabled {
+		_ = e.flanger.ProcessInPlace(block)
+	}
+	if e.effects.PhaserEnabled {
+		_ = e.phaser.ProcessInPlace(block)
+	}
+	if e.effects.TremoloEnabled {
+		_ = e.tremolo.ProcessInPlace(block)
 	}
 	if e.effects.TimePitchEnabled {
 		e.tp.ProcessInPlace(block)

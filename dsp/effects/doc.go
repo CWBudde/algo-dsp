@@ -12,6 +12,8 @@
 //   - Chorus: Modulated delay effect for ensemble sounds.
 //   - Delay: Feedback delay with dry/wet mix.
 //   - Flanger: Short modulated delay with feedback for comb-filter sweeps.
+//   - Phaser: Allpass-cascade modulation effect with feedback.
+//   - Tremolo: LFO amplitude modulation with optional smoothing.
 //   - PitchShifter: Time-domain WSOLA-style pitch shifting.
 //   - Reverb: Algorithmic reverb using Schroeder/Freeverb architecture.
 //   - FDNReverb: Feedback delay network reverb with modulation and damping.

@@ -110,6 +110,24 @@ const state = {
     chorusDepth: 0.003,
     chorusSpeedHz: 0.35,
     chorusStages: 3,
+    flangerEnabled: false,
+    flangerRateHz: 0.25,
+    flangerDepth: 0.0015,
+    flangerBaseDelay: 0.001,
+    flangerFeedback: 0.25,
+    flangerMix: 0.5,
+    phaserEnabled: false,
+    phaserRateHz: 0.4,
+    phaserMinFreqHz: 300,
+    phaserMaxFreqHz: 1600,
+    phaserStages: 6,
+    phaserFeedback: 0.2,
+    phaserMix: 0.5,
+    tremoloEnabled: false,
+    tremoloRateHz: 4,
+    tremoloDepth: 0.6,
+    tremoloSmoothingMs: 5,
+    tremoloMix: 1,
     delayEnabled: false,
     delayTime: 0.25,
     delayFeedback: 0.35,
@@ -201,6 +219,39 @@ const el = {
   chorusSpeedValue: document.getElementById("chorus-speed-value"),
   chorusStages: document.getElementById("chorus-stages"),
   chorusStagesValue: document.getElementById("chorus-stages-value"),
+  flangerEnabled: document.getElementById("flanger-enabled"),
+  flangerRate: document.getElementById("flanger-rate"),
+  flangerRateValue: document.getElementById("flanger-rate-value"),
+  flangerDepth: document.getElementById("flanger-depth"),
+  flangerDepthValue: document.getElementById("flanger-depth-value"),
+  flangerBaseDelay: document.getElementById("flanger-base-delay"),
+  flangerBaseDelayValue: document.getElementById("flanger-base-delay-value"),
+  flangerFeedback: document.getElementById("flanger-feedback"),
+  flangerFeedbackValue: document.getElementById("flanger-feedback-value"),
+  flangerMix: document.getElementById("flanger-mix"),
+  flangerMixValue: document.getElementById("flanger-mix-value"),
+  phaserEnabled: document.getElementById("phaser-enabled"),
+  phaserRate: document.getElementById("phaser-rate"),
+  phaserRateValue: document.getElementById("phaser-rate-value"),
+  phaserMinFreq: document.getElementById("phaser-min-freq"),
+  phaserMinFreqValue: document.getElementById("phaser-min-freq-value"),
+  phaserMaxFreq: document.getElementById("phaser-max-freq"),
+  phaserMaxFreqValue: document.getElementById("phaser-max-freq-value"),
+  phaserStages: document.getElementById("phaser-stages"),
+  phaserStagesValue: document.getElementById("phaser-stages-value"),
+  phaserFeedback: document.getElementById("phaser-feedback"),
+  phaserFeedbackValue: document.getElementById("phaser-feedback-value"),
+  phaserMix: document.getElementById("phaser-mix"),
+  phaserMixValue: document.getElementById("phaser-mix-value"),
+  tremoloEnabled: document.getElementById("tremolo-enabled"),
+  tremoloRate: document.getElementById("tremolo-rate"),
+  tremoloRateValue: document.getElementById("tremolo-rate-value"),
+  tremoloDepth: document.getElementById("tremolo-depth"),
+  tremoloDepthValue: document.getElementById("tremolo-depth-value"),
+  tremoloSmoothing: document.getElementById("tremolo-smoothing"),
+  tremoloSmoothingValue: document.getElementById("tremolo-smoothing-value"),
+  tremoloMix: document.getElementById("tremolo-mix"),
+  tremoloMixValue: document.getElementById("tremolo-mix-value"),
   delayEnabled: document.getElementById("delay-enabled"),
   delayTime: document.getElementById("delay-time"),
   delayTimeValue: document.getElementById("delay-time-value"),
@@ -332,6 +383,24 @@ function loadSettings() {
     if (el.chorusDepth) el.chorusDepth.value = state.effectsParams.chorusDepth;
     if (el.chorusSpeed) el.chorusSpeed.value = state.effectsParams.chorusSpeedHz;
     if (el.chorusStages) el.chorusStages.value = state.effectsParams.chorusStages;
+    if (el.flangerEnabled) el.flangerEnabled.checked = !!state.effectsParams.flangerEnabled;
+    if (el.flangerRate) el.flangerRate.value = state.effectsParams.flangerRateHz;
+    if (el.flangerDepth) el.flangerDepth.value = state.effectsParams.flangerDepth;
+    if (el.flangerBaseDelay) el.flangerBaseDelay.value = state.effectsParams.flangerBaseDelay;
+    if (el.flangerFeedback) el.flangerFeedback.value = state.effectsParams.flangerFeedback;
+    if (el.flangerMix) el.flangerMix.value = state.effectsParams.flangerMix;
+    if (el.phaserEnabled) el.phaserEnabled.checked = !!state.effectsParams.phaserEnabled;
+    if (el.phaserRate) el.phaserRate.value = state.effectsParams.phaserRateHz;
+    if (el.phaserMinFreq) el.phaserMinFreq.value = state.effectsParams.phaserMinFreqHz;
+    if (el.phaserMaxFreq) el.phaserMaxFreq.value = state.effectsParams.phaserMaxFreqHz;
+    if (el.phaserStages) el.phaserStages.value = state.effectsParams.phaserStages;
+    if (el.phaserFeedback) el.phaserFeedback.value = state.effectsParams.phaserFeedback;
+    if (el.phaserMix) el.phaserMix.value = state.effectsParams.phaserMix;
+    if (el.tremoloEnabled) el.tremoloEnabled.checked = !!state.effectsParams.tremoloEnabled;
+    if (el.tremoloRate) el.tremoloRate.value = state.effectsParams.tremoloRateHz;
+    if (el.tremoloDepth) el.tremoloDepth.value = state.effectsParams.tremoloDepth;
+    if (el.tremoloSmoothing) el.tremoloSmoothing.value = state.effectsParams.tremoloSmoothingMs;
+    if (el.tremoloMix) el.tremoloMix.value = state.effectsParams.tremoloMix;
     if (el.delayEnabled) el.delayEnabled.checked = !!state.effectsParams.delayEnabled;
     if (el.delayTime) el.delayTime.value = state.effectsParams.delayTime;
     if (el.delayFeedback) el.delayFeedback.value = state.effectsParams.delayFeedback;
@@ -756,6 +825,24 @@ function readEffectsFromUI() {
     chorusDepth: Number(el.chorusDepth.value),
     chorusSpeedHz: Number(el.chorusSpeed.value),
     chorusStages: Number(el.chorusStages.value),
+    flangerEnabled: effectsMode === "flanger" && el.flangerEnabled.checked,
+    flangerRateHz: Number(el.flangerRate.value),
+    flangerDepth: Number(el.flangerDepth.value),
+    flangerBaseDelay: Number(el.flangerBaseDelay.value),
+    flangerFeedback: Number(el.flangerFeedback.value),
+    flangerMix: Number(el.flangerMix.value),
+    phaserEnabled: effectsMode === "phaser" && el.phaserEnabled.checked,
+    phaserRateHz: Number(el.phaserRate.value),
+    phaserMinFreqHz: Number(el.phaserMinFreq.value),
+    phaserMaxFreqHz: Number(el.phaserMaxFreq.value),
+    phaserStages: Number(el.phaserStages.value),
+    phaserFeedback: Number(el.phaserFeedback.value),
+    phaserMix: Number(el.phaserMix.value),
+    tremoloEnabled: effectsMode === "tremolo" && el.tremoloEnabled.checked,
+    tremoloRateHz: Number(el.tremoloRate.value),
+    tremoloDepth: Number(el.tremoloDepth.value),
+    tremoloSmoothingMs: Number(el.tremoloSmoothing.value),
+    tremoloMix: Number(el.tremoloMix.value),
     delayEnabled: effectsMode === "delay" && el.delayEnabled.checked,
     delayTime: Number(el.delayTime.value),
     delayFeedback: Number(el.delayFeedback.value),
@@ -800,6 +887,25 @@ function updateEffectsText() {
   el.chorusDepthValue.textContent = `${(Number(el.chorusDepth.value) * 1000).toFixed(1)} ms`;
   el.chorusSpeedValue.textContent = `${Number(el.chorusSpeed.value).toFixed(2)} Hz`;
   el.chorusStagesValue.textContent = `${Number(el.chorusStages.value)}`;
+  el.flangerRateValue.textContent = `${Number(el.flangerRate.value).toFixed(2)} Hz`;
+  el.flangerDepthValue.textContent = `${(Number(el.flangerDepth.value) * 1000).toFixed(2)} ms`;
+  el.flangerBaseDelayValue.textContent =
+    `${(Number(el.flangerBaseDelay.value) * 1000).toFixed(2)} ms`;
+  el.flangerFeedbackValue.textContent =
+    `${Math.round(Number(el.flangerFeedback.value) * 100)}%`;
+  el.flangerMixValue.textContent = `${Math.round(Number(el.flangerMix.value) * 100)}%`;
+  el.phaserRateValue.textContent = `${Number(el.phaserRate.value).toFixed(2)} Hz`;
+  el.phaserMinFreqValue.textContent = `${Number(el.phaserMinFreq.value).toFixed(0)} Hz`;
+  el.phaserMaxFreqValue.textContent = `${Number(el.phaserMaxFreq.value).toFixed(0)} Hz`;
+  el.phaserStagesValue.textContent = `${Number(el.phaserStages.value)}`;
+  el.phaserFeedbackValue.textContent =
+    `${Math.round(Number(el.phaserFeedback.value) * 100)}%`;
+  el.phaserMixValue.textContent = `${Math.round(Number(el.phaserMix.value) * 100)}%`;
+  el.tremoloRateValue.textContent = `${Number(el.tremoloRate.value).toFixed(2)} Hz`;
+  el.tremoloDepthValue.textContent = `${Math.round(Number(el.tremoloDepth.value) * 100)}%`;
+  el.tremoloSmoothingValue.textContent =
+    `${Number(el.tremoloSmoothing.value).toFixed(1)} ms`;
+  el.tremoloMixValue.textContent = `${Math.round(Number(el.tremoloMix.value) * 100)}%`;
   el.delayTimeValue.textContent = `${(Number(el.delayTime.value) * 1000).toFixed(0)} ms`;
   el.delayFeedbackValue.textContent = `${Math.round(Number(el.delayFeedback.value) * 100)}%`;
   el.delayMixValue.textContent = `${Math.round(Number(el.delayMix.value) * 100)}%`;
@@ -1103,6 +1209,24 @@ function bindEvents() {
     el.chorusDepth,
     el.chorusSpeed,
     el.chorusStages,
+    el.flangerEnabled,
+    el.flangerRate,
+    el.flangerDepth,
+    el.flangerBaseDelay,
+    el.flangerFeedback,
+    el.flangerMix,
+    el.phaserEnabled,
+    el.phaserRate,
+    el.phaserMinFreq,
+    el.phaserMaxFreq,
+    el.phaserStages,
+    el.phaserFeedback,
+    el.phaserMix,
+    el.tremoloEnabled,
+    el.tremoloRate,
+    el.tremoloDepth,
+    el.tremoloSmoothing,
+    el.tremoloMix,
     el.delayEnabled,
     el.delayTime,
     el.delayFeedback,
