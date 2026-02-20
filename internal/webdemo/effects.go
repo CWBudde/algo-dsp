@@ -41,6 +41,7 @@ func (e *Engine) SetLimiter(p LimiterParams) error {
 // SetEffects updates effect settings.
 func (e *Engine) SetEffects(p EffectsParams) error {
 	prevChorusEnabled := e.effects.ChorusEnabled
+	prevDelayEnabled := e.effects.DelayEnabled
 	prevReverbEnabled := e.effects.ReverbEnabled
 	prevReverbModel := e.effects.ReverbModel
 	prevBassEnabled := e.effects.HarmonicBassEnabled
@@ -56,6 +57,9 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	if p.ChorusStages > 6 {
 		p.ChorusStages = 6
 	}
+	p.DelayTime = clamp(p.DelayTime, 0.001, 2.0)
+	p.DelayFeedback = clamp(p.DelayFeedback, 0, 0.99)
+	p.DelayMix = clamp(p.DelayMix, 0, 1)
 
 	p.TimePitchSemitones = clamp(p.TimePitchSemitones, -24, 24)
 	p.TimePitchSequence = clamp(p.TimePitchSequence, 20, 120)
@@ -107,6 +111,9 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	}
 	if prevChorusEnabled && !p.ChorusEnabled {
 		e.chorus.Reset()
+	}
+	if prevDelayEnabled && !p.DelayEnabled {
+		e.delay.Reset()
 	}
 	if prevReverbEnabled && !p.ReverbEnabled {
 		e.reverb.Reset()
@@ -186,6 +193,18 @@ func (e *Engine) rebuildEffects() error {
 		return err
 	}
 	if err := e.chorus.SetStages(e.effects.ChorusStages); err != nil {
+		return err
+	}
+	if err := e.delay.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.delay.SetTime(e.effects.DelayTime); err != nil {
+		return err
+	}
+	if err := e.delay.SetFeedback(e.effects.DelayFeedback); err != nil {
+		return err
+	}
+	if err := e.delay.SetMix(e.effects.DelayMix); err != nil {
 		return err
 	}
 

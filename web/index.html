@@ -197,6 +197,7 @@
                 <span>Mode</span>
                 <select id="effects-mode">
                   <option value="chorus" selected>Chorus</option>
+                  <option value="delay">Delay</option>
                   <option value="bass">Psychoacoustic Bass</option>
                   <option value="pitch-time">Pitch Shifter (Time)</option>
                   <option value="pitch-spectral">Pitch Shifter (Spectral)</option>
@@ -230,6 +231,30 @@
                 Stages
                 <input id="chorus-stages" type="range" min="1" max="6" step="1" value="3" />
                 <span id="chorus-stages-value">3</span>
+              </label>
+            </div>
+            <div class="fx-option" data-mode="delay" hidden>
+              <div class="fx-option-head">
+                <span>Delay</span>
+                <label class="fx-toggle">
+                  <input id="delay-enabled" type="checkbox" />
+                  <span>On</span>
+                </label>
+              </div>
+              <label>
+                Time
+                <input id="delay-time" type="range" min="0.01" max="2" step="0.01" value="0.25" />
+                <span id="delay-time-value">250 ms</span>
+              </label>
+              <label>
+                Feedback
+                <input id="delay-feedback" type="range" min="0" max="0.95" step="0.01" value="0.35" />
+                <span id="delay-feedback-value">35%</span>
+              </label>
+              <label>
+                Mix
+                <input id="delay-mix" type="range" min="0" max="1" step="0.01" value="0.25" />
+                <span id="delay-mix-value">25%</span>
               </label>
             </div>
             <div class="fx-option" data-mode="bass" hidden>

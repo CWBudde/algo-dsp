@@ -110,6 +110,10 @@ const state = {
     chorusDepth: 0.003,
     chorusSpeedHz: 0.35,
     chorusStages: 3,
+    delayEnabled: false,
+    delayTime: 0.25,
+    delayFeedback: 0.35,
+    delayMix: 0.25,
     timePitchEnabled: false,
     timePitchSemitones: 0,
     timePitchSequence: 40,
@@ -197,6 +201,13 @@ const el = {
   chorusSpeedValue: document.getElementById("chorus-speed-value"),
   chorusStages: document.getElementById("chorus-stages"),
   chorusStagesValue: document.getElementById("chorus-stages-value"),
+  delayEnabled: document.getElementById("delay-enabled"),
+  delayTime: document.getElementById("delay-time"),
+  delayTimeValue: document.getElementById("delay-time-value"),
+  delayFeedback: document.getElementById("delay-feedback"),
+  delayFeedbackValue: document.getElementById("delay-feedback-value"),
+  delayMix: document.getElementById("delay-mix"),
+  delayMixValue: document.getElementById("delay-mix-value"),
   timePitchEnabled: document.getElementById("time-pitch-enabled"),
   timePitchSemitones: document.getElementById("time-pitch-semitones"),
   timePitchSemitonesValue: document.getElementById("time-pitch-semitones-value"),
@@ -321,6 +332,10 @@ function loadSettings() {
     if (el.chorusDepth) el.chorusDepth.value = state.effectsParams.chorusDepth;
     if (el.chorusSpeed) el.chorusSpeed.value = state.effectsParams.chorusSpeedHz;
     if (el.chorusStages) el.chorusStages.value = state.effectsParams.chorusStages;
+    if (el.delayEnabled) el.delayEnabled.checked = !!state.effectsParams.delayEnabled;
+    if (el.delayTime) el.delayTime.value = state.effectsParams.delayTime;
+    if (el.delayFeedback) el.delayFeedback.value = state.effectsParams.delayFeedback;
+    if (el.delayMix) el.delayMix.value = state.effectsParams.delayMix;
     if (el.timePitchEnabled)
       el.timePitchEnabled.checked = !!state.effectsParams.timePitchEnabled;
     if (el.timePitchSemitones)
@@ -741,6 +756,10 @@ function readEffectsFromUI() {
     chorusDepth: Number(el.chorusDepth.value),
     chorusSpeedHz: Number(el.chorusSpeed.value),
     chorusStages: Number(el.chorusStages.value),
+    delayEnabled: effectsMode === "delay" && el.delayEnabled.checked,
+    delayTime: Number(el.delayTime.value),
+    delayFeedback: Number(el.delayFeedback.value),
+    delayMix: Number(el.delayMix.value),
     timePitchEnabled:
       effectsMode === "pitch-time" && el.timePitchEnabled.checked,
     timePitchSemitones: Number(el.timePitchSemitones.value),
@@ -781,6 +800,9 @@ function updateEffectsText() {
   el.chorusDepthValue.textContent = `${(Number(el.chorusDepth.value) * 1000).toFixed(1)} ms`;
   el.chorusSpeedValue.textContent = `${Number(el.chorusSpeed.value).toFixed(2)} Hz`;
   el.chorusStagesValue.textContent = `${Number(el.chorusStages.value)}`;
+  el.delayTimeValue.textContent = `${(Number(el.delayTime.value) * 1000).toFixed(0)} ms`;
+  el.delayFeedbackValue.textContent = `${Math.round(Number(el.delayFeedback.value) * 100)}%`;
+  el.delayMixValue.textContent = `${Math.round(Number(el.delayMix.value) * 100)}%`;
   el.timePitchSemitonesValue.textContent = `${Number(el.timePitchSemitones.value).toFixed(1)} st`;
   el.timePitchSequenceValue.textContent = `${Number(el.timePitchSequence.value).toFixed(0)} ms`;
   el.timePitchOverlapValue.textContent = `${Number(el.timePitchOverlap.value).toFixed(0)} ms`;
@@ -1081,6 +1103,10 @@ function bindEvents() {
     el.chorusDepth,
     el.chorusSpeed,
     el.chorusStages,
+    el.delayEnabled,
+    el.delayTime,
+    el.delayFeedback,
+    el.delayMix,
     el.timePitchEnabled,
     el.timePitchSemitones,
     el.timePitchSequence,
