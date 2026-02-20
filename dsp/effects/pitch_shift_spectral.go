@@ -106,9 +106,6 @@ func (s *SpectralPitchShifter) SynthesisHop() int { return s.analysisHop }
 func (s *SpectralPitchShifter) WindowType() window.Type { return s.windowType }
 
 // SetSampleRate updates sample rate metadata.
-//
-// The spectral algorithm is ratio-based, so this value does not affect
-// processing directly, but it keeps the API aligned with [PitchShifter].
 func (s *SpectralPitchShifter) SetSampleRate(sampleRate float64) error {
 	if !isFinitePositive(sampleRate) {
 		return fmt.Errorf("spectral pitch shifter sample rate must be positive and finite: %f", sampleRate)
@@ -204,9 +201,11 @@ func (s *SpectralPitchShifter) Process(input []float64) []float64 {
 //
 // The algorithm uses direct spectral bin shifting: after computing the analysis
 // magnitudes and instantaneous frequencies, it remaps them to shifted bin
-// positions using linear interpolation. Phase locking (Laroche & Dolson 1999)
-// is applied to the shifted spectrum. Since analysis and synthesis use the same
-// hop size, no time-domain resampling is needed.
+// positions using linear interpolation. Identity phase locking (Laroche &
+// Dolson 1999) is applied to bins near spectral peaks in the shifted spectrum;
+// bins with negligible magnitude use standard per-bin phase advance to avoid
+// phase noise. Since analysis and synthesis use the same hop size, no
+// time-domain resampling is needed.
 func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, error) {
 	if len(input) == 0 {
 		return nil, nil
@@ -231,7 +230,7 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 		pos := frame * hop
 
 		// Window the analysis frame.
-		for i := 0; i < s.frameSize; i++ {
+		for i := range s.frameSize {
 			x := 0.0
 			idx := pos + i
 			if idx < len(input) {
@@ -269,10 +268,7 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 			}
 			lo := int(srcK)
 			frac := srcK - float64(lo)
-			hi := lo + 1
-			if hi > half {
-				hi = half
-			}
+			hi := min(lo+1, half)
 			s.shiftedMag[k] = s.magnitudes[lo]*(1-frac) + s.magnitudes[hi]*frac
 			// Scale the instantaneous frequency by the ratio: the component
 			// that was at frequency instFreqs[lo] is now placed ratio× higher.
@@ -280,13 +276,70 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 			s.shiftedFreq[k] = interpFreq * ratio
 		}
 
-		// Pass 3: per-bin phase accumulation.
-		for k := 0; k <= half; k++ {
-			s.sumPhase[k] += s.shiftedFreq[k] * hopF
-			s.synthesisSpectrum[k] = complex(
-				s.shiftedMag[k]*math.Cos(s.sumPhase[k]),
-				s.shiftedMag[k]*math.Sin(s.sumPhase[k]),
-			)
+		// Pass 3: phase accumulation with selective identity phase locking.
+		// Find peaks in the shifted magnitudes and determine a threshold
+		// below which bins use standard per-bin phase advance.
+		s.peakBins = s.peakBins[:0]
+		for k := 1; k < half; k++ {
+			if s.shiftedMag[k] >= s.shiftedMag[k-1] && s.shiftedMag[k] > s.shiftedMag[k+1] {
+				s.peakBins = append(s.peakBins, k)
+			}
+		}
+
+		if len(s.peakBins) == 0 {
+			// No peaks — standard per-bin phase advance.
+			for k := 0; k <= half; k++ {
+				s.sumPhase[k] += s.shiftedFreq[k] * hopF
+				s.synthesisSpectrum[k] = complex(
+					s.shiftedMag[k]*math.Cos(s.sumPhase[k]),
+					s.shiftedMag[k]*math.Sin(s.sumPhase[k]),
+				)
+			}
+		} else {
+			// Advance peak phases using their shifted instantaneous frequencies.
+			for _, pk := range s.peakBins {
+				s.sumPhase[pk] += s.shiftedFreq[pk] * hopF
+			}
+
+			// Lock non-peak bins to their nearest peak. Use interpolated
+			// analysis phases for bins with significant energy; use per-bin
+			// phase advance for bins with negligible energy to avoid
+			// accumulating noise from meaningless phase differences.
+			peakIdx := 0
+			for k := 0; k <= half; k++ {
+				for peakIdx+1 < len(s.peakBins) {
+					curr := s.peakBins[peakIdx]
+					next := s.peakBins[peakIdx+1]
+					if absInt(next-k) < absInt(curr-k) {
+						peakIdx++
+					} else {
+						break
+					}
+				}
+
+				pk := s.peakBins[peakIdx]
+				if k != pk {
+					// Only phase-lock bins within the main lobe of
+					// the peak (within a few bins). Beyond that,
+					// the analysis phases at the source positions
+					// become unreliable.
+					dist := absInt(k - pk)
+					if dist <= 4 && s.shiftedMag[k] > 0 {
+						srcK := float64(k) / ratio
+						srcPk := float64(pk) / ratio
+						phaseK := interpolatePhase(s.prevPhase, srcK, half)
+						phasePk := interpolatePhase(s.prevPhase, srcPk, half)
+						s.sumPhase[k] = s.sumPhase[pk] + (phaseK - phasePk)
+					} else {
+						s.sumPhase[k] += s.shiftedFreq[k] * hopF
+					}
+				}
+
+				s.synthesisSpectrum[k] = complex(
+					s.shiftedMag[k]*math.Cos(s.sumPhase[k]),
+					s.shiftedMag[k]*math.Sin(s.sumPhase[k]),
+				)
+			}
 		}
 
 		// Mirror for real-valued IFFT.
@@ -302,7 +355,7 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 		}
 
 		// Overlap-add with window normalization.
-		for i := 0; i < s.frameSize; i++ {
+		for i := range s.frameSize {
 			idx := pos + i
 			w := s.windowCoeffs[i]
 			output[idx] += real(s.timeFrame[i]) * w
@@ -371,7 +424,7 @@ func (s *SpectralPitchShifter) rebuildState() error {
 
 	bins := s.frameSize/2 + 1
 	s.omega = make([]float64, bins)
-	for k := 0; k < bins; k++ {
+	for k := range bins {
 		s.omega[k] = 2 * math.Pi * float64(k) / float64(s.frameSize)
 	}
 
@@ -401,10 +454,7 @@ func interpolatePhase(phases []float64, srcK float64, half int) float64 {
 	}
 	lo := int(srcK)
 	frac := srcK - float64(lo)
-	hi := lo + 1
-	if hi > half {
-		hi = half
-	}
+	hi := min(lo+1, half)
 	// Interpolate via unit complex numbers to handle wrapping correctly.
 	re := math.Cos(phases[lo])*(1-frac) + math.Cos(phases[hi])*frac
 	im := math.Sin(phases[lo])*(1-frac) + math.Sin(phases[hi])*frac
