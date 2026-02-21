@@ -251,6 +251,29 @@ const el = {
   bitCrusherDownsampleValue: document.getElementById("bitcrusher-downsample-value"),
   bitCrusherMix: document.getElementById("bitcrusher-mix"),
   bitCrusherMixValue: document.getElementById("bitcrusher-mix-value"),
+  fxFilterKind: document.getElementById("fx-filter-kind"),
+  fxFilterFreq: document.getElementById("fx-filter-freq"),
+  fxFilterFreqValue: document.getElementById("fx-filter-freq-value"),
+  fxFilterQ: document.getElementById("fx-filter-q"),
+  fxFilterQValue: document.getElementById("fx-filter-q-value"),
+  fxFilterGain: document.getElementById("fx-filter-gain"),
+  fxFilterGainValue: document.getElementById("fx-filter-gain-value"),
+  fxCompThresh: document.getElementById("fx-comp-thresh"),
+  fxCompThreshValue: document.getElementById("fx-comp-thresh-value"),
+  fxCompRatio: document.getElementById("fx-comp-ratio"),
+  fxCompRatioValue: document.getElementById("fx-comp-ratio-value"),
+  fxCompKnee: document.getElementById("fx-comp-knee"),
+  fxCompKneeValue: document.getElementById("fx-comp-knee-value"),
+  fxCompAttack: document.getElementById("fx-comp-attack"),
+  fxCompAttackValue: document.getElementById("fx-comp-attack-value"),
+  fxCompRelease: document.getElementById("fx-comp-release"),
+  fxCompReleaseValue: document.getElementById("fx-comp-release-value"),
+  fxCompMakeup: document.getElementById("fx-comp-makeup"),
+  fxCompMakeupValue: document.getElementById("fx-comp-makeup-value"),
+  fxLimThresh: document.getElementById("fx-lim-thresh"),
+  fxLimThreshValue: document.getElementById("fx-lim-thresh-value"),
+  fxLimRelease: document.getElementById("fx-lim-release"),
+  fxLimReleaseValue: document.getElementById("fx-lim-release-value"),
   widenerWidth: document.getElementById("widener-width"),
   widenerWidthValue: document.getElementById("widener-width-value"),
   widenerMix: document.getElementById("widener-mix"),
@@ -375,6 +398,16 @@ const EFFECT_NODE_DEFAULTS = {
   },
   ringmod: { carrierHz: 440, mix: 1.0 },
   bitcrusher: { bitDepth: 8, downsample: 4, mix: 1.0 },
+  filter: { kind: "lowpass", freq: 1200, q: 0.707, gain: 0 },
+  "dyn-compressor": {
+    thresholdDB: -20,
+    ratio: 4,
+    kneeDB: 6,
+    attackMs: 10,
+    releaseMs: 100,
+    makeupGainDB: 0,
+  },
+  "dyn-limiter": { thresholdDB: -0.1, releaseMs: 100 },
   widener: { width: 1.0, mix: 0.5 },
   phaser: {
     rateHz: 0.4,
@@ -448,6 +481,24 @@ function applyNodeParamsToUI(node) {
       el.bitCrusherBits.value = p.bitDepth;
       el.bitCrusherDownsample.value = p.downsample;
       el.bitCrusherMix.value = p.mix;
+      break;
+    case "filter":
+      el.fxFilterKind.value = p.kind || "lowpass";
+      el.fxFilterFreq.value = p.freq;
+      el.fxFilterQ.value = p.q;
+      el.fxFilterGain.value = p.gain;
+      break;
+    case "dyn-compressor":
+      el.fxCompThresh.value = p.thresholdDB;
+      el.fxCompRatio.value = p.ratio;
+      el.fxCompKnee.value = p.kneeDB;
+      el.fxCompAttack.value = p.attackMs;
+      el.fxCompRelease.value = p.releaseMs;
+      el.fxCompMakeup.value = p.makeupGainDB;
+      break;
+    case "dyn-limiter":
+      el.fxLimThresh.value = p.thresholdDB;
+      el.fxLimRelease.value = p.releaseMs;
       break;
     case "widener":
       el.widenerWidth.value = p.width;
@@ -538,6 +589,27 @@ function collectNodeParamsFromUI(nodeType) {
         bitDepth: Number(el.bitCrusherBits.value),
         downsample: Number(el.bitCrusherDownsample.value),
         mix: Number(el.bitCrusherMix.value),
+      };
+    case "filter":
+      return {
+        kind: String(el.fxFilterKind.value || "lowpass"),
+        freq: Number(el.fxFilterFreq.value),
+        q: Number(el.fxFilterQ.value),
+        gain: Number(el.fxFilterGain.value),
+      };
+    case "dyn-compressor":
+      return {
+        thresholdDB: Number(el.fxCompThresh.value),
+        ratio: Number(el.fxCompRatio.value),
+        kneeDB: Number(el.fxCompKnee.value),
+        attackMs: Number(el.fxCompAttack.value),
+        releaseMs: Number(el.fxCompRelease.value),
+        makeupGainDB: Number(el.fxCompMakeup.value),
+      };
+    case "dyn-limiter":
+      return {
+        thresholdDB: Number(el.fxLimThresh.value),
+        releaseMs: Number(el.fxLimRelease.value),
       };
     case "widener":
       return {
@@ -1160,6 +1232,39 @@ function updateEffectsText() {
   el.bitCrusherBitsValue.textContent = `${Number(el.bitCrusherBits.value).toFixed(1)} bit`;
   el.bitCrusherDownsampleValue.textContent = `${Number(el.bitCrusherDownsample.value).toFixed(0)}x`;
   el.bitCrusherMixValue.textContent = `${Math.round(Number(el.bitCrusherMix.value) * 100)}%`;
+  if (el.fxFilterFreqValue) {
+    el.fxFilterFreqValue.textContent = `${Number(el.fxFilterFreq.value).toFixed(0)} Hz`;
+  }
+  if (el.fxFilterQValue) {
+    el.fxFilterQValue.textContent = Number(el.fxFilterQ.value).toFixed(2);
+  }
+  if (el.fxFilterGainValue) {
+    el.fxFilterGainValue.textContent = `${Number(el.fxFilterGain.value).toFixed(1)} dB`;
+  }
+  if (el.fxCompThreshValue) {
+    el.fxCompThreshValue.textContent = `${Number(el.fxCompThresh.value).toFixed(1)} dB`;
+  }
+  if (el.fxCompRatioValue) {
+    el.fxCompRatioValue.textContent = `${Number(el.fxCompRatio.value).toFixed(1)}:1`;
+  }
+  if (el.fxCompKneeValue) {
+    el.fxCompKneeValue.textContent = `${Number(el.fxCompKnee.value).toFixed(1)} dB`;
+  }
+  if (el.fxCompAttackValue) {
+    el.fxCompAttackValue.textContent = `${Number(el.fxCompAttack.value).toFixed(1)} ms`;
+  }
+  if (el.fxCompReleaseValue) {
+    el.fxCompReleaseValue.textContent = `${Number(el.fxCompRelease.value).toFixed(0)} ms`;
+  }
+  if (el.fxCompMakeupValue) {
+    el.fxCompMakeupValue.textContent = `${Number(el.fxCompMakeup.value).toFixed(1)} dB`;
+  }
+  if (el.fxLimThreshValue) {
+    el.fxLimThreshValue.textContent = `${Number(el.fxLimThresh.value).toFixed(1)} dB`;
+  }
+  if (el.fxLimReleaseValue) {
+    el.fxLimReleaseValue.textContent = `${Number(el.fxLimRelease.value).toFixed(0)} ms`;
+  }
   el.widenerWidthValue.textContent = `${Number(el.widenerWidth.value).toFixed(2)}x`;
   el.widenerMixValue.textContent = `${Math.round(Number(el.widenerMix.value) * 100)}%`;
   el.phaserRateValue.textContent = `${Number(el.phaserRate.value).toFixed(2)} Hz`;
@@ -1479,6 +1584,18 @@ function bindEvents() {
     el.bitCrusherBits,
     el.bitCrusherDownsample,
     el.bitCrusherMix,
+    el.fxFilterKind,
+    el.fxFilterFreq,
+    el.fxFilterQ,
+    el.fxFilterGain,
+    el.fxCompThresh,
+    el.fxCompRatio,
+    el.fxCompKnee,
+    el.fxCompAttack,
+    el.fxCompRelease,
+    el.fxCompMakeup,
+    el.fxLimThresh,
+    el.fxLimRelease,
     el.widenerWidth,
     el.widenerMix,
     el.phaserRate,
