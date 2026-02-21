@@ -2,36 +2,7 @@ package webdemo
 
 import (
 	"github.com/cwbudde/algo-dsp/dsp/effects"
-	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
-	"github.com/cwbudde/algo-dsp/dsp/effects/modulation"
-	"github.com/cwbudde/algo-dsp/dsp/effects/pitch"
-	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
-	"github.com/cwbudde/algo-dsp/dsp/effects/spatial"
-	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
-
-// chainEffectNode is the runtime container holding all possible effect instances
-// for a single node in the effect chain graph.
-type chainEffectNode struct {
-	effectType string
-	chorus     *modulation.Chorus
-	flanger    *modulation.Flanger
-	ringMod    *modulation.RingModulator
-	crusher    *effects.BitCrusher
-	widener    *spatial.StereoWidener
-	phaser     *modulation.Phaser
-	tremolo    *modulation.Tremolo
-	delay      *effects.Delay
-	filter     *biquad.Chain
-	bass       *effects.HarmonicBass
-	tp         *pitch.PitchShifter
-	sp         *pitch.SpectralPitchShifter
-	reverb     *reverb.Reverb
-	fdn        *reverb.FDNReverb
-	comp       *dynamics.Compressor
-	limiter    *dynamics.Limiter
-	gate       *dynamics.Gate
-}
 
 // SetCompressor updates compressor parameters.
 func (e *Engine) SetCompressor(p CompressorParams) error {
@@ -279,234 +250,273 @@ func (e *Engine) rebuildLimiter() error {
 }
 
 func (e *Engine) rebuildEffects() error {
-	if err := e.chorus.SetSampleRate(e.sampleRate); err != nil {
-		return err
+	steps := []func() error{
+		e.rebuildChorusEffect,
+		e.rebuildFlangerEffect,
+		e.rebuildRingModEffect,
+		e.rebuildBitCrusherEffect,
+		e.rebuildWidenerEffect,
+		e.rebuildPhaserEffect,
+		e.rebuildTremoloEffect,
+		e.rebuildDelayEffect,
+		e.rebuildTimePitchEffect,
+		e.rebuildSpectralPitchEffect,
+		e.rebuildReverbEffect,
+		e.rebuildHarmonicBassEffect,
 	}
-	if e.effects.ChorusEnabled {
-		if err := e.chorus.SetMix(e.effects.ChorusMix); err != nil {
-			return err
-		}
-		if err := e.chorus.SetDepth(e.effects.ChorusDepth); err != nil {
-			return err
-		}
-		if err := e.chorus.SetSpeedHz(e.effects.ChorusSpeedHz); err != nil {
-			return err
-		}
-		if err := e.chorus.SetStages(e.effects.ChorusStages); err != nil {
-			return err
-		}
-	}
-	if err := e.flanger.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if e.effects.FlangerEnabled {
-		if err := e.flanger.SetRateHz(e.effects.FlangerRateHz); err != nil {
-			return err
-		}
-		// Apply timing in a transition-safe order to avoid invalid intermediate
-		// base+depth combinations during whole-graph parameter updates.
-		if err := e.flanger.SetDepthSeconds(0); err != nil {
-			return err
-		}
-		if err := e.flanger.SetBaseDelaySeconds(e.effects.FlangerBaseDelay); err != nil {
-			return err
-		}
-		if err := e.flanger.SetDepthSeconds(e.effects.FlangerDepth); err != nil {
-			return err
-		}
-		if err := e.flanger.SetFeedback(e.effects.FlangerFeedback); err != nil {
-			return err
-		}
-		if err := e.flanger.SetMix(e.effects.FlangerMix); err != nil {
-			return err
-		}
-	}
-	if err := e.ringMod.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if e.effects.RingModEnabled {
-		if err := e.ringMod.SetCarrierHz(e.effects.RingModCarrierHz); err != nil {
-			return err
-		}
-		if err := e.ringMod.SetMix(e.effects.RingModMix); err != nil {
-			return err
-		}
-	}
-	if err := e.crusher.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if e.effects.BitCrusherEnabled {
-		if err := e.crusher.SetBitDepth(e.effects.BitCrusherBitDepth); err != nil {
-			return err
-		}
-		if err := e.crusher.SetDownsample(e.effects.BitCrusherDownsample); err != nil {
-			return err
-		}
-		if err := e.crusher.SetMix(e.effects.BitCrusherMix); err != nil {
-			return err
-		}
-	}
-	if err := e.widener.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if e.effects.WidenerEnabled {
-		if err := e.widener.SetWidth(e.effects.WidenerWidth); err != nil {
-			return err
-		}
-		if err := e.widener.SetBassMonoFreq(0); err != nil {
-			return err
-		}
-	}
-	if err := e.phaser.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if e.effects.PhaserEnabled {
-		if err := e.phaser.SetRateHz(e.effects.PhaserRateHz); err != nil {
-			return err
-		}
-		if err := e.phaser.SetFrequencyRangeHz(e.effects.PhaserMinFreqHz, e.effects.PhaserMaxFreqHz); err != nil {
-			return err
-		}
-		if err := e.phaser.SetStages(e.effects.PhaserStages); err != nil {
-			return err
-		}
-		if err := e.phaser.SetFeedback(e.effects.PhaserFeedback); err != nil {
-			return err
-		}
-		if err := e.phaser.SetMix(e.effects.PhaserMix); err != nil {
-			return err
-		}
-	}
-	if err := e.tremolo.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if e.effects.TremoloEnabled {
-		if err := e.tremolo.SetRateHz(e.effects.TremoloRateHz); err != nil {
-			return err
-		}
-		if err := e.tremolo.SetDepth(e.effects.TremoloDepth); err != nil {
-			return err
-		}
-		if err := e.tremolo.SetSmoothingMs(e.effects.TremoloSmoothingMs); err != nil {
-			return err
-		}
-		if err := e.tremolo.SetMix(e.effects.TremoloMix); err != nil {
-			return err
-		}
-	}
-	if err := e.delay.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if e.effects.DelayEnabled {
-		if err := e.delay.SetTime(e.effects.DelayTime); err != nil {
-			return err
-		}
-		if err := e.delay.SetFeedback(e.effects.DelayFeedback); err != nil {
-			return err
-		}
-		if err := e.delay.SetMix(e.effects.DelayMix); err != nil {
-			return err
-		}
-	}
-
-	if e.effects.TimePitchEnabled {
-		if err := e.tp.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := e.tp.SetPitchSemitones(e.effects.TimePitchSemitones); err != nil {
-			return err
-		}
-		if err := e.tp.SetSequence(e.effects.TimePitchSequence); err != nil {
-			return err
-		}
-		if err := e.tp.SetOverlap(e.effects.TimePitchOverlap); err != nil {
-			return err
-		}
-		if err := e.tp.SetSearch(e.effects.TimePitchSearch); err != nil {
-			return err
-		}
-	}
-
-	if e.effects.SpectralPitchEnabled {
-		if err := e.sp.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := e.sp.SetPitchSemitones(e.effects.SpectralPitchSemitones); err != nil {
-			return err
-		}
-		if err := e.sp.SetFrameSize(e.effects.SpectralPitchFrameSize); err != nil {
-			return err
-		}
-		if err := e.sp.SetAnalysisHop(e.effects.SpectralPitchHop); err != nil {
-			return err
-		}
-	}
-
-	if e.effects.ReverbEnabled {
-		if e.effects.ReverbModel == "fdn" {
-			if err := e.fdn.SetSampleRate(e.sampleRate); err != nil {
-				return err
-			}
-			if err := e.fdn.SetWet(e.effects.ReverbWet); err != nil {
-				return err
-			}
-			if err := e.fdn.SetDry(e.effects.ReverbDry); err != nil {
-				return err
-			}
-			if err := e.fdn.SetRT60(e.effects.ReverbRT60); err != nil {
-				return err
-			}
-			if err := e.fdn.SetPreDelay(e.effects.ReverbPreDelay); err != nil {
-				return err
-			}
-			if err := e.fdn.SetDamp(e.effects.ReverbDamp); err != nil {
-				return err
-			}
-			if err := e.fdn.SetModDepth(e.effects.ReverbModDepth); err != nil {
-				return err
-			}
-			if err := e.fdn.SetModRate(e.effects.ReverbModRate); err != nil {
-				return err
-			}
-		} else {
-			e.reverb.SetWet(e.effects.ReverbWet)
-			e.reverb.SetDry(e.effects.ReverbDry)
-			e.reverb.SetRoomSize(e.effects.ReverbRoomSize)
-			e.reverb.SetDamp(e.effects.ReverbDamp)
-			e.reverb.SetGain(e.effects.ReverbGain)
-		}
-	}
-
-	if e.effects.HarmonicBassEnabled {
-		if err := e.bass.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := e.bass.SetFrequency(e.effects.HarmonicBassFrequency); err != nil {
-			return err
-		}
-		if err := e.bass.SetInputLevel(e.effects.HarmonicBassInputGain); err != nil {
-			return err
-		}
-		if err := e.bass.SetHighFrequencyLevel(e.effects.HarmonicBassHighGain); err != nil {
-			return err
-		}
-		if err := e.bass.SetOriginalBassLevel(e.effects.HarmonicBassOriginal); err != nil {
-			return err
-		}
-		if err := e.bass.SetHarmonicBassLevel(e.effects.HarmonicBassHarmonic); err != nil {
-			return err
-		}
-		if err := e.bass.SetDecay(e.effects.HarmonicBassDecay); err != nil {
-			return err
-		}
-		if err := e.bass.SetResponse(e.effects.HarmonicBassResponseMs); err != nil {
-			return err
-		}
-		if err := e.bass.SetHighpassMode(effects.HighpassSelect(e.effects.HarmonicBassHighpass)); err != nil {
+	for _, step := range steps {
+		if err := step(); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (e *Engine) rebuildChorusEffect() error {
+	if err := e.chorus.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if !e.effects.ChorusEnabled {
+		return nil
+	}
+	if err := e.chorus.SetMix(e.effects.ChorusMix); err != nil {
+		return err
+	}
+	if err := e.chorus.SetDepth(e.effects.ChorusDepth); err != nil {
+		return err
+	}
+	if err := e.chorus.SetSpeedHz(e.effects.ChorusSpeedHz); err != nil {
+		return err
+	}
+	return e.chorus.SetStages(e.effects.ChorusStages)
+}
+
+func (e *Engine) rebuildFlangerEffect() error {
+	if err := e.flanger.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if !e.effects.FlangerEnabled {
+		return nil
+	}
+	if err := e.flanger.SetRateHz(e.effects.FlangerRateHz); err != nil {
+		return err
+	}
+	// Apply timing in a transition-safe order to avoid invalid intermediate
+	// base+depth combinations during whole-graph parameter updates.
+	if err := e.flanger.SetDepthSeconds(0); err != nil {
+		return err
+	}
+	if err := e.flanger.SetBaseDelaySeconds(e.effects.FlangerBaseDelay); err != nil {
+		return err
+	}
+	if err := e.flanger.SetDepthSeconds(e.effects.FlangerDepth); err != nil {
+		return err
+	}
+	if err := e.flanger.SetFeedback(e.effects.FlangerFeedback); err != nil {
+		return err
+	}
+	return e.flanger.SetMix(e.effects.FlangerMix)
+}
+
+func (e *Engine) rebuildRingModEffect() error {
+	if err := e.ringMod.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if !e.effects.RingModEnabled {
+		return nil
+	}
+	if err := e.ringMod.SetCarrierHz(e.effects.RingModCarrierHz); err != nil {
+		return err
+	}
+	return e.ringMod.SetMix(e.effects.RingModMix)
+}
+
+func (e *Engine) rebuildBitCrusherEffect() error {
+	if err := e.crusher.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if !e.effects.BitCrusherEnabled {
+		return nil
+	}
+	if err := e.crusher.SetBitDepth(e.effects.BitCrusherBitDepth); err != nil {
+		return err
+	}
+	if err := e.crusher.SetDownsample(e.effects.BitCrusherDownsample); err != nil {
+		return err
+	}
+	return e.crusher.SetMix(e.effects.BitCrusherMix)
+}
+
+func (e *Engine) rebuildWidenerEffect() error {
+	if err := e.widener.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if !e.effects.WidenerEnabled {
+		return nil
+	}
+	if err := e.widener.SetWidth(e.effects.WidenerWidth); err != nil {
+		return err
+	}
+	return e.widener.SetBassMonoFreq(0)
+}
+
+func (e *Engine) rebuildPhaserEffect() error {
+	if err := e.phaser.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if !e.effects.PhaserEnabled {
+		return nil
+	}
+	if err := e.phaser.SetRateHz(e.effects.PhaserRateHz); err != nil {
+		return err
+	}
+	if err := e.phaser.SetFrequencyRangeHz(e.effects.PhaserMinFreqHz, e.effects.PhaserMaxFreqHz); err != nil {
+		return err
+	}
+	if err := e.phaser.SetStages(e.effects.PhaserStages); err != nil {
+		return err
+	}
+	if err := e.phaser.SetFeedback(e.effects.PhaserFeedback); err != nil {
+		return err
+	}
+	return e.phaser.SetMix(e.effects.PhaserMix)
+}
+
+func (e *Engine) rebuildTremoloEffect() error {
+	if err := e.tremolo.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if !e.effects.TremoloEnabled {
+		return nil
+	}
+	if err := e.tremolo.SetRateHz(e.effects.TremoloRateHz); err != nil {
+		return err
+	}
+	if err := e.tremolo.SetDepth(e.effects.TremoloDepth); err != nil {
+		return err
+	}
+	if err := e.tremolo.SetSmoothingMs(e.effects.TremoloSmoothingMs); err != nil {
+		return err
+	}
+	return e.tremolo.SetMix(e.effects.TremoloMix)
+}
+
+func (e *Engine) rebuildDelayEffect() error {
+	if err := e.delay.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if !e.effects.DelayEnabled {
+		return nil
+	}
+	if err := e.delay.SetTime(e.effects.DelayTime); err != nil {
+		return err
+	}
+	if err := e.delay.SetFeedback(e.effects.DelayFeedback); err != nil {
+		return err
+	}
+	return e.delay.SetMix(e.effects.DelayMix)
+}
+
+func (e *Engine) rebuildTimePitchEffect() error {
+	if !e.effects.TimePitchEnabled {
+		return nil
+	}
+	if err := e.tp.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.tp.SetPitchSemitones(e.effects.TimePitchSemitones); err != nil {
+		return err
+	}
+	if err := e.tp.SetSequence(e.effects.TimePitchSequence); err != nil {
+		return err
+	}
+	if err := e.tp.SetOverlap(e.effects.TimePitchOverlap); err != nil {
+		return err
+	}
+	return e.tp.SetSearch(e.effects.TimePitchSearch)
+}
+
+func (e *Engine) rebuildSpectralPitchEffect() error {
+	if !e.effects.SpectralPitchEnabled {
+		return nil
+	}
+	if err := e.sp.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.sp.SetPitchSemitones(e.effects.SpectralPitchSemitones); err != nil {
+		return err
+	}
+	if err := e.sp.SetFrameSize(e.effects.SpectralPitchFrameSize); err != nil {
+		return err
+	}
+	return e.sp.SetAnalysisHop(e.effects.SpectralPitchHop)
+}
+
+func (e *Engine) rebuildReverbEffect() error {
+	if !e.effects.ReverbEnabled {
+		return nil
+	}
+	if e.effects.ReverbModel == "fdn" {
+		if err := e.fdn.SetSampleRate(e.sampleRate); err != nil {
+			return err
+		}
+		if err := e.fdn.SetWet(e.effects.ReverbWet); err != nil {
+			return err
+		}
+		if err := e.fdn.SetDry(e.effects.ReverbDry); err != nil {
+			return err
+		}
+		if err := e.fdn.SetRT60(e.effects.ReverbRT60); err != nil {
+			return err
+		}
+		if err := e.fdn.SetPreDelay(e.effects.ReverbPreDelay); err != nil {
+			return err
+		}
+		if err := e.fdn.SetDamp(e.effects.ReverbDamp); err != nil {
+			return err
+		}
+		if err := e.fdn.SetModDepth(e.effects.ReverbModDepth); err != nil {
+			return err
+		}
+		return e.fdn.SetModRate(e.effects.ReverbModRate)
+	}
+	e.reverb.SetWet(e.effects.ReverbWet)
+	e.reverb.SetDry(e.effects.ReverbDry)
+	e.reverb.SetRoomSize(e.effects.ReverbRoomSize)
+	e.reverb.SetDamp(e.effects.ReverbDamp)
+	e.reverb.SetGain(e.effects.ReverbGain)
+	return nil
+}
+
+func (e *Engine) rebuildHarmonicBassEffect() error {
+	if !e.effects.HarmonicBassEnabled {
+		return nil
+	}
+	if err := e.bass.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := e.bass.SetFrequency(e.effects.HarmonicBassFrequency); err != nil {
+		return err
+	}
+	if err := e.bass.SetInputLevel(e.effects.HarmonicBassInputGain); err != nil {
+		return err
+	}
+	if err := e.bass.SetHighFrequencyLevel(e.effects.HarmonicBassHighGain); err != nil {
+		return err
+	}
+	if err := e.bass.SetOriginalBassLevel(e.effects.HarmonicBassOriginal); err != nil {
+		return err
+	}
+	if err := e.bass.SetHarmonicBassLevel(e.effects.HarmonicBassHarmonic); err != nil {
+		return err
+	}
+	if err := e.bass.SetDecay(e.effects.HarmonicBassDecay); err != nil {
+		return err
+	}
+	if err := e.bass.SetResponse(e.effects.HarmonicBassResponseMs); err != nil {
+		return err
+	}
+	return e.bass.SetHighpassMode(effects.HighpassSelect(e.effects.HarmonicBassHighpass))
 }
 
 func sanitizeSpectralPitchFrameSize(n int) int {

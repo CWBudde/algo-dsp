@@ -1,5 +1,7 @@
 package webdemo
 
+import "github.com/cwbudde/algo-dsp/dsp/effects/spatial"
+
 // processEffectsInPlace routes to graph-based or legacy serial processing.
 func (e *Engine) processEffectsInPlace(block []float64) {
 	if len(block) == 0 {
@@ -136,56 +138,16 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 	return true
 }
 
-// applyCompiledNode dispatches a single compiled graph node to its effect's ProcessInPlace.
+// applyCompiledNode dispatches a single compiled graph node to its runtime effect.
 func (e *Engine) applyCompiledNode(node compiledChainNode, block []float64) {
 	if node.Type == "split" || node.Type == "sum" || node.Type == "_input" || node.Type == "_output" {
 		return
 	}
 	rt := e.chainNodes[node.ID]
-	if rt == nil {
+	if rt == nil || rt.effect == nil {
 		return
 	}
-	switch node.Type {
-	case "chorus":
-		rt.chorus.ProcessInPlace(block)
-	case "flanger":
-		_ = rt.flanger.ProcessInPlace(block)
-	case "ringmod":
-		rt.ringMod.ProcessInPlace(block)
-	case "bitcrusher":
-		rt.crusher.ProcessInPlace(block)
-	case "widener":
-		e.processNodeWidenerMonoInPlace(block, rt, clamp(getNodeNum(node, "mix", 0.5), 0, 1))
-	case "phaser":
-		_ = rt.phaser.ProcessInPlace(block)
-	case "tremolo":
-		_ = rt.tremolo.ProcessInPlace(block)
-	case "delay":
-		rt.delay.ProcessInPlace(block)
-	case "filter":
-		if rt.filter != nil {
-			rt.filter.ProcessBlock(block)
-		}
-	case "bass":
-		rt.bass.ProcessInPlace(block)
-	case "pitch-time":
-		rt.tp.ProcessInPlace(block)
-	case "pitch-spectral":
-		rt.sp.ProcessInPlace(block)
-	case "reverb":
-		model := node.Str["model"]
-		if model == "fdn" {
-			rt.fdn.ProcessInPlace(block)
-		} else {
-			rt.reverb.ProcessInPlace(block)
-		}
-	case "dyn-compressor":
-		rt.comp.ProcessInPlace(block)
-	case "dyn-limiter":
-		rt.limiter.ProcessInPlace(block)
-	case "dyn-gate":
-		rt.gate.ProcessInPlace(block)
-	}
+	rt.effect.Process(e, node, block)
 }
 
 // processWidenerMonoInPlace applies the stereo widener to a mono signal using a
@@ -221,8 +183,8 @@ func (e *Engine) processWidenerMonoInPlace(block []float64) {
 
 // processNodeWidenerMonoInPlace is the per-chain-node variant of processWidenerMonoInPlace,
 // using the node's own widener instance and a caller-supplied mix value.
-func (e *Engine) processNodeWidenerMonoInPlace(block []float64, rt *chainEffectNode, mix float64) {
-	if len(block) == 0 || rt == nil || rt.widener == nil {
+func (e *Engine) processNodeWidenerMonoInPlace(block []float64, widener *spatial.StereoWidener, mix float64) {
+	if len(block) == 0 || widener == nil {
 		return
 	}
 	if len(e.chainBuf) < len(block) {
@@ -241,7 +203,7 @@ func (e *Engine) processNodeWidenerMonoInPlace(block []float64, rt *chainEffectN
 		if i >= delaySamples {
 			right = dry[i-delaySamples]
 		}
-		l2, r2 := rt.widener.ProcessStereo(left, right)
+		l2, r2 := widener.ProcessStereo(left, right)
 		wet := 0.5 * (l2 + r2)
 		block[i] = dry[i]*(1-mix) + wet*mix
 	}
