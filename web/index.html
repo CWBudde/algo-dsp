@@ -273,6 +273,68 @@
                 <span id="flanger-mix-value">50%</span>
               </label>
             </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="ringmod" hidden>
+              <div class="fx-option-head">
+                <span>Ring Modulator</span>
+              </div>
+              <label>
+                Carrier
+                <input id="ringmod-carrier" type="range" min="20" max="4000" step="1" value="440" />
+                <span id="ringmod-carrier-value">440.0 Hz</span>
+              </label>
+              <label>
+                Mix
+                <input id="ringmod-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <span id="ringmod-mix-value">100%</span>
+              </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="bitcrusher" hidden>
+              <div class="fx-option-head">
+                <span>Bit Crusher</span>
+              </div>
+              <label>
+                Bit Depth
+                <input id="bitcrusher-bits" type="range" min="1" max="16" step="0.1" value="8" />
+                <span id="bitcrusher-bits-value">8.0 bit</span>
+              </label>
+              <label>
+                Downsample
+                <input id="bitcrusher-downsample" type="range" min="1" max="64" step="1" value="4" />
+                <span id="bitcrusher-downsample-value">4x</span>
+              </label>
+              <label>
+                Mix
+                <input id="bitcrusher-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <span id="bitcrusher-mix-value">100%</span>
+              </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="widener" hidden>
+              <div class="fx-option-head">
+                <span>Stereo Widener</span>
+              </div>
+              <label>
+                Width
+                <input id="widener-width" type="range" min="0" max="3" step="0.01" value="1" />
+                <span id="widener-width-value">1.00x</span>
+              </label>
+              <label>
+                Mix
+                <input id="widener-mix" type="range" min="0" max="1" step="0.01" value="0.5" />
+                <span id="widener-mix-value">50%</span>
+              </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="split" hidden>
+              <div class="fx-option-head">
+                <span>Split</span>
+              </div>
+              <p>Split duplicates the signal to multiple downstream branches.</p>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="sum" hidden>
+              <div class="fx-option-head">
+                <span>Sum</span>
+              </div>
+              <p>Sum mixes all incoming branches and forwards a single output.</p>
+            </div>
             <div class="fx-card chain-detail-card" data-chain-detail="phaser" hidden>
               <div class="fx-option-head">
                 <span>Phaser</span>

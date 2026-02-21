@@ -116,6 +116,16 @@ const state = {
     flangerBaseDelay: 0.001,
     flangerFeedback: 0.25,
     flangerMix: 0.5,
+    ringModEnabled: false,
+    ringModCarrierHz: 440,
+    ringModMix: 1,
+    bitCrusherEnabled: false,
+    bitCrusherBitDepth: 8,
+    bitCrusherDownsample: 4,
+    bitCrusherMix: 1,
+    widenerEnabled: false,
+    widenerWidth: 1,
+    widenerMix: 0.5,
     phaserEnabled: false,
     phaserRateHz: 0.4,
     phaserMinFreqHz: 300,
@@ -162,6 +172,7 @@ const state = {
     reverbPreDelay: 0.01,
     reverbModDepth: 0.002,
     reverbModRate: 0.1,
+    chainGraphJSON: "",
   },
   compParams: {
     enabled: false,
@@ -230,6 +241,20 @@ const el = {
   flangerFeedbackValue: document.getElementById("flanger-feedback-value"),
   flangerMix: document.getElementById("flanger-mix"),
   flangerMixValue: document.getElementById("flanger-mix-value"),
+  ringModCarrier: document.getElementById("ringmod-carrier"),
+  ringModCarrierValue: document.getElementById("ringmod-carrier-value"),
+  ringModMix: document.getElementById("ringmod-mix"),
+  ringModMixValue: document.getElementById("ringmod-mix-value"),
+  bitCrusherBits: document.getElementById("bitcrusher-bits"),
+  bitCrusherBitsValue: document.getElementById("bitcrusher-bits-value"),
+  bitCrusherDownsample: document.getElementById("bitcrusher-downsample"),
+  bitCrusherDownsampleValue: document.getElementById("bitcrusher-downsample-value"),
+  bitCrusherMix: document.getElementById("bitcrusher-mix"),
+  bitCrusherMixValue: document.getElementById("bitcrusher-mix-value"),
+  widenerWidth: document.getElementById("widener-width"),
+  widenerWidthValue: document.getElementById("widener-width-value"),
+  widenerMix: document.getElementById("widener-mix"),
+  widenerMixValue: document.getElementById("widener-mix-value"),
   phaserRate: document.getElementById("phaser-rate"),
   phaserRateValue: document.getElementById("phaser-rate-value"),
   phaserMinFreq: document.getElementById("phaser-min-freq"),
@@ -381,6 +406,14 @@ function loadSettings() {
     if (el.flangerBaseDelay) el.flangerBaseDelay.value = state.effectsParams.flangerBaseDelay;
     if (el.flangerFeedback) el.flangerFeedback.value = state.effectsParams.flangerFeedback;
     if (el.flangerMix) el.flangerMix.value = state.effectsParams.flangerMix;
+    if (el.ringModCarrier) el.ringModCarrier.value = state.effectsParams.ringModCarrierHz;
+    if (el.ringModMix) el.ringModMix.value = state.effectsParams.ringModMix;
+    if (el.bitCrusherBits) el.bitCrusherBits.value = state.effectsParams.bitCrusherBitDepth;
+    if (el.bitCrusherDownsample)
+      el.bitCrusherDownsample.value = state.effectsParams.bitCrusherDownsample;
+    if (el.bitCrusherMix) el.bitCrusherMix.value = state.effectsParams.bitCrusherMix;
+    if (el.widenerWidth) el.widenerWidth.value = state.effectsParams.widenerWidth;
+    if (el.widenerMix) el.widenerMix.value = state.effectsParams.widenerMix;
     if (el.phaserRate) el.phaserRate.value = state.effectsParams.phaserRateHz;
     if (el.phaserMinFreq) el.phaserMinFreq.value = state.effectsParams.phaserMinFreqHz;
     if (el.phaserMaxFreq) el.phaserMaxFreq.value = state.effectsParams.phaserMaxFreqHz;
@@ -849,6 +882,7 @@ function readEffectsFromChain() {
   }
 
   const flanger = sanitizeFlangerControls();
+  const chainState = state.chain ? state.chain.getState() : null;
 
   state.effectsParams = {
     chorusEnabled: enabled.has("chorus"),
@@ -862,6 +896,16 @@ function readEffectsFromChain() {
     flangerBaseDelay: flanger.baseDelay,
     flangerFeedback: Number(el.flangerFeedback.value),
     flangerMix: Number(el.flangerMix.value),
+    ringModEnabled: enabled.has("ringmod"),
+    ringModCarrierHz: Number(el.ringModCarrier.value),
+    ringModMix: Number(el.ringModMix.value),
+    bitCrusherEnabled: enabled.has("bitcrusher"),
+    bitCrusherBitDepth: Number(el.bitCrusherBits.value),
+    bitCrusherDownsample: Number(el.bitCrusherDownsample.value),
+    bitCrusherMix: Number(el.bitCrusherMix.value),
+    widenerEnabled: enabled.has("widener"),
+    widenerWidth: Number(el.widenerWidth.value),
+    widenerMix: Number(el.widenerMix.value),
     phaserEnabled: enabled.has("phaser"),
     phaserRateHz: Number(el.phaserRate.value),
     phaserMinFreqHz: Number(el.phaserMinFreq.value),
@@ -908,6 +952,7 @@ function readEffectsFromChain() {
     reverbPreDelay: Number(el.reverbPreDelay.value),
     reverbModDepth: Number(el.reverbModDepth.value),
     reverbModRate: Number(el.reverbModRate.value),
+    chainGraphJSON: chainState ? JSON.stringify(chainState) : "",
   };
 }
 
@@ -924,6 +969,13 @@ function updateEffectsText() {
   el.flangerFeedbackValue.textContent =
     `${Math.round(Number(el.flangerFeedback.value) * 100)}%`;
   el.flangerMixValue.textContent = `${Math.round(Number(el.flangerMix.value) * 100)}%`;
+  el.ringModCarrierValue.textContent = `${Number(el.ringModCarrier.value).toFixed(1)} Hz`;
+  el.ringModMixValue.textContent = `${Math.round(Number(el.ringModMix.value) * 100)}%`;
+  el.bitCrusherBitsValue.textContent = `${Number(el.bitCrusherBits.value).toFixed(1)} bit`;
+  el.bitCrusherDownsampleValue.textContent = `${Number(el.bitCrusherDownsample.value).toFixed(0)}x`;
+  el.bitCrusherMixValue.textContent = `${Math.round(Number(el.bitCrusherMix.value) * 100)}%`;
+  el.widenerWidthValue.textContent = `${Number(el.widenerWidth.value).toFixed(2)}x`;
+  el.widenerMixValue.textContent = `${Math.round(Number(el.widenerMix.value) * 100)}%`;
   el.phaserRateValue.textContent = `${Number(el.phaserRate.value).toFixed(2)} Hz`;
   el.phaserMinFreqValue.textContent = `${Number(el.phaserMinFreq.value).toFixed(0)} Hz`;
   el.phaserMaxFreqValue.textContent = `${Number(el.phaserMaxFreq.value).toFixed(0)} Hz`;
@@ -1236,6 +1288,13 @@ function bindEvents() {
     el.flangerBaseDelay,
     el.flangerFeedback,
     el.flangerMix,
+    el.ringModCarrier,
+    el.ringModMix,
+    el.bitCrusherBits,
+    el.bitCrusherDownsample,
+    el.bitCrusherMix,
+    el.widenerWidth,
+    el.widenerMix,
     el.phaserRate,
     el.phaserMinFreq,
     el.phaserMaxFreq,

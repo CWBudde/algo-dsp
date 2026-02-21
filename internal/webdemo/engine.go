@@ -10,6 +10,7 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects/modulation"
 	"github.com/cwbudde/algo-dsp/dsp/effects/pitch"
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
+	"github.com/cwbudde/algo-dsp/dsp/effects/spatial"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	algofft "github.com/cwbudde/algo-fft"
 )
@@ -77,6 +78,19 @@ type EffectsParams struct {
 	FlangerFeedback  float64
 	FlangerMix       float64
 
+	RingModEnabled   bool
+	RingModCarrierHz float64
+	RingModMix       float64
+
+	BitCrusherEnabled    bool
+	BitCrusherBitDepth   float64
+	BitCrusherDownsample int
+	BitCrusherMix        float64
+
+	WidenerEnabled bool
+	WidenerWidth   float64
+	WidenerMix     float64
+
 	PhaserEnabled   bool
 	PhaserRateHz    float64
 	PhaserMinFreqHz float64
@@ -128,6 +142,8 @@ type EffectsParams struct {
 	HarmonicBassDecay      float64
 	HarmonicBassResponseMs float64
 	HarmonicBassHighpass   int
+
+	ChainGraphJSON string
 }
 
 // CompressorParams defines compressor settings.
@@ -182,6 +198,9 @@ type Engine struct {
 	effects EffectsParams
 	chorus  *modulation.Chorus
 	flanger *modulation.Flanger
+	ringMod *modulation.RingModulator
+	crusher *effects.BitCrusher
+	widener *spatial.StereoWidener
 	phaser  *modulation.Phaser
 	tremolo *modulation.Tremolo
 	delay   *effects.Delay
@@ -198,6 +217,11 @@ type Engine struct {
 	limiter   *dynamics.Limiter
 
 	renderBlock []float64
+	chainBuf    []float64
+	chainMixBuf []float64
+	chainOutBuf map[string][]float64
+
+	chainGraph *compiledChainGraph
 
 	spectrum             SpectrumParams
 	spectrumWindow       []float64
@@ -271,6 +295,16 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			FlangerBaseDelay:       0.001,
 			FlangerFeedback:        0.25,
 			FlangerMix:             0.5,
+			RingModEnabled:         false,
+			RingModCarrierHz:       440,
+			RingModMix:             1.0,
+			BitCrusherEnabled:      false,
+			BitCrusherBitDepth:     8,
+			BitCrusherDownsample:   4,
+			BitCrusherMix:          1.0,
+			WidenerEnabled:         false,
+			WidenerWidth:           1.0,
+			WidenerMix:             0.5,
 			PhaserEnabled:          false,
 			PhaserRateHz:           0.4,
 			PhaserMinFreqHz:        300,
@@ -352,6 +386,21 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		return nil, err
 	}
 	e.flanger = flanger
+	ringMod, err := modulation.NewRingModulator(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.ringMod = ringMod
+	crusher, err := effects.NewBitCrusher(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.crusher = crusher
+	widener, err := spatial.NewStereoWidener(sampleRate)
+	if err != nil {
+		return nil, err
+	}
+	e.widener = widener
 	phaser, err := modulation.NewPhaser(sampleRate)
 	if err != nil {
 		return nil, err
@@ -445,37 +494,7 @@ func (e *Engine) Render(dst []float32) {
 		block[i] = e.nextSample()
 	}
 
-	if e.effects.HarmonicBassEnabled {
-		e.bass.ProcessInPlace(block)
-	}
-	if e.effects.DelayEnabled {
-		e.delay.ProcessInPlace(block)
-	}
-	if e.effects.ChorusEnabled {
-		e.chorus.ProcessInPlace(block)
-	}
-	if e.effects.FlangerEnabled {
-		_ = e.flanger.ProcessInPlace(block)
-	}
-	if e.effects.PhaserEnabled {
-		_ = e.phaser.ProcessInPlace(block)
-	}
-	if e.effects.TremoloEnabled {
-		_ = e.tremolo.ProcessInPlace(block)
-	}
-	if e.effects.TimePitchEnabled {
-		e.tp.ProcessInPlace(block)
-	}
-	if e.effects.SpectralPitchEnabled {
-		e.sp.ProcessInPlace(block)
-	}
-	if e.effects.ReverbEnabled {
-		if e.effects.ReverbModel == "fdn" {
-			e.fdn.ProcessInPlace(block)
-		} else {
-			e.reverb.ProcessInPlace(block)
-		}
-	}
+	e.processEffectsInPlace(block)
 	e.hp.ProcessBlock(block)
 	e.low.ProcessBlock(block)
 	e.mid.ProcessBlock(block)

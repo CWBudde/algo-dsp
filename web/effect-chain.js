@@ -9,6 +9,9 @@
   const FX_TYPES = {
     chorus:           { label: "Chorus",            hue: 15  },
     flanger:          { label: "Flanger",           hue: 200 },
+    ringmod:          { label: "Ring Mod",          hue: 320 },
+    bitcrusher:       { label: "Bit Crusher",       hue: 24  },
+    widener:          { label: "Stereo Widener",    hue: 286 },
     phaser:           { label: "Phaser",            hue: 140 },
     tremolo:          { label: "Tremolo",           hue: 270 },
     delay:            { label: "Delay",             hue: 35  },
@@ -16,6 +19,8 @@
     "pitch-time":     { label: "Pitch (Time)",      hue: 190 },
     "pitch-spectral": { label: "Pitch (Spectral)",  hue: 170 },
     reverb:           { label: "Reverb",            hue: 260 },
+    split:            { label: "Split",             hue: 210, utility: true },
+    sum:              { label: "Sum",               hue: 35, utility: true },
   };
 
   // ---- geometry constants ---------------------------------------------------
@@ -126,10 +131,10 @@
 
     /** Add an effect node at world position (wx, wy). Returns node id. */
     addEffect(type, wx, wy) {
-      // only one instance per type
-      if (this.nodes.some((n) => n.type === type)) return null;
+      // only one instance per non-utility type
       const def = FX_TYPES[type];
       if (!def) return null;
+      if (!def.utility && this.nodes.some((n) => n.type === type)) return null;
       const id = genId();
       this.nodes.push({
         id, type, label: def.label,
@@ -166,18 +171,28 @@
     /** Returns a Set of effect type strings that are connected & not bypassed. */
     getEnabledEffects() {
       const enabled = new Set();
-      // walk the chain from _input
-      let cur = "_input";
+      const queue = ["_input"];
       const visited = new Set();
-      while (cur) {
+      while (queue.length > 0) {
+        const cur = queue.shift();
+        if (!cur || visited.has(cur)) continue;
         visited.add(cur);
         const node = this._nodeById(cur);
-        if (node && node.type !== "_input" && node.type !== "_output" && !node.bypassed) {
+        if (
+          node &&
+          node.type !== "_input" &&
+          node.type !== "_output" &&
+          node.type !== "split" &&
+          node.type !== "sum" &&
+          !node.bypassed
+        ) {
           enabled.add(node.type);
         }
-        const conn = this.connections.find((c) => c.from === cur);
-        if (!conn || visited.has(conn.to)) break;
-        cur = conn.to;
+        for (const conn of this.connections) {
+          if (conn.from === cur && !visited.has(conn.to)) {
+            queue.push(conn.to);
+          }
+        }
       }
       return enabled;
     }
@@ -728,10 +743,13 @@
       // prevent cycles: reject if dstId can already reach srcId
       if (this._canReach(dstId, srcId)) return;
 
-      // remove existing connections on these ports
-      this.connections = this.connections.filter(
-        (c) => c.from !== srcId && c.to !== dstId
-      );
+      const srcOutLimit = this._outgoingLimit(srcNode.type);
+      const dstInLimit = this._incomingLimit(dstNode.type);
+      this.connections = this.connections.filter((c) => {
+        if (c.from === srcId && srcOutLimit === 1) return false;
+        if (c.to === dstId && dstInLimit === 1) return false;
+        return true;
+      });
       this.connections.push({ from: srcId, to: dstId });
       this._emitChange();
     }
@@ -760,15 +778,16 @@
     }
 
     _isInChain(nodeId) {
-      // walk from _input; if we reach this node, it's in the chain
-      let cur = "_input";
+      const queue = ["_input"];
       const visited = new Set();
-      while (cur) {
+      while (queue.length > 0) {
+        const cur = queue.shift();
+        if (!cur || visited.has(cur)) continue;
         if (cur === nodeId) return true;
         visited.add(cur);
-        const conn = this.connections.find((c) => c.from === cur);
-        if (!conn || visited.has(conn.to)) break;
-        cur = conn.to;
+        for (const conn of this.connections) {
+          if (conn.from === cur && !visited.has(conn.to)) queue.push(conn.to);
+        }
       }
       return false;
     }
@@ -814,12 +833,12 @@
     }
 
     _removeFromChain(nodeId) {
-      const incoming = this.connections.find((c) => c.to === nodeId);
-      const outgoing = this.connections.find((c) => c.from === nodeId);
+      const incoming = this.connections.filter((c) => c.to === nodeId);
+      const outgoing = this.connections.filter((c) => c.from === nodeId);
 
       // reconnect neighbours
-      if (incoming && outgoing) {
-        incoming.to = outgoing.to;
+      if (incoming.length === 1 && outgoing.length === 1) {
+        incoming[0].to = outgoing[0].to;
       }
       // remove all connections involving this node
       this.connections = this.connections.filter(
@@ -914,6 +933,18 @@
 
     _addFixedNode(id, label, x, y) {
       this.nodes.push({ id, type: id, label, x, y, bypassed: false, fixed: true });
+    }
+
+    _incomingLimit(type) {
+      if (type === "_input") return 0;
+      if (type === "sum" || type === "_output") return -1;
+      return 1;
+    }
+
+    _outgoingLimit(type) {
+      if (type === "_output") return 0;
+      if (type === "split" || type === "_input") return -1;
+      return 1;
     }
 
     _emitChange() {
