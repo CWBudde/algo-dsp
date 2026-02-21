@@ -29,8 +29,3 @@ func mathPower2(x float64) float64 {
 func mathPower10(x float64) float64 {
 	return math.Pow(10, x)
 }
-
-// mathSqrt computes sqrt(x) using fast approximation.
-func mathSqrt(x float64) float64 {
-	return approx.FastSqrt(x)
-}
