@@ -1338,9 +1338,9 @@ buildStepUI();
 initDynamicsGraphs();
 initEQCanvas();
 startEQDrawLoop();
+initTheme();
 initEffectChain();
 bindEvents();
-initTheme();
 ensureDSP(48000)
   .then(() => {
     state.eqUI?.draw();

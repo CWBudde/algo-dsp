@@ -18,32 +18,6 @@
     reverb:           { label: "Reverb",            hue: 260 },
   };
 
-  // map effect type -> effectsParams enable key
-  const ENABLE_KEYS = {
-    chorus:           "chorusEnabled",
-    flanger:          "flangerEnabled",
-    phaser:           "phaserEnabled",
-    tremolo:          "tremoloEnabled",
-    delay:            "delayEnabled",
-    bass:             "harmonicBassEnabled",
-    "pitch-time":     "timePitchEnabled",
-    "pitch-spectral": "spectralPitchEnabled",
-    reverb:           "reverbEnabled",
-  };
-
-  // map effect type -> the data-mode value used on detail containers
-  const DETAIL_MODE = {
-    chorus:           "chorus",
-    flanger:          "flanger",
-    phaser:           "phaser",
-    tremolo:          "tremolo",
-    delay:            "delay",
-    bass:             "bass",
-    "pitch-time":     "pitch-time",
-    "pitch-spectral": "pitch-spectral",
-    reverb:           "reverb",
-  };
-
   // ---- geometry constants ---------------------------------------------------
   const NODE_W   = 152;
   const NODE_H   = 52;
@@ -55,6 +29,24 @@
   // ---- id generator ---------------------------------------------------------
   let _nextId = 1;
   function genId() { return "n" + (_nextId++); }
+
+  // ---- roundRect polyfill ---------------------------------------------------
+  // CanvasRenderingContext2D.roundRect() is unavailable in older browsers.
+  if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+      const radius = Math.min(r, w / 2, h / 2);
+      this.moveTo(x + radius, y);
+      this.lineTo(x + w - radius, y);
+      this.arcTo(x + w, y, x + w, y + radius, radius);
+      this.lineTo(x + w, y + h - radius);
+      this.arcTo(x + w, y + h, x + w - radius, y + h, radius);
+      this.lineTo(x + radius, y + h);
+      this.arcTo(x, y + h, x, y + h - radius, radius);
+      this.lineTo(x, y + radius);
+      this.arcTo(x, y, x + radius, y, radius);
+      this.closePath();
+    };
+  }
 
   // ---- helpers --------------------------------------------------------------
   function isDark() {
@@ -218,12 +210,19 @@
       if (!data) return;
       if (Array.isArray(data.nodes)) {
         this.nodes = data.nodes.map((n) => ({ ...n }));
-        // ensure _input and _output exist
-        if (!this._nodeById("_input"))  this._addFixedNode("_input",  "Input",  60, 130);
-        if (!this._nodeById("_output")) this._addFixedNode("_output", "Output", 560, 130);
+        // ensure _input and _output exist and are always marked fixed
+        const inp = this._nodeById("_input");
+        if (inp) { inp.fixed = true; inp.type = "_input"; }
+        else this._addFixedNode("_input",  "Input",  60, 130);
+        const out = this._nodeById("_output");
+        if (out) { out.fixed = true; out.type = "_output"; }
+        else this._addFixedNode("_output", "Output", 560, 130);
       }
       if (Array.isArray(data.connections)) {
-        this.connections = data.connections.map((c) => ({ ...c }));
+        const nodeIds = new Set(this.nodes.map((n) => n.id));
+        this.connections = data.connections
+          .map((c) => ({ ...c }))
+          .filter((c) => nodeIds.has(c.from) && nodeIds.has(c.to) && c.from !== c.to);
       }
       if (typeof data.panX === "number") this.panX = data.panX;
       if (typeof data.panY === "number") this.panY = data.panY;
@@ -726,6 +725,8 @@
       const dstNode = this._nodeById(dstId);
       if (!srcNode || !dstNode) return;
       if (srcNode.type === "_output" || dstNode.type === "_input") return;
+      // prevent cycles: reject if dstId can already reach srcId
+      if (this._canReach(dstId, srcId)) return;
 
       // remove existing connections on these ports
       this.connections = this.connections.filter(
@@ -741,6 +742,21 @@
 
     _hasOutgoing(nodeId) {
       return this.connections.some((c) => c.from === nodeId);
+    }
+
+    _canReach(fromId, targetId) {
+      const visited = new Set();
+      const queue = [fromId];
+      while (queue.length) {
+        const cur = queue.shift();
+        if (cur === targetId) return true;
+        if (visited.has(cur)) continue;
+        visited.add(cur);
+        for (const c of this.connections) {
+          if (c.from === cur) queue.push(c.to);
+        }
+      }
+      return false;
     }
 
     _isInChain(nodeId) {
