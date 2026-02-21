@@ -112,3 +112,57 @@ func TestFlangerValidation(t *testing.T) {
 		t.Fatal("NewFlanger() expected error for base+depth > max")
 	}
 }
+
+func TestFlangerSetDepthSecondsRollsBackOnInvalidCombination(t *testing.T) {
+	f, err := NewFlanger(48000,
+		WithFlangerBaseDelaySeconds(0.0087),
+		WithFlangerDepthSeconds(0.0012),
+	)
+	if err != nil {
+		t.Fatalf("NewFlanger() error = %v", err)
+	}
+
+	prevBase := f.BaseDelaySeconds()
+	prevDepth := f.DepthSeconds()
+
+	if err := f.SetDepthSeconds(0.0014); err == nil {
+		t.Fatal("SetDepthSeconds() expected error for base+depth > max")
+	}
+	if got := f.BaseDelaySeconds(); math.Abs(got-prevBase) > 1e-12 {
+		t.Fatalf("base delay changed after failed update: got=%g want=%g", got, prevBase)
+	}
+	if got := f.DepthSeconds(); math.Abs(got-prevDepth) > 1e-12 {
+		t.Fatalf("depth changed after failed update: got=%g want=%g", got, prevDepth)
+	}
+
+	if err := f.SetDepthSeconds(0.0011); err != nil {
+		t.Fatalf("SetDepthSeconds() error after rollback = %v", err)
+	}
+}
+
+func TestFlangerSetBaseDelaySecondsRollsBackOnInvalidCombination(t *testing.T) {
+	f, err := NewFlanger(48000,
+		WithFlangerBaseDelaySeconds(0.004),
+		WithFlangerDepthSeconds(0.004),
+	)
+	if err != nil {
+		t.Fatalf("NewFlanger() error = %v", err)
+	}
+
+	prevBase := f.BaseDelaySeconds()
+	prevDepth := f.DepthSeconds()
+
+	if err := f.SetBaseDelaySeconds(0.007); err == nil {
+		t.Fatal("SetBaseDelaySeconds() expected error for base+depth > max")
+	}
+	if got := f.BaseDelaySeconds(); math.Abs(got-prevBase) > 1e-12 {
+		t.Fatalf("base delay changed after failed update: got=%g want=%g", got, prevBase)
+	}
+	if got := f.DepthSeconds(); math.Abs(got-prevDepth) > 1e-12 {
+		t.Fatalf("depth changed after failed update: got=%g want=%g", got, prevDepth)
+	}
+
+	if err := f.SetBaseDelaySeconds(0.0055); err != nil {
+		t.Fatalf("SetBaseDelaySeconds() error after rollback = %v", err)
+	}
+}

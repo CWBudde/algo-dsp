@@ -336,6 +336,9 @@ const el = {
 const THEME_STORAGE_KEY = "algo-dsp-theme";
 const THEME_MODES = ["system", "light", "dark"];
 const SETTINGS_STORAGE_KEY = "algo-dsp-settings";
+const FLANGER_MIN_DELAY_SECONDS = 0.0001;
+const FLANGER_MAX_DELAY_SECONDS = 0.01;
+const FLANGER_MAX_DEPTH_SECONDS = 0.009;
 
 function saveSettings() {
   try {
@@ -432,6 +435,7 @@ function loadSettings() {
     if (el.reverbPreDelay) el.reverbPreDelay.value = state.effectsParams.reverbPreDelay;
     if (el.reverbModDepth) el.reverbModDepth.value = state.effectsParams.reverbModDepth;
     if (el.reverbModRate) el.reverbModRate.value = state.effectsParams.reverbModRate;
+    sanitizeFlangerControls();
     updateEffectsText();
   }
 
@@ -460,6 +464,48 @@ function loadSettings() {
     if (el.limRelease) el.limRelease.value = state.limParams.release;
     updateLimiterText();
   }
+}
+
+function sanitizeFlangerControls() {
+  if (!el.flangerBaseDelay || !el.flangerDepth) {
+    return {
+      baseDelay: state.effectsParams.flangerBaseDelay,
+      depth: state.effectsParams.flangerDepth,
+    };
+  }
+
+  const baseMin = Number.isFinite(Number(el.flangerBaseDelay.min))
+    ? Number(el.flangerBaseDelay.min)
+    : FLANGER_MIN_DELAY_SECONDS;
+  const baseMaxRaw = Number.isFinite(Number(el.flangerBaseDelay.max))
+    ? Number(el.flangerBaseDelay.max)
+    : FLANGER_MAX_DELAY_SECONDS;
+  const baseMax = Math.min(baseMaxRaw, FLANGER_MAX_DELAY_SECONDS);
+  let baseDelay = Number(el.flangerBaseDelay.value);
+  if (!Number.isFinite(baseDelay)) {
+    baseDelay = state.effectsParams.flangerBaseDelay;
+  }
+  baseDelay = Math.max(baseMin, Math.min(baseMax, baseDelay));
+
+  const depthMaxAllowed = Math.max(0, FLANGER_MAX_DELAY_SECONDS - baseDelay);
+  const depthMax = Math.min(FLANGER_MAX_DEPTH_SECONDS, depthMaxAllowed);
+  let depth = Number(el.flangerDepth.value);
+  if (!Number.isFinite(depth)) {
+    depth = state.effectsParams.flangerDepth;
+  }
+  depth = Math.max(0, Math.min(depthMax, depth));
+
+  if (Math.abs(Number(el.flangerBaseDelay.value) - baseDelay) > 1e-12) {
+    el.flangerBaseDelay.value = String(baseDelay);
+  }
+  if (Math.abs(Number(el.flangerDepth.max) - depthMax) > 1e-12) {
+    el.flangerDepth.max = String(depthMax);
+  }
+  if (Math.abs(Number(el.flangerDepth.value) - depth) > 1e-12) {
+    el.flangerDepth.value = String(depth);
+  }
+
+  return { baseDelay, depth };
 }
 
 function getThemeIconMarkup(mode, resolvedMode = mode) {
@@ -802,6 +848,8 @@ function readEffectsFromChain() {
     el.timePitchOverlap.value = String(timeOverlap);
   }
 
+  const flanger = sanitizeFlangerControls();
+
   state.effectsParams = {
     chorusEnabled: enabled.has("chorus"),
     chorusMix: Number(el.chorusMix.value),
@@ -810,8 +858,8 @@ function readEffectsFromChain() {
     chorusStages: Number(el.chorusStages.value),
     flangerEnabled: enabled.has("flanger"),
     flangerRateHz: Number(el.flangerRate.value),
-    flangerDepth: Number(el.flangerDepth.value),
-    flangerBaseDelay: Number(el.flangerBaseDelay.value),
+    flangerDepth: flanger.depth,
+    flangerBaseDelay: flanger.baseDelay,
     flangerFeedback: Number(el.flangerFeedback.value),
     flangerMix: Number(el.flangerMix.value),
     phaserEnabled: enabled.has("phaser"),
@@ -864,6 +912,7 @@ function readEffectsFromChain() {
 }
 
 function updateEffectsText() {
+  sanitizeFlangerControls();
   el.chorusMixValue.textContent = `${Math.round(Number(el.chorusMix.value) * 100)}%`;
   el.chorusDepthValue.textContent = `${(Number(el.chorusDepth.value) * 1000).toFixed(1)} ms`;
   el.chorusSpeedValue.textContent = `${Number(el.chorusSpeed.value).toFixed(2)} Hz`;

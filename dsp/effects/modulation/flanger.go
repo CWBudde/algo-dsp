@@ -166,8 +166,13 @@ func (f *Flanger) SetDepthSeconds(depth float64) error {
 	if depth < 0 || math.IsNaN(depth) || math.IsInf(depth, 0) {
 		return fmt.Errorf("flanger depth must be >= 0 and finite: %f", depth)
 	}
+	prev := f.depth
 	f.depth = depth
-	return f.reconfigureDelayLine()
+	if err := f.reconfigureDelayLine(); err != nil {
+		f.depth = prev
+		return err
+	}
+	return nil
 }
 
 // SetBaseDelaySeconds sets base delay in seconds.
@@ -177,8 +182,13 @@ func (f *Flanger) SetBaseDelaySeconds(baseDelay float64) error {
 		return fmt.Errorf("flanger base delay must be in [%f, %f]: %f",
 			minFlangerDelaySeconds, maxFlangerDelaySeconds, baseDelay)
 	}
+	prev := f.baseDelay
 	f.baseDelay = baseDelay
-	return f.reconfigureDelayLine()
+	if err := f.reconfigureDelayLine(); err != nil {
+		f.baseDelay = prev
+		return err
+	}
+	return nil
 }
 
 // SetFeedback sets feedback amount in [-0.99, 0.99].

@@ -236,10 +236,10 @@ func (e *Engine) rebuildEffects() error {
 	if err := e.flanger.SetRateHz(e.effects.FlangerRateHz); err != nil {
 		return err
 	}
-	if err := e.flanger.SetDepthSeconds(e.effects.FlangerDepth); err != nil {
+	if err := e.flanger.SetBaseDelaySeconds(e.effects.FlangerBaseDelay); err != nil {
 		return err
 	}
-	if err := e.flanger.SetBaseDelaySeconds(e.effects.FlangerBaseDelay); err != nil {
+	if err := e.flanger.SetDepthSeconds(e.effects.FlangerDepth); err != nil {
 		return err
 	}
 	if err := e.flanger.SetFeedback(e.effects.FlangerFeedback); err != nil {
