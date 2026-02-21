@@ -7,6 +7,9 @@ import (
 
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
+	"github.com/cwbudde/algo-dsp/dsp/effects/modulation"
+	"github.com/cwbudde/algo-dsp/dsp/effects/pitch"
+	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	algofft "github.com/cwbudde/algo-fft"
 )
@@ -177,16 +180,16 @@ type Engine struct {
 	lp   *biquad.Chain
 
 	effects EffectsParams
-	chorus  *effects.Chorus
-	flanger *effects.Flanger
-	phaser  *effects.Phaser
-	tremolo *effects.Tremolo
+	chorus  *modulation.Chorus
+	flanger *modulation.Flanger
+	phaser  *modulation.Phaser
+	tremolo *modulation.Tremolo
 	delay   *effects.Delay
-	reverb  *effects.Reverb
-	fdn     *effects.FDNReverb
+	reverb  *reverb.Reverb
+	fdn     *reverb.FDNReverb
 	bass    *effects.HarmonicBass
-	tp      *effects.PitchShifter
-	sp      *effects.SpectralPitchShifter
+	tp      *pitch.PitchShifter
+	sp      *pitch.SpectralPitchShifter
 
 	compParams CompressorParams
 	compressor *dynamics.Compressor
@@ -339,22 +342,22 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 	if err := e.initSpectrumAnalyzer(); err != nil {
 		return nil, err
 	}
-	chorus, err := effects.NewChorus()
+	chorus, err := modulation.NewChorus()
 	if err != nil {
 		return nil, err
 	}
 	e.chorus = chorus
-	flanger, err := effects.NewFlanger(sampleRate)
+	flanger, err := modulation.NewFlanger(sampleRate)
 	if err != nil {
 		return nil, err
 	}
 	e.flanger = flanger
-	phaser, err := effects.NewPhaser(sampleRate)
+	phaser, err := modulation.NewPhaser(sampleRate)
 	if err != nil {
 		return nil, err
 	}
 	e.phaser = phaser
-	tremolo, err := effects.NewTremolo(sampleRate)
+	tremolo, err := modulation.NewTremolo(sampleRate)
 	if err != nil {
 		return nil, err
 	}
@@ -364,8 +367,8 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		return nil, err
 	}
 	e.delay = delay
-	e.reverb = effects.NewReverb()
-	fdn, err := effects.NewFDNReverb(sampleRate)
+	e.reverb = reverb.NewReverb()
+	fdn, err := reverb.NewFDNReverb(sampleRate)
 	if err != nil {
 		return nil, err
 	}
@@ -375,12 +378,12 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		return nil, err
 	}
 	e.bass = bass
-	tp, err := effects.NewPitchShifter(sampleRate)
+	tp, err := pitch.NewPitchShifter(sampleRate)
 	if err != nil {
 		return nil, err
 	}
 	e.tp = tp
-	sp, err := effects.NewSpectralPitchShifter(sampleRate)
+	sp, err := pitch.NewSpectralPitchShifter(sampleRate)
 	if err != nil {
 		return nil, err
 	}

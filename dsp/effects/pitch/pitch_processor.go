@@ -1,4 +1,4 @@
-package effects
+package pitch
 
 // PitchProcessor defines the shared API for interchangeable pitch shifters.
 //

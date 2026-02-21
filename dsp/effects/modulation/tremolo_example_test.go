@@ -1,17 +1,17 @@
-package effects_test
+package modulation_test
 
 import (
 	"fmt"
 
-	"github.com/cwbudde/algo-dsp/dsp/effects"
+	"github.com/cwbudde/algo-dsp/dsp/effects/modulation"
 )
 
 func ExampleTremolo_ProcessInPlace() {
-	tremolo, err := effects.NewTremolo(48000,
-		effects.WithTremoloRateHz(5),
-		effects.WithTremoloDepth(0.7),
-		effects.WithTremoloSmoothingMs(4),
-		effects.WithTremoloMix(1),
+	tremolo, err := modulation.NewTremolo(48000,
+		modulation.WithTremoloRateHz(5),
+		modulation.WithTremoloDepth(0.7),
+		modulation.WithTremoloSmoothingMs(4),
+		modulation.WithTremoloMix(1),
 	)
 	if err != nil {
 		fmt.Println("error")

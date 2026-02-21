@@ -1,15 +1,15 @@
-package effects_test
+package pitch_test
 
 import (
 	"fmt"
 	"math"
 
-	"github.com/cwbudde/algo-dsp/dsp/effects"
+	"github.com/cwbudde/algo-dsp/dsp/effects/pitch"
 )
 
 // ExampleSpectralPitchShifter demonstrates frequency-domain pitch shifting.
 func ExampleSpectralPitchShifter() {
-	shifter, err := effects.NewSpectralPitchShifter(48000)
+	shifter, err := pitch.NewSpectralPitchShifter(48000)
 	if err != nil {
 		panic(err)
 	}
