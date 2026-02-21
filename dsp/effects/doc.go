@@ -7,6 +7,7 @@
 //   - github.com/cwbudde/algo-dsp/dsp/effects/reverb
 //
 // Effects remaining in this package:
+//   - BitCrusher: Sample rate and bit-depth reduction for lo-fi aesthetics.
 //   - Delay: Feedback delay with dry/wet mix.
 //   - HarmonicBass: Psychoacoustic bass enhancer with harmonic generation.
 //
