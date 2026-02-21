@@ -134,6 +134,16 @@ func main() {
 			FlangerBaseDelay:       p.Get("flangerBaseDelay").Float(),
 			FlangerFeedback:        p.Get("flangerFeedback").Float(),
 			FlangerMix:             p.Get("flangerMix").Float(),
+			RingModEnabled:         p.Get("ringModEnabled").Bool(),
+			RingModCarrierHz:       p.Get("ringModCarrierHz").Float(),
+			RingModMix:             p.Get("ringModMix").Float(),
+			BitCrusherEnabled:      p.Get("bitCrusherEnabled").Bool(),
+			BitCrusherBitDepth:     p.Get("bitCrusherBitDepth").Float(),
+			BitCrusherDownsample:   p.Get("bitCrusherDownsample").Int(),
+			BitCrusherMix:          p.Get("bitCrusherMix").Float(),
+			WidenerEnabled:         p.Get("widenerEnabled").Bool(),
+			WidenerWidth:           p.Get("widenerWidth").Float(),
+			WidenerMix:             p.Get("widenerMix").Float(),
 			PhaserEnabled:          p.Get("phaserEnabled").Bool(),
 			PhaserRateHz:           p.Get("phaserRateHz").Float(),
 			PhaserMinFreqHz:        p.Get("phaserMinFreqHz").Float(),
@@ -179,6 +189,7 @@ func main() {
 			HarmonicBassDecay:      p.Get("harmonicBassDecay").Float(),
 			HarmonicBassResponseMs: p.Get("harmonicBassResponseMs").Float(),
 			HarmonicBassHighpass:   p.Get("harmonicBassHighpass").Int(),
+			ChainGraphJSON:         p.Get("chainGraphJSON").String(),
 		})
 		if err != nil {
 			return err.Error()
