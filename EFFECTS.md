@@ -22,9 +22,18 @@ both single-sample (`Process`) and buffer-based (`ProcessInPlace`) processing.
 | Effect         | File            | Description                                                                                                                                 |
 | -------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Delay**      | `delay.go`      | Feedback delay line with configurable delay time (1-2000 ms), feedback, and dry/wet mix. Circular buffer implementation.                    |
-| **Chorus**     | `chorus.go`     | Multi-voice modulated delay for ensemble/thickening effects. Hermite interpolation, configurable speed, depth, base delay, and voice count. |
 | **Reverb**     | `reverb.go`     | Schroeder/Freeverb-style algorithmic reverb. 8 comb filters + 4 allpass filters with room size and damping controls.                        |
 | **FDN Reverb** | `fdn_reverb.go` | Feedback delay network reverb. 8 delay lines mixed via Hadamard matrix, with RT60-based decay, pre-delay, damping, and LFO modulation.      |
+
+### Modulation
+
+| Effect              | File                  | Description                                                                                                                                  |
+| ------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Chorus**          | `chorus.go`           | Multi-voice modulated delay for ensemble/thickening effects. Hermite interpolation, configurable speed, depth, base delay, and voice count.  |
+| **Flanger**         | `flanger.go`          | Short modulated delay (0.1-10 ms) with feedback for classic jet/sweep sound. Configurable speed, depth, feedback, and base delay.            |
+| **Phaser**          | `phaser.go`           | Cascaded allpass filters with LFO-modulated center frequencies. Configurable stages, speed, depth, feedback, and mix.                        |
+| **Ring Modulator**  | `ring_modulator.go`   | Multiplication of input with a sine-wave carrier oscillator, producing sum and difference frequencies. Configurable carrier frequency and mix.|
+| **Tremolo**         | `tremolo.go`          | LFO amplitude modulation with optional smoothing. Configurable rate, depth, smoothing time, and mix.                                         |
 
 ### Pitch
 
@@ -56,9 +65,6 @@ primitives already in the library (biquad filters, delay lines, LFOs).
 
 | Effect                   | Category   | Description                                                               | Building Blocks                                      |
 | ------------------------ | ---------- | ------------------------------------------------------------------------- | ---------------------------------------------------- |
-| **Flanger**              | Modulation | Short modulated delay (0.1-10 ms) with feedback. Classic jet/sweep sound. | Delay line, LFO (reuse chorus infrastructure)        |
-| **Phaser**               | Modulation | Cascaded allpass filters with LFO-modulated center frequencies.           | Biquad allpass sections, LFO                         |
-| **Tremolo**              | Modulation | Amplitude modulation via LFO (sine, triangle, square).                    | LFO, gain multiplication                             |
 | **De-esser**             | Dynamics   | Frequency-selective compressor targeting sibilance (typically 4-10 kHz).  | Biquad bandpass for detection, compressor sidechain  |
 | **Expander**             | Dynamics   | Downward expander (complement to gate with gentler ratios).               | Gate with low ratio, or compressor with ratio < 1    |
 | **Multiband Compressor** | Dynamics   | Independent compression per frequency band using crossover filters.       | Crossover (already implemented), compressor per band |
@@ -74,7 +80,6 @@ additional DSP building blocks.
 | **Distortion / Saturation**    | Waveshaping | Tube, tape, or transistor-style non-linear waveshaping with configurable transfer curves. | Oversampling recommended to control aliasing     |
 | **Bit Crusher**                | Lo-fi       | Sample rate and bit-depth reduction for retro/lo-fi aesthetics.                           | Quantization + sample-and-hold                   |
 | **Auto-Wah / Envelope Filter** | Modulation  | Bandpass filter with cutoff controlled by input envelope.                                 | Envelope follower + biquad bandpass              |
-| **Ring Modulator**             | Modulation  | Multiplication of input with a carrier oscillator.                                        | Oscillator, simple multiply                      |
 | **Convolution Reverb**         | Spatial     | IR-based reverb using partitioned convolution.                                            | `conv` package (overlap-add already implemented) |
 | **Transient Shaper**           | Dynamics    | Independent control of attack and sustain portions of transients.                         | Envelope follower with dual time constants       |
 | **Lookahead Limiter**          | Dynamics    | True-peak limiter with lookahead buffer for inter-sample peak detection.                  | Oversampled peak detection, delay compensation   |
