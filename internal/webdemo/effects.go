@@ -301,6 +301,11 @@ func (e *Engine) rebuildEffects() error {
 	if err := e.flanger.SetRateHz(e.effects.FlangerRateHz); err != nil {
 		return err
 	}
+	// Apply timing in a transition-safe order to avoid invalid intermediate
+	// base+depth combinations during whole-graph parameter updates.
+	if err := e.flanger.SetDepthSeconds(0); err != nil {
+		return err
+	}
 	if err := e.flanger.SetBaseDelaySeconds(e.effects.FlangerBaseDelay); err != nil {
 		return err
 	}
