@@ -370,23 +370,222 @@ func getNodeNum(node compiledChainNode, key string, def float64) float64 {
 	return v
 }
 
+func configureChorus(fx *modulation.Chorus, sampleRate, mix, depth, speedHz float64, stages int) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetMix(mix); err != nil {
+		return err
+	}
+	if err := fx.SetDepth(depth); err != nil {
+		return err
+	}
+	if err := fx.SetSpeedHz(speedHz); err != nil {
+		return err
+	}
+	return fx.SetStages(stages)
+}
+
+func configureFlanger(fx *modulation.Flanger, sampleRate, rateHz, baseDelay, depth, feedback, mix float64) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetRateHz(rateHz); err != nil {
+		return err
+	}
+	// Apply timing in a transition-safe order to avoid invalid intermediate
+	// base+depth combinations during whole-graph parameter updates.
+	if err := fx.SetDepthSeconds(0); err != nil {
+		return err
+	}
+	if err := fx.SetBaseDelaySeconds(baseDelay); err != nil {
+		return err
+	}
+	if err := fx.SetDepthSeconds(depth); err != nil {
+		return err
+	}
+	if err := fx.SetFeedback(feedback); err != nil {
+		return err
+	}
+	return fx.SetMix(mix)
+}
+
+func configureRingMod(fx *modulation.RingModulator, sampleRate, carrierHz, mix float64) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetCarrierHz(carrierHz); err != nil {
+		return err
+	}
+	return fx.SetMix(mix)
+}
+
+func configureBitCrusher(fx *effects.BitCrusher, sampleRate, bitDepth float64, downsample int, mix float64) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetBitDepth(bitDepth); err != nil {
+		return err
+	}
+	if err := fx.SetDownsample(downsample); err != nil {
+		return err
+	}
+	return fx.SetMix(mix)
+}
+
+func configureWidener(fx *spatial.StereoWidener, sampleRate, width float64) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetWidth(width); err != nil {
+		return err
+	}
+	return fx.SetBassMonoFreq(0)
+}
+
+func configurePhaser(fx *modulation.Phaser, sampleRate, rateHz, minFreqHz, maxFreqHz float64, stages int, feedback, mix float64) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetRateHz(rateHz); err != nil {
+		return err
+	}
+	if err := fx.SetFrequencyRangeHz(minFreqHz, maxFreqHz); err != nil {
+		return err
+	}
+	if err := fx.SetStages(stages); err != nil {
+		return err
+	}
+	if err := fx.SetFeedback(feedback); err != nil {
+		return err
+	}
+	return fx.SetMix(mix)
+}
+
+func configureTremolo(fx *modulation.Tremolo, sampleRate, rateHz, depth, smoothingMs, mix float64) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetRateHz(rateHz); err != nil {
+		return err
+	}
+	if err := fx.SetDepth(depth); err != nil {
+		return err
+	}
+	if err := fx.SetSmoothingMs(smoothingMs); err != nil {
+		return err
+	}
+	return fx.SetMix(mix)
+}
+
+func configureDelay(fx *effects.Delay, sampleRate, time, feedback, mix float64) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetTime(time); err != nil {
+		return err
+	}
+	if err := fx.SetFeedback(feedback); err != nil {
+		return err
+	}
+	return fx.SetMix(mix)
+}
+
+func configureTimePitch(fx *pitch.PitchShifter, sampleRate, semitones, sequence, overlap, search float64) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetPitchSemitones(semitones); err != nil {
+		return err
+	}
+	if err := fx.SetSequence(sequence); err != nil {
+		return err
+	}
+	if err := fx.SetOverlap(overlap); err != nil {
+		return err
+	}
+	return fx.SetSearch(search)
+}
+
+func configureSpectralPitch(fx *pitch.SpectralPitchShifter, sampleRate, semitones float64, frameSize, analysisHop int) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetPitchSemitones(semitones); err != nil {
+		return err
+	}
+	if err := fx.SetFrameSize(frameSize); err != nil {
+		return err
+	}
+	return fx.SetAnalysisHop(analysisHop)
+}
+
+func configureFDNReverb(fx *reverb.FDNReverb, sampleRate, wet, dry, rt60, preDelay, damp, modDepth, modRate float64) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetWet(wet); err != nil {
+		return err
+	}
+	if err := fx.SetDry(dry); err != nil {
+		return err
+	}
+	if err := fx.SetRT60(rt60); err != nil {
+		return err
+	}
+	if err := fx.SetPreDelay(preDelay); err != nil {
+		return err
+	}
+	if err := fx.SetDamp(damp); err != nil {
+		return err
+	}
+	if err := fx.SetModDepth(modDepth); err != nil {
+		return err
+	}
+	return fx.SetModRate(modRate)
+}
+
+func configureFreeverb(fx *reverb.Reverb, wet, dry, roomSize, damp, gain float64) {
+	fx.SetWet(wet)
+	fx.SetDry(dry)
+	fx.SetRoomSize(roomSize)
+	fx.SetDamp(damp)
+	fx.SetGain(gain)
+}
+
+func configureHarmonicBass(fx *effects.HarmonicBass, sampleRate, frequency, inputGain, highGain, original, harmonic, decay, responseMs float64, highpass int) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+	if err := fx.SetFrequency(frequency); err != nil {
+		return err
+	}
+	if err := fx.SetInputLevel(inputGain); err != nil {
+		return err
+	}
+	if err := fx.SetHighFrequencyLevel(highGain); err != nil {
+		return err
+	}
+	if err := fx.SetOriginalBassLevel(original); err != nil {
+		return err
+	}
+	if err := fx.SetHarmonicBassLevel(harmonic); err != nil {
+		return err
+	}
+	if err := fx.SetDecay(decay); err != nil {
+		return err
+	}
+	if err := fx.SetResponse(responseMs); err != nil {
+		return err
+	}
+	return fx.SetHighpassMode(effects.HighpassSelect(highpass))
+}
+
 type chorusChainRuntime struct {
 	fx *modulation.Chorus
 }
 
 func (r *chorusChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetMix(clamp(getNodeNum(node, "mix", 0.18), 0, 1)); err != nil {
-		return err
-	}
-	if err := r.fx.SetDepth(clamp(getNodeNum(node, "depth", 0.003), 0, 0.01)); err != nil {
-		return err
-	}
-	if err := r.fx.SetSpeedHz(clamp(getNodeNum(node, "speedHz", 0.35), 0.05, 5)); err != nil {
-		return err
-	}
 	stages := int(math.Round(getNodeNum(node, "stages", 3)))
 	if stages < 1 {
 		stages = 1
@@ -394,7 +593,14 @@ func (r *chorusChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 	if stages > 6 {
 		stages = 6
 	}
-	return r.fx.SetStages(stages)
+	return configureChorus(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "mix", 0.18), 0, 1),
+		clamp(getNodeNum(node, "depth", 0.003), 0, 0.01),
+		clamp(getNodeNum(node, "speedHz", 0.35), 0.05, 5),
+		stages,
+	)
 }
 
 func (r *chorusChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -406,26 +612,15 @@ type flangerChainRuntime struct {
 }
 
 func (r *flangerChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetRateHz(clamp(getNodeNum(node, "rateHz", 0.25), 0.05, 5)); err != nil {
-		return err
-	}
-	if err := r.fx.SetDepthSeconds(0); err != nil {
-		return err
-	}
-	if err := r.fx.SetBaseDelaySeconds(clamp(getNodeNum(node, "baseDelay", 0.001), 0.0001, 0.01)); err != nil {
-		return err
-	}
-	depth := clamp(getNodeNum(node, "depth", 0.0015), 0, 0.0099)
-	if err := r.fx.SetDepthSeconds(depth); err != nil {
-		return err
-	}
-	if err := r.fx.SetFeedback(clamp(getNodeNum(node, "feedback", 0.25), -0.99, 0.99)); err != nil {
-		return err
-	}
-	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 0.5), 0, 1))
+	return configureFlanger(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "rateHz", 0.25), 0.05, 5),
+		clamp(getNodeNum(node, "baseDelay", 0.001), 0.0001, 0.01),
+		clamp(getNodeNum(node, "depth", 0.0015), 0, 0.0099),
+		clamp(getNodeNum(node, "feedback", 0.25), -0.99, 0.99),
+		clamp(getNodeNum(node, "mix", 0.5), 0, 1),
+	)
 }
 
 func (r *flangerChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -437,13 +632,12 @@ type ringModChainRuntime struct {
 }
 
 func (r *ringModChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetCarrierHz(clamp(getNodeNum(node, "carrierHz", 440), 1, e.sampleRate*0.49)); err != nil {
-		return err
-	}
-	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 1), 0, 1))
+	return configureRingMod(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "carrierHz", 440), 1, e.sampleRate*0.49),
+		clamp(getNodeNum(node, "mix", 1), 0, 1),
+	)
 }
 
 func (r *ringModChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -455,12 +649,6 @@ type bitCrusherChainRuntime struct {
 }
 
 func (r *bitCrusherChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetBitDepth(clamp(getNodeNum(node, "bitDepth", 8), 1, 32)); err != nil {
-		return err
-	}
 	ds := int(math.Round(getNodeNum(node, "downsample", 4)))
 	if ds < 1 {
 		ds = 1
@@ -468,10 +656,13 @@ func (r *bitCrusherChainRuntime) Configure(e *Engine, node compiledChainNode) er
 	if ds > 256 {
 		ds = 256
 	}
-	if err := r.fx.SetDownsample(ds); err != nil {
-		return err
-	}
-	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 1), 0, 1))
+	return configureBitCrusher(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "bitDepth", 8), 1, 32),
+		ds,
+		clamp(getNodeNum(node, "mix", 1), 0, 1),
+	)
 }
 
 func (r *bitCrusherChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -483,13 +674,7 @@ type widenerChainRuntime struct {
 }
 
 func (r *widenerChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetWidth(clamp(getNodeNum(node, "width", 1), 0, 4)); err != nil {
-		return err
-	}
-	return r.fx.SetBassMonoFreq(0)
+	return configureWidener(r.fx, e.sampleRate, clamp(getNodeNum(node, "width", 1), 0, 4))
 }
 
 func (r *widenerChainRuntime) Process(e *Engine, node compiledChainNode, block []float64) {
@@ -501,17 +686,8 @@ type phaserChainRuntime struct {
 }
 
 func (r *phaserChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetRateHz(clamp(getNodeNum(node, "rateHz", 0.4), 0.05, 5)); err != nil {
-		return err
-	}
 	minHz := clamp(getNodeNum(node, "minFreqHz", 300), 20, e.sampleRate*0.45)
 	maxHz := clamp(getNodeNum(node, "maxFreqHz", 1600), minHz+1, e.sampleRate*0.49)
-	if err := r.fx.SetFrequencyRangeHz(minHz, maxHz); err != nil {
-		return err
-	}
 	stages := int(math.Round(getNodeNum(node, "stages", 6)))
 	if stages < 1 {
 		stages = 1
@@ -519,13 +695,16 @@ func (r *phaserChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 	if stages > 12 {
 		stages = 12
 	}
-	if err := r.fx.SetStages(stages); err != nil {
-		return err
-	}
-	if err := r.fx.SetFeedback(clamp(getNodeNum(node, "feedback", 0.2), -0.99, 0.99)); err != nil {
-		return err
-	}
-	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 0.5), 0, 1))
+	return configurePhaser(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "rateHz", 0.4), 0.05, 5),
+		minHz,
+		maxHz,
+		stages,
+		clamp(getNodeNum(node, "feedback", 0.2), -0.99, 0.99),
+		clamp(getNodeNum(node, "mix", 0.5), 0, 1),
+	)
 }
 
 func (r *phaserChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -537,19 +716,14 @@ type tremoloChainRuntime struct {
 }
 
 func (r *tremoloChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetRateHz(clamp(getNodeNum(node, "rateHz", 4), 0.05, 20)); err != nil {
-		return err
-	}
-	if err := r.fx.SetDepth(clamp(getNodeNum(node, "depth", 0.6), 0, 1)); err != nil {
-		return err
-	}
-	if err := r.fx.SetSmoothingMs(clamp(getNodeNum(node, "smoothingMs", 5), 0, 200)); err != nil {
-		return err
-	}
-	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 1), 0, 1))
+	return configureTremolo(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "rateHz", 4), 0.05, 20),
+		clamp(getNodeNum(node, "depth", 0.6), 0, 1),
+		clamp(getNodeNum(node, "smoothingMs", 5), 0, 200),
+		clamp(getNodeNum(node, "mix", 1), 0, 1),
+	)
 }
 
 func (r *tremoloChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -561,16 +735,13 @@ type delayChainRuntime struct {
 }
 
 func (r *delayChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetTime(clamp(getNodeNum(node, "time", 0.25), 0.001, 2)); err != nil {
-		return err
-	}
-	if err := r.fx.SetFeedback(clamp(getNodeNum(node, "feedback", 0.35), 0, 0.99)); err != nil {
-		return err
-	}
-	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 0.25), 0, 1))
+	return configureDelay(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "time", 0.25), 0.001, 2),
+		clamp(getNodeNum(node, "feedback", 0.35), 0, 0.99),
+		clamp(getNodeNum(node, "mix", 0.25), 0, 1),
+	)
 }
 
 func (r *delayChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -604,30 +775,6 @@ type bassChainRuntime struct {
 }
 
 func (r *bassChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetFrequency(clamp(getNodeNum(node, "frequency", 80), 10, 500)); err != nil {
-		return err
-	}
-	if err := r.fx.SetInputLevel(clamp(getNodeNum(node, "inputGain", 1), 0, 2)); err != nil {
-		return err
-	}
-	if err := r.fx.SetHighFrequencyLevel(clamp(getNodeNum(node, "highGain", 1), 0, 2)); err != nil {
-		return err
-	}
-	if err := r.fx.SetOriginalBassLevel(clamp(getNodeNum(node, "original", 1), 0, 2)); err != nil {
-		return err
-	}
-	if err := r.fx.SetHarmonicBassLevel(clamp(getNodeNum(node, "harmonic", 0), 0, 2)); err != nil {
-		return err
-	}
-	if err := r.fx.SetDecay(clamp(getNodeNum(node, "decay", 0), -1, 1)); err != nil {
-		return err
-	}
-	if err := r.fx.SetResponse(clamp(getNodeNum(node, "responseMs", 20), 1, 200)); err != nil {
-		return err
-	}
 	hp := int(math.Round(getNodeNum(node, "highpass", 0)))
 	if hp < 0 {
 		hp = 0
@@ -635,7 +782,18 @@ func (r *bassChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	if hp > 2 {
 		hp = 2
 	}
-	return r.fx.SetHighpassMode(effects.HighpassSelect(hp))
+	return configureHarmonicBass(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "frequency", 80), 10, 500),
+		clamp(getNodeNum(node, "inputGain", 1), 0, 2),
+		clamp(getNodeNum(node, "highGain", 1), 0, 2),
+		clamp(getNodeNum(node, "original", 1), 0, 2),
+		clamp(getNodeNum(node, "harmonic", 0), 0, 2),
+		clamp(getNodeNum(node, "decay", 0), -1, 1),
+		clamp(getNodeNum(node, "responseMs", 20), 1, 200),
+		hp,
+	)
 }
 
 func (r *bassChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -647,24 +805,19 @@ type timePitchChainRuntime struct {
 }
 
 func (r *timePitchChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetPitchSemitones(clamp(getNodeNum(node, "semitones", 0), -24, 24)); err != nil {
-		return err
-	}
 	seq := clamp(getNodeNum(node, "sequence", 40), 20, 120)
-	if err := r.fx.SetSequence(seq); err != nil {
-		return err
-	}
 	ov := clamp(getNodeNum(node, "overlap", 10), 4, 60)
 	if ov >= seq {
 		ov = seq - 1
 	}
-	if err := r.fx.SetOverlap(ov); err != nil {
-		return err
-	}
-	return r.fx.SetSearch(clamp(getNodeNum(node, "search", 15), 2, 40))
+	return configureTimePitch(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "semitones", 0), -24, 24),
+		seq,
+		ov,
+		clamp(getNodeNum(node, "search", 15), 2, 40),
+	)
 }
 
 func (r *timePitchChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -676,16 +829,7 @@ type spectralPitchChainRuntime struct {
 }
 
 func (r *spectralPitchChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := r.fx.SetPitchSemitones(clamp(getNodeNum(node, "semitones", 0), -24, 24)); err != nil {
-		return err
-	}
 	frame := sanitizeSpectralPitchFrameSize(int(math.Round(getNodeNum(node, "frameSize", 1024))))
-	if err := r.fx.SetFrameSize(frame); err != nil {
-		return err
-	}
 	hop := int(math.Round(float64(frame) * clamp(getNodeNum(node, "hopRatio", 0.25), 0.01, 0.99)))
 	if hop < 1 {
 		hop = 1
@@ -693,7 +837,13 @@ func (r *spectralPitchChainRuntime) Configure(e *Engine, node compiledChainNode)
 	if hop >= frame {
 		hop = frame - 1
 	}
-	return r.fx.SetAnalysisHop(hop)
+	return configureSpectralPitch(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "semitones", 0), -24, 24),
+		frame,
+		hop,
+	)
 }
 
 func (r *spectralPitchChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
@@ -711,34 +861,26 @@ func (r *reverbChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 		model = "freeverb"
 	}
 	if model == "fdn" {
-		if err := r.fdn.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := r.fdn.SetWet(clamp(getNodeNum(node, "wet", 0.22), 0, 1.5)); err != nil {
-			return err
-		}
-		if err := r.fdn.SetDry(clamp(getNodeNum(node, "dry", 1), 0, 1.5)); err != nil {
-			return err
-		}
-		if err := r.fdn.SetRT60(clamp(getNodeNum(node, "rt60", 1.8), 0.2, 8)); err != nil {
-			return err
-		}
-		if err := r.fdn.SetPreDelay(clamp(getNodeNum(node, "preDelay", 0.01), 0, 0.1)); err != nil {
-			return err
-		}
-		if err := r.fdn.SetDamp(clamp(getNodeNum(node, "damp", 0.45), 0, 0.99)); err != nil {
-			return err
-		}
-		if err := r.fdn.SetModDepth(clamp(getNodeNum(node, "modDepth", 0.002), 0, 0.01)); err != nil {
-			return err
-		}
-		return r.fdn.SetModRate(clamp(getNodeNum(node, "modRate", 0.1), 0, 1))
+		return configureFDNReverb(
+			r.fdn,
+			e.sampleRate,
+			clamp(getNodeNum(node, "wet", 0.22), 0, 1.5),
+			clamp(getNodeNum(node, "dry", 1), 0, 1.5),
+			clamp(getNodeNum(node, "rt60", 1.8), 0.2, 8),
+			clamp(getNodeNum(node, "preDelay", 0.01), 0, 0.1),
+			clamp(getNodeNum(node, "damp", 0.45), 0, 0.99),
+			clamp(getNodeNum(node, "modDepth", 0.002), 0, 0.01),
+			clamp(getNodeNum(node, "modRate", 0.1), 0, 1),
+		)
 	}
-	r.freeverb.SetWet(clamp(getNodeNum(node, "wet", 0.22), 0, 1.5))
-	r.freeverb.SetDry(clamp(getNodeNum(node, "dry", 1), 0, 1.5))
-	r.freeverb.SetRoomSize(clamp(getNodeNum(node, "roomSize", 0.72), 0, 0.98))
-	r.freeverb.SetDamp(clamp(getNodeNum(node, "damp", 0.45), 0, 0.99))
-	r.freeverb.SetGain(clamp(getNodeNum(node, "gain", 0.015), 0, 0.1))
+	configureFreeverb(
+		r.freeverb,
+		clamp(getNodeNum(node, "wet", 0.22), 0, 1.5),
+		clamp(getNodeNum(node, "dry", 1), 0, 1.5),
+		clamp(getNodeNum(node, "roomSize", 0.72), 0, 0.98),
+		clamp(getNodeNum(node, "damp", 0.45), 0, 0.99),
+		clamp(getNodeNum(node, "gain", 0.015), 0, 0.1),
+	)
 	return nil
 }
 
