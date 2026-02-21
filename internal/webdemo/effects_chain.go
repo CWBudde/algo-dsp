@@ -53,6 +53,147 @@ type compiledChainGraph struct {
 	Order    []string
 }
 
+// chainEffectRuntime is the per-node processing/configuration contract.
+type chainEffectRuntime interface {
+	Configure(e *Engine, node compiledChainNode) error
+	Process(e *Engine, node compiledChainNode, block []float64)
+}
+
+// chainNodeRuntime stores one runtime instance bound to one graph node id.
+type chainNodeRuntime struct {
+	effectType string
+	effect     chainEffectRuntime
+}
+
+// chainEffectFactory builds one runtime instance for a node.
+type chainEffectFactory func(e *Engine) (chainEffectRuntime, error)
+
+var chainEffectRegistry = map[string]chainEffectFactory{}
+
+func registerChainEffectFactory(effectType string, factory chainEffectFactory) {
+	if effectType == "" {
+		panic("chain effect registry: empty effect type")
+	}
+	if factory == nil {
+		panic("chain effect registry: nil factory")
+	}
+	if _, exists := chainEffectRegistry[effectType]; exists {
+		panic("chain effect registry: duplicate effect type: " + effectType)
+	}
+	chainEffectRegistry[effectType] = factory
+}
+
+func init() {
+	registerChainEffectFactory("chorus", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := modulation.NewChorus()
+		if err != nil {
+			return nil, err
+		}
+		return &chorusChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("flanger", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := modulation.NewFlanger(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &flangerChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("ringmod", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := modulation.NewRingModulator(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &ringModChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("bitcrusher", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := effects.NewBitCrusher(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &bitCrusherChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("widener", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := spatial.NewStereoWidener(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &widenerChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("phaser", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := modulation.NewPhaser(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &phaserChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("tremolo", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := modulation.NewTremolo(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &tremoloChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("delay", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := effects.NewDelay(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &delayChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("filter", func(e *Engine) (chainEffectRuntime, error) {
+		return &filterChainRuntime{fx: biquad.NewChain([]biquad.Coefficients{{B0: 1}})}, nil
+	})
+	registerChainEffectFactory("bass", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := effects.NewHarmonicBass(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &bassChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("pitch-time", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := pitch.NewPitchShifter(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &timePitchChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("pitch-spectral", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := pitch.NewSpectralPitchShifter(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &spectralPitchChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("reverb", func(e *Engine) (chainEffectRuntime, error) {
+		fdn, err := reverb.NewFDNReverb(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &reverbChainRuntime{freeverb: reverb.NewReverb(), fdn: fdn}, nil
+	})
+	registerChainEffectFactory("dyn-compressor", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := dynamics.NewCompressor(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &compressorChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("dyn-limiter", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := dynamics.NewLimiter(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &limiterChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("dyn-gate", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := dynamics.NewGate(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+		return &gateChainRuntime{fx: fx}, nil
+	})
+}
+
 // parseChainGraph parses the JSON chain graph and performs a topological sort
 // (Kahn's algorithm). Returns nil, nil for an empty string.
 func parseChainGraph(raw string) (*compiledChainGraph, error) {
@@ -177,7 +318,7 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 		return nil
 	}
 	if e.chainNodes == nil {
-		e.chainNodes = map[string]*chainEffectNode{}
+		e.chainNodes = map[string]*chainNodeRuntime{}
 	}
 	seen := map[string]struct{}{}
 	for _, node := range graph.Nodes {
@@ -187,17 +328,17 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 		seen[node.ID] = struct{}{}
 		rt := e.chainNodes[node.ID]
 		if rt == nil || rt.effectType != node.Type {
-			var err error
-			rt, err = e.newChainEffectNode(node.Type)
+			effect, err := e.newChainEffectRuntime(node.Type)
 			if err != nil {
 				return err
 			}
-			if rt == nil {
+			if effect == nil {
 				continue
 			}
+			rt = &chainNodeRuntime{effectType: node.Type, effect: effect}
 			e.chainNodes[node.ID] = rt
 		}
-		if err := e.configureChainEffectNode(rt, node); err != nil {
+		if err := rt.effect.Configure(e, node); err != nil {
 			return err
 		}
 	}
@@ -209,51 +350,12 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 	return nil
 }
 
-// newChainEffectNode is a factory that creates and initialises a new effect instance by type string.
-func (e *Engine) newChainEffectNode(effectType string) (*chainEffectNode, error) {
-	rt := &chainEffectNode{effectType: effectType}
-	var err error
-	switch effectType {
-	case "chorus":
-		rt.chorus, err = modulation.NewChorus()
-	case "flanger":
-		rt.flanger, err = modulation.NewFlanger(e.sampleRate)
-	case "ringmod":
-		rt.ringMod, err = modulation.NewRingModulator(e.sampleRate)
-	case "bitcrusher":
-		rt.crusher, err = effects.NewBitCrusher(e.sampleRate)
-	case "widener":
-		rt.widener, err = spatial.NewStereoWidener(e.sampleRate)
-	case "phaser":
-		rt.phaser, err = modulation.NewPhaser(e.sampleRate)
-	case "tremolo":
-		rt.tremolo, err = modulation.NewTremolo(e.sampleRate)
-	case "delay":
-		rt.delay, err = effects.NewDelay(e.sampleRate)
-	case "filter":
-		rt.filter = biquad.NewChain([]biquad.Coefficients{{B0: 1}})
-	case "bass":
-		rt.bass, err = effects.NewHarmonicBass(e.sampleRate)
-	case "pitch-time":
-		rt.tp, err = pitch.NewPitchShifter(e.sampleRate)
-	case "pitch-spectral":
-		rt.sp, err = pitch.NewSpectralPitchShifter(e.sampleRate)
-	case "reverb":
-		rt.reverb = reverb.NewReverb()
-		rt.fdn, err = reverb.NewFDNReverb(e.sampleRate)
-	case "dyn-compressor":
-		rt.comp, err = dynamics.NewCompressor(e.sampleRate)
-	case "dyn-limiter":
-		rt.limiter, err = dynamics.NewLimiter(e.sampleRate)
-	case "dyn-gate":
-		rt.gate, err = dynamics.NewGate(e.sampleRate)
-	default:
+func (e *Engine) newChainEffectRuntime(effectType string) (chainEffectRuntime, error) {
+	factory := chainEffectRegistry[effectType]
+	if factory == nil {
 		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	return rt, nil
+	return factory(e)
 }
 
 // getNodeNum safely extracts a numeric parameter from a compiled node, returning def if missing or invalid.
@@ -268,305 +370,466 @@ func getNodeNum(node compiledChainNode, key string, def float64) float64 {
 	return v
 }
 
-// configureChainEffectNode applies all effect parameters to the given runtime node instance.
-func (e *Engine) configureChainEffectNode(rt *chainEffectNode, node compiledChainNode) error {
-	switch node.Type {
-	case "chorus":
-		if err := rt.chorus.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.chorus.SetMix(clamp(getNodeNum(node, "mix", 0.18), 0, 1)); err != nil {
-			return err
-		}
-		if err := rt.chorus.SetDepth(clamp(getNodeNum(node, "depth", 0.003), 0, 0.01)); err != nil {
-			return err
-		}
-		if err := rt.chorus.SetSpeedHz(clamp(getNodeNum(node, "speedHz", 0.35), 0.05, 5)); err != nil {
-			return err
-		}
-		stages := int(math.Round(getNodeNum(node, "stages", 3)))
-		if stages < 1 {
-			stages = 1
-		}
-		if stages > 6 {
-			stages = 6
-		}
-		return rt.chorus.SetStages(stages)
-	case "flanger":
-		if err := rt.flanger.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.flanger.SetRateHz(clamp(getNodeNum(node, "rateHz", 0.25), 0.05, 5)); err != nil {
-			return err
-		}
-		if err := rt.flanger.SetDepthSeconds(0); err != nil {
-			return err
-		}
-		if err := rt.flanger.SetBaseDelaySeconds(clamp(getNodeNum(node, "baseDelay", 0.001), 0.0001, 0.01)); err != nil {
-			return err
-		}
-		depth := clamp(getNodeNum(node, "depth", 0.0015), 0, 0.0099)
-		if err := rt.flanger.SetDepthSeconds(depth); err != nil {
-			return err
-		}
-		if err := rt.flanger.SetFeedback(clamp(getNodeNum(node, "feedback", 0.25), -0.99, 0.99)); err != nil {
-			return err
-		}
-		return rt.flanger.SetMix(clamp(getNodeNum(node, "mix", 0.5), 0, 1))
-	case "ringmod":
-		if err := rt.ringMod.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.ringMod.SetCarrierHz(clamp(getNodeNum(node, "carrierHz", 440), 1, e.sampleRate*0.49)); err != nil {
-			return err
-		}
-		return rt.ringMod.SetMix(clamp(getNodeNum(node, "mix", 1), 0, 1))
-	case "bitcrusher":
-		if err := rt.crusher.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.crusher.SetBitDepth(clamp(getNodeNum(node, "bitDepth", 8), 1, 32)); err != nil {
-			return err
-		}
-		ds := int(math.Round(getNodeNum(node, "downsample", 4)))
-		if ds < 1 {
-			ds = 1
-		}
-		if ds > 256 {
-			ds = 256
-		}
-		if err := rt.crusher.SetDownsample(ds); err != nil {
-			return err
-		}
-		return rt.crusher.SetMix(clamp(getNodeNum(node, "mix", 1), 0, 1))
-	case "widener":
-		if err := rt.widener.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.widener.SetWidth(clamp(getNodeNum(node, "width", 1), 0, 4)); err != nil {
-			return err
-		}
-		return rt.widener.SetBassMonoFreq(0)
-	case "phaser":
-		if err := rt.phaser.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.phaser.SetRateHz(clamp(getNodeNum(node, "rateHz", 0.4), 0.05, 5)); err != nil {
-			return err
-		}
-		minHz := clamp(getNodeNum(node, "minFreqHz", 300), 20, e.sampleRate*0.45)
-		maxHz := clamp(getNodeNum(node, "maxFreqHz", 1600), minHz+1, e.sampleRate*0.49)
-		if err := rt.phaser.SetFrequencyRangeHz(minHz, maxHz); err != nil {
-			return err
-		}
-		stages := int(math.Round(getNodeNum(node, "stages", 6)))
-		if stages < 1 {
-			stages = 1
-		}
-		if stages > 12 {
-			stages = 12
-		}
-		if err := rt.phaser.SetStages(stages); err != nil {
-			return err
-		}
-		if err := rt.phaser.SetFeedback(clamp(getNodeNum(node, "feedback", 0.2), -0.99, 0.99)); err != nil {
-			return err
-		}
-		return rt.phaser.SetMix(clamp(getNodeNum(node, "mix", 0.5), 0, 1))
-	case "tremolo":
-		if err := rt.tremolo.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.tremolo.SetRateHz(clamp(getNodeNum(node, "rateHz", 4), 0.05, 20)); err != nil {
-			return err
-		}
-		if err := rt.tremolo.SetDepth(clamp(getNodeNum(node, "depth", 0.6), 0, 1)); err != nil {
-			return err
-		}
-		if err := rt.tremolo.SetSmoothingMs(clamp(getNodeNum(node, "smoothingMs", 5), 0, 200)); err != nil {
-			return err
-		}
-		return rt.tremolo.SetMix(clamp(getNodeNum(node, "mix", 1), 0, 1))
-	case "delay":
-		if err := rt.delay.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.delay.SetTime(clamp(getNodeNum(node, "time", 0.25), 0.001, 2)); err != nil {
-			return err
-		}
-		if err := rt.delay.SetFeedback(clamp(getNodeNum(node, "feedback", 0.35), 0, 0.99)); err != nil {
-			return err
-		}
-		return rt.delay.SetMix(clamp(getNodeNum(node, "mix", 0.25), 0, 1))
-	case "filter":
-		family := normalizeEQFamily(node.Str["family"])
-		kind := normalizeEQType("mid", node.Str["kind"])
-		family = normalizeEQFamilyForType(kind, family)
-		order := normalizeEQOrder(kind, family, int(math.Round(getNodeNum(node, "order", 2))))
-		freq := clamp(getNodeNum(node, "freq", 1200), 20, e.sampleRate*0.49)
-		gainDB := clamp(getNodeNum(node, "gain", 0), -24, 24)
-		shape := clampEQShape(kind, family, freq, e.sampleRate, getNodeNum(node, "q", 0.707))
-		rt.filter = buildEQChain(family, kind, order, freq, gainDB, shape, e.sampleRate)
-		return nil
-	case "bass":
-		if err := rt.bass.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.bass.SetFrequency(clamp(getNodeNum(node, "frequency", 80), 10, 500)); err != nil {
-			return err
-		}
-		if err := rt.bass.SetInputLevel(clamp(getNodeNum(node, "inputGain", 1), 0, 2)); err != nil {
-			return err
-		}
-		if err := rt.bass.SetHighFrequencyLevel(clamp(getNodeNum(node, "highGain", 1), 0, 2)); err != nil {
-			return err
-		}
-		if err := rt.bass.SetOriginalBassLevel(clamp(getNodeNum(node, "original", 1), 0, 2)); err != nil {
-			return err
-		}
-		if err := rt.bass.SetHarmonicBassLevel(clamp(getNodeNum(node, "harmonic", 0), 0, 2)); err != nil {
-			return err
-		}
-		if err := rt.bass.SetDecay(clamp(getNodeNum(node, "decay", 0), -1, 1)); err != nil {
-			return err
-		}
-		if err := rt.bass.SetResponse(clamp(getNodeNum(node, "responseMs", 20), 1, 200)); err != nil {
-			return err
-		}
-		hp := int(math.Round(getNodeNum(node, "highpass", 0)))
-		if hp < 0 {
-			hp = 0
-		}
-		if hp > 2 {
-			hp = 2
-		}
-		return rt.bass.SetHighpassMode(effects.HighpassSelect(hp))
-	case "pitch-time":
-		if err := rt.tp.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.tp.SetPitchSemitones(clamp(getNodeNum(node, "semitones", 0), -24, 24)); err != nil {
-			return err
-		}
-		seq := clamp(getNodeNum(node, "sequence", 40), 20, 120)
-		if err := rt.tp.SetSequence(seq); err != nil {
-			return err
-		}
-		ov := clamp(getNodeNum(node, "overlap", 10), 4, 60)
-		if ov >= seq {
-			ov = seq - 1
-		}
-		if err := rt.tp.SetOverlap(ov); err != nil {
-			return err
-		}
-		return rt.tp.SetSearch(clamp(getNodeNum(node, "search", 15), 2, 40))
-	case "pitch-spectral":
-		if err := rt.sp.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.sp.SetPitchSemitones(clamp(getNodeNum(node, "semitones", 0), -24, 24)); err != nil {
-			return err
-		}
-		frame := sanitizeSpectralPitchFrameSize(int(math.Round(getNodeNum(node, "frameSize", 1024))))
-		if err := rt.sp.SetFrameSize(frame); err != nil {
-			return err
-		}
-		hop := int(math.Round(float64(frame) * clamp(getNodeNum(node, "hopRatio", 0.25), 0.01, 0.99)))
-		if hop < 1 {
-			hop = 1
-		}
-		if hop >= frame {
-			hop = frame - 1
-		}
-		return rt.sp.SetAnalysisHop(hop)
-	case "reverb":
-		model := node.Str["model"]
-		if model != "fdn" && model != "freeverb" {
-			model = "freeverb"
-		}
-		if model == "fdn" {
-			if err := rt.fdn.SetSampleRate(e.sampleRate); err != nil {
-				return err
-			}
-			if err := rt.fdn.SetWet(clamp(getNodeNum(node, "wet", 0.22), 0, 1.5)); err != nil {
-				return err
-			}
-			if err := rt.fdn.SetDry(clamp(getNodeNum(node, "dry", 1), 0, 1.5)); err != nil {
-				return err
-			}
-			if err := rt.fdn.SetRT60(clamp(getNodeNum(node, "rt60", 1.8), 0.2, 8)); err != nil {
-				return err
-			}
-			if err := rt.fdn.SetPreDelay(clamp(getNodeNum(node, "preDelay", 0.01), 0, 0.1)); err != nil {
-				return err
-			}
-			if err := rt.fdn.SetDamp(clamp(getNodeNum(node, "damp", 0.45), 0, 0.99)); err != nil {
-				return err
-			}
-			if err := rt.fdn.SetModDepth(clamp(getNodeNum(node, "modDepth", 0.002), 0, 0.01)); err != nil {
-				return err
-			}
-			return rt.fdn.SetModRate(clamp(getNodeNum(node, "modRate", 0.1), 0, 1))
-		}
-		rt.reverb.SetWet(clamp(getNodeNum(node, "wet", 0.22), 0, 1.5))
-		rt.reverb.SetDry(clamp(getNodeNum(node, "dry", 1), 0, 1.5))
-		rt.reverb.SetRoomSize(clamp(getNodeNum(node, "roomSize", 0.72), 0, 0.98))
-		rt.reverb.SetDamp(clamp(getNodeNum(node, "damp", 0.45), 0, 0.99))
-		rt.reverb.SetGain(clamp(getNodeNum(node, "gain", 0.015), 0, 0.1))
-	case "dyn-compressor":
-		if err := rt.comp.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.comp.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -20), -60, 0)); err != nil {
-			return err
-		}
-		if err := rt.comp.SetRatio(clamp(getNodeNum(node, "ratio", 4), 1, 100)); err != nil {
-			return err
-		}
-		if err := rt.comp.SetKnee(clamp(getNodeNum(node, "kneeDB", 6), 0, 24)); err != nil {
-			return err
-		}
-		if err := rt.comp.SetAttack(clamp(getNodeNum(node, "attackMs", 10), 0.1, 1000)); err != nil {
-			return err
-		}
-		if err := rt.comp.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000)); err != nil {
-			return err
-		}
-		if err := rt.comp.SetAutoMakeup(false); err != nil {
-			return err
-		}
-		return rt.comp.SetMakeupGain(clamp(getNodeNum(node, "makeupGainDB", 0), 0, 24))
-	case "dyn-limiter":
-		if err := rt.limiter.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.limiter.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -0.1), -24, 0)); err != nil {
-			return err
-		}
-		return rt.limiter.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000))
-	case "dyn-gate":
-		if err := rt.gate.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := rt.gate.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -40), -80, 0)); err != nil {
-			return err
-		}
-		if err := rt.gate.SetRatio(clamp(getNodeNum(node, "ratio", 10), 1, 100)); err != nil {
-			return err
-		}
-		if err := rt.gate.SetKnee(clamp(getNodeNum(node, "kneeDB", 6), 0, 24)); err != nil {
-			return err
-		}
-		if err := rt.gate.SetAttack(clamp(getNodeNum(node, "attackMs", 0.1), 0.1, 1000)); err != nil {
-			return err
-		}
-		if err := rt.gate.SetHold(clamp(getNodeNum(node, "holdMs", 50), 0, 5000)); err != nil {
-			return err
-		}
-		if err := rt.gate.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000)); err != nil {
-			return err
-		}
-		return rt.gate.SetRange(clamp(getNodeNum(node, "rangeDB", -80), -120, 0))
+type chorusChainRuntime struct {
+	fx *modulation.Chorus
+}
+
+func (r *chorusChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
 	}
+	if err := r.fx.SetMix(clamp(getNodeNum(node, "mix", 0.18), 0, 1)); err != nil {
+		return err
+	}
+	if err := r.fx.SetDepth(clamp(getNodeNum(node, "depth", 0.003), 0, 0.01)); err != nil {
+		return err
+	}
+	if err := r.fx.SetSpeedHz(clamp(getNodeNum(node, "speedHz", 0.35), 0.05, 5)); err != nil {
+		return err
+	}
+	stages := int(math.Round(getNodeNum(node, "stages", 3)))
+	if stages < 1 {
+		stages = 1
+	}
+	if stages > 6 {
+		stages = 6
+	}
+	return r.fx.SetStages(stages)
+}
+
+func (r *chorusChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type flangerChainRuntime struct {
+	fx *modulation.Flanger
+}
+
+func (r *flangerChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetRateHz(clamp(getNodeNum(node, "rateHz", 0.25), 0.05, 5)); err != nil {
+		return err
+	}
+	if err := r.fx.SetDepthSeconds(0); err != nil {
+		return err
+	}
+	if err := r.fx.SetBaseDelaySeconds(clamp(getNodeNum(node, "baseDelay", 0.001), 0.0001, 0.01)); err != nil {
+		return err
+	}
+	depth := clamp(getNodeNum(node, "depth", 0.0015), 0, 0.0099)
+	if err := r.fx.SetDepthSeconds(depth); err != nil {
+		return err
+	}
+	if err := r.fx.SetFeedback(clamp(getNodeNum(node, "feedback", 0.25), -0.99, 0.99)); err != nil {
+		return err
+	}
+	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 0.5), 0, 1))
+}
+
+func (r *flangerChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	_ = r.fx.ProcessInPlace(block)
+}
+
+type ringModChainRuntime struct {
+	fx *modulation.RingModulator
+}
+
+func (r *ringModChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetCarrierHz(clamp(getNodeNum(node, "carrierHz", 440), 1, e.sampleRate*0.49)); err != nil {
+		return err
+	}
+	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 1), 0, 1))
+}
+
+func (r *ringModChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type bitCrusherChainRuntime struct {
+	fx *effects.BitCrusher
+}
+
+func (r *bitCrusherChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetBitDepth(clamp(getNodeNum(node, "bitDepth", 8), 1, 32)); err != nil {
+		return err
+	}
+	ds := int(math.Round(getNodeNum(node, "downsample", 4)))
+	if ds < 1 {
+		ds = 1
+	}
+	if ds > 256 {
+		ds = 256
+	}
+	if err := r.fx.SetDownsample(ds); err != nil {
+		return err
+	}
+	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 1), 0, 1))
+}
+
+func (r *bitCrusherChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type widenerChainRuntime struct {
+	fx *spatial.StereoWidener
+}
+
+func (r *widenerChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetWidth(clamp(getNodeNum(node, "width", 1), 0, 4)); err != nil {
+		return err
+	}
+	return r.fx.SetBassMonoFreq(0)
+}
+
+func (r *widenerChainRuntime) Process(e *Engine, node compiledChainNode, block []float64) {
+	e.processNodeWidenerMonoInPlace(block, r.fx, clamp(getNodeNum(node, "mix", 0.5), 0, 1))
+}
+
+type phaserChainRuntime struct {
+	fx *modulation.Phaser
+}
+
+func (r *phaserChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetRateHz(clamp(getNodeNum(node, "rateHz", 0.4), 0.05, 5)); err != nil {
+		return err
+	}
+	minHz := clamp(getNodeNum(node, "minFreqHz", 300), 20, e.sampleRate*0.45)
+	maxHz := clamp(getNodeNum(node, "maxFreqHz", 1600), minHz+1, e.sampleRate*0.49)
+	if err := r.fx.SetFrequencyRangeHz(minHz, maxHz); err != nil {
+		return err
+	}
+	stages := int(math.Round(getNodeNum(node, "stages", 6)))
+	if stages < 1 {
+		stages = 1
+	}
+	if stages > 12 {
+		stages = 12
+	}
+	if err := r.fx.SetStages(stages); err != nil {
+		return err
+	}
+	if err := r.fx.SetFeedback(clamp(getNodeNum(node, "feedback", 0.2), -0.99, 0.99)); err != nil {
+		return err
+	}
+	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 0.5), 0, 1))
+}
+
+func (r *phaserChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	_ = r.fx.ProcessInPlace(block)
+}
+
+type tremoloChainRuntime struct {
+	fx *modulation.Tremolo
+}
+
+func (r *tremoloChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetRateHz(clamp(getNodeNum(node, "rateHz", 4), 0.05, 20)); err != nil {
+		return err
+	}
+	if err := r.fx.SetDepth(clamp(getNodeNum(node, "depth", 0.6), 0, 1)); err != nil {
+		return err
+	}
+	if err := r.fx.SetSmoothingMs(clamp(getNodeNum(node, "smoothingMs", 5), 0, 200)); err != nil {
+		return err
+	}
+	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 1), 0, 1))
+}
+
+func (r *tremoloChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	_ = r.fx.ProcessInPlace(block)
+}
+
+type delayChainRuntime struct {
+	fx *effects.Delay
+}
+
+func (r *delayChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetTime(clamp(getNodeNum(node, "time", 0.25), 0.001, 2)); err != nil {
+		return err
+	}
+	if err := r.fx.SetFeedback(clamp(getNodeNum(node, "feedback", 0.35), 0, 0.99)); err != nil {
+		return err
+	}
+	return r.fx.SetMix(clamp(getNodeNum(node, "mix", 0.25), 0, 1))
+}
+
+func (r *delayChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type filterChainRuntime struct {
+	fx *biquad.Chain
+}
+
+func (r *filterChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	family := normalizeEQFamily(node.Str["family"])
+	kind := normalizeEQType("mid", node.Str["kind"])
+	family = normalizeEQFamilyForType(kind, family)
+	order := normalizeEQOrder(kind, family, int(math.Round(getNodeNum(node, "order", 2))))
+	freq := clamp(getNodeNum(node, "freq", 1200), 20, e.sampleRate*0.49)
+	gainDB := clamp(getNodeNum(node, "gain", 0), -24, 24)
+	shape := clampEQShape(kind, family, freq, e.sampleRate, getNodeNum(node, "q", 0.707))
+	r.fx = buildEQChain(family, kind, order, freq, gainDB, shape, e.sampleRate)
 	return nil
+}
+
+func (r *filterChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	if r.fx != nil {
+		r.fx.ProcessBlock(block)
+	}
+}
+
+type bassChainRuntime struct {
+	fx *effects.HarmonicBass
+}
+
+func (r *bassChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetFrequency(clamp(getNodeNum(node, "frequency", 80), 10, 500)); err != nil {
+		return err
+	}
+	if err := r.fx.SetInputLevel(clamp(getNodeNum(node, "inputGain", 1), 0, 2)); err != nil {
+		return err
+	}
+	if err := r.fx.SetHighFrequencyLevel(clamp(getNodeNum(node, "highGain", 1), 0, 2)); err != nil {
+		return err
+	}
+	if err := r.fx.SetOriginalBassLevel(clamp(getNodeNum(node, "original", 1), 0, 2)); err != nil {
+		return err
+	}
+	if err := r.fx.SetHarmonicBassLevel(clamp(getNodeNum(node, "harmonic", 0), 0, 2)); err != nil {
+		return err
+	}
+	if err := r.fx.SetDecay(clamp(getNodeNum(node, "decay", 0), -1, 1)); err != nil {
+		return err
+	}
+	if err := r.fx.SetResponse(clamp(getNodeNum(node, "responseMs", 20), 1, 200)); err != nil {
+		return err
+	}
+	hp := int(math.Round(getNodeNum(node, "highpass", 0)))
+	if hp < 0 {
+		hp = 0
+	}
+	if hp > 2 {
+		hp = 2
+	}
+	return r.fx.SetHighpassMode(effects.HighpassSelect(hp))
+}
+
+func (r *bassChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type timePitchChainRuntime struct {
+	fx *pitch.PitchShifter
+}
+
+func (r *timePitchChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetPitchSemitones(clamp(getNodeNum(node, "semitones", 0), -24, 24)); err != nil {
+		return err
+	}
+	seq := clamp(getNodeNum(node, "sequence", 40), 20, 120)
+	if err := r.fx.SetSequence(seq); err != nil {
+		return err
+	}
+	ov := clamp(getNodeNum(node, "overlap", 10), 4, 60)
+	if ov >= seq {
+		ov = seq - 1
+	}
+	if err := r.fx.SetOverlap(ov); err != nil {
+		return err
+	}
+	return r.fx.SetSearch(clamp(getNodeNum(node, "search", 15), 2, 40))
+}
+
+func (r *timePitchChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type spectralPitchChainRuntime struct {
+	fx *pitch.SpectralPitchShifter
+}
+
+func (r *spectralPitchChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetPitchSemitones(clamp(getNodeNum(node, "semitones", 0), -24, 24)); err != nil {
+		return err
+	}
+	frame := sanitizeSpectralPitchFrameSize(int(math.Round(getNodeNum(node, "frameSize", 1024))))
+	if err := r.fx.SetFrameSize(frame); err != nil {
+		return err
+	}
+	hop := int(math.Round(float64(frame) * clamp(getNodeNum(node, "hopRatio", 0.25), 0.01, 0.99)))
+	if hop < 1 {
+		hop = 1
+	}
+	if hop >= frame {
+		hop = frame - 1
+	}
+	return r.fx.SetAnalysisHop(hop)
+}
+
+func (r *spectralPitchChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type reverbChainRuntime struct {
+	freeverb *reverb.Reverb
+	fdn      *reverb.FDNReverb
+}
+
+func (r *reverbChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	model := node.Str["model"]
+	if model != "fdn" && model != "freeverb" {
+		model = "freeverb"
+	}
+	if model == "fdn" {
+		if err := r.fdn.SetSampleRate(e.sampleRate); err != nil {
+			return err
+		}
+		if err := r.fdn.SetWet(clamp(getNodeNum(node, "wet", 0.22), 0, 1.5)); err != nil {
+			return err
+		}
+		if err := r.fdn.SetDry(clamp(getNodeNum(node, "dry", 1), 0, 1.5)); err != nil {
+			return err
+		}
+		if err := r.fdn.SetRT60(clamp(getNodeNum(node, "rt60", 1.8), 0.2, 8)); err != nil {
+			return err
+		}
+		if err := r.fdn.SetPreDelay(clamp(getNodeNum(node, "preDelay", 0.01), 0, 0.1)); err != nil {
+			return err
+		}
+		if err := r.fdn.SetDamp(clamp(getNodeNum(node, "damp", 0.45), 0, 0.99)); err != nil {
+			return err
+		}
+		if err := r.fdn.SetModDepth(clamp(getNodeNum(node, "modDepth", 0.002), 0, 0.01)); err != nil {
+			return err
+		}
+		return r.fdn.SetModRate(clamp(getNodeNum(node, "modRate", 0.1), 0, 1))
+	}
+	r.freeverb.SetWet(clamp(getNodeNum(node, "wet", 0.22), 0, 1.5))
+	r.freeverb.SetDry(clamp(getNodeNum(node, "dry", 1), 0, 1.5))
+	r.freeverb.SetRoomSize(clamp(getNodeNum(node, "roomSize", 0.72), 0, 0.98))
+	r.freeverb.SetDamp(clamp(getNodeNum(node, "damp", 0.45), 0, 0.99))
+	r.freeverb.SetGain(clamp(getNodeNum(node, "gain", 0.015), 0, 0.1))
+	return nil
+}
+
+func (r *reverbChainRuntime) Process(_ *Engine, node compiledChainNode, block []float64) {
+	if node.Str["model"] == "fdn" {
+		r.fdn.ProcessInPlace(block)
+		return
+	}
+	r.freeverb.ProcessInPlace(block)
+}
+
+type compressorChainRuntime struct {
+	fx *dynamics.Compressor
+}
+
+func (r *compressorChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -20), -60, 0)); err != nil {
+		return err
+	}
+	if err := r.fx.SetRatio(clamp(getNodeNum(node, "ratio", 4), 1, 100)); err != nil {
+		return err
+	}
+	if err := r.fx.SetKnee(clamp(getNodeNum(node, "kneeDB", 6), 0, 24)); err != nil {
+		return err
+	}
+	if err := r.fx.SetAttack(clamp(getNodeNum(node, "attackMs", 10), 0.1, 1000)); err != nil {
+		return err
+	}
+	if err := r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000)); err != nil {
+		return err
+	}
+	if err := r.fx.SetAutoMakeup(false); err != nil {
+		return err
+	}
+	return r.fx.SetMakeupGain(clamp(getNodeNum(node, "makeupGainDB", 0), 0, 24))
+}
+
+func (r *compressorChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type limiterChainRuntime struct {
+	fx *dynamics.Limiter
+}
+
+func (r *limiterChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -0.1), -24, 0)); err != nil {
+		return err
+	}
+	return r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000))
+}
+
+func (r *limiterChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type gateChainRuntime struct {
+	fx *dynamics.Gate
+}
+
+func (r *gateChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+	if err := r.fx.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -40), -80, 0)); err != nil {
+		return err
+	}
+	if err := r.fx.SetRatio(clamp(getNodeNum(node, "ratio", 10), 1, 100)); err != nil {
+		return err
+	}
+	if err := r.fx.SetKnee(clamp(getNodeNum(node, "kneeDB", 6), 0, 24)); err != nil {
+		return err
+	}
+	if err := r.fx.SetAttack(clamp(getNodeNum(node, "attackMs", 0.1), 0.1, 1000)); err != nil {
+		return err
+	}
+	if err := r.fx.SetHold(clamp(getNodeNum(node, "holdMs", 50), 0, 5000)); err != nil {
+		return err
+	}
+	if err := r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000)); err != nil {
+		return err
+	}
+	return r.fx.SetRange(clamp(getNodeNum(node, "rangeDB", -80), -120, 0))
+}
+
+func (r *gateChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
 }
