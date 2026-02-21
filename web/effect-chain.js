@@ -7,20 +7,23 @@
 
   // ---- effect type registry ------------------------------------------------
   const FX_TYPES = {
-    chorus:           { label: "Chorus",            hue: 15  },
-    flanger:          { label: "Flanger",           hue: 200 },
-    ringmod:          { label: "Ring Mod",          hue: 320 },
-    bitcrusher:       { label: "Bit Crusher",       hue: 24  },
-    widener:          { label: "Stereo Widener",    hue: 286 },
-    phaser:           { label: "Phaser",            hue: 140 },
-    tremolo:          { label: "Tremolo",           hue: 270 },
-    delay:            { label: "Delay",             hue: 35  },
-    bass:             { label: "Bass Enhancer",     hue: 10  },
-    "pitch-time":     { label: "Pitch (Time)",      hue: 190 },
-    "pitch-spectral": { label: "Pitch (Spectral)",  hue: 170 },
-    reverb:           { label: "Reverb",            hue: 260 },
-    split:            { label: "Split",             hue: 210, utility: true },
-    sum:              { label: "Sum",               hue: 35, utility: true },
+    chorus:           { label: "Chorus",            hue: 15,  category: "Modulation" },
+    flanger:          { label: "Flanger",           hue: 200, category: "Modulation" },
+    ringmod:          { label: "Ring Mod",          hue: 320, category: "Modulation" },
+    phaser:           { label: "Phaser",            hue: 140, category: "Modulation" },
+    tremolo:          { label: "Tremolo",           hue: 270, category: "Modulation" },
+    bitcrusher:       { label: "Bit Crusher",       hue: 24,  category: "Color" },
+    filter:           { label: "Filter",            hue: 188, category: "Filters" },
+    delay:            { label: "Delay",             hue: 35,  category: "Time/Space" },
+    reverb:           { label: "Reverb",            hue: 260, category: "Time/Space" },
+    widener:          { label: "Stereo Widener",    hue: 286, category: "Spatial" },
+    bass:             { label: "Bass Enhancer",     hue: 10,  category: "Spatial" },
+    "pitch-time":     { label: "Pitch (Time)",      hue: 190, category: "Pitch" },
+    "pitch-spectral": { label: "Pitch (Spectral)",  hue: 170, category: "Pitch" },
+    "dyn-compressor": { label: "Compressor",        hue: 120, category: "Dynamics" },
+    "dyn-limiter":    { label: "Limiter",           hue: 98,  category: "Dynamics" },
+    split:            { label: "Split",             hue: 210, category: "Routing", utility: true },
+    sum:              { label: "Sum",               hue: 35,  category: "Routing", utility: true },
   };
 
   // ---- geometry constants ---------------------------------------------------
@@ -904,19 +907,34 @@
         title.textContent = "Add Effect";
         menu.appendChild(title);
 
+        const grouped = new Map();
         for (const [type, def] of Object.entries(FX_TYPES)) {
-          const item = document.createElement("button");
-          item.className = "chain-menu-item";
-          item.textContent = def.label;
-          item.addEventListener("click", () => {
-            const { x: wx, y: wy } = this._toWorld(
-              clientX - this.canvas.getBoundingClientRect().left,
-              clientY - this.canvas.getBoundingClientRect().top,
-            );
-            this.addEffect(type, wx, wy);
-            this._hideMenu();
-          });
-          menu.appendChild(item);
+          const category = def.category || "Other";
+          if (!grouped.has(category)) grouped.set(category, []);
+          grouped.get(category).push([type, def]);
+        }
+        const categoryOrder = ["Filters", "Dynamics", "Modulation", "Time/Space", "Pitch", "Spatial", "Color", "Routing", "Other"];
+        for (const category of categoryOrder) {
+          const entries = grouped.get(category);
+          if (!entries || entries.length === 0) continue;
+          const cat = document.createElement("div");
+          cat.className = "chain-menu-title";
+          cat.textContent = category;
+          menu.appendChild(cat);
+          for (const [type, def] of entries) {
+            const item = document.createElement("button");
+            item.className = "chain-menu-item";
+            item.textContent = def.label;
+            item.addEventListener("click", () => {
+              const { x: wx, y: wy } = this._toWorld(
+                clientX - this.canvas.getBoundingClientRect().left,
+                clientY - this.canvas.getBoundingClientRect().top,
+              );
+              this.addEffect(type, wx, wy);
+              this._hideMenu();
+            });
+            menu.appendChild(item);
+          }
         }
       }
 

@@ -6,10 +6,13 @@ import (
 	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/effects"
+	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
 	"github.com/cwbudde/algo-dsp/dsp/effects/modulation"
 	"github.com/cwbudde/algo-dsp/dsp/effects/pitch"
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
 	"github.com/cwbudde/algo-dsp/dsp/effects/spatial"
+	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+	"github.com/cwbudde/algo-dsp/dsp/filter/design"
 )
 
 type chainGraphNode struct {
@@ -55,11 +58,14 @@ type chainEffectNode struct {
 	phaser     *modulation.Phaser
 	tremolo    *modulation.Tremolo
 	delay      *effects.Delay
+	filter     *biquad.Chain
 	bass       *effects.HarmonicBass
 	tp         *pitch.PitchShifter
 	sp         *pitch.SpectralPitchShifter
 	reverb     *reverb.Reverb
 	fdn        *reverb.FDNReverb
+	comp       *dynamics.Compressor
+	limiter    *dynamics.Limiter
 }
 
 // SetCompressor updates compressor parameters.
@@ -724,6 +730,10 @@ func (e *Engine) applyCompiledNode(node compiledChainNode, block []float64) {
 		_ = rt.tremolo.ProcessInPlace(block)
 	case "delay":
 		rt.delay.ProcessInPlace(block)
+	case "filter":
+		if rt.filter != nil {
+			rt.filter.ProcessBlock(block)
+		}
 	case "bass":
 		rt.bass.ProcessInPlace(block)
 	case "pitch-time":
@@ -737,6 +747,10 @@ func (e *Engine) applyCompiledNode(node compiledChainNode, block []float64) {
 		} else {
 			rt.reverb.ProcessInPlace(block)
 		}
+	case "dyn-compressor":
+		rt.comp.ProcessInPlace(block)
+	case "dyn-limiter":
+		rt.limiter.ProcessInPlace(block)
 	}
 }
 
@@ -798,6 +812,8 @@ func (e *Engine) newChainEffectNode(effectType string) (*chainEffectNode, error)
 		rt.tremolo, err = modulation.NewTremolo(e.sampleRate)
 	case "delay":
 		rt.delay, err = effects.NewDelay(e.sampleRate)
+	case "filter":
+		rt.filter = biquad.NewChain([]biquad.Coefficients{{B0: 1}})
 	case "bass":
 		rt.bass, err = effects.NewHarmonicBass(e.sampleRate)
 	case "pitch-time":
@@ -807,6 +823,10 @@ func (e *Engine) newChainEffectNode(effectType string) (*chainEffectNode, error)
 	case "reverb":
 		rt.reverb = reverb.NewReverb()
 		rt.fdn, err = reverb.NewFDNReverb(e.sampleRate)
+	case "dyn-compressor":
+		rt.comp, err = dynamics.NewCompressor(e.sampleRate)
+	case "dyn-limiter":
+		rt.limiter, err = dynamics.NewLimiter(e.sampleRate)
 	default:
 		return nil, nil
 	}
@@ -956,6 +976,27 @@ func (e *Engine) configureChainEffectNode(rt *chainEffectNode, node compiledChai
 			return err
 		}
 		return rt.delay.SetMix(clamp(getNodeNum(node, "mix", 0.25), 0, 1))
+	case "filter":
+		kind := node.Str["kind"]
+		if kind == "" {
+			kind = "lowpass"
+		}
+		freq := clamp(getNodeNum(node, "freq", 1200), 20, e.sampleRate*0.49)
+		q := clamp(getNodeNum(node, "q", 0.707), 0.2, 8)
+		gainDB := clamp(getNodeNum(node, "gain", 0), -24, 24)
+		var c biquad.Coefficients
+		switch kind {
+		case "highpass":
+			c = design.Highpass(freq, q, e.sampleRate)
+		case "peak":
+			c = design.Peak(freq, gainDB, q, e.sampleRate)
+		case "notch":
+			c = design.Notch(freq, q, e.sampleRate)
+		default:
+			c = design.Lowpass(freq, q, e.sampleRate)
+		}
+		rt.filter = biquad.NewChain([]biquad.Coefficients{c})
+		return nil
 	case "bass":
 		if err := rt.bass.SetSampleRate(e.sampleRate); err != nil {
 			return err
@@ -1061,6 +1102,37 @@ func (e *Engine) configureChainEffectNode(rt *chainEffectNode, node compiledChai
 		rt.reverb.SetRoomSize(clamp(getNodeNum(node, "roomSize", 0.72), 0, 0.98))
 		rt.reverb.SetDamp(clamp(getNodeNum(node, "damp", 0.45), 0, 0.99))
 		rt.reverb.SetGain(clamp(getNodeNum(node, "gain", 0.015), 0, 0.1))
+	case "dyn-compressor":
+		if err := rt.comp.SetSampleRate(e.sampleRate); err != nil {
+			return err
+		}
+		if err := rt.comp.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -20), -60, 0)); err != nil {
+			return err
+		}
+		if err := rt.comp.SetRatio(clamp(getNodeNum(node, "ratio", 4), 1, 100)); err != nil {
+			return err
+		}
+		if err := rt.comp.SetKnee(clamp(getNodeNum(node, "kneeDB", 6), 0, 24)); err != nil {
+			return err
+		}
+		if err := rt.comp.SetAttack(clamp(getNodeNum(node, "attackMs", 10), 0.1, 1000)); err != nil {
+			return err
+		}
+		if err := rt.comp.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000)); err != nil {
+			return err
+		}
+		if err := rt.comp.SetAutoMakeup(false); err != nil {
+			return err
+		}
+		return rt.comp.SetMakeupGain(clamp(getNodeNum(node, "makeupGainDB", 0), 0, 24))
+	case "dyn-limiter":
+		if err := rt.limiter.SetSampleRate(e.sampleRate); err != nil {
+			return err
+		}
+		if err := rt.limiter.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -0.1), -24, 0)); err != nil {
+			return err
+		}
+		return rt.limiter.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000))
 	}
 	return nil
 }
