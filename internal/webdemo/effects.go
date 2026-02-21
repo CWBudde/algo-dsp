@@ -1,9 +1,5 @@
 package webdemo
 
-import (
-	"github.com/cwbudde/algo-dsp/dsp/effects"
-)
-
 // SetCompressor updates compressor parameters.
 func (e *Engine) SetCompressor(p CompressorParams) error {
 	prevEnabled := e.compParams.Enabled
@@ -273,183 +269,123 @@ func (e *Engine) rebuildEffects() error {
 }
 
 func (e *Engine) rebuildChorusEffect() error {
-	if err := e.chorus.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
 	if !e.effects.ChorusEnabled {
 		return nil
 	}
-	if err := e.chorus.SetMix(e.effects.ChorusMix); err != nil {
-		return err
-	}
-	if err := e.chorus.SetDepth(e.effects.ChorusDepth); err != nil {
-		return err
-	}
-	if err := e.chorus.SetSpeedHz(e.effects.ChorusSpeedHz); err != nil {
-		return err
-	}
-	return e.chorus.SetStages(e.effects.ChorusStages)
+	return configureChorus(
+		e.chorus,
+		e.sampleRate,
+		e.effects.ChorusMix,
+		e.effects.ChorusDepth,
+		e.effects.ChorusSpeedHz,
+		e.effects.ChorusStages,
+	)
 }
 
 func (e *Engine) rebuildFlangerEffect() error {
-	if err := e.flanger.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
 	if !e.effects.FlangerEnabled {
 		return nil
 	}
-	if err := e.flanger.SetRateHz(e.effects.FlangerRateHz); err != nil {
-		return err
-	}
-	// Apply timing in a transition-safe order to avoid invalid intermediate
-	// base+depth combinations during whole-graph parameter updates.
-	if err := e.flanger.SetDepthSeconds(0); err != nil {
-		return err
-	}
-	if err := e.flanger.SetBaseDelaySeconds(e.effects.FlangerBaseDelay); err != nil {
-		return err
-	}
-	if err := e.flanger.SetDepthSeconds(e.effects.FlangerDepth); err != nil {
-		return err
-	}
-	if err := e.flanger.SetFeedback(e.effects.FlangerFeedback); err != nil {
-		return err
-	}
-	return e.flanger.SetMix(e.effects.FlangerMix)
+	return configureFlanger(
+		e.flanger,
+		e.sampleRate,
+		e.effects.FlangerRateHz,
+		e.effects.FlangerBaseDelay,
+		e.effects.FlangerDepth,
+		e.effects.FlangerFeedback,
+		e.effects.FlangerMix,
+	)
 }
 
 func (e *Engine) rebuildRingModEffect() error {
-	if err := e.ringMod.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
 	if !e.effects.RingModEnabled {
 		return nil
 	}
-	if err := e.ringMod.SetCarrierHz(e.effects.RingModCarrierHz); err != nil {
-		return err
-	}
-	return e.ringMod.SetMix(e.effects.RingModMix)
+	return configureRingMod(e.ringMod, e.sampleRate, e.effects.RingModCarrierHz, e.effects.RingModMix)
 }
 
 func (e *Engine) rebuildBitCrusherEffect() error {
-	if err := e.crusher.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
 	if !e.effects.BitCrusherEnabled {
 		return nil
 	}
-	if err := e.crusher.SetBitDepth(e.effects.BitCrusherBitDepth); err != nil {
-		return err
-	}
-	if err := e.crusher.SetDownsample(e.effects.BitCrusherDownsample); err != nil {
-		return err
-	}
-	return e.crusher.SetMix(e.effects.BitCrusherMix)
+	return configureBitCrusher(
+		e.crusher,
+		e.sampleRate,
+		e.effects.BitCrusherBitDepth,
+		e.effects.BitCrusherDownsample,
+		e.effects.BitCrusherMix,
+	)
 }
 
 func (e *Engine) rebuildWidenerEffect() error {
-	if err := e.widener.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
 	if !e.effects.WidenerEnabled {
 		return nil
 	}
-	if err := e.widener.SetWidth(e.effects.WidenerWidth); err != nil {
-		return err
-	}
-	return e.widener.SetBassMonoFreq(0)
+	return configureWidener(e.widener, e.sampleRate, e.effects.WidenerWidth)
 }
 
 func (e *Engine) rebuildPhaserEffect() error {
-	if err := e.phaser.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
 	if !e.effects.PhaserEnabled {
 		return nil
 	}
-	if err := e.phaser.SetRateHz(e.effects.PhaserRateHz); err != nil {
-		return err
-	}
-	if err := e.phaser.SetFrequencyRangeHz(e.effects.PhaserMinFreqHz, e.effects.PhaserMaxFreqHz); err != nil {
-		return err
-	}
-	if err := e.phaser.SetStages(e.effects.PhaserStages); err != nil {
-		return err
-	}
-	if err := e.phaser.SetFeedback(e.effects.PhaserFeedback); err != nil {
-		return err
-	}
-	return e.phaser.SetMix(e.effects.PhaserMix)
+	return configurePhaser(
+		e.phaser,
+		e.sampleRate,
+		e.effects.PhaserRateHz,
+		e.effects.PhaserMinFreqHz,
+		e.effects.PhaserMaxFreqHz,
+		e.effects.PhaserStages,
+		e.effects.PhaserFeedback,
+		e.effects.PhaserMix,
+	)
 }
 
 func (e *Engine) rebuildTremoloEffect() error {
-	if err := e.tremolo.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
 	if !e.effects.TremoloEnabled {
 		return nil
 	}
-	if err := e.tremolo.SetRateHz(e.effects.TremoloRateHz); err != nil {
-		return err
-	}
-	if err := e.tremolo.SetDepth(e.effects.TremoloDepth); err != nil {
-		return err
-	}
-	if err := e.tremolo.SetSmoothingMs(e.effects.TremoloSmoothingMs); err != nil {
-		return err
-	}
-	return e.tremolo.SetMix(e.effects.TremoloMix)
+	return configureTremolo(
+		e.tremolo,
+		e.sampleRate,
+		e.effects.TremoloRateHz,
+		e.effects.TremoloDepth,
+		e.effects.TremoloSmoothingMs,
+		e.effects.TremoloMix,
+	)
 }
 
 func (e *Engine) rebuildDelayEffect() error {
-	if err := e.delay.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
 	if !e.effects.DelayEnabled {
 		return nil
 	}
-	if err := e.delay.SetTime(e.effects.DelayTime); err != nil {
-		return err
-	}
-	if err := e.delay.SetFeedback(e.effects.DelayFeedback); err != nil {
-		return err
-	}
-	return e.delay.SetMix(e.effects.DelayMix)
+	return configureDelay(e.delay, e.sampleRate, e.effects.DelayTime, e.effects.DelayFeedback, e.effects.DelayMix)
 }
 
 func (e *Engine) rebuildTimePitchEffect() error {
 	if !e.effects.TimePitchEnabled {
 		return nil
 	}
-	if err := e.tp.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := e.tp.SetPitchSemitones(e.effects.TimePitchSemitones); err != nil {
-		return err
-	}
-	if err := e.tp.SetSequence(e.effects.TimePitchSequence); err != nil {
-		return err
-	}
-	if err := e.tp.SetOverlap(e.effects.TimePitchOverlap); err != nil {
-		return err
-	}
-	return e.tp.SetSearch(e.effects.TimePitchSearch)
+	return configureTimePitch(
+		e.tp,
+		e.sampleRate,
+		e.effects.TimePitchSemitones,
+		e.effects.TimePitchSequence,
+		e.effects.TimePitchOverlap,
+		e.effects.TimePitchSearch,
+	)
 }
 
 func (e *Engine) rebuildSpectralPitchEffect() error {
 	if !e.effects.SpectralPitchEnabled {
 		return nil
 	}
-	if err := e.sp.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := e.sp.SetPitchSemitones(e.effects.SpectralPitchSemitones); err != nil {
-		return err
-	}
-	if err := e.sp.SetFrameSize(e.effects.SpectralPitchFrameSize); err != nil {
-		return err
-	}
-	return e.sp.SetAnalysisHop(e.effects.SpectralPitchHop)
+	return configureSpectralPitch(
+		e.sp,
+		e.sampleRate,
+		e.effects.SpectralPitchSemitones,
+		e.effects.SpectralPitchFrameSize,
+		e.effects.SpectralPitchHop,
+	)
 }
 
 func (e *Engine) rebuildReverbEffect() error {
@@ -457,34 +393,19 @@ func (e *Engine) rebuildReverbEffect() error {
 		return nil
 	}
 	if e.effects.ReverbModel == "fdn" {
-		if err := e.fdn.SetSampleRate(e.sampleRate); err != nil {
-			return err
-		}
-		if err := e.fdn.SetWet(e.effects.ReverbWet); err != nil {
-			return err
-		}
-		if err := e.fdn.SetDry(e.effects.ReverbDry); err != nil {
-			return err
-		}
-		if err := e.fdn.SetRT60(e.effects.ReverbRT60); err != nil {
-			return err
-		}
-		if err := e.fdn.SetPreDelay(e.effects.ReverbPreDelay); err != nil {
-			return err
-		}
-		if err := e.fdn.SetDamp(e.effects.ReverbDamp); err != nil {
-			return err
-		}
-		if err := e.fdn.SetModDepth(e.effects.ReverbModDepth); err != nil {
-			return err
-		}
-		return e.fdn.SetModRate(e.effects.ReverbModRate)
+		return configureFDNReverb(
+			e.fdn,
+			e.sampleRate,
+			e.effects.ReverbWet,
+			e.effects.ReverbDry,
+			e.effects.ReverbRT60,
+			e.effects.ReverbPreDelay,
+			e.effects.ReverbDamp,
+			e.effects.ReverbModDepth,
+			e.effects.ReverbModRate,
+		)
 	}
-	e.reverb.SetWet(e.effects.ReverbWet)
-	e.reverb.SetDry(e.effects.ReverbDry)
-	e.reverb.SetRoomSize(e.effects.ReverbRoomSize)
-	e.reverb.SetDamp(e.effects.ReverbDamp)
-	e.reverb.SetGain(e.effects.ReverbGain)
+	configureFreeverb(e.reverb, e.effects.ReverbWet, e.effects.ReverbDry, e.effects.ReverbRoomSize, e.effects.ReverbDamp, e.effects.ReverbGain)
 	return nil
 }
 
@@ -492,31 +413,18 @@ func (e *Engine) rebuildHarmonicBassEffect() error {
 	if !e.effects.HarmonicBassEnabled {
 		return nil
 	}
-	if err := e.bass.SetSampleRate(e.sampleRate); err != nil {
-		return err
-	}
-	if err := e.bass.SetFrequency(e.effects.HarmonicBassFrequency); err != nil {
-		return err
-	}
-	if err := e.bass.SetInputLevel(e.effects.HarmonicBassInputGain); err != nil {
-		return err
-	}
-	if err := e.bass.SetHighFrequencyLevel(e.effects.HarmonicBassHighGain); err != nil {
-		return err
-	}
-	if err := e.bass.SetOriginalBassLevel(e.effects.HarmonicBassOriginal); err != nil {
-		return err
-	}
-	if err := e.bass.SetHarmonicBassLevel(e.effects.HarmonicBassHarmonic); err != nil {
-		return err
-	}
-	if err := e.bass.SetDecay(e.effects.HarmonicBassDecay); err != nil {
-		return err
-	}
-	if err := e.bass.SetResponse(e.effects.HarmonicBassResponseMs); err != nil {
-		return err
-	}
-	return e.bass.SetHighpassMode(effects.HighpassSelect(e.effects.HarmonicBassHighpass))
+	return configureHarmonicBass(
+		e.bass,
+		e.sampleRate,
+		e.effects.HarmonicBassFrequency,
+		e.effects.HarmonicBassInputGain,
+		e.effects.HarmonicBassHighGain,
+		e.effects.HarmonicBassOriginal,
+		e.effects.HarmonicBassHarmonic,
+		e.effects.HarmonicBassDecay,
+		e.effects.HarmonicBassResponseMs,
+		e.effects.HarmonicBassHighpass,
+	)
 }
 
 func sanitizeSpectralPitchFrameSize(n int) int {
