@@ -222,6 +222,7 @@ type Engine struct {
 	chainOutBuf map[string][]float64
 
 	chainGraph *compiledChainGraph
+	chainNodes map[string]*chainEffectNode
 
 	spectrum             SpectrumParams
 	spectrumWindow       []float64

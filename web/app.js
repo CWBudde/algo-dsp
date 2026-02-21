@@ -364,6 +364,260 @@ const SETTINGS_STORAGE_KEY = "algo-dsp-settings";
 const FLANGER_MIN_DELAY_SECONDS = 0.0001;
 const FLANGER_MAX_DELAY_SECONDS = 0.01;
 const FLANGER_MAX_DEPTH_SECONDS = 0.009;
+const EFFECT_NODE_DEFAULTS = {
+  chorus: { mix: 0.18, depth: 0.003, speedHz: 0.35, stages: 3 },
+  flanger: {
+    rateHz: 0.25,
+    depth: 0.0015,
+    baseDelay: 0.001,
+    feedback: 0.25,
+    mix: 0.5,
+  },
+  ringmod: { carrierHz: 440, mix: 1.0 },
+  bitcrusher: { bitDepth: 8, downsample: 4, mix: 1.0 },
+  widener: { width: 1.0, mix: 0.5 },
+  phaser: {
+    rateHz: 0.4,
+    minFreqHz: 300,
+    maxFreqHz: 1600,
+    stages: 6,
+    feedback: 0.2,
+    mix: 0.5,
+  },
+  tremolo: { rateHz: 4, depth: 0.6, smoothingMs: 5, mix: 1.0 },
+  delay: { time: 0.25, feedback: 0.35, mix: 0.25 },
+  bass: {
+    frequency: 80,
+    inputGain: 1,
+    highGain: 1,
+    original: 1,
+    harmonic: 0,
+    decay: 0,
+    responseMs: 20,
+    highpass: 0,
+  },
+  "pitch-time": { semitones: 0, sequence: 40, overlap: 10, search: 15 },
+  "pitch-spectral": { semitones: 0, frameSize: 1024, hopRatio: 0.25 },
+  reverb: {
+    model: "freeverb",
+    wet: 0.22,
+    dry: 1.0,
+    roomSize: 0.72,
+    damp: 0.45,
+    rt60: 1.8,
+    preDelay: 0.01,
+    modDepth: 0.002,
+    modRate: 0.1,
+  },
+};
+
+function defaultNodeParams(type) {
+  const src = EFFECT_NODE_DEFAULTS[type] || {};
+  return { ...src };
+}
+
+function getSelectedEffectNode() {
+  const node = state.chain?.getSelectedNode?.();
+  if (!node || node.fixed) return null;
+  return node;
+}
+
+function applyNodeParamsToUI(node) {
+  if (!node || node.fixed) return;
+  const p = { ...defaultNodeParams(node.type), ...(node.params || {}) };
+  switch (node.type) {
+    case "chorus":
+      el.chorusMix.value = p.mix;
+      el.chorusDepth.value = p.depth;
+      el.chorusSpeed.value = p.speedHz;
+      el.chorusStages.value = p.stages;
+      break;
+    case "flanger":
+      el.flangerRate.value = p.rateHz;
+      el.flangerDepth.value = p.depth;
+      el.flangerBaseDelay.value = p.baseDelay;
+      el.flangerFeedback.value = p.feedback;
+      el.flangerMix.value = p.mix;
+      sanitizeFlangerControls();
+      break;
+    case "ringmod":
+      el.ringModCarrier.value = p.carrierHz;
+      el.ringModMix.value = p.mix;
+      break;
+    case "bitcrusher":
+      el.bitCrusherBits.value = p.bitDepth;
+      el.bitCrusherDownsample.value = p.downsample;
+      el.bitCrusherMix.value = p.mix;
+      break;
+    case "widener":
+      el.widenerWidth.value = p.width;
+      el.widenerMix.value = p.mix;
+      break;
+    case "phaser":
+      el.phaserRate.value = p.rateHz;
+      el.phaserMinFreq.value = p.minFreqHz;
+      el.phaserMaxFreq.value = p.maxFreqHz;
+      el.phaserStages.value = p.stages;
+      el.phaserFeedback.value = p.feedback;
+      el.phaserMix.value = p.mix;
+      break;
+    case "tremolo":
+      el.tremoloRate.value = p.rateHz;
+      el.tremoloDepth.value = p.depth;
+      el.tremoloSmoothing.value = p.smoothingMs;
+      el.tremoloMix.value = p.mix;
+      break;
+    case "delay":
+      el.delayTime.value = p.time;
+      el.delayFeedback.value = p.feedback;
+      el.delayMix.value = p.mix;
+      break;
+    case "bass":
+      el.harmonicFrequency.value = p.frequency;
+      el.harmonicInput.value = p.inputGain;
+      el.harmonicHigh.value = p.highGain;
+      el.harmonicOriginal.value = p.original;
+      el.harmonicHarmonic.value = p.harmonic;
+      el.harmonicDecay.value = p.decay;
+      el.harmonicResponse.value = p.responseMs;
+      el.harmonicHighpass.value = p.highpass;
+      break;
+    case "pitch-time":
+      el.timePitchSemitones.value = p.semitones;
+      el.timePitchSequence.value = p.sequence;
+      el.timePitchOverlap.value = p.overlap;
+      el.timePitchSearch.value = p.search;
+      break;
+    case "pitch-spectral":
+      el.spectralPitchSemitones.value = p.semitones;
+      el.spectralPitchFrame.value = p.frameSize;
+      el.spectralPitchHopRatio.value = String(p.hopRatio);
+      break;
+    case "reverb":
+      el.reverbModel.value = p.model || "freeverb";
+      el.reverbWet.value = p.wet;
+      el.reverbDry.value = p.dry;
+      el.reverbRoom.value = p.roomSize;
+      el.reverbDamp.value = p.damp;
+      el.reverbRT60.value = p.rt60;
+      el.reverbPreDelay.value = p.preDelay;
+      el.reverbModDepth.value = p.modDepth;
+      el.reverbModRate.value = p.modRate;
+      break;
+    default:
+      break;
+  }
+}
+
+function collectNodeParamsFromUI(nodeType) {
+  switch (nodeType) {
+    case "chorus":
+      return {
+        mix: Number(el.chorusMix.value),
+        depth: Number(el.chorusDepth.value),
+        speedHz: Number(el.chorusSpeed.value),
+        stages: Number(el.chorusStages.value),
+      };
+    case "flanger": {
+      const flanger = sanitizeFlangerControls();
+      return {
+        rateHz: Number(el.flangerRate.value),
+        depth: flanger.depth,
+        baseDelay: flanger.baseDelay,
+        feedback: Number(el.flangerFeedback.value),
+        mix: Number(el.flangerMix.value),
+      };
+    }
+    case "ringmod":
+      return {
+        carrierHz: Number(el.ringModCarrier.value),
+        mix: Number(el.ringModMix.value),
+      };
+    case "bitcrusher":
+      return {
+        bitDepth: Number(el.bitCrusherBits.value),
+        downsample: Number(el.bitCrusherDownsample.value),
+        mix: Number(el.bitCrusherMix.value),
+      };
+    case "widener":
+      return {
+        width: Number(el.widenerWidth.value),
+        mix: Number(el.widenerMix.value),
+      };
+    case "phaser":
+      return {
+        rateHz: Number(el.phaserRate.value),
+        minFreqHz: Number(el.phaserMinFreq.value),
+        maxFreqHz: Number(el.phaserMaxFreq.value),
+        stages: Number(el.phaserStages.value),
+        feedback: Number(el.phaserFeedback.value),
+        mix: Number(el.phaserMix.value),
+      };
+    case "tremolo":
+      return {
+        rateHz: Number(el.tremoloRate.value),
+        depth: Number(el.tremoloDepth.value),
+        smoothingMs: Number(el.tremoloSmoothing.value),
+        mix: Number(el.tremoloMix.value),
+      };
+    case "delay":
+      return {
+        time: Number(el.delayTime.value),
+        feedback: Number(el.delayFeedback.value),
+        mix: Number(el.delayMix.value),
+      };
+    case "bass":
+      return {
+        frequency: Number(el.harmonicFrequency.value),
+        inputGain: Number(el.harmonicInput.value),
+        highGain: Number(el.harmonicHigh.value),
+        original: Number(el.harmonicOriginal.value),
+        harmonic: Number(el.harmonicHarmonic.value),
+        decay: Number(el.harmonicDecay.value),
+        responseMs: Number(el.harmonicResponse.value),
+        highpass: Number(el.harmonicHighpass.value),
+      };
+    case "pitch-time": {
+      const sequence = Number(el.timePitchSequence.value);
+      const overlapRaw = Number(el.timePitchOverlap.value);
+      const overlap = Math.min(sequence - 1, Math.max(4, overlapRaw));
+      if (overlap !== overlapRaw) el.timePitchOverlap.value = String(overlap);
+      return {
+        semitones: Number(el.timePitchSemitones.value),
+        sequence,
+        overlap,
+        search: Number(el.timePitchSearch.value),
+      };
+    }
+    case "pitch-spectral":
+      return {
+        semitones: Number(el.spectralPitchSemitones.value),
+        frameSize: Number(el.spectralPitchFrame.value),
+        hopRatio: Number(el.spectralPitchHopRatio.value),
+      };
+    case "reverb":
+      return {
+        model: String(el.reverbModel.value || "freeverb"),
+        wet: Number(el.reverbWet.value),
+        dry: Number(el.reverbDry.value),
+        roomSize: Number(el.reverbRoom.value),
+        damp: Number(el.reverbDamp.value),
+        rt60: Number(el.reverbRT60.value),
+        preDelay: Number(el.reverbPreDelay.value),
+        modDepth: Number(el.reverbModDepth.value),
+        modRate: Number(el.reverbModRate.value),
+      };
+    default:
+      return {};
+  }
+}
+
+function commitSelectedNodeParamsFromUI() {
+  const node = getSelectedEffectNode();
+  if (!node) return false;
+  const params = collectNodeParamsFromUI(node.type);
+  return state.chain?.updateNodeParams(node.id, params) || false;
+}
 
 function saveSettings() {
   try {
@@ -867,91 +1121,23 @@ function spectralPitchHopSamples() {
 }
 
 function readEffectsFromChain() {
-  // Get enabled state from the chain graph
   const enabled = state.chain ? state.chain.getEnabledEffects() : new Set();
-
-  const spectralFrameSize = Number(el.spectralPitchFrame.value);
-  const spectralHopRatio = Number(el.spectralPitchHopRatio.value);
-  const spectralHop = spectralPitchHopSamples();
-
-  const timeSequence = Number(el.timePitchSequence.value);
-  const timeOverlapRaw = Number(el.timePitchOverlap.value);
-  const timeOverlap = Math.min(timeSequence - 1, Math.max(4, timeOverlapRaw));
-  if (timeOverlap !== timeOverlapRaw) {
-    el.timePitchOverlap.value = String(timeOverlap);
-  }
-
-  const flanger = sanitizeFlangerControls();
   const chainState = state.chain ? state.chain.getState() : null;
 
   state.effectsParams = {
+    ...state.effectsParams,
     chorusEnabled: enabled.has("chorus"),
-    chorusMix: Number(el.chorusMix.value),
-    chorusDepth: Number(el.chorusDepth.value),
-    chorusSpeedHz: Number(el.chorusSpeed.value),
-    chorusStages: Number(el.chorusStages.value),
     flangerEnabled: enabled.has("flanger"),
-    flangerRateHz: Number(el.flangerRate.value),
-    flangerDepth: flanger.depth,
-    flangerBaseDelay: flanger.baseDelay,
-    flangerFeedback: Number(el.flangerFeedback.value),
-    flangerMix: Number(el.flangerMix.value),
     ringModEnabled: enabled.has("ringmod"),
-    ringModCarrierHz: Number(el.ringModCarrier.value),
-    ringModMix: Number(el.ringModMix.value),
     bitCrusherEnabled: enabled.has("bitcrusher"),
-    bitCrusherBitDepth: Number(el.bitCrusherBits.value),
-    bitCrusherDownsample: Number(el.bitCrusherDownsample.value),
-    bitCrusherMix: Number(el.bitCrusherMix.value),
     widenerEnabled: enabled.has("widener"),
-    widenerWidth: Number(el.widenerWidth.value),
-    widenerMix: Number(el.widenerMix.value),
     phaserEnabled: enabled.has("phaser"),
-    phaserRateHz: Number(el.phaserRate.value),
-    phaserMinFreqHz: Number(el.phaserMinFreq.value),
-    phaserMaxFreqHz: Number(el.phaserMaxFreq.value),
-    phaserStages: Number(el.phaserStages.value),
-    phaserFeedback: Number(el.phaserFeedback.value),
-    phaserMix: Number(el.phaserMix.value),
     tremoloEnabled: enabled.has("tremolo"),
-    tremoloRateHz: Number(el.tremoloRate.value),
-    tremoloDepth: Number(el.tremoloDepth.value),
-    tremoloSmoothingMs: Number(el.tremoloSmoothing.value),
-    tremoloMix: Number(el.tremoloMix.value),
     delayEnabled: enabled.has("delay"),
-    delayTime: Number(el.delayTime.value),
-    delayFeedback: Number(el.delayFeedback.value),
-    delayMix: Number(el.delayMix.value),
     timePitchEnabled: enabled.has("pitch-time"),
-    timePitchSemitones: Number(el.timePitchSemitones.value),
-    timePitchSequence: timeSequence,
-    timePitchOverlap: timeOverlap,
-    timePitchSearch: Number(el.timePitchSearch.value),
     spectralPitchEnabled: enabled.has("pitch-spectral"),
-    spectralPitchSemitones: Number(el.spectralPitchSemitones.value),
-    spectralPitchFrameSize: spectralFrameSize,
-    spectralPitchHopRatio: spectralHopRatio,
-    spectralPitchHop: spectralHop,
     harmonicBassEnabled: enabled.has("bass"),
-    harmonicBassFrequency: Number(el.harmonicFrequency.value),
-    harmonicBassInputGain: Number(el.harmonicInput.value),
-    harmonicBassHighGain: Number(el.harmonicHigh.value),
-    harmonicBassOriginal: Number(el.harmonicOriginal.value),
-    harmonicBassHarmonic: Number(el.harmonicHarmonic.value),
-    harmonicBassDecay: Number(el.harmonicDecay.value),
-    harmonicBassResponseMs: Number(el.harmonicResponse.value),
-    harmonicBassHighpass: Number(el.harmonicHighpass.value),
     reverbEnabled: enabled.has("reverb"),
-    reverbModel: String(el.reverbModel.value || "freeverb"),
-    reverbWet: Number(el.reverbWet.value),
-    reverbDry: Number(el.reverbDry.value),
-    reverbRoomSize: Number(el.reverbRoom.value),
-    reverbDamp: Number(el.reverbDamp.value),
-    reverbGain: state.effectsParams.reverbGain,
-    reverbRT60: Number(el.reverbRT60.value),
-    reverbPreDelay: Number(el.reverbPreDelay.value),
-    reverbModDepth: Number(el.reverbModDepth.value),
-    reverbModRate: Number(el.reverbModRate.value),
     chainGraphJSON: chainState ? JSON.stringify(chainState) : "",
   };
 }
@@ -1336,10 +1522,13 @@ function bindEvents() {
     const eventName =
       control.tagName === "SELECT" ? "change" : "input";
     control.addEventListener(eventName, () => {
-      readEffectsFromChain();
       updateEffectsText();
-      syncEffectsToDSP();
-      saveSettings();
+      const committed = commitSelectedNodeParamsFromUI();
+      if (!committed) {
+        readEffectsFromChain();
+        syncEffectsToDSP();
+        saveSettings();
+      }
     });
   });
 
@@ -1415,6 +1604,7 @@ function bindEvents() {
 
 function initEffectChain() {
   state.chain = new window.EffectChain(el.chainCanvas, {
+    createParams: (type) => defaultNodeParams(type),
     onChange: () => {
       readEffectsFromChain();
       syncEffectsToDSP();
@@ -1438,6 +1628,7 @@ function showChainDetail(node) {
   document.querySelectorAll("[data-chain-detail]").forEach((card) => {
     card.hidden = card.dataset.chainDetail !== type;
   });
+  applyNodeParamsToUI(node);
   detail.hidden = false;
   updateEffectsText();
 }
