@@ -131,15 +131,16 @@
 
     /** Add an effect node at world position (wx, wy). Returns node id. */
     addEffect(type, wx, wy) {
-      // only one instance per non-utility type
       const def = FX_TYPES[type];
       if (!def) return null;
-      if (!def.utility && this.nodes.some((n) => n.type === type)) return null;
       const id = genId();
+      const instances = this.nodes.filter((n) => n.type === type).length;
+      const label = instances > 0 ? `${def.label} ${instances + 1}` : def.label;
+      const params = this.opts.createParams?.(type) || {};
       this.nodes.push({
-        id, type, label: def.label,
+        id, type, label,
         x: wx - NODE_W / 2, y: wy - NODE_H / 2,
-        bypassed: false, fixed: false,
+        bypassed: false, fixed: false, params,
       });
       this._autoInsert(id);
       this._emitChange();
@@ -166,6 +167,22 @@
       this.selectedId = id;
       this.opts.onSelect?.(id ? this._nodeById(id) : null);
       this.draw();
+    }
+
+    /** Returns selected node object or null. */
+    getSelectedNode() {
+      if (!this.selectedId) return null;
+      return this._nodeById(this.selectedId);
+    }
+
+    /** Merge params into node and emit change. */
+    updateNodeParams(nodeId, partial) {
+      const node = this._nodeById(nodeId);
+      if (!node || node.fixed) return false;
+      node.params = { ...(node.params || {}), ...(partial || {}) };
+      this._emitChange();
+      this.draw();
+      return true;
     }
 
     /** Returns a Set of effect type strings that are connected & not bypassed. */
@@ -213,7 +230,7 @@
       return {
         nodes: this.nodes.map((n) => ({
           id: n.id, type: n.type, label: n.label,
-          x: n.x, y: n.y, bypassed: n.bypassed, fixed: n.fixed,
+          x: n.x, y: n.y, bypassed: n.bypassed, fixed: n.fixed, params: n.params || {},
         })),
         connections: this.connections.map((c) => ({ from: c.from, to: c.to })),
         panX: this.panX, panY: this.panY,
@@ -224,7 +241,13 @@
     setState(data) {
       if (!data) return;
       if (Array.isArray(data.nodes)) {
-        this.nodes = data.nodes.map((n) => ({ ...n }));
+        this.nodes = data.nodes.map((n) => {
+          const node = { ...n };
+          if (!node.fixed && !node.params) {
+            node.params = this.opts.createParams?.(node.type) || {};
+          }
+          return node;
+        });
         // ensure _input and _output exist and are always marked fixed
         const inp = this._nodeById("_input");
         if (inp) { inp.fixed = true; inp.type = "_input"; }
@@ -881,24 +904,18 @@
         title.textContent = "Add Effect";
         menu.appendChild(title);
 
-        const used = this.usedTypes();
         for (const [type, def] of Object.entries(FX_TYPES)) {
           const item = document.createElement("button");
           item.className = "chain-menu-item";
           item.textContent = def.label;
-          if (used.has(type)) {
-            item.disabled = true;
-            item.classList.add("chain-menu-item--disabled");
-          } else {
-            item.addEventListener("click", () => {
-              const { x: wx, y: wy } = this._toWorld(
-                clientX - this.canvas.getBoundingClientRect().left,
-                clientY - this.canvas.getBoundingClientRect().top,
-              );
-              this.addEffect(type, wx, wy);
-              this._hideMenu();
-            });
-          }
+          item.addEventListener("click", () => {
+            const { x: wx, y: wy } = this._toWorld(
+              clientX - this.canvas.getBoundingClientRect().left,
+              clientY - this.canvas.getBoundingClientRect().top,
+            );
+            this.addEffect(type, wx, wy);
+            this._hideMenu();
+          });
           menu.appendChild(item);
         }
       }
