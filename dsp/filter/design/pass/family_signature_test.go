@@ -23,11 +23,9 @@ func measureBandSignature(sections []biquad.Coefficients, fStart, fEnd, step, sr
 		maxDB: -math.MaxFloat64,
 	}
 	var vals []float64
-	var freqs []float64
 	for f := fStart; f <= fEnd; f += step {
 		d := cascadeMagDB(sections, f, sr)
 		vals = append(vals, d)
-		freqs = append(freqs, f)
 		if d < sig.minDB {
 			sig.minDB = d
 			sig.troughFreqHz = f
