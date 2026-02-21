@@ -42,6 +42,12 @@ Both pitch shifters implement the `PitchProcessor` interface
 | ---------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **HarmonicBass** | `harmonic_bass.go` | Psychoacoustic bass enhancer. Crossover filtering with non-linear harmonic generation, configurable frequency/ratio/response/decay, and built-in limiter. |
 
+### Spatial
+
+| Effect              | File                                   | Description                                                                                                                                              |
+| ------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **StereoWidener**   | `spatial/stereo_widener.go`            | Mid/side stereo image widener. Configurable width (0=mono to 4=extra-wide), optional bass mono crossover to keep low frequencies centered when widening. |
+
 ---
 
 ## Candidate Effects for Future Addition
@@ -62,7 +68,6 @@ primitives already in the library (biquad filters, delay lines, LFOs).
 | **De-esser**             | Dynamics   | Frequency-selective compressor targeting sibilance (typically 4-10 kHz).  | Biquad bandpass for detection, compressor sidechain  |
 | **Expander**             | Dynamics   | Downward expander (complement to gate with gentler ratios).               | Gate with low ratio, or compressor with ratio < 1    |
 | **Multiband Compressor** | Dynamics   | Independent compression per frequency band using crossover filters.       | Crossover (already implemented), compressor per band |
-| **Stereo Widener**       | Spatial    | Mid/side processing to widen or narrow the stereo image.                  | M/S encode/decode, per-channel gain                  |
 
 ### Medium Priority
 
