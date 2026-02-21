@@ -22,6 +22,7 @@
     "pitch-spectral": { label: "Pitch (Spectral)",  hue: 170, category: "Pitch" },
     "dyn-compressor": { label: "Compressor",        hue: 120, category: "Dynamics" },
     "dyn-limiter":    { label: "Limiter",           hue: 98,  category: "Dynamics" },
+    "dyn-gate":       { label: "Gate/Expander",     hue: 82,  category: "Dynamics" },
     split:            { label: "Split",             hue: 210, category: "Routing", utility: true },
     sum:              { label: "Sum",               hue: 35,  category: "Routing", utility: true },
   };
@@ -914,13 +915,20 @@
           grouped.get(category).push([type, def]);
         }
         const categoryOrder = ["Filters", "Dynamics", "Modulation", "Time/Space", "Pitch", "Spatial", "Color", "Routing", "Other"];
-        for (const category of categoryOrder) {
-          const entries = grouped.get(category);
-          if (!entries || entries.length === 0) continue;
-          const cat = document.createElement("div");
-          cat.className = "chain-menu-title";
-          cat.textContent = category;
-          menu.appendChild(cat);
+        const showTypes = (category) => {
+          menu.innerHTML = "";
+          const back = document.createElement("button");
+          back.className = "chain-menu-item";
+          back.textContent = "← Categories";
+          back.addEventListener("click", showCategories);
+          menu.appendChild(back);
+
+          const title2 = document.createElement("div");
+          title2.className = "chain-menu-title";
+          title2.textContent = category;
+          menu.appendChild(title2);
+
+          const entries = grouped.get(category) || [];
           for (const [type, def] of entries) {
             const item = document.createElement("button");
             item.className = "chain-menu-item";
@@ -935,7 +943,26 @@
             });
             menu.appendChild(item);
           }
-        }
+        };
+
+        const showCategories = () => {
+          menu.innerHTML = "";
+          const title2 = document.createElement("div");
+          title2.className = "chain-menu-title";
+          title2.textContent = "Category";
+          menu.appendChild(title2);
+          for (const category of categoryOrder) {
+            const entries = grouped.get(category);
+            if (!entries || entries.length === 0) continue;
+            const item = document.createElement("button");
+            item.className = "chain-menu-item";
+            item.textContent = `${category} (${entries.length})`;
+            item.addEventListener("click", () => showTypes(category));
+            menu.appendChild(item);
+          }
+        };
+
+        showCategories();
       }
 
       // position

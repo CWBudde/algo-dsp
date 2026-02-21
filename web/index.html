@@ -313,13 +313,33 @@
                 <span>Filter</span>
               </div>
               <label>
+                Family
+                <select id="fx-filter-family">
+                  <option value="rbj">RBJ</option>
+                  <option value="butterworth">Butterworth</option>
+                  <option value="bessel">Bessel</option>
+                  <option value="chebyshev1">Chebyshev I</option>
+                  <option value="chebyshev2">Chebyshev II</option>
+                  <option value="elliptic">Elliptic</option>
+                </select>
+              </label>
+              <label>
                 Type
                 <select id="fx-filter-kind">
                   <option value="lowpass">Lowpass</option>
                   <option value="highpass">Highpass</option>
+                  <option value="bandpass">Bandpass</option>
+                  <option value="allpass">Allpass</option>
                   <option value="peak">Peak</option>
                   <option value="notch">Notch</option>
+                  <option value="lowshelf">Low Shelf</option>
+                  <option value="highshelf">High Shelf</option>
                 </select>
+              </label>
+              <label>
+                Order
+                <input id="fx-filter-order" type="range" min="1" max="12" step="1" value="2" />
+                <span id="fx-filter-order-value">2</span>
               </label>
               <label>
                 Frequency
@@ -327,7 +347,7 @@
                 <span id="fx-filter-freq-value">1200 Hz</span>
               </label>
               <label>
-                Q
+                Shape
                 <input id="fx-filter-q" type="range" min="0.2" max="8" step="0.01" value="0.707" />
                 <span id="fx-filter-q-value">0.71</span>
               </label>
@@ -385,6 +405,53 @@
                 Release
                 <input id="fx-lim-release" type="range" min="1" max="1000" step="1" value="100" />
                 <span id="fx-lim-release-value">100 ms</span>
+              </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="dyn-gate" hidden>
+              <div class="fx-option-head">
+                <span>Gate / Expander (Chain)</span>
+              </div>
+              <label>
+                Mode
+                <select id="fx-gate-mode">
+                  <option value="gate">Gate</option>
+                  <option value="expander">Expander</option>
+                </select>
+              </label>
+              <label>
+                Threshold
+                <input id="fx-gate-thresh" type="range" min="-80" max="0" step="0.5" value="-40" />
+                <span id="fx-gate-thresh-value">-40.0 dB</span>
+              </label>
+              <label>
+                Ratio
+                <input id="fx-gate-ratio" type="range" min="1" max="20" step="0.1" value="10" />
+                <span id="fx-gate-ratio-value">10.0:1</span>
+              </label>
+              <label>
+                Knee
+                <input id="fx-gate-knee" type="range" min="0" max="24" step="0.5" value="6" />
+                <span id="fx-gate-knee-value">6.0 dB</span>
+              </label>
+              <label>
+                Attack
+                <input id="fx-gate-attack" type="range" min="0.1" max="200" step="0.1" value="0.1" />
+                <span id="fx-gate-attack-value">0.1 ms</span>
+              </label>
+              <label>
+                Hold
+                <input id="fx-gate-hold" type="range" min="0" max="500" step="1" value="50" />
+                <span id="fx-gate-hold-value">50 ms</span>
+              </label>
+              <label>
+                Release
+                <input id="fx-gate-release" type="range" min="1" max="1000" step="1" value="100" />
+                <span id="fx-gate-release-value">100 ms</span>
+              </label>
+              <label>
+                Range
+                <input id="fx-gate-range" type="range" min="-120" max="0" step="1" value="-80" />
+                <span id="fx-gate-range-value">-80 dB</span>
               </label>
             </div>
             <div class="fx-card chain-detail-card" data-chain-detail="widener" hidden>
