@@ -641,6 +641,7 @@
       this.canvas.addEventListener("mousedown",   (e) => this._onMouseDown(e));
       this.canvas.addEventListener("mousemove",    (e) => this._onMouseMove(e));
       this.canvas.addEventListener("mouseup",      (e) => this._onMouseUp(e));
+      this.canvas.addEventListener("dblclick",     (e) => this._onDoubleClick(e));
       document.addEventListener("mouseup",         (e) => {
         if (this._action && e.target !== this.canvas) this._onMouseUp(e);
       });
@@ -805,6 +806,27 @@
       this._hoveredWire = null;
       this.canvas.style.cursor = "default";
       if (!this._action) this.draw();
+    }
+
+    _onDoubleClick(e) {
+      if (e.button !== 0) return;
+      const { cx, cy } = this._mousePos(e);
+      const { x: wx, y: wy } = this._toWorld(cx, cy);
+
+      const node = this._hitNode(wx, wy);
+      if (node && !node.fixed) {
+        this.removeNode(node.id);
+        this._hideMenu();
+        return;
+      }
+
+      const wire = this._hitWire(wx, wy);
+      if (wire) {
+        this.connections = this.connections.filter((c) => c !== wire);
+        this._emitChange();
+        this._hideMenu();
+        this.draw();
+      }
     }
 
     _onKeyDown(e) {
