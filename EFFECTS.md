@@ -45,6 +45,12 @@ both single-sample (`Process`) and buffer-based (`ProcessInPlace`) processing.
 Both pitch shifters implement the `PitchProcessor` interface
 (`pitch_processor.go`) for interchangeable use.
 
+### Lo-fi
+
+| Effect          | File              | Description                                                                                                                                          |
+| --------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **BitCrusher**  | `bit_crusher.go`  | Sample rate and bit-depth reduction for retro/lo-fi aesthetics. Configurable bit depth (1-32, fractional), downsample factor (1-256), and dry/wet mix.|
+
 ### Spectral / Psychoacoustic
 
 | Effect           | File               | Description                                                                                                                                               |
@@ -78,7 +84,6 @@ additional DSP building blocks.
 | Effect                         | Category    | Description                                                                               | Notes                                            |
 | ------------------------------ | ----------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | **Distortion / Saturation**    | Waveshaping | Tube, tape, or transistor-style non-linear waveshaping with configurable transfer curves. | Oversampling recommended to control aliasing     |
-| **Bit Crusher**                | Lo-fi       | Sample rate and bit-depth reduction for retro/lo-fi aesthetics.                           | Quantization + sample-and-hold                   |
 | **Auto-Wah / Envelope Filter** | Modulation  | Bandpass filter with cutoff controlled by input envelope.                                 | Envelope follower + biquad bandpass              |
 | **Convolution Reverb**         | Spatial     | IR-based reverb using partitioned convolution.                                            | `conv` package (overlap-add already implemented) |
 | **Transient Shaper**           | Dynamics    | Independent control of attack and sustain portions of transients.                         | Envelope follower with dual time constants       |
