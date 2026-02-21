@@ -69,6 +69,7 @@ const state = {
   eqUI: null,
   compUI: null,
   limUI: null,
+  chain: null,
   hoverInfo: null,
   eqParams: {
     hpFamily: "rbj",
@@ -104,7 +105,6 @@ const state = {
     master: 1,
   },
   effectsParams: {
-    effectsMode: "chorus",
     chorusEnabled: false,
     chorusMix: 0.18,
     chorusDepth: 0.003,
@@ -210,7 +210,8 @@ const el = {
   randomizeSteps: document.getElementById("randomize-steps"),
   eqCanvas: document.getElementById("eq-canvas"),
   eqReadout: document.getElementById("eq-readout"),
-  chorusEnabled: document.getElementById("chorus-enabled"),
+  chainCanvas: document.getElementById("chain-canvas"),
+  chainDetail: document.getElementById("chain-detail"),
   chorusMix: document.getElementById("chorus-mix"),
   chorusMixValue: document.getElementById("chorus-mix-value"),
   chorusDepth: document.getElementById("chorus-depth"),
@@ -219,7 +220,6 @@ const el = {
   chorusSpeedValue: document.getElementById("chorus-speed-value"),
   chorusStages: document.getElementById("chorus-stages"),
   chorusStagesValue: document.getElementById("chorus-stages-value"),
-  flangerEnabled: document.getElementById("flanger-enabled"),
   flangerRate: document.getElementById("flanger-rate"),
   flangerRateValue: document.getElementById("flanger-rate-value"),
   flangerDepth: document.getElementById("flanger-depth"),
@@ -230,7 +230,6 @@ const el = {
   flangerFeedbackValue: document.getElementById("flanger-feedback-value"),
   flangerMix: document.getElementById("flanger-mix"),
   flangerMixValue: document.getElementById("flanger-mix-value"),
-  phaserEnabled: document.getElementById("phaser-enabled"),
   phaserRate: document.getElementById("phaser-rate"),
   phaserRateValue: document.getElementById("phaser-rate-value"),
   phaserMinFreq: document.getElementById("phaser-min-freq"),
@@ -243,7 +242,6 @@ const el = {
   phaserFeedbackValue: document.getElementById("phaser-feedback-value"),
   phaserMix: document.getElementById("phaser-mix"),
   phaserMixValue: document.getElementById("phaser-mix-value"),
-  tremoloEnabled: document.getElementById("tremolo-enabled"),
   tremoloRate: document.getElementById("tremolo-rate"),
   tremoloRateValue: document.getElementById("tremolo-rate-value"),
   tremoloDepth: document.getElementById("tremolo-depth"),
@@ -252,14 +250,12 @@ const el = {
   tremoloSmoothingValue: document.getElementById("tremolo-smoothing-value"),
   tremoloMix: document.getElementById("tremolo-mix"),
   tremoloMixValue: document.getElementById("tremolo-mix-value"),
-  delayEnabled: document.getElementById("delay-enabled"),
   delayTime: document.getElementById("delay-time"),
   delayTimeValue: document.getElementById("delay-time-value"),
   delayFeedback: document.getElementById("delay-feedback"),
   delayFeedbackValue: document.getElementById("delay-feedback-value"),
   delayMix: document.getElementById("delay-mix"),
   delayMixValue: document.getElementById("delay-mix-value"),
-  timePitchEnabled: document.getElementById("time-pitch-enabled"),
   timePitchSemitones: document.getElementById("time-pitch-semitones"),
   timePitchSemitonesValue: document.getElementById("time-pitch-semitones-value"),
   timePitchSequence: document.getElementById("time-pitch-sequence"),
@@ -268,15 +264,12 @@ const el = {
   timePitchOverlapValue: document.getElementById("time-pitch-overlap-value"),
   timePitchSearch: document.getElementById("time-pitch-search"),
   timePitchSearchValue: document.getElementById("time-pitch-search-value"),
-  spectralPitchEnabled: document.getElementById("spectral-pitch-enabled"),
   spectralPitchSemitones: document.getElementById("spectral-pitch-semitones"),
   spectralPitchSemitonesValue: document.getElementById("spectral-pitch-semitones-value"),
   spectralPitchFrame: document.getElementById("spectral-pitch-frame"),
   spectralPitchFrameValue: document.getElementById("spectral-pitch-frame-value"),
   spectralPitchHopRatio: document.getElementById("spectral-pitch-hop-ratio"),
   spectralPitchHopRatioValue: document.getElementById("spectral-pitch-hop-ratio-value"),
-  effectsMode: document.getElementById("effects-mode"),
-  harmonicEnabled: document.getElementById("harmonic-enabled"),
   harmonicFrequency: document.getElementById("harmonic-frequency"),
   harmonicFrequencyValue: document.getElementById("harmonic-frequency-value"),
   harmonicInput: document.getElementById("harmonic-input"),
@@ -293,7 +286,6 @@ const el = {
   harmonicResponseValue: document.getElementById("harmonic-response-value"),
   harmonicHighpass: document.getElementById("harmonic-highpass"),
   harmonicHighpassValue: document.getElementById("harmonic-highpass-value"),
-  reverbEnabled: document.getElementById("reverb-enabled"),
   reverbModel: document.getElementById("reverb-model"),
   reverbWet: document.getElementById("reverb-wet"),
   reverbWetValue: document.getElementById("reverb-wet-value"),
@@ -351,6 +343,7 @@ function saveSettings() {
       effectsParams: state.effectsParams,
       compParams: state.compParams,
       limParams: state.limParams,
+      chainState: state.chain ? state.chain.getState() : null,
     };
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   } catch (e) {
@@ -376,37 +369,28 @@ function loadSettings() {
 
   if (settings.effectsParams) {
     Object.assign(state.effectsParams, settings.effectsParams);
-    if (el.effectsMode)
-      el.effectsMode.value = state.effectsParams.effectsMode || "chorus";
-    if (el.chorusEnabled) el.chorusEnabled.checked = !!state.effectsParams.chorusEnabled;
     if (el.chorusMix) el.chorusMix.value = state.effectsParams.chorusMix;
     if (el.chorusDepth) el.chorusDepth.value = state.effectsParams.chorusDepth;
     if (el.chorusSpeed) el.chorusSpeed.value = state.effectsParams.chorusSpeedHz;
     if (el.chorusStages) el.chorusStages.value = state.effectsParams.chorusStages;
-    if (el.flangerEnabled) el.flangerEnabled.checked = !!state.effectsParams.flangerEnabled;
     if (el.flangerRate) el.flangerRate.value = state.effectsParams.flangerRateHz;
     if (el.flangerDepth) el.flangerDepth.value = state.effectsParams.flangerDepth;
     if (el.flangerBaseDelay) el.flangerBaseDelay.value = state.effectsParams.flangerBaseDelay;
     if (el.flangerFeedback) el.flangerFeedback.value = state.effectsParams.flangerFeedback;
     if (el.flangerMix) el.flangerMix.value = state.effectsParams.flangerMix;
-    if (el.phaserEnabled) el.phaserEnabled.checked = !!state.effectsParams.phaserEnabled;
     if (el.phaserRate) el.phaserRate.value = state.effectsParams.phaserRateHz;
     if (el.phaserMinFreq) el.phaserMinFreq.value = state.effectsParams.phaserMinFreqHz;
     if (el.phaserMaxFreq) el.phaserMaxFreq.value = state.effectsParams.phaserMaxFreqHz;
     if (el.phaserStages) el.phaserStages.value = state.effectsParams.phaserStages;
     if (el.phaserFeedback) el.phaserFeedback.value = state.effectsParams.phaserFeedback;
     if (el.phaserMix) el.phaserMix.value = state.effectsParams.phaserMix;
-    if (el.tremoloEnabled) el.tremoloEnabled.checked = !!state.effectsParams.tremoloEnabled;
     if (el.tremoloRate) el.tremoloRate.value = state.effectsParams.tremoloRateHz;
     if (el.tremoloDepth) el.tremoloDepth.value = state.effectsParams.tremoloDepth;
     if (el.tremoloSmoothing) el.tremoloSmoothing.value = state.effectsParams.tremoloSmoothingMs;
     if (el.tremoloMix) el.tremoloMix.value = state.effectsParams.tremoloMix;
-    if (el.delayEnabled) el.delayEnabled.checked = !!state.effectsParams.delayEnabled;
     if (el.delayTime) el.delayTime.value = state.effectsParams.delayTime;
     if (el.delayFeedback) el.delayFeedback.value = state.effectsParams.delayFeedback;
     if (el.delayMix) el.delayMix.value = state.effectsParams.delayMix;
-    if (el.timePitchEnabled)
-      el.timePitchEnabled.checked = !!state.effectsParams.timePitchEnabled;
     if (el.timePitchSemitones)
       el.timePitchSemitones.value = state.effectsParams.timePitchSemitones;
     if (el.timePitchSequence)
@@ -415,8 +399,6 @@ function loadSettings() {
       el.timePitchOverlap.value = state.effectsParams.timePitchOverlap;
     if (el.timePitchSearch)
       el.timePitchSearch.value = state.effectsParams.timePitchSearch;
-    if (el.spectralPitchEnabled)
-      el.spectralPitchEnabled.checked = !!state.effectsParams.spectralPitchEnabled;
     if (el.spectralPitchSemitones)
       el.spectralPitchSemitones.value = state.effectsParams.spectralPitchSemitones;
     if (el.spectralPitchFrame)
@@ -425,8 +407,6 @@ function loadSettings() {
       el.spectralPitchHopRatio.value = String(
         state.effectsParams.spectralPitchHopRatio ?? 0.25,
       );
-    if (el.harmonicEnabled)
-      el.harmonicEnabled.checked = !!state.effectsParams.harmonicBassEnabled;
     if (el.harmonicFrequency)
       el.harmonicFrequency.value = state.effectsParams.harmonicBassFrequency;
     if (el.harmonicInput)
@@ -443,7 +423,6 @@ function loadSettings() {
       el.harmonicResponse.value = state.effectsParams.harmonicBassResponseMs;
     if (el.harmonicHighpass)
       el.harmonicHighpass.value = state.effectsParams.harmonicBassHighpass;
-    if (el.reverbEnabled) el.reverbEnabled.checked = !!state.effectsParams.reverbEnabled;
     if (el.reverbModel) el.reverbModel.value = state.effectsParams.reverbModel || "freeverb";
     if (el.reverbWet) el.reverbWet.value = state.effectsParams.reverbWet;
     if (el.reverbDry) el.reverbDry.value = state.effectsParams.reverbDry;
@@ -453,9 +432,12 @@ function loadSettings() {
     if (el.reverbPreDelay) el.reverbPreDelay.value = state.effectsParams.reverbPreDelay;
     if (el.reverbModDepth) el.reverbModDepth.value = state.effectsParams.reverbModDepth;
     if (el.reverbModRate) el.reverbModRate.value = state.effectsParams.reverbModRate;
-    updateEffectsModeUI();
     updateEffectsText();
-    readEffectsFromUI();
+  }
+
+  if (settings.chainState && state.chain) {
+    state.chain.setState(settings.chainState);
+    readEffectsFromChain();
   }
 
   if (settings.compParams) {
@@ -805,8 +787,10 @@ function spectralPitchHopSamples() {
   return Math.max(1, Math.min(frame - 1, hop));
 }
 
-function readEffectsFromUI() {
-  const effectsMode = String(el.effectsMode?.value || "chorus");
+function readEffectsFromChain() {
+  // Get enabled state from the chain graph
+  const enabled = state.chain ? state.chain.getEnabledEffects() : new Set();
+
   const spectralFrameSize = Number(el.spectralPitchFrame.value);
   const spectralHopRatio = Number(el.spectralPitchHopRatio.value);
   const spectralHop = spectralPitchHopSamples();
@@ -819,47 +803,44 @@ function readEffectsFromUI() {
   }
 
   state.effectsParams = {
-    effectsMode,
-    chorusEnabled: effectsMode === "chorus" && el.chorusEnabled.checked,
+    chorusEnabled: enabled.has("chorus"),
     chorusMix: Number(el.chorusMix.value),
     chorusDepth: Number(el.chorusDepth.value),
     chorusSpeedHz: Number(el.chorusSpeed.value),
     chorusStages: Number(el.chorusStages.value),
-    flangerEnabled: effectsMode === "flanger" && el.flangerEnabled.checked,
+    flangerEnabled: enabled.has("flanger"),
     flangerRateHz: Number(el.flangerRate.value),
     flangerDepth: Number(el.flangerDepth.value),
     flangerBaseDelay: Number(el.flangerBaseDelay.value),
     flangerFeedback: Number(el.flangerFeedback.value),
     flangerMix: Number(el.flangerMix.value),
-    phaserEnabled: effectsMode === "phaser" && el.phaserEnabled.checked,
+    phaserEnabled: enabled.has("phaser"),
     phaserRateHz: Number(el.phaserRate.value),
     phaserMinFreqHz: Number(el.phaserMinFreq.value),
     phaserMaxFreqHz: Number(el.phaserMaxFreq.value),
     phaserStages: Number(el.phaserStages.value),
     phaserFeedback: Number(el.phaserFeedback.value),
     phaserMix: Number(el.phaserMix.value),
-    tremoloEnabled: effectsMode === "tremolo" && el.tremoloEnabled.checked,
+    tremoloEnabled: enabled.has("tremolo"),
     tremoloRateHz: Number(el.tremoloRate.value),
     tremoloDepth: Number(el.tremoloDepth.value),
     tremoloSmoothingMs: Number(el.tremoloSmoothing.value),
     tremoloMix: Number(el.tremoloMix.value),
-    delayEnabled: effectsMode === "delay" && el.delayEnabled.checked,
+    delayEnabled: enabled.has("delay"),
     delayTime: Number(el.delayTime.value),
     delayFeedback: Number(el.delayFeedback.value),
     delayMix: Number(el.delayMix.value),
-    timePitchEnabled:
-      effectsMode === "pitch-time" && el.timePitchEnabled.checked,
+    timePitchEnabled: enabled.has("pitch-time"),
     timePitchSemitones: Number(el.timePitchSemitones.value),
     timePitchSequence: timeSequence,
     timePitchOverlap: timeOverlap,
     timePitchSearch: Number(el.timePitchSearch.value),
-    spectralPitchEnabled:
-      effectsMode === "pitch-spectral" && el.spectralPitchEnabled.checked,
+    spectralPitchEnabled: enabled.has("pitch-spectral"),
     spectralPitchSemitones: Number(el.spectralPitchSemitones.value),
     spectralPitchFrameSize: spectralFrameSize,
     spectralPitchHopRatio: spectralHopRatio,
     spectralPitchHop: spectralHop,
-    harmonicBassEnabled: effectsMode === "bass" && el.harmonicEnabled.checked,
+    harmonicBassEnabled: enabled.has("bass"),
     harmonicBassFrequency: Number(el.harmonicFrequency.value),
     harmonicBassInputGain: Number(el.harmonicInput.value),
     harmonicBassHighGain: Number(el.harmonicHigh.value),
@@ -868,7 +849,7 @@ function readEffectsFromUI() {
     harmonicBassDecay: Number(el.harmonicDecay.value),
     harmonicBassResponseMs: Number(el.harmonicResponse.value),
     harmonicBassHighpass: Number(el.harmonicHighpass.value),
-    reverbEnabled: el.reverbEnabled.checked,
+    reverbEnabled: enabled.has("reverb"),
     reverbModel: String(el.reverbModel.value || "freeverb"),
     reverbWet: Number(el.reverbWet.value),
     reverbDry: Number(el.reverbDry.value),
@@ -950,13 +931,6 @@ function updateEffectsText() {
     el.reverbModRateValue.textContent = `${Number(el.reverbModRate.value).toFixed(2)} Hz`;
   }
   updateReverbModelUI();
-}
-
-function updateEffectsModeUI() {
-  const mode = el.effectsMode?.value || "chorus";
-  document.querySelectorAll(".fx-option").forEach((node) => {
-    node.hidden = node.dataset.mode !== mode;
-  });
 }
 
 function updateReverbModelUI() {
@@ -1202,45 +1176,37 @@ function bindEvents() {
     syncWaveformToDSP();
   });
 
+  // Effects parameter sliders (enable state is driven by the chain graph).
   [
-    el.effectsMode,
-    el.chorusEnabled,
     el.chorusMix,
     el.chorusDepth,
     el.chorusSpeed,
     el.chorusStages,
-    el.flangerEnabled,
     el.flangerRate,
     el.flangerDepth,
     el.flangerBaseDelay,
     el.flangerFeedback,
     el.flangerMix,
-    el.phaserEnabled,
     el.phaserRate,
     el.phaserMinFreq,
     el.phaserMaxFreq,
     el.phaserStages,
     el.phaserFeedback,
     el.phaserMix,
-    el.tremoloEnabled,
     el.tremoloRate,
     el.tremoloDepth,
     el.tremoloSmoothing,
     el.tremoloMix,
-    el.delayEnabled,
     el.delayTime,
     el.delayFeedback,
     el.delayMix,
-    el.timePitchEnabled,
     el.timePitchSemitones,
     el.timePitchSequence,
     el.timePitchOverlap,
     el.timePitchSearch,
-    el.spectralPitchEnabled,
     el.spectralPitchSemitones,
     el.spectralPitchFrame,
     el.spectralPitchHopRatio,
-    el.harmonicEnabled,
     el.harmonicFrequency,
     el.harmonicInput,
     el.harmonicHigh,
@@ -1249,7 +1215,6 @@ function bindEvents() {
     el.harmonicDecay,
     el.harmonicResponse,
     el.harmonicHighpass,
-    el.reverbEnabled,
     el.reverbModel,
     el.reverbWet,
     el.reverbDry,
@@ -1261,12 +1226,9 @@ function bindEvents() {
     el.reverbModRate,
   ].forEach((control) => {
     const eventName =
-      control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
+      control.tagName === "SELECT" ? "change" : "input";
     control.addEventListener(eventName, () => {
-      if (control === el.effectsMode) {
-        updateEffectsModeUI();
-      }
-      readEffectsFromUI();
+      readEffectsFromChain();
       updateEffectsText();
       syncEffectsToDSP();
       saveSettings();
@@ -1322,9 +1284,8 @@ function bindEvents() {
   el.decayValue.textContent = `${Number(el.decay.value).toFixed(2)} s`;
   el.shuffleValue.textContent = `${Math.round(Number(el.shuffle.value) * 100)}%`;
   el.waveform.value = state.waveform;
-  updateEffectsModeUI();
   updateEffectsText();
-  readEffectsFromUI();
+  readEffectsFromChain();
   updateCompressorText();
   readCompressorFromUI();
   updateLimiterText();
@@ -1342,12 +1303,44 @@ function bindEvents() {
   loadSettings();
 }
 
+// ---- Effect Chain Canvas Initialisation ----
+
+function initEffectChain() {
+  state.chain = new window.EffectChain(el.chainCanvas, {
+    onChange: () => {
+      readEffectsFromChain();
+      syncEffectsToDSP();
+      saveSettings();
+    },
+    onSelect: (node) => {
+      showChainDetail(node);
+    },
+  });
+}
+
+/** Show/hide the detail panel for the selected chain node. */
+function showChainDetail(node) {
+  const detail = el.chainDetail;
+  if (!node || node.fixed) {
+    detail.hidden = true;
+    return;
+  }
+  // Map node type to the data-chain-detail attribute
+  const type = node.type;
+  document.querySelectorAll("[data-chain-detail]").forEach((card) => {
+    card.hidden = card.dataset.chainDetail !== type;
+  });
+  detail.hidden = false;
+  updateEffectsText();
+}
+
 buildStepUI();
 initDynamicsGraphs();
 initEQCanvas();
 startEQDrawLoop();
-bindEvents();
 initTheme();
+initEffectChain();
+bindEvents();
 ensureDSP(48000)
   .then(() => {
     state.eqUI?.draw();

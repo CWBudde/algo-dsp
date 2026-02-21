@@ -19,21 +19,21 @@ both single-sample (`Process`) and buffer-based (`ProcessInPlace`) processing.
 
 ### Time-Based
 
-| Effect         | File            | Description                                                                                                                                 |
-| -------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Delay**      | `delay.go`      | Feedback delay line with configurable delay time (1-2000 ms), feedback, and dry/wet mix. Circular buffer implementation.                    |
-| **Reverb**     | `reverb.go`     | Schroeder/Freeverb-style algorithmic reverb. 8 comb filters + 4 allpass filters with room size and damping controls.                        |
-| **FDN Reverb** | `fdn_reverb.go` | Feedback delay network reverb. 8 delay lines mixed via Hadamard matrix, with RT60-based decay, pre-delay, damping, and LFO modulation.      |
+| Effect         | File            | Description                                                                                                                            |
+| -------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Delay**      | `delay.go`      | Feedback delay line with configurable delay time (1-2000 ms), feedback, and dry/wet mix. Circular buffer implementation.               |
+| **Reverb**     | `reverb.go`     | Schroeder/Freeverb-style algorithmic reverb. 8 comb filters + 4 allpass filters with room size and damping controls.                   |
+| **FDN Reverb** | `fdn_reverb.go` | Feedback delay network reverb. 8 delay lines mixed via Hadamard matrix, with RT60-based decay, pre-delay, damping, and LFO modulation. |
 
 ### Modulation
 
-| Effect              | File                  | Description                                                                                                                                  |
-| ------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Chorus**          | `chorus.go`           | Multi-voice modulated delay for ensemble/thickening effects. Hermite interpolation, configurable speed, depth, base delay, and voice count.  |
-| **Flanger**         | `flanger.go`          | Short modulated delay (0.1-10 ms) with feedback for classic jet/sweep sound. Configurable speed, depth, feedback, and base delay.            |
-| **Phaser**          | `phaser.go`           | Cascaded allpass filters with LFO-modulated center frequencies. Configurable stages, speed, depth, feedback, and mix.                        |
-| **Ring Modulator**  | `ring_modulator.go`   | Multiplication of input with a sine-wave carrier oscillator, producing sum and difference frequencies. Configurable carrier frequency and mix.|
-| **Tremolo**         | `tremolo.go`          | LFO amplitude modulation with optional smoothing. Configurable rate, depth, smoothing time, and mix.                                         |
+| Effect             | File                | Description                                                                                                                                    |
+| ------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Chorus**         | `chorus.go`         | Multi-voice modulated delay for ensemble/thickening effects. Hermite interpolation, configurable speed, depth, base delay, and voice count.    |
+| **Flanger**        | `flanger.go`        | Short modulated delay (0.1-10 ms) with feedback for classic jet/sweep sound. Configurable speed, depth, feedback, and base delay.              |
+| **Phaser**         | `phaser.go`         | Cascaded allpass filters with LFO-modulated center frequencies. Configurable stages, speed, depth, feedback, and mix.                          |
+| **Ring Modulator** | `ring_modulator.go` | Multiplication of input with a sine-wave carrier oscillator, producing sum and difference frequencies. Configurable carrier frequency and mix. |
+| **Tremolo**        | `tremolo.go`        | LFO amplitude modulation with optional smoothing. Configurable rate, depth, smoothing time, and mix.                                           |
 
 ### Pitch
 
@@ -47,9 +47,9 @@ Both pitch shifters implement the `PitchProcessor` interface
 
 ### Lo-fi
 
-| Effect          | File              | Description                                                                                                                                          |
-| --------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **BitCrusher**  | `bit_crusher.go`  | Sample rate and bit-depth reduction for retro/lo-fi aesthetics. Configurable bit depth (1-32, fractional), downsample factor (1-256), and dry/wet mix.|
+| Effect         | File             | Description                                                                                                                                            |
+| -------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **BitCrusher** | `bit_crusher.go` | Sample rate and bit-depth reduction for retro/lo-fi aesthetics. Configurable bit depth (1-32, fractional), downsample factor (1-256), and dry/wet mix. |
 
 ### Spectral / Psychoacoustic
 
@@ -59,9 +59,9 @@ Both pitch shifters implement the `PitchProcessor` interface
 
 ### Spatial
 
-| Effect              | File                                   | Description                                                                                                                                              |
-| ------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **StereoWidener**   | `spatial/stereo_widener.go`            | Mid/side stereo image widener. Configurable width (0=mono to 4=extra-wide), optional bass mono crossover to keep low frequencies centered when widening. |
+| Effect            | File                        | Description                                                                                                                                              |
+| ----------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **StereoWidener** | `spatial/stereo_widener.go` | Mid/side stereo image widener. Configurable width (0=mono to 4=extra-wide), optional bass mono crossover to keep low frequencies centered when widening. |
 
 ---
 
@@ -75,11 +75,11 @@ by priority and implementation complexity.
 These fill common gaps in any effects toolkit and can largely be built from
 primitives already in the library (biquad filters, delay lines, LFOs).
 
-| Effect                   | Category   | Description                                                               | Building Blocks                                      |
-| ------------------------ | ---------- | ------------------------------------------------------------------------- | ---------------------------------------------------- |
-| **De-esser**             | Dynamics   | Frequency-selective compressor targeting sibilance (typically 4-10 kHz).  | Biquad bandpass for detection, compressor sidechain  |
-| **Expander**             | Dynamics   | Downward expander (complement to gate with gentler ratios).               | Gate with low ratio, or compressor with ratio < 1    |
-| **Multiband Compressor** | Dynamics   | Independent compression per frequency band using crossover filters.       | Crossover (already implemented), compressor per band |
+| Effect                   | Category | Description                                                              | Building Blocks                                      |
+| ------------------------ | -------- | ------------------------------------------------------------------------ | ---------------------------------------------------- |
+| **De-esser**             | Dynamics | Frequency-selective compressor targeting sibilance (typically 4-10 kHz). | Biquad bandpass for detection, compressor sidechain  |
+| **Expander**             | Dynamics | Downward expander (complement to gate with gentler ratios).              | Gate with low ratio, or compressor with ratio < 1    |
+| **Multiband Compressor** | Dynamics | Independent compression per frequency band using crossover filters.      | Crossover (already implemented), compressor per band |
 
 ### Medium Priority
 

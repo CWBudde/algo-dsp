@@ -165,7 +165,7 @@ func TestRingModulatorSumDifferenceFrequencies(t *testing.T) {
 		return math.Sqrt(cosSum*cosSum+sinSum*sinSum) / float64(nSamples)
 	}
 
-	sumMag := mag(inputHz + carrierHz) // 500 Hz
+	sumMag := mag(inputHz + carrierHz)  // 500 Hz
 	diffMag := mag(inputHz - carrierHz) // 300 Hz
 	inputMag := mag(inputHz)            // 400 Hz - should be suppressed
 	carrierMag := mag(carrierHz)        // 100 Hz - should be absent

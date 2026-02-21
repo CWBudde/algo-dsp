@@ -277,8 +277,8 @@ func (b *HarmonicBass) rebuildFilters() error {
 	b.crossoverLP = biquad.NewChain(lp)
 	b.crossoverHP = biquad.NewChain(hp)
 
-	hpFreq := 16.0
-	hpOrder := 2
+	var hpFreq float64
+	var hpOrder int
 	switch b.highpassSelect {
 	case HighpassDC:
 		hpFreq = 16.0

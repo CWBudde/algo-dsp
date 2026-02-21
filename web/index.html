@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="eq-canvas.js" defer></script>
     <script src="dynamics-graph.js" defer></script>
+    <script src="effect-chain.js" defer></script>
     <script src="wasm_exec.js" defer></script>
     <script src="app.js" defer></script>
   </head>
@@ -187,33 +188,19 @@
         </div>
       </section>
 
-      <section class="panel effects-panel">
-        <h2>Effects</h2>
-        <div class="effects-grid">
-          <div class="fx-card fx-select-card">
-            <div class="fx-head">
-              <h3>Enhancer</h3>
-              <label class="fx-toggle fx-mode">
-                <span>Mode</span>
-                <select id="effects-mode">
-                  <option value="chorus" selected>Chorus</option>
-                  <option value="flanger">Flanger</option>
-                  <option value="phaser">Phaser</option>
-                  <option value="tremolo">Tremolo</option>
-                  <option value="delay">Delay</option>
-                  <option value="bass">Psychoacoustic Bass</option>
-                  <option value="pitch-time">Pitch Shifter (Time)</option>
-                  <option value="pitch-spectral">Pitch Shifter (Spectral)</option>
-                </select>
-              </label>
-            </div>
-            <div class="fx-option" data-mode="chorus">
+      <section class="panel chain-panel">
+        <div class="chain-head">
+          <h2>Effects Chain</h2>
+          <p class="chain-hint">Right-click to add effects. Drag blocks with left button. Click a block for details.</p>
+        </div>
+        <div class="chain-canvas-wrap">
+          <canvas id="chain-canvas" height="280" aria-label="Effect chain graph editor"></canvas>
+        </div>
+        <div id="chain-detail" class="chain-detail" hidden>
+          <div class="chain-detail-inner">
+            <div class="fx-card chain-detail-card" data-chain-detail="chorus" hidden>
               <div class="fx-option-head">
                 <span>Chorus</span>
-                <label class="fx-toggle">
-                  <input id="chorus-enabled" type="checkbox" />
-                  <span>On</span>
-                </label>
               </div>
               <label>
                 Mix
@@ -236,13 +223,9 @@
                 <span id="chorus-stages-value">3</span>
               </label>
             </div>
-            <div class="fx-option" data-mode="delay" hidden>
+            <div class="fx-card chain-detail-card" data-chain-detail="delay" hidden>
               <div class="fx-option-head">
                 <span>Delay</span>
-                <label class="fx-toggle">
-                  <input id="delay-enabled" type="checkbox" />
-                  <span>On</span>
-                </label>
               </div>
               <label>
                 Time
@@ -260,13 +243,9 @@
                 <span id="delay-mix-value">25%</span>
               </label>
             </div>
-            <div class="fx-option" data-mode="flanger" hidden>
+            <div class="fx-card chain-detail-card" data-chain-detail="flanger" hidden>
               <div class="fx-option-head">
                 <span>Flanger</span>
-                <label class="fx-toggle">
-                  <input id="flanger-enabled" type="checkbox" />
-                  <span>On</span>
-                </label>
               </div>
               <label>
                 Rate
@@ -294,13 +273,9 @@
                 <span id="flanger-mix-value">50%</span>
               </label>
             </div>
-            <div class="fx-option" data-mode="phaser" hidden>
+            <div class="fx-card chain-detail-card" data-chain-detail="phaser" hidden>
               <div class="fx-option-head">
                 <span>Phaser</span>
-                <label class="fx-toggle">
-                  <input id="phaser-enabled" type="checkbox" />
-                  <span>On</span>
-                </label>
               </div>
               <label>
                 Rate
@@ -333,13 +308,9 @@
                 <span id="phaser-mix-value">50%</span>
               </label>
             </div>
-            <div class="fx-option" data-mode="tremolo" hidden>
+            <div class="fx-card chain-detail-card" data-chain-detail="tremolo" hidden>
               <div class="fx-option-head">
                 <span>Tremolo</span>
-                <label class="fx-toggle">
-                  <input id="tremolo-enabled" type="checkbox" />
-                  <span>On</span>
-                </label>
               </div>
               <label>
                 Rate
@@ -362,13 +333,9 @@
                 <span id="tremolo-mix-value">100%</span>
               </label>
             </div>
-            <div class="fx-option" data-mode="bass" hidden>
+            <div class="fx-card chain-detail-card" data-chain-detail="bass" hidden>
               <div class="fx-option-head">
                 <span>Psychoacoustic Bass</span>
-                <label class="fx-toggle">
-                  <input id="harmonic-enabled" type="checkbox" />
-                  <span>On</span>
-                </label>
               </div>
               <label>
                 Frequency
@@ -415,13 +382,9 @@
                 <span id="harmonic-highpass-value">DC</span>
               </label>
             </div>
-            <div class="fx-option" data-mode="pitch-time" hidden>
+            <div class="fx-card chain-detail-card" data-chain-detail="pitch-time" hidden>
               <div class="fx-option-head">
                 <span>Pitch Shifter (Time)</span>
-                <label class="fx-toggle">
-                  <input id="time-pitch-enabled" type="checkbox" />
-                  <span>On</span>
-                </label>
               </div>
               <label>
                 Semitones
@@ -444,13 +407,9 @@
                 <span id="time-pitch-search-value">15 ms</span>
               </label>
             </div>
-            <div class="fx-option" data-mode="pitch-spectral" hidden>
+            <div class="fx-card chain-detail-card" data-chain-detail="pitch-spectral" hidden>
               <div class="fx-option-head">
                 <span>Pitch Shifter (Spectral)</span>
-                <label class="fx-toggle">
-                  <input id="spectral-pitch-enabled" type="checkbox" />
-                  <span>On</span>
-                </label>
               </div>
               <label>
                 Semitones
@@ -478,63 +437,58 @@
                 <span id="spectral-pitch-hop-ratio-value">256 samples (25%)</span>
               </label>
             </div>
-          </div>
-
-          <div class="fx-card">
-            <div class="fx-head">
-              <h3>Reverb</h3>
-              <label class="fx-toggle">
-                <input id="reverb-enabled" type="checkbox" />
-                <span>On</span>
+            <div class="fx-card chain-detail-card" data-chain-detail="reverb" hidden>
+              <div class="fx-option-head">
+                <span>Reverb</span>
+              </div>
+              <label>
+                Model
+                <select id="reverb-model">
+                  <option value="freeverb" selected>Freeverb</option>
+                  <option value="fdn">FDN</option>
+                </select>
+              </label>
+              <label>
+                Wet
+                <input id="reverb-wet" type="range" min="0" max="1" step="0.01" value="0.22" />
+                <span id="reverb-wet-value">22%</span>
+              </label>
+              <label>
+                Dry
+                <input id="reverb-dry" type="range" min="0" max="1.5" step="0.01" value="1" />
+                <span id="reverb-dry-value">1.00</span>
+              </label>
+              <label class="reverb-freeverb">
+                Room
+                <input id="reverb-room" type="range" min="0" max="0.98" step="0.01" value="0.72" />
+                <span id="reverb-room-value">0.72</span>
+              </label>
+              <label>
+                Damp
+                <input id="reverb-damp" type="range" min="0" max="0.99" step="0.01" value="0.45" />
+                <span id="reverb-damp-value">0.45</span>
+              </label>
+              <label class="reverb-fdn" hidden>
+                RT60
+                <input id="reverb-rt60" type="range" min="0.2" max="8" step="0.05" value="1.8" />
+                <span id="reverb-rt60-value">1.80 s</span>
+              </label>
+              <label class="reverb-fdn" hidden>
+                Pre-delay
+                <input id="reverb-predelay" type="range" min="0" max="0.08" step="0.001" value="0.01" />
+                <span id="reverb-predelay-value">10.0 ms</span>
+              </label>
+              <label class="reverb-fdn" hidden>
+                Mod depth
+                <input id="reverb-mod-depth" type="range" min="0" max="0.01" step="0.0001" value="0.002" />
+                <span id="reverb-mod-depth-value">2.0 ms</span>
+              </label>
+              <label class="reverb-fdn" hidden>
+                Mod rate
+                <input id="reverb-mod-rate" type="range" min="0" max="1" step="0.01" value="0.1" />
+                <span id="reverb-mod-rate-value">0.10 Hz</span>
               </label>
             </div>
-            <label>
-              Model
-              <select id="reverb-model">
-                <option value="freeverb" selected>Freeverb</option>
-                <option value="fdn">FDN</option>
-              </select>
-            </label>
-            <label>
-              Wet
-              <input id="reverb-wet" type="range" min="0" max="1" step="0.01" value="0.22" />
-              <span id="reverb-wet-value">22%</span>
-            </label>
-            <label>
-              Dry
-              <input id="reverb-dry" type="range" min="0" max="1.5" step="0.01" value="1" />
-              <span id="reverb-dry-value">1.00</span>
-            </label>
-            <label class="reverb-freeverb">
-              Room
-              <input id="reverb-room" type="range" min="0" max="0.98" step="0.01" value="0.72" />
-              <span id="reverb-room-value">0.72</span>
-            </label>
-            <label>
-              Damp
-              <input id="reverb-damp" type="range" min="0" max="0.99" step="0.01" value="0.45" />
-              <span id="reverb-damp-value">0.45</span>
-            </label>
-            <label class="reverb-fdn" hidden>
-              RT60
-              <input id="reverb-rt60" type="range" min="0.2" max="8" step="0.05" value="1.8" />
-              <span id="reverb-rt60-value">1.80 s</span>
-            </label>
-            <label class="reverb-fdn" hidden>
-              Pre-delay
-              <input id="reverb-predelay" type="range" min="0" max="0.08" step="0.001" value="0.01" />
-              <span id="reverb-predelay-value">10.0 ms</span>
-            </label>
-            <label class="reverb-fdn" hidden>
-              Mod depth
-              <input id="reverb-mod-depth" type="range" min="0" max="0.01" step="0.0001" value="0.002" />
-              <span id="reverb-mod-depth-value">2.0 ms</span>
-            </label>
-            <label class="reverb-fdn" hidden>
-              Mod rate
-              <input id="reverb-mod-rate" type="range" min="0" max="1" step="0.01" value="0.1" />
-              <span id="reverb-mod-rate-value">0.10 Hz</span>
-            </label>
           </div>
         </div>
       </section>
