@@ -560,6 +560,116 @@ button.active {
   font-size: 0.85rem;
 }
 
+/* ---- Effect Chain Canvas ---- */
+
+.chain-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.chain-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.chain-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  opacity: 0.65;
+}
+
+.chain-canvas-wrap {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--canvas-bg);
+}
+
+#chain-canvas {
+  width: 100%;
+  height: 280px;
+  display: block;
+  touch-action: none;
+}
+
+.chain-detail {
+  animation: chain-detail-in 0.18s ease;
+}
+
+@keyframes chain-detail-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.chain-detail-inner {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.chain-detail-card {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chain-detail-card[hidden] {
+  display: none;
+}
+
+/* ---- Chain Context Menu ---- */
+
+.chain-context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  padding: 0.35rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.chain-menu-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+  padding: 0.3rem 0.55rem 0.25rem;
+}
+
+.chain-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 7px;
+  padding: 0.42rem 0.55rem;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.chain-menu-item:hover:not(:disabled) {
+  background: rgba(194, 77, 44, 0.1);
+}
+
+.chain-menu-item--disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.chain-menu-item--danger {
+  color: #c24d2c;
+}
+
+.chain-menu-item--danger:hover {
+  background: rgba(194, 77, 44, 0.12);
+}
+
 .dynamics-grid {
   grid-template-areas:
     "comp visuals"
@@ -634,5 +744,10 @@ button.active {
 
   .effects-grid {
     grid-template-columns: 1fr;
+  }
+
+  .chain-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

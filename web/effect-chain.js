@@ -1,0 +1,906 @@
+// Effect Chain — visual node-graph editor for the algo-dsp web demo.
+// Replaces the mode-selector UI with a 2-D canvas where users can add,
+// position, connect and bypass effect blocks.
+
+(function () {
+  "use strict";
+
+  // ---- effect type registry ------------------------------------------------
+  const FX_TYPES = {
+    chorus:           { label: "Chorus",            hue: 15  },
+    flanger:          { label: "Flanger",           hue: 200 },
+    phaser:           { label: "Phaser",            hue: 140 },
+    tremolo:          { label: "Tremolo",           hue: 270 },
+    delay:            { label: "Delay",             hue: 35  },
+    bass:             { label: "Bass Enhancer",     hue: 10  },
+    "pitch-time":     { label: "Pitch (Time)",      hue: 190 },
+    "pitch-spectral": { label: "Pitch (Spectral)",  hue: 170 },
+    reverb:           { label: "Reverb",            hue: 260 },
+  };
+
+  // map effect type -> effectsParams enable key
+  const ENABLE_KEYS = {
+    chorus:           "chorusEnabled",
+    flanger:          "flangerEnabled",
+    phaser:           "phaserEnabled",
+    tremolo:          "tremoloEnabled",
+    delay:            "delayEnabled",
+    bass:             "harmonicBassEnabled",
+    "pitch-time":     "timePitchEnabled",
+    "pitch-spectral": "spectralPitchEnabled",
+    reverb:           "reverbEnabled",
+  };
+
+  // map effect type -> the data-mode value used on detail containers
+  const DETAIL_MODE = {
+    chorus:           "chorus",
+    flanger:          "flanger",
+    phaser:           "phaser",
+    tremolo:          "tremolo",
+    delay:            "delay",
+    bass:             "bass",
+    "pitch-time":     "pitch-time",
+    "pitch-spectral": "pitch-spectral",
+    reverb:           "reverb",
+  };
+
+  // ---- geometry constants ---------------------------------------------------
+  const NODE_W   = 152;
+  const NODE_H   = 52;
+  const PORT_R   = 7;
+  const BYPASS_S = 14; // bypass-button square size
+  const BYPASS_PAD = 6;
+  const DRAG_THRESHOLD = 4;
+
+  // ---- id generator ---------------------------------------------------------
+  let _nextId = 1;
+  function genId() { return "n" + (_nextId++); }
+
+  // ---- helpers --------------------------------------------------------------
+  function isDark() {
+    return document.documentElement.dataset.resolvedTheme === "dark";
+  }
+
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function nodeColor(node, alpha) {
+    if (node.type === "_input" || node.type === "_output") {
+      const base = isDark() ? "180,200,220" : "80,90,100";
+      return `rgba(${base},${alpha})`;
+    }
+    const def = FX_TYPES[node.type];
+    const hue = def ? def.hue : 0;
+    const sat = isDark() ? "45%" : "55%";
+    const lit = isDark() ? "52%" : "42%";
+    return `hsla(${hue},${sat},${lit},${alpha})`;
+  }
+
+  function nodeFill(node) {
+    if (node.type === "_input" || node.type === "_output") {
+      return isDark() ? "#283440" : "#e8edf2";
+    }
+    const def = FX_TYPES[node.type];
+    const hue = def ? def.hue : 0;
+    const sat = isDark() ? "20%" : "75%";
+    const lit = isDark() ? "22%" : "94%";
+    return `hsl(${hue},${sat},${lit})`;
+  }
+
+  // ---- EffectChain class ----------------------------------------------------
+  class EffectChain {
+    constructor(canvas, opts) {
+      this.canvas = canvas;
+      this.ctx    = canvas.getContext("2d");
+      this.opts   = opts || {};
+
+      // view transform (pan offset in CSS pixels)
+      this.panX = 0;
+      this.panY = 0;
+
+      // data
+      this.nodes       = [];
+      this.connections  = []; // { from: id, to: id }
+      this.selectedId   = null;
+
+      // interaction state
+      this._action      = null; // null | 'pan' | 'drag' | 'connect'
+      this._startCX     = 0;
+      this._startCY     = 0;
+      this._dragNodeStartX = 0;
+      this._dragNodeStartY = 0;
+      this._moved        = false;
+      this._connectFrom  = null; // node id when connecting
+      this._connectEnd   = null; // {x,y} temp wire end (world coords)
+      this._connectPort  = null; // 'output' | 'input'
+      this._hoveredNode  = null;
+      this._hoveredPort  = null; // { nodeId, port: 'input'|'output' }
+
+      // context menu DOM
+      this._menu = null;
+
+      // add fixed Input and Output nodes
+      this._addFixedNode("_input",  "Input",  60,  130);
+      this._addFixedNode("_output", "Output", 560, 130);
+      // default connection
+      this.connections.push({ from: "_input", to: "_output" });
+
+      this._bind();
+      this.draw();
+    }
+
+    // ---- public API --------------------------------------------------------
+
+    /** Add an effect node at world position (wx, wy). Returns node id. */
+    addEffect(type, wx, wy) {
+      // only one instance per type
+      if (this.nodes.some((n) => n.type === type)) return null;
+      const def = FX_TYPES[type];
+      if (!def) return null;
+      const id = genId();
+      this.nodes.push({
+        id, type, label: def.label,
+        x: wx - NODE_W / 2, y: wy - NODE_H / 2,
+        bypassed: false, fixed: false,
+      });
+      this._autoInsert(id);
+      this._emitChange();
+      this.draw();
+      return id;
+    }
+
+    /** Remove an effect node. */
+    removeNode(id) {
+      const node = this._nodeById(id);
+      if (!node || node.fixed) return;
+      this._removeFromChain(id);
+      this.nodes = this.nodes.filter((n) => n.id !== id);
+      if (this.selectedId === id) {
+        this.selectedId = null;
+        this.opts.onSelect?.(null);
+      }
+      this._emitChange();
+      this.draw();
+    }
+
+    /** Select a node (or null to deselect). */
+    selectNode(id) {
+      this.selectedId = id;
+      this.opts.onSelect?.(id ? this._nodeById(id) : null);
+      this.draw();
+    }
+
+    /** Returns a Set of effect type strings that are connected & not bypassed. */
+    getEnabledEffects() {
+      const enabled = new Set();
+      // walk the chain from _input
+      let cur = "_input";
+      const visited = new Set();
+      while (cur) {
+        visited.add(cur);
+        const node = this._nodeById(cur);
+        if (node && node.type !== "_input" && node.type !== "_output" && !node.bypassed) {
+          enabled.add(node.type);
+        }
+        const conn = this.connections.find((c) => c.from === cur);
+        if (!conn || visited.has(conn.to)) break;
+        cur = conn.to;
+      }
+      return enabled;
+    }
+
+    /** Returns map of effect type -> bypass state for all effect nodes. */
+    getNodeStates() {
+      const states = {};
+      for (const n of this.nodes) {
+        if (n.type !== "_input" && n.type !== "_output") {
+          states[n.type] = { bypassed: n.bypassed, connected: this._isInChain(n.id) };
+        }
+      }
+      return states;
+    }
+
+    /** Serialisable state for persistence. */
+    getState() {
+      return {
+        nodes: this.nodes.map((n) => ({
+          id: n.id, type: n.type, label: n.label,
+          x: n.x, y: n.y, bypassed: n.bypassed, fixed: n.fixed,
+        })),
+        connections: this.connections.map((c) => ({ from: c.from, to: c.to })),
+        panX: this.panX, panY: this.panY,
+      };
+    }
+
+    /** Restore from serialised state. */
+    setState(data) {
+      if (!data) return;
+      if (Array.isArray(data.nodes)) {
+        this.nodes = data.nodes.map((n) => ({ ...n }));
+        // ensure _input and _output exist
+        if (!this._nodeById("_input"))  this._addFixedNode("_input",  "Input",  60, 130);
+        if (!this._nodeById("_output")) this._addFixedNode("_output", "Output", 560, 130);
+      }
+      if (Array.isArray(data.connections)) {
+        this.connections = data.connections.map((c) => ({ ...c }));
+      }
+      if (typeof data.panX === "number") this.panX = data.panX;
+      if (typeof data.panY === "number") this.panY = data.panY;
+      // reset id counter above max
+      for (const n of this.nodes) {
+        const m = n.id.match(/^n(\d+)$/);
+        if (m) _nextId = Math.max(_nextId, Number(m[1]) + 1);
+      }
+      this.selectedId = null;
+      this.draw();
+    }
+
+    /** Types already present in the chain. */
+    usedTypes() {
+      return new Set(this.nodes.filter((n) => !n.fixed).map((n) => n.type));
+    }
+
+    // ---- rendering ---------------------------------------------------------
+
+    draw() {
+      const canvas = this.canvas;
+      const ctx    = this.ctx;
+      const dpr    = window.devicePixelRatio || 1;
+      const rect   = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+        canvas.width  = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      this._drawGrid(w, h);
+
+      ctx.save();
+      ctx.translate(this.panX, this.panY);
+
+      // wires
+      for (const conn of this.connections) {
+        this._drawWire(conn);
+      }
+
+      // temp wire while connecting
+      if (this._action === "connect" && this._connectEnd) {
+        this._drawTempWire();
+      }
+
+      // nodes
+      for (const node of this.nodes) {
+        this._drawNode(node);
+      }
+
+      ctx.restore();
+    }
+
+    _drawGrid(w, h) {
+      const ctx = this.ctx;
+      const step = 24;
+      const offX = ((this.panX % step) + step) % step;
+      const offY = ((this.panY % step) + step) % step;
+      ctx.strokeStyle = isDark() ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.05)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = offX; x < w; x += step) {
+        ctx.moveTo(Math.round(x) + 0.5, 0);
+        ctx.lineTo(Math.round(x) + 0.5, h);
+      }
+      for (let y = offY; y < h; y += step) {
+        ctx.moveTo(0, Math.round(y) + 0.5);
+        ctx.lineTo(w, Math.round(y) + 0.5);
+      }
+      ctx.stroke();
+    }
+
+    _drawWire(conn) {
+      const fromNode = this._nodeById(conn.from);
+      const toNode   = this._nodeById(conn.to);
+      if (!fromNode || !toNode) return;
+
+      const x1 = fromNode.x + NODE_W;
+      const y1 = fromNode.y + NODE_H / 2;
+      const x2 = toNode.x;
+      const y2 = toNode.y + NODE_H / 2;
+
+      const ctx = this.ctx;
+      const dx = Math.max(Math.abs(x2 - x1) * 0.45, 40);
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.bezierCurveTo(x1 + dx, y1, x2 - dx, y2, x2, y2);
+      ctx.strokeStyle = isDark() ? "rgba(140,170,200,0.55)" : "rgba(60,80,100,0.4)";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+
+    _drawTempWire() {
+      if (!this._connectFrom || !this._connectEnd) return;
+      const node = this._nodeById(this._connectFrom);
+      if (!node) return;
+
+      let x1, y1;
+      if (this._connectPort === "output") {
+        x1 = node.x + NODE_W;
+        y1 = node.y + NODE_H / 2;
+      } else {
+        x1 = node.x;
+        y1 = node.y + NODE_H / 2;
+      }
+      const x2 = this._connectEnd.x;
+      const y2 = this._connectEnd.y;
+
+      const ctx = this.ctx;
+      const dx = Math.max(Math.abs(x2 - x1) * 0.45, 30);
+
+      ctx.beginPath();
+      if (this._connectPort === "output") {
+        ctx.moveTo(x1, y1);
+        ctx.bezierCurveTo(x1 + dx, y1, x2 - dx, y2, x2, y2);
+      } else {
+        ctx.moveTo(x1, y1);
+        ctx.bezierCurveTo(x1 - dx, y1, x2 + dx, y2, x2, y2);
+      }
+      ctx.strokeStyle = isDark() ? "rgba(140,170,200,0.35)" : "rgba(60,80,100,0.25)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    _drawNode(node) {
+      const ctx = this.ctx;
+      const x = node.x;
+      const y = node.y;
+      const selected = node.id === this.selectedId;
+      const hovered  = node.id === this._hoveredNode;
+      const bypassed = node.bypassed;
+      const alpha    = bypassed ? 0.5 : 1;
+
+      // shadow
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.12)";
+      ctx.shadowBlur  = 8;
+      ctx.shadowOffsetY = 2;
+
+      // body
+      const r = 10;
+      ctx.beginPath();
+      ctx.roundRect(x, y, NODE_W, NODE_H, r);
+      ctx.fillStyle = nodeFill(node);
+      ctx.globalAlpha = alpha;
+      ctx.fill();
+      ctx.restore();
+
+      // border
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.roundRect(x, y, NODE_W, NODE_H, r);
+      if (selected) {
+        ctx.strokeStyle = cssVar("--accent") || "#c24d2c";
+        ctx.lineWidth = 2.5;
+      } else if (hovered) {
+        ctx.strokeStyle = nodeColor(node, 0.7);
+        ctx.lineWidth = 1.8;
+      } else {
+        ctx.strokeStyle = isDark() ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.12)";
+        ctx.lineWidth = 1;
+      }
+      ctx.stroke();
+
+      // label
+      ctx.font = "600 13px 'IBM Plex Sans', 'Segoe UI', sans-serif";
+      ctx.fillStyle = nodeColor(node, 1);
+      ctx.textBaseline = "middle";
+      const labelX = x + 14;
+      const labelY = y + NODE_H / 2;
+      ctx.fillText(node.label, labelX, labelY);
+
+      // bypass button (only for effect nodes)
+      if (!node.fixed) {
+        this._drawBypassBtn(node);
+      }
+
+      // ports
+      if (node.type !== "_input") {
+        // input port (left)
+        const ipx = x;
+        const ipy = y + NODE_H / 2;
+        const ihov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "input";
+        this._drawPort(ipx, ipy, ihov, this._hasIncoming(node.id));
+      }
+      if (node.type !== "_output") {
+        // output port (right)
+        const opx = x + NODE_W;
+        const opy = y + NODE_H / 2;
+        const ohov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "output";
+        this._drawPort(opx, opy, ohov, this._hasOutgoing(node.id));
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    _drawBypassBtn(node) {
+      const ctx = this.ctx;
+      const bx = node.x + NODE_W - BYPASS_S - BYPASS_PAD;
+      const by = node.y + (NODE_H - BYPASS_S) / 2;
+
+      // button background
+      ctx.beginPath();
+      ctx.roundRect(bx, by, BYPASS_S, BYPASS_S, 4);
+      if (node.bypassed) {
+        ctx.fillStyle = isDark() ? "rgba(255,100,80,0.25)" : "rgba(200,60,40,0.15)";
+      } else {
+        ctx.fillStyle = isDark() ? "rgba(100,200,120,0.25)" : "rgba(40,160,60,0.15)";
+      }
+      ctx.fill();
+
+      // power icon
+      const cx = bx + BYPASS_S / 2;
+      const cy = by + BYPASS_S / 2;
+      const ir = 4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ir, -Math.PI * 0.7, Math.PI * 0.7, false);
+      ctx.strokeStyle = node.bypassed
+        ? (isDark() ? "rgba(255,120,100,0.7)" : "rgba(180,50,30,0.6)")
+        : (isDark() ? "rgba(100,220,130,0.8)" : "rgba(40,140,60,0.7)");
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - ir);
+      ctx.lineTo(cx, cy - ir + 3);
+      ctx.stroke();
+    }
+
+    _drawPort(px, py, hovered, connected) {
+      const ctx = this.ctx;
+      const r = hovered ? PORT_R + 1.5 : PORT_R;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      if (connected) {
+        ctx.fillStyle = isDark() ? "rgba(140,180,220,0.7)" : "rgba(60,100,140,0.6)";
+      } else {
+        ctx.fillStyle = isDark() ? "rgba(100,120,140,0.4)" : "rgba(120,140,160,0.35)";
+      }
+      ctx.fill();
+      ctx.strokeStyle = isDark() ? "rgba(200,220,240,0.5)" : "rgba(255,255,255,0.8)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // ---- hit testing -------------------------------------------------------
+
+    _hitNode(wx, wy) {
+      // reverse order so topmost node wins
+      for (let i = this.nodes.length - 1; i >= 0; i--) {
+        const n = this.nodes[i];
+        if (wx >= n.x && wx <= n.x + NODE_W && wy >= n.y && wy <= n.y + NODE_H) {
+          return n;
+        }
+      }
+      return null;
+    }
+
+    _hitBypass(wx, wy, node) {
+      if (!node || node.fixed) return false;
+      const bx = node.x + NODE_W - BYPASS_S - BYPASS_PAD;
+      const by = node.y + (NODE_H - BYPASS_S) / 2;
+      return wx >= bx && wx <= bx + BYPASS_S && wy >= by && wy <= by + BYPASS_S;
+    }
+
+    _hitPort(wx, wy) {
+      const hitR = PORT_R + 6;
+      for (let i = this.nodes.length - 1; i >= 0; i--) {
+        const n = this.nodes[i];
+        // input port
+        if (n.type !== "_input") {
+          const ipx = n.x;
+          const ipy = n.y + NODE_H / 2;
+          if (Math.hypot(wx - ipx, wy - ipy) <= hitR) {
+            return { nodeId: n.id, port: "input" };
+          }
+        }
+        // output port
+        if (n.type !== "_output") {
+          const opx = n.x + NODE_W;
+          const opy = n.y + NODE_H / 2;
+          if (Math.hypot(wx - opx, wy - opy) <= hitR) {
+            return { nodeId: n.id, port: "output" };
+          }
+        }
+      }
+      return null;
+    }
+
+    // ---- coordinate transforms ---------------------------------------------
+
+    _toWorld(cx, cy) {
+      return { x: cx - this.panX, y: cy - this.panY };
+    }
+
+    _mousePos(e) {
+      const rect = this.canvas.getBoundingClientRect();
+      return { cx: e.clientX - rect.left, cy: e.clientY - rect.top };
+    }
+
+    // ---- event binding -----------------------------------------------------
+
+    _bind() {
+      this.canvas.addEventListener("mousedown",   (e) => this._onMouseDown(e));
+      this.canvas.addEventListener("mousemove",    (e) => this._onMouseMove(e));
+      this.canvas.addEventListener("mouseup",      (e) => this._onMouseUp(e));
+      this.canvas.addEventListener("contextmenu",  (e) => e.preventDefault());
+      this.canvas.addEventListener("mouseleave",   ()  => this._onMouseLeave());
+      document.addEventListener("keydown", (e) => this._onKeyDown(e));
+
+      // close context menu on outside click
+      document.addEventListener("mousedown", (e) => {
+        if (this._menu && !this._menu.contains(e.target)) {
+          this._hideMenu();
+        }
+      });
+    }
+
+    _onMouseDown(e) {
+      this._hideMenu();
+
+      const { cx, cy } = this._mousePos(e);
+      const { x: wx, y: wy } = this._toWorld(cx, cy);
+
+      this._startCX = cx;
+      this._startCY = cy;
+      this._moved = false;
+
+      if (e.button === 2) {
+        // right button: pan
+        this._action = "pan";
+        this._panStartX = this.panX;
+        this._panStartY = this.panY;
+        return;
+      }
+
+      if (e.button === 0) {
+        // left button: check port first, then node, then deselect
+        const port = this._hitPort(wx, wy);
+        if (port) {
+          this._action = "connect";
+          this._connectFrom = port.nodeId;
+          this._connectPort = port.port;
+          this._connectEnd = { x: wx, y: wy };
+          return;
+        }
+
+        const node = this._hitNode(wx, wy);
+        if (node) {
+          // check bypass button
+          if (this._hitBypass(wx, wy, node)) {
+            node.bypassed = !node.bypassed;
+            this._emitChange();
+            this.draw();
+            return;
+          }
+          this._action = "drag";
+          this._dragNodeId = node.id;
+          this._dragNodeStartX = node.x;
+          this._dragNodeStartY = node.y;
+          return;
+        }
+
+        // clicked empty space: deselect
+        this.selectNode(null);
+      }
+    }
+
+    _onMouseMove(e) {
+      const { cx, cy } = this._mousePos(e);
+      const { x: wx, y: wy } = this._toWorld(cx, cy);
+      const dx = cx - this._startCX;
+      const dy = cy - this._startCY;
+
+      if (!this._moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+        this._moved = true;
+      }
+
+      if (this._action === "pan") {
+        this.panX = this._panStartX + dx;
+        this.panY = this._panStartY + dy;
+        this.draw();
+        return;
+      }
+
+      if (this._action === "drag" && this._moved) {
+        const node = this._nodeById(this._dragNodeId);
+        if (node) {
+          node.x = this._dragNodeStartX + dx;
+          node.y = this._dragNodeStartY + dy;
+          this.draw();
+        }
+        return;
+      }
+
+      if (this._action === "connect") {
+        this._connectEnd = { x: wx, y: wy };
+        this.draw();
+        return;
+      }
+
+      // hover detection
+      const port = this._hitPort(wx, wy);
+      const node = this._hitNode(wx, wy);
+      const prevHovNode = this._hoveredNode;
+      const prevHovPort = this._hoveredPort;
+      this._hoveredNode = node ? node.id : null;
+      this._hoveredPort = port;
+      if (this._hoveredNode !== prevHovNode || this._hoveredPort !== prevHovPort) {
+        this.canvas.style.cursor = port ? "crosshair" : (node ? "grab" : "default");
+        this.draw();
+      }
+    }
+
+    _onMouseUp(e) {
+      const { cx, cy } = this._mousePos(e);
+      const { x: wx, y: wy } = this._toWorld(cx, cy);
+      const action = this._action;
+      this._action = null;
+
+      if (e.button === 2) {
+        // right button release
+        if (!this._moved) {
+          // no drag: show context menu
+          const node = this._hitNode(wx, wy);
+          this._showMenu(e.clientX, e.clientY, node);
+        }
+        return;
+      }
+
+      if (e.button === 0) {
+        if (action === "connect") {
+          // try to complete connection
+          const port = this._hitPort(wx, wy);
+          if (port && port.nodeId !== this._connectFrom) {
+            this._createConnection(this._connectFrom, this._connectPort, port.nodeId, port.port);
+          }
+          this._connectFrom = null;
+          this._connectEnd  = null;
+          this._connectPort = null;
+          this.draw();
+          return;
+        }
+
+        if (action === "drag" && !this._moved) {
+          // click without drag: select node and open detail
+          const node = this._nodeById(this._dragNodeId);
+          if (node) {
+            this.selectNode(node.id);
+          }
+          return;
+        }
+      }
+    }
+
+    _onMouseLeave() {
+      this._hoveredNode = null;
+      this._hoveredPort = null;
+      this.canvas.style.cursor = "default";
+      if (!this._action) this.draw();
+    }
+
+    _onKeyDown(e) {
+      if (!this.selectedId) return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const node = this._nodeById(this.selectedId);
+        if (node && !node.fixed) {
+          // prevent browser back-navigation
+          e.preventDefault();
+          this.removeNode(this.selectedId);
+        }
+      }
+    }
+
+    // ---- connection management ---------------------------------------------
+
+    _createConnection(fromId, fromPort, toId, toPort) {
+      // normalise direction: always from output to input
+      let srcId, dstId;
+      if (fromPort === "output" && toPort === "input") {
+        srcId = fromId; dstId = toId;
+      } else if (fromPort === "input" && toPort === "output") {
+        srcId = toId; dstId = fromId;
+      } else {
+        return; // same-type ports
+      }
+      // prevent self-connection
+      if (srcId === dstId) return;
+      // prevent _output as source or _input as destination
+      const srcNode = this._nodeById(srcId);
+      const dstNode = this._nodeById(dstId);
+      if (!srcNode || !dstNode) return;
+      if (srcNode.type === "_output" || dstNode.type === "_input") return;
+
+      // remove existing connections on these ports
+      this.connections = this.connections.filter(
+        (c) => c.from !== srcId && c.to !== dstId
+      );
+      this.connections.push({ from: srcId, to: dstId });
+      this._emitChange();
+    }
+
+    _hasIncoming(nodeId) {
+      return this.connections.some((c) => c.to === nodeId);
+    }
+
+    _hasOutgoing(nodeId) {
+      return this.connections.some((c) => c.from === nodeId);
+    }
+
+    _isInChain(nodeId) {
+      // walk from _input; if we reach this node, it's in the chain
+      let cur = "_input";
+      const visited = new Set();
+      while (cur) {
+        if (cur === nodeId) return true;
+        visited.add(cur);
+        const conn = this.connections.find((c) => c.from === cur);
+        if (!conn || visited.has(conn.to)) break;
+        cur = conn.to;
+      }
+      return false;
+    }
+
+    _autoInsert(nodeId) {
+      // insert the new node into the chain based on its x position
+      const node = this._nodeById(nodeId);
+      if (!node) return;
+      const nx = node.x + NODE_W / 2;
+
+      // find the connection where we should insert
+      // walk the chain and find adjacent pair whose x straddles nx
+      let bestConn = null;
+      for (const conn of this.connections) {
+        const fromNode = this._nodeById(conn.from);
+        const toNode   = this._nodeById(conn.to);
+        if (!fromNode || !toNode) continue;
+        const fromX = fromNode.x + NODE_W / 2;
+        const toX   = toNode.x + NODE_W / 2;
+        // insert between the pair that most closely straddles this node
+        if (fromX <= nx && toX >= nx) {
+          bestConn = conn;
+          break;
+        }
+      }
+      // fallback: insert before _output
+      if (!bestConn) {
+        bestConn = this.connections.find((c) => c.to === "_output");
+      }
+      if (!bestConn) {
+        // last resort: find any connection from _input
+        bestConn = this.connections.find((c) => c.from === "_input");
+      }
+      if (bestConn) {
+        const oldTo = bestConn.to;
+        bestConn.to = nodeId;
+        this.connections.push({ from: nodeId, to: oldTo });
+      } else {
+        // no chain yet, connect input -> node -> output
+        this.connections.push({ from: "_input", to: nodeId });
+        this.connections.push({ from: nodeId, to: "_output" });
+      }
+    }
+
+    _removeFromChain(nodeId) {
+      const incoming = this.connections.find((c) => c.to === nodeId);
+      const outgoing = this.connections.find((c) => c.from === nodeId);
+
+      // reconnect neighbours
+      if (incoming && outgoing) {
+        incoming.to = outgoing.to;
+      }
+      // remove all connections involving this node
+      this.connections = this.connections.filter(
+        (c) => c.from !== nodeId && c.to !== nodeId
+      );
+    }
+
+    // ---- context menu ------------------------------------------------------
+
+    _showMenu(clientX, clientY, nodeUnderCursor) {
+      this._hideMenu();
+      const menu = document.createElement("div");
+      menu.className = "chain-context-menu";
+
+      if (nodeUnderCursor && !nodeUnderCursor.fixed) {
+        // node context menu
+        const bypassItem = document.createElement("button");
+        bypassItem.className = "chain-menu-item";
+        bypassItem.textContent = nodeUnderCursor.bypassed ? "Enable" : "Bypass";
+        bypassItem.addEventListener("click", () => {
+          nodeUnderCursor.bypassed = !nodeUnderCursor.bypassed;
+          this._emitChange();
+          this._hideMenu();
+          this.draw();
+        });
+        menu.appendChild(bypassItem);
+
+        const removeItem = document.createElement("button");
+        removeItem.className = "chain-menu-item chain-menu-item--danger";
+        removeItem.textContent = "Remove";
+        removeItem.addEventListener("click", () => {
+          this.removeNode(nodeUnderCursor.id);
+          this._hideMenu();
+        });
+        menu.appendChild(removeItem);
+      } else {
+        // empty-space context menu: add effects
+        const title = document.createElement("div");
+        title.className = "chain-menu-title";
+        title.textContent = "Add Effect";
+        menu.appendChild(title);
+
+        const used = this.usedTypes();
+        for (const [type, def] of Object.entries(FX_TYPES)) {
+          const item = document.createElement("button");
+          item.className = "chain-menu-item";
+          item.textContent = def.label;
+          if (used.has(type)) {
+            item.disabled = true;
+            item.classList.add("chain-menu-item--disabled");
+          } else {
+            item.addEventListener("click", () => {
+              const { x: wx, y: wy } = this._toWorld(
+                clientX - this.canvas.getBoundingClientRect().left,
+                clientY - this.canvas.getBoundingClientRect().top,
+              );
+              this.addEffect(type, wx, wy);
+              this._hideMenu();
+            });
+          }
+          menu.appendChild(item);
+        }
+      }
+
+      // position
+      menu.style.left = clientX + "px";
+      menu.style.top  = clientY + "px";
+      document.body.appendChild(menu);
+
+      // keep within viewport
+      requestAnimationFrame(() => {
+        const mr = menu.getBoundingClientRect();
+        if (mr.right > window.innerWidth)  menu.style.left = (window.innerWidth  - mr.width  - 8) + "px";
+        if (mr.bottom > window.innerHeight) menu.style.top  = (window.innerHeight - mr.height - 8) + "px";
+      });
+
+      this._menu = menu;
+    }
+
+    _hideMenu() {
+      if (this._menu) {
+        this._menu.remove();
+        this._menu = null;
+      }
+    }
+
+    // ---- helpers -----------------------------------------------------------
+
+    _nodeById(id) {
+      return this.nodes.find((n) => n.id === id) || null;
+    }
+
+    _addFixedNode(id, label, x, y) {
+      this.nodes.push({ id, type: id, label, x, y, bypassed: false, fixed: true });
+    }
+
+    _emitChange() {
+      this.opts.onChange?.();
+    }
+  }
+
+  window.EffectChain = EffectChain;
+})();
