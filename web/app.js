@@ -251,7 +251,10 @@ const el = {
   bitCrusherDownsampleValue: document.getElementById("bitcrusher-downsample-value"),
   bitCrusherMix: document.getElementById("bitcrusher-mix"),
   bitCrusherMixValue: document.getElementById("bitcrusher-mix-value"),
+  fxFilterFamily: document.getElementById("fx-filter-family"),
   fxFilterKind: document.getElementById("fx-filter-kind"),
+  fxFilterOrder: document.getElementById("fx-filter-order"),
+  fxFilterOrderValue: document.getElementById("fx-filter-order-value"),
   fxFilterFreq: document.getElementById("fx-filter-freq"),
   fxFilterFreqValue: document.getElementById("fx-filter-freq-value"),
   fxFilterQ: document.getElementById("fx-filter-q"),
@@ -274,6 +277,21 @@ const el = {
   fxLimThreshValue: document.getElementById("fx-lim-thresh-value"),
   fxLimRelease: document.getElementById("fx-lim-release"),
   fxLimReleaseValue: document.getElementById("fx-lim-release-value"),
+  fxGateMode: document.getElementById("fx-gate-mode"),
+  fxGateThresh: document.getElementById("fx-gate-thresh"),
+  fxGateThreshValue: document.getElementById("fx-gate-thresh-value"),
+  fxGateRatio: document.getElementById("fx-gate-ratio"),
+  fxGateRatioValue: document.getElementById("fx-gate-ratio-value"),
+  fxGateKnee: document.getElementById("fx-gate-knee"),
+  fxGateKneeValue: document.getElementById("fx-gate-knee-value"),
+  fxGateAttack: document.getElementById("fx-gate-attack"),
+  fxGateAttackValue: document.getElementById("fx-gate-attack-value"),
+  fxGateHold: document.getElementById("fx-gate-hold"),
+  fxGateHoldValue: document.getElementById("fx-gate-hold-value"),
+  fxGateRelease: document.getElementById("fx-gate-release"),
+  fxGateReleaseValue: document.getElementById("fx-gate-release-value"),
+  fxGateRange: document.getElementById("fx-gate-range"),
+  fxGateRangeValue: document.getElementById("fx-gate-range-value"),
   widenerWidth: document.getElementById("widener-width"),
   widenerWidthValue: document.getElementById("widener-width-value"),
   widenerMix: document.getElementById("widener-mix"),
@@ -398,7 +416,7 @@ const EFFECT_NODE_DEFAULTS = {
   },
   ringmod: { carrierHz: 440, mix: 1.0 },
   bitcrusher: { bitDepth: 8, downsample: 4, mix: 1.0 },
-  filter: { kind: "lowpass", freq: 1200, q: 0.707, gain: 0 },
+  filter: { family: "rbj", kind: "lowpass", order: 2, freq: 1200, q: 0.707, gain: 0 },
   "dyn-compressor": {
     thresholdDB: -20,
     ratio: 4,
@@ -408,6 +426,16 @@ const EFFECT_NODE_DEFAULTS = {
     makeupGainDB: 0,
   },
   "dyn-limiter": { thresholdDB: -0.1, releaseMs: 100 },
+  "dyn-gate": {
+    mode: "gate",
+    thresholdDB: -40,
+    ratio: 10,
+    kneeDB: 6,
+    attackMs: 0.1,
+    holdMs: 50,
+    releaseMs: 100,
+    rangeDB: -80,
+  },
   widener: { width: 1.0, mix: 0.5 },
   phaser: {
     rateHz: 0.4,
@@ -483,7 +511,9 @@ function applyNodeParamsToUI(node) {
       el.bitCrusherMix.value = p.mix;
       break;
     case "filter":
+      el.fxFilterFamily.value = p.family || "rbj";
       el.fxFilterKind.value = p.kind || "lowpass";
+      el.fxFilterOrder.value = p.order ?? 2;
       el.fxFilterFreq.value = p.freq;
       el.fxFilterQ.value = p.q;
       el.fxFilterGain.value = p.gain;
@@ -499,6 +529,16 @@ function applyNodeParamsToUI(node) {
     case "dyn-limiter":
       el.fxLimThresh.value = p.thresholdDB;
       el.fxLimRelease.value = p.releaseMs;
+      break;
+    case "dyn-gate":
+      el.fxGateMode.value = p.mode || "gate";
+      el.fxGateThresh.value = p.thresholdDB;
+      el.fxGateRatio.value = p.ratio;
+      el.fxGateKnee.value = p.kneeDB;
+      el.fxGateAttack.value = p.attackMs;
+      el.fxGateHold.value = p.holdMs;
+      el.fxGateRelease.value = p.releaseMs;
+      el.fxGateRange.value = p.rangeDB;
       break;
     case "widener":
       el.widenerWidth.value = p.width;
@@ -592,7 +632,9 @@ function collectNodeParamsFromUI(nodeType) {
       };
     case "filter":
       return {
+        family: String(el.fxFilterFamily.value || "rbj"),
         kind: String(el.fxFilterKind.value || "lowpass"),
+        order: Number(el.fxFilterOrder.value),
         freq: Number(el.fxFilterFreq.value),
         q: Number(el.fxFilterQ.value),
         gain: Number(el.fxFilterGain.value),
@@ -610,6 +652,17 @@ function collectNodeParamsFromUI(nodeType) {
       return {
         thresholdDB: Number(el.fxLimThresh.value),
         releaseMs: Number(el.fxLimRelease.value),
+      };
+    case "dyn-gate":
+      return {
+        mode: String(el.fxGateMode.value || "gate"),
+        thresholdDB: Number(el.fxGateThresh.value),
+        ratio: Number(el.fxGateRatio.value),
+        kneeDB: Number(el.fxGateKnee.value),
+        attackMs: Number(el.fxGateAttack.value),
+        holdMs: Number(el.fxGateHold.value),
+        releaseMs: Number(el.fxGateRelease.value),
+        rangeDB: Number(el.fxGateRange.value),
       };
     case "widener":
       return {
@@ -1235,6 +1288,9 @@ function updateEffectsText() {
   if (el.fxFilterFreqValue) {
     el.fxFilterFreqValue.textContent = `${Number(el.fxFilterFreq.value).toFixed(0)} Hz`;
   }
+  if (el.fxFilterOrderValue) {
+    el.fxFilterOrderValue.textContent = `${Number(el.fxFilterOrder.value).toFixed(0)}`;
+  }
   if (el.fxFilterQValue) {
     el.fxFilterQValue.textContent = Number(el.fxFilterQ.value).toFixed(2);
   }
@@ -1264,6 +1320,27 @@ function updateEffectsText() {
   }
   if (el.fxLimReleaseValue) {
     el.fxLimReleaseValue.textContent = `${Number(el.fxLimRelease.value).toFixed(0)} ms`;
+  }
+  if (el.fxGateThreshValue) {
+    el.fxGateThreshValue.textContent = `${Number(el.fxGateThresh.value).toFixed(1)} dB`;
+  }
+  if (el.fxGateRatioValue) {
+    el.fxGateRatioValue.textContent = `${Number(el.fxGateRatio.value).toFixed(1)}:1`;
+  }
+  if (el.fxGateKneeValue) {
+    el.fxGateKneeValue.textContent = `${Number(el.fxGateKnee.value).toFixed(1)} dB`;
+  }
+  if (el.fxGateAttackValue) {
+    el.fxGateAttackValue.textContent = `${Number(el.fxGateAttack.value).toFixed(1)} ms`;
+  }
+  if (el.fxGateHoldValue) {
+    el.fxGateHoldValue.textContent = `${Number(el.fxGateHold.value).toFixed(0)} ms`;
+  }
+  if (el.fxGateReleaseValue) {
+    el.fxGateReleaseValue.textContent = `${Number(el.fxGateRelease.value).toFixed(0)} ms`;
+  }
+  if (el.fxGateRangeValue) {
+    el.fxGateRangeValue.textContent = `${Number(el.fxGateRange.value).toFixed(0)} dB`;
   }
   el.widenerWidthValue.textContent = `${Number(el.widenerWidth.value).toFixed(2)}x`;
   el.widenerMixValue.textContent = `${Math.round(Number(el.widenerMix.value) * 100)}%`;
@@ -1584,7 +1661,9 @@ function bindEvents() {
     el.bitCrusherBits,
     el.bitCrusherDownsample,
     el.bitCrusherMix,
+    el.fxFilterFamily,
     el.fxFilterKind,
+    el.fxFilterOrder,
     el.fxFilterFreq,
     el.fxFilterQ,
     el.fxFilterGain,
@@ -1596,6 +1675,14 @@ function bindEvents() {
     el.fxCompMakeup,
     el.fxLimThresh,
     el.fxLimRelease,
+    el.fxGateMode,
+    el.fxGateThresh,
+    el.fxGateRatio,
+    el.fxGateKnee,
+    el.fxGateAttack,
+    el.fxGateHold,
+    el.fxGateRelease,
+    el.fxGateRange,
     el.widenerWidth,
     el.widenerMix,
     el.phaserRate,
