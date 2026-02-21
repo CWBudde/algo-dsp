@@ -117,6 +117,7 @@
       this._connectPort  = null; // 'output' | 'input'
       this._hoveredNode  = null;
       this._hoveredPort  = null; // { nodeId, port: 'input'|'output' }
+      this._hoveredWire  = null; // { from, to }
 
       // context menu DOM
       this._menu = null;
@@ -307,7 +308,7 @@
 
       // wires
       for (const conn of this.connections) {
-        this._drawWire(conn);
+        this._drawWire(conn, conn === this._hoveredWire);
       }
 
       // temp wire while connecting
@@ -342,7 +343,7 @@
       ctx.stroke();
     }
 
-    _drawWire(conn) {
+    _drawWire(conn, highlighted = false) {
       const fromNode = this._nodeById(conn.from);
       const toNode   = this._nodeById(conn.to);
       if (!fromNode || !toNode) return;
@@ -358,8 +359,13 @@
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.bezierCurveTo(x1 + dx, y1, x2 - dx, y2, x2, y2);
-      ctx.strokeStyle = isDark() ? "rgba(140,170,200,0.55)" : "rgba(60,80,100,0.4)";
-      ctx.lineWidth = 2.5;
+      if (highlighted) {
+        ctx.strokeStyle = isDark() ? "rgba(200,220,245,0.85)" : "rgba(52,72,92,0.75)";
+        ctx.lineWidth = 3.5;
+      } else {
+        ctx.strokeStyle = isDark() ? "rgba(140,170,200,0.55)" : "rgba(60,80,100,0.4)";
+        ctx.lineWidth = 2.5;
+      }
       ctx.stroke();
     }
 
@@ -561,6 +567,63 @@
       return null;
     }
 
+    _hitWire(wx, wy) {
+      const threshold = 8;
+      for (let i = this.connections.length - 1; i >= 0; i--) {
+        const conn = this.connections[i];
+        const fromNode = this._nodeById(conn.from);
+        const toNode = this._nodeById(conn.to);
+        if (!fromNode || !toNode) continue;
+        const x1 = fromNode.x + NODE_W;
+        const y1 = fromNode.y + NODE_H / 2;
+        const x2 = toNode.x;
+        const y2 = toNode.y + NODE_H / 2;
+        const dx = Math.max(Math.abs(x2 - x1) * 0.45, 40);
+        const c1x = x1 + dx;
+        const c1y = y1;
+        const c2x = x2 - dx;
+        const c2y = y2;
+
+        let prev = this._bezierPoint(x1, y1, c1x, c1y, c2x, c2y, x2, y2, 0);
+        for (let s = 1; s <= 24; s++) {
+          const t = s / 24;
+          const cur = this._bezierPoint(x1, y1, c1x, c1y, c2x, c2y, x2, y2, t);
+          if (this._distPointToSegment(wx, wy, prev.x, prev.y, cur.x, cur.y) <= threshold) {
+            return conn;
+          }
+          prev = cur;
+        }
+      }
+      return null;
+    }
+
+    _bezierPoint(x1, y1, c1x, c1y, c2x, c2y, x2, y2, t) {
+      const u = 1 - t;
+      const tt = t * t;
+      const uu = u * u;
+      const uuu = uu * u;
+      const ttt = tt * t;
+      return {
+        x: uuu * x1 + 3 * uu * t * c1x + 3 * u * tt * c2x + ttt * x2,
+        y: uuu * y1 + 3 * uu * t * c1y + 3 * u * tt * c2y + ttt * y2,
+      };
+    }
+
+    _distPointToSegment(px, py, x1, y1, x2, y2) {
+      const vx = x2 - x1;
+      const vy = y2 - y1;
+      const wx = px - x1;
+      const wy = py - y1;
+      const vv = vx * vx + vy * vy;
+      if (vv <= 1e-9) return Math.hypot(px - x1, py - y1);
+      let t = (wx * vx + wy * vy) / vv;
+      if (t < 0) t = 0;
+      if (t > 1) t = 1;
+      const qx = x1 + t * vx;
+      const qy = y1 + t * vy;
+      return Math.hypot(px - qx, py - qy);
+    }
+
     // ---- coordinate transforms ---------------------------------------------
 
     _toWorld(cx, cy) {
@@ -681,12 +744,15 @@
       // hover detection
       const port = this._hitPort(wx, wy);
       const node = this._hitNode(wx, wy);
+      const wire = (!port && !node) ? this._hitWire(wx, wy) : null;
       const prevHovNode = this._hoveredNode;
       const prevHovPort = this._hoveredPort;
+      const prevHovWire = this._hoveredWire;
       this._hoveredNode = node ? node.id : null;
       this._hoveredPort = port;
-      if (this._hoveredNode !== prevHovNode || this._hoveredPort !== prevHovPort) {
-        this.canvas.style.cursor = port ? "crosshair" : (node ? "grab" : "default");
+      this._hoveredWire = wire;
+      if (this._hoveredNode !== prevHovNode || this._hoveredPort !== prevHovPort || this._hoveredWire !== prevHovWire) {
+        this.canvas.style.cursor = port ? "crosshair" : (node ? "grab" : (wire ? "pointer" : "default"));
         this.draw();
       }
     }
@@ -702,7 +768,8 @@
         if (!this._moved) {
           // no drag: show context menu
           const node = this._hitNode(wx, wy);
-          this._showMenu(e.clientX, e.clientY, node);
+          const wire = node ? null : this._hitWire(wx, wy);
+          this._showMenu(e.clientX, e.clientY, node, wire);
         }
         return;
       }
@@ -735,6 +802,7 @@
     _onMouseLeave() {
       this._hoveredNode = null;
       this._hoveredPort = null;
+      this._hoveredWire = null;
       this.canvas.style.cursor = "default";
       if (!this._action) this.draw();
     }
@@ -878,7 +946,7 @@
 
     // ---- context menu ------------------------------------------------------
 
-    _showMenu(clientX, clientY, nodeUnderCursor) {
+    _showMenu(clientX, clientY, nodeUnderCursor, wireUnderCursor) {
       this._hideMenu();
       const menu = document.createElement("div");
       menu.className = "chain-context-menu";
@@ -904,6 +972,100 @@
           this._hideMenu();
         });
         menu.appendChild(removeItem);
+      } else if (wireUnderCursor) {
+        const removeConnItem = document.createElement("button");
+        removeConnItem.className = "chain-menu-item chain-menu-item--danger";
+        removeConnItem.textContent = "Remove Connection";
+        removeConnItem.addEventListener("click", () => {
+          this.connections = this.connections.filter((c) => c !== wireUnderCursor);
+          this._emitChange();
+          this._hideMenu();
+          this.draw();
+        });
+        menu.appendChild(removeConnItem);
+
+        const insertTitle = document.createElement("div");
+        insertTitle.className = "chain-menu-title";
+        insertTitle.textContent = "Insert Block";
+        menu.appendChild(insertTitle);
+
+        const grouped = new Map();
+        for (const [type, def] of Object.entries(FX_TYPES)) {
+          const category = def.category || "Other";
+          if (!grouped.has(category)) grouped.set(category, []);
+          grouped.get(category).push([type, def]);
+        }
+        const categoryOrder = ["Filters", "Dynamics", "Modulation", "Time/Space", "Pitch", "Spatial", "Color", "Routing", "Other"];
+        const hideSubmenu = () => {
+          if (this._submenu) {
+            this._submenu.remove();
+            this._submenu = null;
+          }
+        };
+        const placeSubmenu = (submenu, anchor) => {
+          const ar = anchor.getBoundingClientRect();
+          const sr = submenu.getBoundingClientRect();
+          let left = ar.right + 6;
+          let top = ar.top - 4;
+          if (left + sr.width > window.innerWidth - 8) left = ar.left - sr.width - 6;
+          if (left < 8) left = 8;
+          if (top + sr.height > window.innerHeight - 8) top = window.innerHeight - sr.height - 8;
+          if (top < 8) top = 8;
+          submenu.style.left = left + "px";
+          submenu.style.top = top + "px";
+        };
+        const showTypesFlyout = (category, anchor) => {
+          hideSubmenu();
+          const submenu = document.createElement("div");
+          submenu.className = "chain-context-menu chain-context-submenu";
+          const title2 = document.createElement("div");
+          title2.className = "chain-menu-title";
+          title2.textContent = category;
+          submenu.appendChild(title2);
+          const entries = grouped.get(category) || [];
+          for (const [type, def] of entries) {
+            const item = document.createElement("button");
+            item.className = "chain-menu-item";
+            item.textContent = def.label;
+            item.addEventListener("click", () => {
+              const { x: wx, y: wy } = this._toWorld(
+                clientX - this.canvas.getBoundingClientRect().left,
+                clientY - this.canvas.getBoundingClientRect().top,
+              );
+              const defNode = FX_TYPES[type];
+              if (!defNode) return;
+              const newId = genId();
+              const instances = this.nodes.filter((n) => n.type === type).length;
+              const label = instances > 0 ? `${defNode.label} ${instances + 1}` : defNode.label;
+              const params = this.opts.createParams?.(type) || {};
+              this.nodes.push({
+                id: newId, type, label,
+                x: wx - NODE_W / 2, y: wy - NODE_H / 2,
+                bypassed: false, fixed: false, params,
+              });
+              this.connections = this.connections.filter((c) => c !== wireUnderCursor);
+              this.connections.push({ from: wireUnderCursor.from, to: newId });
+              this.connections.push({ from: newId, to: wireUnderCursor.to });
+              this._emitChange();
+              this._hideMenu();
+              this.draw();
+            });
+            submenu.appendChild(item);
+          }
+          document.body.appendChild(submenu);
+          placeSubmenu(submenu, anchor);
+          this._submenu = submenu;
+        };
+        for (const category of categoryOrder) {
+          const entries = grouped.get(category);
+          if (!entries || entries.length === 0) continue;
+          const item = document.createElement("button");
+          item.className = "chain-menu-item chain-menu-item--submenu";
+          item.textContent = `${category} (${entries.length})`;
+          item.addEventListener("mouseenter", () => showTypesFlyout(category, item));
+          item.addEventListener("click", () => showTypesFlyout(category, item));
+          menu.appendChild(item);
+        }
       } else {
         // empty-space context menu: add effects
         const title = document.createElement("div");
