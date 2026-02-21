@@ -433,7 +433,6 @@ function loadSettings() {
     if (el.reverbModDepth) el.reverbModDepth.value = state.effectsParams.reverbModDepth;
     if (el.reverbModRate) el.reverbModRate.value = state.effectsParams.reverbModRate;
     updateEffectsText();
-    readEffectsFromChain();
   }
 
   if (settings.chainState && state.chain) {

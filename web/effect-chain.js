@@ -536,6 +536,9 @@
       this.canvas.addEventListener("mousedown",   (e) => this._onMouseDown(e));
       this.canvas.addEventListener("mousemove",    (e) => this._onMouseMove(e));
       this.canvas.addEventListener("mouseup",      (e) => this._onMouseUp(e));
+      document.addEventListener("mouseup",         (e) => {
+        if (this._action && e.target !== this.canvas) this._onMouseUp(e);
+      });
       this.canvas.addEventListener("contextmenu",  (e) => e.preventDefault());
       this.canvas.addEventListener("mouseleave",   ()  => this._onMouseLeave());
       document.addEventListener("keydown", (e) => this._onKeyDown(e));
