@@ -120,6 +120,7 @@
 
       // context menu DOM
       this._menu = null;
+      this._submenu = null;
 
       // add fixed Input and Output nodes
       this._addFixedNode("_input",  "Input",  60,  130);
@@ -586,7 +587,9 @@
 
       // close context menu on outside click
       document.addEventListener("mousedown", (e) => {
-        if (this._menu && !this._menu.contains(e.target)) {
+        const inMainMenu = this._menu && this._menu.contains(e.target);
+        const inSubmenu = this._submenu && this._submenu.contains(e.target);
+        if ((this._menu || this._submenu) && !inMainMenu && !inSubmenu) {
           this._hideMenu();
         }
       });
@@ -915,18 +918,37 @@
           grouped.get(category).push([type, def]);
         }
         const categoryOrder = ["Filters", "Dynamics", "Modulation", "Time/Space", "Pitch", "Spatial", "Color", "Routing", "Other"];
-        const showTypes = (category) => {
-          menu.innerHTML = "";
-          const back = document.createElement("button");
-          back.className = "chain-menu-item";
-          back.textContent = "← Categories";
-          back.addEventListener("click", showCategories);
-          menu.appendChild(back);
+        const hideSubmenu = () => {
+          if (this._submenu) {
+            this._submenu.remove();
+            this._submenu = null;
+          }
+        };
+        const placeSubmenu = (submenu, anchor) => {
+          const ar = anchor.getBoundingClientRect();
+          const sr = submenu.getBoundingClientRect();
+          let left = ar.right + 6;
+          let top = ar.top - 4;
+          if (left + sr.width > window.innerWidth - 8) {
+            left = ar.left - sr.width - 6;
+          }
+          if (left < 8) left = 8;
+          if (top + sr.height > window.innerHeight - 8) {
+            top = window.innerHeight - sr.height - 8;
+          }
+          if (top < 8) top = 8;
+          submenu.style.left = left + "px";
+          submenu.style.top = top + "px";
+        };
+        const showTypesFlyout = (category, anchor) => {
+          hideSubmenu();
+          const submenu = document.createElement("div");
+          submenu.className = "chain-context-menu chain-context-submenu";
 
           const title2 = document.createElement("div");
           title2.className = "chain-menu-title";
           title2.textContent = category;
-          menu.appendChild(title2);
+          submenu.appendChild(title2);
 
           const entries = grouped.get(category) || [];
           for (const [type, def] of entries) {
@@ -941,28 +963,24 @@
               this.addEffect(type, wx, wy);
               this._hideMenu();
             });
-            menu.appendChild(item);
+            submenu.appendChild(item);
           }
+
+          document.body.appendChild(submenu);
+          placeSubmenu(submenu, anchor);
+          this._submenu = submenu;
         };
 
-        const showCategories = () => {
-          menu.innerHTML = "";
-          const title2 = document.createElement("div");
-          title2.className = "chain-menu-title";
-          title2.textContent = "Category";
-          menu.appendChild(title2);
-          for (const category of categoryOrder) {
-            const entries = grouped.get(category);
-            if (!entries || entries.length === 0) continue;
-            const item = document.createElement("button");
-            item.className = "chain-menu-item";
-            item.textContent = `${category} (${entries.length})`;
-            item.addEventListener("click", () => showTypes(category));
-            menu.appendChild(item);
-          }
-        };
-
-        showCategories();
+        for (const category of categoryOrder) {
+          const entries = grouped.get(category);
+          if (!entries || entries.length === 0) continue;
+          const item = document.createElement("button");
+          item.className = "chain-menu-item chain-menu-item--submenu";
+          item.textContent = `${category} (${entries.length})`;
+          item.addEventListener("mouseenter", () => showTypesFlyout(category, item));
+          item.addEventListener("click", () => showTypesFlyout(category, item));
+          menu.appendChild(item);
+        }
       }
 
       // position
@@ -981,6 +999,10 @@
     }
 
     _hideMenu() {
+      if (this._submenu) {
+        this._submenu.remove();
+        this._submenu = null;
+      }
       if (this._menu) {
         this._menu.remove();
         this._menu = null;

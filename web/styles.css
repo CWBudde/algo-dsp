@@ -657,6 +657,24 @@ button.active {
   background: rgba(194, 77, 44, 0.1);
 }
 
+.chain-menu-item--submenu {
+  position: relative;
+  padding-right: 1.4rem;
+}
+
+.chain-menu-item--submenu::after {
+  content: "›";
+  position: absolute;
+  right: 0.55rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.55;
+}
+
+.chain-context-submenu {
+  min-width: 190px;
+}
+
 .chain-menu-item--disabled {
   opacity: 0.35;
   cursor: default;
