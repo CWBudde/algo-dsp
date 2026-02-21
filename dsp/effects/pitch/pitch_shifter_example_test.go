@@ -1,14 +1,14 @@
-package effects_test
+package pitch_test
 
 import (
 	"fmt"
 	"math"
 
-	"github.com/cwbudde/algo-dsp/dsp/effects"
+	"github.com/cwbudde/algo-dsp/dsp/effects/pitch"
 )
 
 func ExamplePitchShifter() {
-	p, err := effects.NewPitchShifter(48000)
+	p, err := pitch.NewPitchShifter(48000)
 	if err != nil {
 		panic(err)
 	}

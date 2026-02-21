@@ -1,4 +1,4 @@
-package effects
+package reverb
 
 import "fmt"
 

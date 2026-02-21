@@ -1,17 +1,23 @@
-package effects
+package reverb
 
 import (
 	"math"
 	"testing"
 )
 
-func TestReverbProcessInPlaceMatchesSample(t *testing.T) {
-	r1 := NewReverb()
-	r2 := NewReverb()
+func TestFDNReverbProcessInPlaceMatchesSample(t *testing.T) {
+	r1, err := NewFDNReverb(44100)
+	if err != nil {
+		t.Fatalf("NewFDNReverb: %v", err)
+	}
+	r2, err := NewFDNReverb(44100)
+	if err != nil {
+		t.Fatalf("NewFDNReverb: %v", err)
+	}
 
 	input := make([]float64, 128)
 	for i := range input {
-		input[i] = math.Sin(2 * math.Pi * float64(i) / 23)
+		input[i] = math.Sin(2 * math.Pi * float64(i) / 31)
 	}
 
 	want := make([]float64, len(input))
@@ -31,8 +37,11 @@ func TestReverbProcessInPlaceMatchesSample(t *testing.T) {
 	}
 }
 
-func TestReverbResetRestoresState(t *testing.T) {
-	r := NewReverb()
+func TestFDNReverbResetRestoresState(t *testing.T) {
+	r, err := NewFDNReverb(44100)
+	if err != nil {
+		t.Fatalf("NewFDNReverb: %v", err)
+	}
 
 	in := make([]float64, 128)
 	in[0] = 1
@@ -56,9 +65,14 @@ func TestReverbResetRestoresState(t *testing.T) {
 	}
 }
 
-func TestReverbImpulseTailExists(t *testing.T) {
-	r := NewReverb()
-	r.SetDry(0)
+func TestFDNReverbImpulseTailExists(t *testing.T) {
+	r, err := NewFDNReverb(44100)
+	if err != nil {
+		t.Fatalf("NewFDNReverb: %v", err)
+	}
+	if err := r.SetDry(0); err != nil {
+		t.Fatalf("SetDry: %v", err)
+	}
 
 	const n = 4096
 	var nonZero bool
