@@ -593,6 +593,215 @@
                 <span id="fx-gate-range-value">-80 dB</span>
               </label>
             </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="dyn-expander" hidden>
+              <div class="fx-option-head">
+                <span>Expander (Chain)</span>
+              </div>
+              <label>
+                Topology
+                <select id="fx-exp-topology">
+                  <option value="feedforward">Feedforward</option>
+                  <option value="feedback">Feedback</option>
+                </select>
+              </label>
+              <label>
+                Detector
+                <select id="fx-exp-detector">
+                  <option value="peak">Peak</option>
+                  <option value="rms">RMS</option>
+                </select>
+              </label>
+              <label>
+                RMS Window
+                <input id="fx-exp-rms" type="range" min="1" max="200" step="1" value="30" />
+                <span id="fx-exp-rms-value">30 ms</span>
+              </label>
+              <label>
+                Threshold
+                <input id="fx-exp-thresh" type="range" min="-80" max="0" step="0.5" value="-35" />
+                <span id="fx-exp-thresh-value">-35.0 dB</span>
+              </label>
+              <label>
+                Ratio
+                <input id="fx-exp-ratio" type="range" min="1" max="20" step="0.1" value="2" />
+                <span id="fx-exp-ratio-value">2.0:1</span>
+              </label>
+              <label>
+                Knee
+                <input id="fx-exp-knee" type="range" min="0" max="24" step="0.5" value="6" />
+                <span id="fx-exp-knee-value">6.0 dB</span>
+              </label>
+              <label>
+                Attack
+                <input id="fx-exp-attack" type="range" min="0.1" max="200" step="0.1" value="1" />
+                <span id="fx-exp-attack-value">1.0 ms</span>
+              </label>
+              <label>
+                Release
+                <input id="fx-exp-release" type="range" min="1" max="1000" step="1" value="100" />
+                <span id="fx-exp-release-value">100 ms</span>
+              </label>
+              <label>
+                Range
+                <input id="fx-exp-range" type="range" min="-120" max="0" step="1" value="-60" />
+                <span id="fx-exp-range-value">-60 dB</span>
+              </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="dyn-deesser" hidden>
+              <div class="fx-option-head">
+                <span>De-Esser (Chain)</span>
+              </div>
+              <label>
+                Mode
+                <select id="fx-deess-mode">
+                  <option value="splitband">Split-band</option>
+                  <option value="wideband">Wideband</option>
+                </select>
+              </label>
+              <label>
+                Detector
+                <select id="fx-deess-detector">
+                  <option value="bandpass">Bandpass</option>
+                  <option value="highpass">Highpass</option>
+                </select>
+              </label>
+              <label>
+                Listen
+                <select id="fx-deess-listen">
+                  <option value="0">Off</option>
+                  <option value="1">On</option>
+                </select>
+              </label>
+              <label>
+                Frequency
+                <input id="fx-deess-freq" type="range" min="1000" max="16000" step="10" value="6000" />
+                <span id="fx-deess-freq-value">6000 Hz</span>
+              </label>
+              <label>
+                Q
+                <input id="fx-deess-q" type="range" min="0.1" max="10" step="0.01" value="1.5" />
+                <span id="fx-deess-q-value">1.50</span>
+              </label>
+              <label>
+                Filter Order
+                <input id="fx-deess-order" type="range" min="1" max="4" step="1" value="2" />
+                <span id="fx-deess-order-value">2</span>
+              </label>
+              <label>
+                Threshold
+                <input id="fx-deess-thresh" type="range" min="-80" max="0" step="0.5" value="-20" />
+                <span id="fx-deess-thresh-value">-20.0 dB</span>
+              </label>
+              <label>
+                Ratio
+                <input id="fx-deess-ratio" type="range" min="1" max="20" step="0.1" value="4" />
+                <span id="fx-deess-ratio-value">4.0:1</span>
+              </label>
+              <label>
+                Knee
+                <input id="fx-deess-knee" type="range" min="0" max="12" step="0.1" value="3" />
+                <span id="fx-deess-knee-value">3.0 dB</span>
+              </label>
+              <label>
+                Attack
+                <input id="fx-deess-attack" type="range" min="0.01" max="50" step="0.01" value="0.5" />
+                <span id="fx-deess-attack-value">0.50 ms</span>
+              </label>
+              <label>
+                Release
+                <input id="fx-deess-release" type="range" min="1" max="500" step="1" value="20" />
+                <span id="fx-deess-release-value">20 ms</span>
+              </label>
+              <label>
+                Range
+                <input id="fx-deess-range" type="range" min="-60" max="0" step="1" value="-24" />
+                <span id="fx-deess-range-value">-24 dB</span>
+              </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="dyn-multiband" hidden>
+              <div class="fx-option-head">
+                <span>Multiband Compressor (Chain)</span>
+              </div>
+              <label>
+                Bands
+                <select id="fx-mb-bands">
+                  <option value="2">2</option>
+                  <option value="3" selected>3</option>
+                </select>
+              </label>
+              <label>
+                Crossover 1
+                <input id="fx-mb-cross1" type="range" min="40" max="4000" step="10" value="250" />
+                <span id="fx-mb-cross1-value">250 Hz</span>
+              </label>
+              <label>
+                Crossover 2
+                <input id="fx-mb-cross2" type="range" min="400" max="12000" step="10" value="3000" />
+                <span id="fx-mb-cross2-value">3000 Hz</span>
+              </label>
+              <label>
+                Order
+                <input id="fx-mb-order" type="range" min="2" max="24" step="2" value="4" />
+                <span id="fx-mb-order-value">4</span>
+              </label>
+              <label>
+                Attack
+                <input id="fx-mb-attack" type="range" min="0.1" max="200" step="0.1" value="8" />
+                <span id="fx-mb-attack-value">8.0 ms</span>
+              </label>
+              <label>
+                Release
+                <input id="fx-mb-release" type="range" min="1" max="1000" step="1" value="120" />
+                <span id="fx-mb-release-value">120 ms</span>
+              </label>
+              <label>
+                Knee
+                <input id="fx-mb-knee" type="range" min="0" max="24" step="0.5" value="6" />
+                <span id="fx-mb-knee-value">6.0 dB</span>
+              </label>
+              <label>
+                Auto Makeup
+                <select id="fx-mb-auto-makeup">
+                  <option value="0">Off</option>
+                  <option value="1">On</option>
+                </select>
+              </label>
+              <label>
+                Makeup
+                <input id="fx-mb-makeup" type="range" min="0" max="24" step="0.1" value="0" />
+                <span id="fx-mb-makeup-value">0.0 dB</span>
+              </label>
+              <label>
+                Low Threshold
+                <input id="fx-mb-low-thresh" type="range" min="-80" max="0" step="0.5" value="-20" />
+                <span id="fx-mb-low-thresh-value">-20.0 dB</span>
+              </label>
+              <label>
+                Low Ratio
+                <input id="fx-mb-low-ratio" type="range" min="1" max="20" step="0.1" value="2.5" />
+                <span id="fx-mb-low-ratio-value">2.5:1</span>
+              </label>
+              <label>
+                Mid Threshold
+                <input id="fx-mb-mid-thresh" type="range" min="-80" max="0" step="0.5" value="-18" />
+                <span id="fx-mb-mid-thresh-value">-18.0 dB</span>
+              </label>
+              <label>
+                Mid Ratio
+                <input id="fx-mb-mid-ratio" type="range" min="1" max="20" step="0.1" value="3.0" />
+                <span id="fx-mb-mid-ratio-value">3.0:1</span>
+              </label>
+              <label>
+                High Threshold
+                <input id="fx-mb-high-thresh" type="range" min="-80" max="0" step="0.5" value="-14" />
+                <span id="fx-mb-high-thresh-value">-14.0 dB</span>
+              </label>
+              <label>
+                High Ratio
+                <input id="fx-mb-high-ratio" type="range" min="1" max="20" step="0.1" value="4.0" />
+                <span id="fx-mb-high-ratio-value">4.0:1</span>
+              </label>
+            </div>
             <div class="fx-card chain-detail-card" data-chain-detail="widener" hidden>
               <div class="fx-option-head">
                 <span>Stereo Widener</span>
