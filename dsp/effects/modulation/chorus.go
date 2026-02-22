@@ -39,7 +39,7 @@ type Chorus struct {
 
 // NewChorus creates a chorus effect with tuned musical defaults.
 func NewChorus() (*Chorus, error) {
-	c := &Chorus{
+	chorus := &Chorus{
 		sampleRate:       defaultChorusSampleRate,
 		speedHz:          defaultChorusSpeedHz,
 		depthSeconds:     defaultChorusDepthSeconds,
@@ -47,11 +47,11 @@ func NewChorus() (*Chorus, error) {
 		mix:              defaultChorusMix,
 		stages:           defaultChorusStages,
 	}
-	if err := c.reconfigureDelayLine(); err != nil {
+	if err := chorus.reconfigureDelayLine(); err != nil {
 		return nil, err
 	}
 
-	return c, nil
+	return chorus, nil
 }
 
 // SetSampleRate updates sample rate.

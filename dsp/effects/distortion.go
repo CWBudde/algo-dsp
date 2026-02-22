@@ -111,7 +111,9 @@ func WithDistortionMode(mode DistortionMode) DistortionOption {
 		if !validDistortionMode(mode) {
 			return fmt.Errorf("distortion mode is invalid: %d", mode)
 		}
+
 		cfg.mode = mode
+
 		return validateChebyshevParity(cfg.chebyshevOrder, cfg.chebyshevMode)
 	}
 }
@@ -122,7 +124,9 @@ func WithDistortionApproxMode(mode DistortionApproxMode) DistortionOption {
 		if !validApproxMode(mode) {
 			return fmt.Errorf("distortion approximation mode is invalid: %d", mode)
 		}
+
 		cfg.approxMode = mode
+
 		return nil
 	}
 }
@@ -133,7 +137,9 @@ func WithDistortionDrive(drive float64) DistortionOption {
 		if drive < minDistortionDrive || drive > maxDistortionDrive || math.IsNaN(drive) || math.IsInf(drive, 0) {
 			return fmt.Errorf("distortion drive must be in [%g, %g]: %f", minDistortionDrive, maxDistortionDrive, drive)
 		}
+
 		cfg.drive = drive
+
 		return nil
 	}
 }
@@ -144,7 +150,9 @@ func WithDistortionMix(mix float64) DistortionOption {
 		if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 			return fmt.Errorf("distortion mix must be in [0, 1]: %f", mix)
 		}
+
 		cfg.mix = mix
+
 		return nil
 	}
 }
@@ -156,7 +164,9 @@ func WithDistortionOutputLevel(level float64) DistortionOption {
 			return fmt.Errorf("distortion output level must be in [%g, %g]: %f",
 				minDistortionOutputLevel, maxDistortionOutputLevel, level)
 		}
+
 		cfg.outputLevel = level
+
 		return nil
 	}
 }
@@ -168,7 +178,9 @@ func WithDistortionClipLevel(level float64) DistortionOption {
 			return fmt.Errorf("distortion clip level must be in [%g, %g]: %f",
 				minDistortionClipLevel, maxDistortionClipLevel, level)
 		}
+
 		cfg.clipLevel = level
+
 		return nil
 	}
 }
@@ -179,7 +191,9 @@ func WithDistortionShape(shape float64) DistortionOption {
 		if shape < minDistortionShape || shape > maxDistortionShape || math.IsNaN(shape) || math.IsInf(shape, 0) {
 			return fmt.Errorf("distortion shape must be in [%g, %g]: %f", minDistortionShape, maxDistortionShape, shape)
 		}
+
 		cfg.shape = shape
+
 		return nil
 	}
 }
@@ -190,7 +204,9 @@ func WithDistortionBias(bias float64) DistortionOption {
 		if bias < -1 || bias > 1 || math.IsNaN(bias) || math.IsInf(bias, 0) {
 			return fmt.Errorf("distortion bias must be in [-1, 1]: %f", bias)
 		}
+
 		cfg.bias = bias
+
 		return nil
 	}
 }
@@ -201,7 +217,9 @@ func WithChebyshevOrder(order int) DistortionOption {
 		if order < minChebyshevOrder || order > maxChebyshevOrder {
 			return fmt.Errorf("chebyshev order must be in [%d, %d]: %d", minChebyshevOrder, maxChebyshevOrder, order)
 		}
+
 		cfg.chebyshevOrder = order
+
 		return validateChebyshevParity(cfg.chebyshevOrder, cfg.chebyshevMode)
 	}
 }
@@ -212,7 +230,9 @@ func WithChebyshevHarmonicMode(mode ChebyshevHarmonicMode) DistortionOption {
 		if !validChebyshevHarmonicMode(mode) {
 			return fmt.Errorf("chebyshev harmonic mode is invalid: %d", mode)
 		}
+
 		cfg.chebyshevMode = mode
+
 		return validateChebyshevParity(cfg.chebyshevOrder, cfg.chebyshevMode)
 	}
 }
@@ -232,7 +252,9 @@ func WithChebyshevGainLevel(gain float64) DistortionOption {
 			return fmt.Errorf("chebyshev gain level must be in [%g, %g]: %f",
 				minChebyshevGainLevel, maxChebyshevGainLevel, gain)
 		}
+
 		cfg.chebyshevGain = gain
+
 		return nil
 	}
 }
@@ -276,10 +298,12 @@ func NewDistortion(sampleRate float64, opts ...DistortionOption) (*Distortion, e
 	}
 
 	cfg := defaultDistortionConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -313,7 +337,9 @@ func (d *Distortion) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("distortion sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	d.sampleRate = sampleRate
+
 	return nil
 }
 
@@ -322,7 +348,9 @@ func (d *Distortion) SetMode(mode DistortionMode) error {
 	if !validDistortionMode(mode) {
 		return fmt.Errorf("distortion mode is invalid: %d", mode)
 	}
+
 	d.mode = mode
+
 	return d.validate()
 }
 
@@ -331,7 +359,9 @@ func (d *Distortion) SetApproxMode(mode DistortionApproxMode) error {
 	if !validApproxMode(mode) {
 		return fmt.Errorf("distortion approximation mode is invalid: %d", mode)
 	}
+
 	d.approxMode = mode
+
 	return nil
 }
 
@@ -340,7 +370,9 @@ func (d *Distortion) SetDrive(drive float64) error {
 	if drive < minDistortionDrive || drive > maxDistortionDrive || math.IsNaN(drive) || math.IsInf(drive, 0) {
 		return fmt.Errorf("distortion drive must be in [%g, %g]: %f", minDistortionDrive, maxDistortionDrive, drive)
 	}
+
 	d.drive = drive
+
 	return nil
 }
 
@@ -349,7 +381,9 @@ func (d *Distortion) SetMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("distortion mix must be in [0, 1]: %f", mix)
 	}
+
 	d.mix = mix
+
 	return nil
 }
 
@@ -359,7 +393,9 @@ func (d *Distortion) SetOutputLevel(level float64) error {
 		return fmt.Errorf("distortion output level must be in [%g, %g]: %f",
 			minDistortionOutputLevel, maxDistortionOutputLevel, level)
 	}
+
 	d.outputLevel = level
+
 	return nil
 }
 
@@ -369,7 +405,9 @@ func (d *Distortion) SetClipLevel(level float64) error {
 		return fmt.Errorf("distortion clip level must be in [%g, %g]: %f",
 			minDistortionClipLevel, maxDistortionClipLevel, level)
 	}
+
 	d.clipLevel = level
+
 	return nil
 }
 
@@ -378,7 +416,9 @@ func (d *Distortion) SetShape(shape float64) error {
 	if shape < minDistortionShape || shape > maxDistortionShape || math.IsNaN(shape) || math.IsInf(shape, 0) {
 		return fmt.Errorf("distortion shape must be in [%g, %g]: %f", minDistortionShape, maxDistortionShape, shape)
 	}
+
 	d.shape = shape
+
 	return nil
 }
 
@@ -387,7 +427,9 @@ func (d *Distortion) SetBias(bias float64) error {
 	if bias < -1 || bias > 1 || math.IsNaN(bias) || math.IsInf(bias, 0) {
 		return fmt.Errorf("distortion bias must be in [-1, 1]: %f", bias)
 	}
+
 	d.bias = bias
+
 	return nil
 }
 
@@ -396,7 +438,9 @@ func (d *Distortion) SetChebyshevOrder(order int) error {
 	if order < minChebyshevOrder || order > maxChebyshevOrder {
 		return fmt.Errorf("chebyshev order must be in [%d, %d]: %d", minChebyshevOrder, maxChebyshevOrder, order)
 	}
+
 	d.chebyshevOrder = order
+
 	return d.validate()
 }
 
@@ -405,7 +449,9 @@ func (d *Distortion) SetChebyshevHarmonicMode(mode ChebyshevHarmonicMode) error 
 	if !validChebyshevHarmonicMode(mode) {
 		return fmt.Errorf("chebyshev harmonic mode is invalid: %d", mode)
 	}
+
 	d.chebyshevMode = mode
+
 	return d.validate()
 }
 
@@ -420,7 +466,9 @@ func (d *Distortion) SetChebyshevGainLevel(gain float64) error {
 		return fmt.Errorf("chebyshev gain level must be in [%g, %g]: %f",
 			minChebyshevGainLevel, maxChebyshevGainLevel, gain)
 	}
+
 	d.chebyshevGain = gain
+
 	return nil
 }
 
@@ -492,12 +540,15 @@ func (d *Distortion) validate() error {
 	if err := validateChebyshevParity(d.chebyshevOrder, d.chebyshevMode); err != nil {
 		return err
 	}
+
 	if !validDistortionMode(d.mode) {
 		return fmt.Errorf("distortion mode is invalid: %d", d.mode)
 	}
+
 	if !validApproxMode(d.approxMode) {
 		return fmt.Errorf("distortion approximation mode is invalid: %d", d.approxMode)
 	}
+
 	return nil
 }
 
@@ -544,9 +595,11 @@ func (d *Distortion) hardClip(x float64) float64 {
 	if x > d.clipLevel {
 		x = d.clipLevel
 	}
+
 	if x < -d.clipLevel {
 		x = -d.clipLevel
 	}
+
 	return x / d.clipLevel
 }
 
@@ -555,6 +608,7 @@ func (d *Distortion) softClip(x float64) float64 {
 	if ax < 1 {
 		return 1.5 * (x - (x*x*x)/3)
 	}
+
 	return math.Copysign(1, x)
 }
 
@@ -562,6 +616,7 @@ func (d *Distortion) tanhShape(x float64) float64 {
 	if d.approxMode == DistortionApproxPolynomial {
 		return fastTanhApprox(x)
 	}
+
 	return math.Tanh(x)
 }
 
@@ -569,6 +624,7 @@ func (d *Distortion) softSat(x float64) float64 {
 	if d.approxMode == DistortionApproxPolynomial {
 		return clampUnitDist(x * (27 + x*x) / (27 + 9*x*x))
 	}
+
 	return clampUnitDist((2 / math.Pi) * math.Atan((math.Pi/2)*x))
 }
 
@@ -579,6 +635,7 @@ func (d *Distortion) chebyshevShape(x float64) float64 {
 		if d.chebyshevInvert {
 			out = -out
 		}
+
 		return clampUnitDist(out * d.chebyshevGain)
 	}
 
@@ -604,6 +661,7 @@ func (d *Distortion) dcBypass(x float64) float64 {
 	y := x - d.dcPrevIn + dcBypassPole*d.dcPrevOut
 	d.dcPrevIn = x
 	d.dcPrevOut = y
+
 	return y
 }
 
@@ -634,6 +692,7 @@ func validateChebyshevParity(order int, mode ChebyshevHarmonicMode) error {
 	default:
 		return fmt.Errorf("chebyshev harmonic mode is invalid: %d", mode)
 	}
+
 	return nil
 }
 
@@ -641,10 +700,13 @@ func fastTanhApprox(x float64) float64 {
 	if x > 3 {
 		return 1
 	}
+
 	if x < -3 {
 		return -1
 	}
+
 	x2 := x * x
+
 	return clampUnitDist(x * (27 + x2) / (27 + 9*x2))
 }
 
@@ -652,9 +714,11 @@ func clamp(x, lo, hi float64) float64 {
 	if x < lo {
 		return lo
 	}
+
 	if x > hi {
 		return hi
 	}
+
 	return x
 }
 

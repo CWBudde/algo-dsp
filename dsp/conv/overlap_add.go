@@ -67,7 +67,7 @@ func NewOverlapAdd(kernel []float64, blockSize int) (*OverlapAdd, error) {
 		return nil, fmt.Errorf("conv: failed to create FFT plan: %w", err)
 	}
 
-	oa := &OverlapAdd{
+	overlapAdd := &OverlapAdd{
 		kernelFFT:    make([]complex128, fftSize),
 		kernelLen:    kernelLen,
 		blockSize:    blockSize,
@@ -83,12 +83,12 @@ func NewOverlapAdd(kernel []float64, blockSize int) (*OverlapAdd, error) {
 		kernelPadded[i] = complex(v, 0)
 	}
 
-	err = plan.Forward(oa.kernelFFT, kernelPadded)
+	err = plan.Forward(overlapAdd.kernelFFT, kernelPadded)
 	if err != nil {
 		return nil, fmt.Errorf("conv: failed to compute kernel FFT: %w", err)
 	}
 
-	return oa, nil
+	return overlapAdd, nil
 }
 
 // BlockSize returns the input block size.

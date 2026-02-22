@@ -61,24 +61,24 @@ func TestBiquadDesigners_BasicResponseShape(t *testing.T) {
 }
 
 func TestEQDesigners_BasicBehavior(t *testing.T) {
-	sr := 48000.0
-	f := 1000.0
+	sampleRate := 48000.0
+	freq := 1000.0
 	q := 1.0
 
-	peakUp := Peak(f, 6, q, sr)
+	peakUp := Peak(freq, 6, q, sampleRate)
 
-	peakDown := Peak(f, -6, q, sr)
-	if !(mag(peakUp, f, sr) > 1 && mag(peakDown, f, sr) < 1) {
+	peakDown := Peak(freq, -6, q, sampleRate)
+	if !(mag(peakUp, freq, sampleRate) > 1 && mag(peakDown, freq, sampleRate) < 1) {
 		t.Fatal("peak filter gain check failed")
 	}
 
-	ls := LowShelf(500, 6, q, sr)
-	if !(mag(ls, 100, sr) > mag(ls, 10000, sr)) {
+	ls := LowShelf(500, 6, q, sampleRate)
+	if !(mag(ls, 100, sampleRate) > mag(ls, 10000, sampleRate)) {
 		t.Fatal("low shelf tilt check failed")
 	}
 
-	hs := HighShelf(4000, 6, q, sr)
-	if !(mag(hs, 10000, sr) > mag(hs, 100, sr)) {
+	hs := HighShelf(4000, 6, q, sampleRate)
+	if !(mag(hs, 10000, sampleRate) > mag(hs, 100, sampleRate)) {
 		t.Fatal("high shelf tilt check failed")
 	}
 }
@@ -124,9 +124,9 @@ func TestButterworthLP_OrderAndShape(t *testing.T) {
 }
 
 func TestButterworthHP_OrderAndShape(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
-	coeffs := ButterworthHP(1000, 5, sr)
+	coeffs := ButterworthHP(1000, 5, sampleRate)
 	if len(coeffs) != 3 {
 		t.Fatalf("len=%d, want 3", len(coeffs))
 	}
@@ -140,21 +140,21 @@ func TestButterworthHP_OrderAndShape(t *testing.T) {
 	}
 
 	chain := biquad.NewChain(coeffs)
-	if !(magChain(chain, 10000, sr) > magChain(chain, 100, sr)) {
+	if !(magChain(chain, 10000, sampleRate) > magChain(chain, 100, sampleRate)) {
 		t.Fatal("ButterworthHP response shape check failed")
 	}
 }
 
 func TestChebyshev1ParityWithRefFormulas(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 	freq := 1000.0
 	order := 4
 	ripple := 2.0
 
-	c1lp := Chebyshev1LP(freq, order, ripple, sr)
-	c1hp := Chebyshev1HP(freq, order, ripple, sr)
-	ref1lp := refCheby1LP(freq, order, ripple, sr)
-	ref1hp := refCheby1HP(freq, order, ripple, sr)
+	c1lp := Chebyshev1LP(freq, order, ripple, sampleRate)
+	c1hp := Chebyshev1HP(freq, order, ripple, sampleRate)
+	ref1lp := refCheby1LP(freq, order, ripple, sampleRate)
+	ref1hp := refCheby1HP(freq, order, ripple, sampleRate)
 
 	if !coeffSliceEqual(c1lp, ref1lp) {
 		t.Fatal("Chebyshev1LP parity mismatch")

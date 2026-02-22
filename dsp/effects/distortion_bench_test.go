@@ -10,11 +10,14 @@ func BenchmarkDistortionTanhExact(b *testing.B) {
 	)
 
 	x := 0.1
+
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		x = d.ProcessSample(x)
 	}
+
 	_ = x
 }
 
@@ -26,10 +29,13 @@ func BenchmarkDistortionTanhPolynomial(b *testing.B) {
 	)
 
 	x := 0.1
+
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		x = d.ProcessSample(x)
 	}
+
 	_ = x
 }

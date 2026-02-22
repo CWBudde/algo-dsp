@@ -95,15 +95,15 @@ func Allpass(freq, q, sampleRate float64) biquad.Coefficients {
 	}
 
 	q = normalizedQ(q)
-	cw := math.Cos(w0)
-	sw := math.Sin(w0)
-	alpha := sw / (2 * q)
+	cosW := math.Cos(w0)
+	sinW := math.Sin(w0)
+	alpha := sinW / (2 * q)
 
 	b0 := 1 - alpha
-	b1 := -2 * cw
+	b1 := -2 * cosW
 	b2 := 1 + alpha
 	a0 := 1 + alpha
-	a1 := -2 * cw
+	a1 := -2 * cosW
 	a2 := 1 - alpha
 
 	return normalizeBiquad(b0, b1, b2, a0, a1, a2)

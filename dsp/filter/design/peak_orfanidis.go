@@ -165,6 +165,7 @@ func peakOrfanidisFromAudio(freq, gainDB, q, sampleRate float64, cfg peakConfig)
 	// Orfanidis uses inverted dB mapping for the peak gain.
 	G := math.Pow(10, -gainDB/20.0)
 
+	// GB is the gain at the band edges near w0 ± dw/2.
 	GB := math.Pow(10, -gainDB/40.0) // default: half-gain
 	if cfg.hasBEGain {
 		GB = cfg.bandEdgeGain

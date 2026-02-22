@@ -100,6 +100,7 @@ func TestTransformerSimulationMixZeroTransparent(t *testing.T) {
 
 	for i := 0; i < 256; i++ {
 		in := math.Sin(2 * math.Pi * 440 * float64(i) / 48000)
+
 		out := ts.ProcessSample(in)
 		if math.Abs(out-in) > 1e-12 {
 			t.Fatalf("mix=0 should be transparent at sample %d", i)
@@ -120,6 +121,7 @@ func TestTransformerSimulationSampleRateAwareUpdate(t *testing.T) {
 	if err := ts.SetSampleRate(96000); err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
+
 	ts.Reset()
 	after := ts.ProcessSample(0.5)
 
@@ -127,6 +129,7 @@ func TestTransformerSimulationSampleRateAwareUpdate(t *testing.T) {
 	if math.IsNaN(after) || math.IsInf(after, 0) {
 		t.Fatalf("invalid output after sample-rate update: %g", after)
 	}
+
 	if math.Abs(after-baseline) < 1e-6 {
 		t.Fatalf("expected output to change after sample-rate update: baseline=%g after=%g", baseline, after)
 	}
@@ -160,6 +163,7 @@ func TestTransformerSimulationHighQualityReducesAliasingSpurs(t *testing.T) {
 
 	in := make([]float64, n)
 	outHQ := make([]float64, n)
+
 	outLW := make([]float64, n)
 	for i := 0; i < n; i++ {
 		in[i] = 0.8 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
@@ -182,10 +186,12 @@ func spurRatio(x []float64, fundamentalBin int) float64 {
 	}
 
 	spur := 0.0
+
 	for k := 1; k <= len(x)/2; k++ {
 		if k == fundamentalBin {
 			continue
 		}
+
 		spur += dftBinEnergy(x, k)
 	}
 
@@ -194,11 +200,14 @@ func spurRatio(x []float64, fundamentalBin int) float64 {
 
 func dftBinEnergy(x []float64, k int) float64 {
 	n := float64(len(x))
+
 	var re, im float64
+
 	for i := range x {
 		phase := 2 * math.Pi * float64(k) * float64(i) / n
 		re += x[i] * math.Cos(phase)
 		im -= x[i] * math.Sin(phase)
 	}
+
 	return re*re + im*im
 }

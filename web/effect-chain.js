@@ -13,6 +13,8 @@
     phaser:           { label: "Phaser",            hue: 140, category: "Modulation" },
     tremolo:          { label: "Tremolo",           hue: 270, category: "Modulation" },
     bitcrusher:       { label: "Bit Crusher",       hue: 24,  category: "Color" },
+    distortion:       { label: "Distortion",        hue: 6,   category: "Color" },
+    transformer:      { label: "Transformer Sat",   hue: 44,  category: "Color" },
     filter:           { label: "Filter",            hue: 188, category: "Filters" },
     delay:            { label: "Delay",             hue: 35,  category: "Time/Space" },
     reverb:           { label: "Reverb",            hue: 260, category: "Time/Space" },

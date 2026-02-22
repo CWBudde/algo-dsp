@@ -62,7 +62,9 @@ func WithCancellerListenerDistance(distance float64) CrosstalkCancellerOption {
 			return fmt.Errorf("crosstalk canceller listener distance must be >= %g: %f",
 				minCancellerListenerDistance, distance)
 		}
+
 		cfg.listenerDistance = distance
+
 		return nil
 	}
 }
@@ -74,7 +76,9 @@ func WithCancellerSpeakerDistance(distance float64) CrosstalkCancellerOption {
 			return fmt.Errorf("crosstalk canceller speaker distance must be >= %g: %f",
 				minCancellerSpeakerDistance, distance)
 		}
+
 		cfg.speakerDistance = distance
+
 		return nil
 	}
 }
@@ -87,7 +91,9 @@ func WithCancellerHeadRadius(radius float64) CrosstalkCancellerOption {
 			return fmt.Errorf("crosstalk canceller head radius must be in [%g, %g]: %f",
 				minCancellerHeadRadius, maxCancellerHeadRadius, radius)
 		}
+
 		cfg.headRadius = radius
+
 		return nil
 	}
 }
@@ -98,7 +104,9 @@ func WithCancellerAttenuation(attenuation float64) CrosstalkCancellerOption {
 		if attenuation < 0 || attenuation >= 1 || math.IsNaN(attenuation) || math.IsInf(attenuation, 0) {
 			return fmt.Errorf("crosstalk canceller attenuation must be in [0, 1): %f", attenuation)
 		}
+
 		cfg.attenuation = attenuation
+
 		return nil
 	}
 }
@@ -109,7 +117,9 @@ func WithCancellerStages(stages int) CrosstalkCancellerOption {
 		if stages <= 0 || stages > maxCancellerStages {
 			return fmt.Errorf("crosstalk canceller stages must be in [1, %d]: %d", maxCancellerStages, stages)
 		}
+
 		cfg.stages = stages
+
 		return nil
 	}
 }
@@ -122,7 +132,9 @@ func WithCancellerSpeedOfSound(speed float64) CrosstalkCancellerOption {
 			return fmt.Errorf("crosstalk canceller speed of sound must be in [%g, %g]: %f",
 				minCancellerSpeedOfSound, maxCancellerSpeedOfSound, speed)
 		}
+
 		cfg.speedOfSound = speed
+
 		return nil
 	}
 }
@@ -156,10 +168,12 @@ func NewCrosstalkCanceller(sampleRate float64, opts ...CrosstalkCancellerOption)
 	}
 
 	cfg := defaultCrosstalkCancellerConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -179,6 +193,7 @@ func NewCrosstalkCanceller(sampleRate float64, opts ...CrosstalkCancellerOption)
 	if err := c.rebuild(); err != nil {
 		return nil, err
 	}
+
 	return c, nil
 }
 
@@ -203,9 +218,11 @@ func (c *CrosstalkCanceller) ProcessInPlace(left, right []float64) error {
 	if len(left) != len(right) {
 		return fmt.Errorf("crosstalk canceller: left and right lengths must match: %d != %d", len(left), len(right))
 	}
+
 	for i := range left {
 		left[i], right[i] = c.ProcessStereo(left[i], right[i])
 	}
+
 	return nil
 }
 
@@ -224,7 +241,9 @@ func (c *CrosstalkCanceller) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("crosstalk canceller sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	c.sampleRate = sampleRate
+
 	return c.rebuild()
 }
 
@@ -234,17 +253,21 @@ func (c *CrosstalkCanceller) SetGeometry(listenerDistance, speakerDistance, head
 		return fmt.Errorf("crosstalk canceller listener distance must be >= %g: %f",
 			minCancellerListenerDistance, listenerDistance)
 	}
+
 	if speakerDistance < minCancellerSpeakerDistance || math.IsNaN(speakerDistance) || math.IsInf(speakerDistance, 0) {
 		return fmt.Errorf("crosstalk canceller speaker distance must be >= %g: %f",
 			minCancellerSpeakerDistance, speakerDistance)
 	}
+
 	if headRadius < minCancellerHeadRadius || headRadius > maxCancellerHeadRadius || math.IsNaN(headRadius) || math.IsInf(headRadius, 0) {
 		return fmt.Errorf("crosstalk canceller head radius must be in [%g, %g]: %f",
 			minCancellerHeadRadius, maxCancellerHeadRadius, headRadius)
 	}
+
 	c.listenerDistance = listenerDistance
 	c.speakerDistance = speakerDistance
 	c.headRadius = headRadius
+
 	return c.rebuild()
 }
 
@@ -253,7 +276,9 @@ func (c *CrosstalkCanceller) SetAttenuation(attenuation float64) error {
 	if attenuation < 0 || attenuation >= 1 || math.IsNaN(attenuation) || math.IsInf(attenuation, 0) {
 		return fmt.Errorf("crosstalk canceller attenuation must be in [0, 1): %f", attenuation)
 	}
+
 	c.attenuation = attenuation
+
 	return c.rebuild()
 }
 
@@ -262,7 +287,9 @@ func (c *CrosstalkCanceller) SetStages(stages int) error {
 	if stages <= 0 || stages > maxCancellerStages {
 		return fmt.Errorf("crosstalk canceller stages must be in [1, %d]: %d", maxCancellerStages, stages)
 	}
+
 	c.stages = stages
+
 	return c.rebuild()
 }
 
@@ -272,7 +299,9 @@ func (c *CrosstalkCanceller) SetSpeedOfSound(speed float64) error {
 		return fmt.Errorf("crosstalk canceller speed of sound must be in [%g, %g]: %f",
 			minCancellerSpeedOfSound, maxCancellerSpeedOfSound, speed)
 	}
+
 	c.speedOfSound = speed
+
 	return c.rebuild()
 }
 
@@ -289,12 +318,14 @@ func (c *CrosstalkCanceller) rebuild() error {
 	if err := validateCancellerGeometry(c.listenerDistance, c.speakerDistance, c.headRadius); err != nil {
 		return err
 	}
+
 	if c.sampleRate <= 0 || math.IsNaN(c.sampleRate) || math.IsInf(c.sampleRate, 0) {
 		return fmt.Errorf("crosstalk canceller sample rate must be > 0 and finite: %f", c.sampleRate)
 	}
 
 	pathDeltaMeters := c.pathDeltaMeters()
 	delaySeconds := pathDeltaMeters / c.speedOfSound
+
 	baseDelay := int(math.Round(delaySeconds * c.sampleRate))
 	if baseDelay < 1 {
 		baseDelay = 1
@@ -335,10 +366,12 @@ func (c *CrosstalkCanceller) pathDeltaMeters() float64 {
 	half := c.speakerDistance * 0.5
 	near := math.Hypot(c.listenerDistance, half-c.headRadius)
 	far := math.Hypot(c.listenerDistance, half+c.headRadius)
+
 	delta := far - near
 	if delta <= 0 {
 		return 1e-6
 	}
+
 	return delta
 }
 
@@ -347,9 +380,11 @@ func validateCancellerGeometry(listenerDistance, speakerDistance, headRadius flo
 		return fmt.Errorf("crosstalk canceller speaker distance must be > 2*headRadius: speaker=%f headRadius=%f",
 			speakerDistance, headRadius)
 	}
+
 	if listenerDistance <= 0 {
 		return fmt.Errorf("crosstalk canceller listener distance must be > 0: %f", listenerDistance)
 	}
+
 	return nil
 }
 
@@ -362,6 +397,7 @@ func (d *monoDelay) init(delaySamples int) {
 	if delaySamples < 1 {
 		delaySamples = 1
 	}
+
 	d.buf = make([]float64, delaySamples+1)
 	d.write = 0
 }
@@ -370,12 +406,15 @@ func (d *monoDelay) tick(x float64) float64 {
 	if len(d.buf) == 0 {
 		return 0
 	}
+
 	out := d.buf[d.write]
 	d.buf[d.write] = x
+
 	d.write++
 	if d.write >= len(d.buf) {
 		d.write = 0
 	}
+
 	return out
 }
 
@@ -383,5 +422,6 @@ func (d *monoDelay) reset() {
 	for i := range d.buf {
 		d.buf[i] = 0
 	}
+
 	d.write = 0
 }

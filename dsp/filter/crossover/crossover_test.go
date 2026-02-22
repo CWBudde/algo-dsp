@@ -226,19 +226,19 @@ func TestCrossover_Reset(t *testing.T) {
 
 // TestNewMultiBand_ThreeWay verifies a 3-way crossover (2 frequencies, 3 bands).
 func TestNewMultiBand_ThreeWay(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
-	mb, err := NewMultiBand([]float64{500, 5000}, 4, sr)
+	multiBand, err := NewMultiBand([]float64{500, 5000}, 4, sampleRate)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if mb.NumBands() != 3 {
-		t.Fatalf("expected 3 bands, got %d", mb.NumBands())
+	if multiBand.NumBands() != 3 {
+		t.Fatalf("expected 3 bands, got %d", multiBand.NumBands())
 	}
 
-	if len(mb.Stages()) != 2 {
-		t.Fatalf("expected 2 stages, got %d", len(mb.Stages()))
+	if len(multiBand.Stages()) != 2 {
+		t.Fatalf("expected 2 stages, got %d", len(multiBand.Stages()))
 	}
 }
 
@@ -267,9 +267,9 @@ func TestNewMultiBand_Errors(t *testing.T) {
 // TestMultiBand_ProcessSample_EnergyPreservation verifies that the sum
 // of all band outputs preserves impulse energy (allpass property).
 func TestMultiBand_ProcessSample_EnergyPreservation(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
-	mb, err := NewMultiBand([]float64{500, 5000}, 4, sr)
+	multiBand, err := NewMultiBand([]float64{500, 5000}, 4, sampleRate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +283,7 @@ func TestMultiBand_ProcessSample_EnergyPreservation(t *testing.T) {
 			x = 1.0
 		}
 
-		bands := mb.ProcessSample(x)
+		bands := multiBand.ProcessSample(x)
 
 		s := 0.0
 		for _, b := range bands {
@@ -301,11 +301,11 @@ func TestMultiBand_ProcessSample_EnergyPreservation(t *testing.T) {
 
 // TestMultiBand_ProcessBlock verifies block processing matches sample-by-sample.
 func TestMultiBand_ProcessBlock(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 	n := 128
 
-	mbSample, _ := NewMultiBand([]float64{500, 5000}, 4, sr)
-	mbBlock, _ := NewMultiBand([]float64{500, 5000}, 4, sr)
+	mbSample, _ := NewMultiBand([]float64{500, 5000}, 4, sampleRate)
+	mbBlock, _ := NewMultiBand([]float64{500, 5000}, 4, sampleRate)
 
 	input := make([]float64, n)
 	input[0] = 1.0
@@ -337,17 +337,17 @@ func TestMultiBand_ProcessBlock(t *testing.T) {
 
 // TestMultiBand_Reset verifies state clearing for multi-band crossover.
 func TestMultiBand_Reset(t *testing.T) {
-	mb, _ := NewMultiBand([]float64{500, 5000}, 4, 48000)
+	multiBand, _ := NewMultiBand([]float64{500, 5000}, 4, 48000)
 
 	// Process some samples.
-	mb.ProcessSample(1.0)
-	mb.ProcessSample(0.5)
-	mb.Reset()
+	multiBand.ProcessSample(1.0)
+	multiBand.ProcessSample(0.5)
+	multiBand.Reset()
 
 	// Compare with fresh.
 	mbFresh, _ := NewMultiBand([]float64{500, 5000}, 4, 48000)
 
-	bands1 := mb.ProcessSample(1.0)
+	bands1 := multiBand.ProcessSample(1.0)
 
 	bands2 := mbFresh.ProcessSample(1.0)
 	for i := range bands1 {
@@ -359,19 +359,19 @@ func TestMultiBand_Reset(t *testing.T) {
 
 // TestMultiBand_FourWay verifies a 4-way crossover.
 func TestMultiBand_FourWay(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
-	mb, err := NewMultiBand([]float64{200, 2000, 10000}, 4, sr)
+	multiBand, err := NewMultiBand([]float64{200, 2000, 10000}, 4, sampleRate)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if mb.NumBands() != 4 {
-		t.Fatalf("expected 4 bands, got %d", mb.NumBands())
+	if multiBand.NumBands() != 4 {
+		t.Fatalf("expected 4 bands, got %d", multiBand.NumBands())
 	}
 
 	// Verify outputs are finite.
-	bands := mb.ProcessSample(1.0)
+	bands := multiBand.ProcessSample(1.0)
 	for i, b := range bands {
 		if math.IsNaN(b) || math.IsInf(b, 0) {
 			t.Errorf("band %d: not finite: %v", i, b)
