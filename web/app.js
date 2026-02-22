@@ -2419,6 +2419,11 @@ function initEffectChain() {
       readEffectsFromChain();
       syncEffectsToDSP();
       saveSettings();
+      // Keep detail panel in sync when canvas slider is dragged
+      const sel = state.chain?.getSelectedNode?.();
+      if (sel && !sel.fixed) {
+        applyNodeParamsToUI(sel);
+      }
     },
     onSelect: (node) => {
       showChainDetail(node);
@@ -2439,8 +2444,172 @@ function showChainDetail(node) {
     card.hidden = card.dataset.chainDetail !== type;
   });
   applyNodeParamsToUI(node);
+  updatePinButtonStates(node);
   detail.hidden = false;
   updateEffectsText();
+}
+
+// ---- Pin-to-block buttons for chain detail sliders ----
+
+// Maps HTML input element IDs to { effectType, paramKey }.
+const PIN_MAP = {
+  "chorus-mix": { type: "chorus", param: "mix" },
+  "chorus-depth": { type: "chorus", param: "depth" },
+  "chorus-speed": { type: "chorus", param: "speedHz" },
+  "chorus-stages": { type: "chorus", param: "stages" },
+  "flanger-rate": { type: "flanger", param: "rateHz" },
+  "flanger-depth": { type: "flanger", param: "depth" },
+  "flanger-base-delay": { type: "flanger", param: "baseDelay" },
+  "flanger-feedback": { type: "flanger", param: "feedback" },
+  "flanger-mix": { type: "flanger", param: "mix" },
+  "ringmod-carrier": { type: "ringmod", param: "carrierHz" },
+  "ringmod-mix": { type: "ringmod", param: "mix" },
+  "bitcrusher-bits": { type: "bitcrusher", param: "bitDepth" },
+  "bitcrusher-downsample": { type: "bitcrusher", param: "downsample" },
+  "bitcrusher-mix": { type: "bitcrusher", param: "mix" },
+  "distortion-drive": { type: "distortion", param: "drive" },
+  "distortion-mix": { type: "distortion", param: "mix" },
+  "distortion-output": { type: "distortion", param: "output" },
+  "distortion-clip": { type: "distortion", param: "clip" },
+  "distortion-shape": { type: "distortion", param: "shape" },
+  "distortion-bias": { type: "distortion", param: "bias" },
+  "transformer-drive": { type: "transformer", param: "drive" },
+  "transformer-mix": { type: "transformer", param: "mix" },
+  "transformer-output": { type: "transformer", param: "output" },
+  "transformer-highpass": { type: "transformer", param: "highpassHz" },
+  "transformer-damping": { type: "transformer", param: "dampingHz" },
+  "fx-filter-freq": { type: "filter", param: "freq" },
+  "fx-filter-q": { type: "filter", param: "q" },
+  "fx-filter-gain": { type: "filter", param: "gain" },
+  "fx-filter-order": { type: "filter", param: "order" },
+  "fx-comp-thresh": { type: "dyn-compressor", param: "thresholdDB" },
+  "fx-comp-ratio": { type: "dyn-compressor", param: "ratio" },
+  "fx-comp-knee": { type: "dyn-compressor", param: "kneeDB" },
+  "fx-comp-attack": { type: "dyn-compressor", param: "attackMs" },
+  "fx-comp-release": { type: "dyn-compressor", param: "releaseMs" },
+  "fx-comp-makeup": { type: "dyn-compressor", param: "makeupGainDB" },
+  "fx-lim-thresh": { type: "dyn-limiter", param: "thresholdDB" },
+  "fx-lim-release": { type: "dyn-limiter", param: "releaseMs" },
+  "fx-lookahead-thresh": { type: "dyn-lookahead", param: "thresholdDB" },
+  "fx-lookahead-release": { type: "dyn-lookahead", param: "releaseMs" },
+  "fx-lookahead-ms": { type: "dyn-lookahead", param: "lookaheadMs" },
+  "fx-gate-thresh": { type: "dyn-gate", param: "thresholdDB" },
+  "fx-gate-ratio": { type: "dyn-gate", param: "ratio" },
+  "fx-gate-knee": { type: "dyn-gate", param: "kneeDB" },
+  "fx-gate-attack": { type: "dyn-gate", param: "attackMs" },
+  "fx-gate-hold": { type: "dyn-gate", param: "holdMs" },
+  "fx-gate-release": { type: "dyn-gate", param: "releaseMs" },
+  "fx-gate-range": { type: "dyn-gate", param: "rangeDB" },
+  "fx-exp-rms": { type: "dyn-expander", param: "rmsWindowMs" },
+  "fx-exp-thresh": { type: "dyn-expander", param: "thresholdDB" },
+  "fx-exp-ratio": { type: "dyn-expander", param: "ratio" },
+  "fx-exp-knee": { type: "dyn-expander", param: "kneeDB" },
+  "fx-exp-attack": { type: "dyn-expander", param: "attackMs" },
+  "fx-exp-release": { type: "dyn-expander", param: "releaseMs" },
+  "fx-exp-range": { type: "dyn-expander", param: "rangeDB" },
+  "fx-deess-freq": { type: "dyn-deesser", param: "freqHz" },
+  "fx-deess-q": { type: "dyn-deesser", param: "q" },
+  "fx-deess-thresh": { type: "dyn-deesser", param: "thresholdDB" },
+  "fx-deess-ratio": { type: "dyn-deesser", param: "ratio" },
+  "fx-deess-knee": { type: "dyn-deesser", param: "kneeDB" },
+  "fx-deess-attack": { type: "dyn-deesser", param: "attackMs" },
+  "fx-deess-release": { type: "dyn-deesser", param: "releaseMs" },
+  "fx-deess-range": { type: "dyn-deesser", param: "rangeDB" },
+  "fx-transient-attack": { type: "dyn-transient", param: "attack" },
+  "fx-transient-sustain": { type: "dyn-transient", param: "sustain" },
+  "fx-transient-attack-ms": { type: "dyn-transient", param: "attackMs" },
+  "fx-transient-release-ms": { type: "dyn-transient", param: "releaseMs" },
+  "fx-mb-cross1": { type: "dyn-multiband", param: "cross1Hz" },
+  "fx-mb-cross2": { type: "dyn-multiband", param: "cross2Hz" },
+  "fx-mb-attack": { type: "dyn-multiband", param: "attackMs" },
+  "fx-mb-release": { type: "dyn-multiband", param: "releaseMs" },
+  "fx-mb-knee": { type: "dyn-multiband", param: "kneeDB" },
+  "fx-mb-makeup": { type: "dyn-multiband", param: "makeupGainDB" },
+  "fx-mb-low-thresh": { type: "dyn-multiband", param: "lowThresholdDB" },
+  "fx-mb-low-ratio": { type: "dyn-multiband", param: "lowRatio" },
+  "fx-mb-mid-thresh": { type: "dyn-multiband", param: "midThresholdDB" },
+  "fx-mb-mid-ratio": { type: "dyn-multiband", param: "midRatio" },
+  "fx-mb-high-thresh": { type: "dyn-multiband", param: "highThresholdDB" },
+  "fx-mb-high-ratio": { type: "dyn-multiband", param: "highRatio" },
+  "split-freq": { type: "split-freq", param: "freqHz" },
+  "widener-width": { type: "widener", param: "width" },
+  "widener-mix": { type: "widener", param: "mix" },
+  "phaser-rate": { type: "phaser", param: "rateHz" },
+  "phaser-min-freq": { type: "phaser", param: "minFreqHz" },
+  "phaser-max-freq": { type: "phaser", param: "maxFreqHz" },
+  "phaser-stages": { type: "phaser", param: "stages" },
+  "phaser-feedback": { type: "phaser", param: "feedback" },
+  "phaser-mix": { type: "phaser", param: "mix" },
+  "tremolo-rate": { type: "tremolo", param: "rateHz" },
+  "tremolo-depth": { type: "tremolo", param: "depth" },
+  "tremolo-smoothing": { type: "tremolo", param: "smoothingMs" },
+  "tremolo-mix": { type: "tremolo", param: "mix" },
+  "delay-time": { type: "delay", param: "time" },
+  "delay-feedback": { type: "delay", param: "feedback" },
+  "delay-mix": { type: "delay", param: "mix" },
+  "simple-delay-ms": { type: "delay-simple", param: "delayMs" },
+  "harmonic-frequency": { type: "bass", param: "frequency" },
+  "harmonic-input": { type: "bass", param: "inputGain" },
+  "harmonic-high": { type: "bass", param: "highGain" },
+  "harmonic-original": { type: "bass", param: "original" },
+  "harmonic-harmonic": { type: "bass", param: "harmonic" },
+  "harmonic-decay": { type: "bass", param: "decay" },
+  "harmonic-response": { type: "bass", param: "responseMs" },
+  "time-pitch-semitones": { type: "pitch-time", param: "semitones" },
+  "time-pitch-sequence": { type: "pitch-time", param: "sequence" },
+  "time-pitch-overlap": { type: "pitch-time", param: "overlap" },
+  "time-pitch-search": { type: "pitch-time", param: "search" },
+  "spectral-pitch-semitones": { type: "pitch-spectral", param: "semitones" },
+  "reverb-wet": { type: "reverb", param: "wet" },
+  "reverb-dry": { type: "reverb", param: "dry" },
+  "reverb-room": { type: "reverb", param: "roomSize" },
+  "reverb-damp": { type: "reverb", param: "damp" },
+  "reverb-rt60": { type: "reverb", param: "rt60" },
+  "reverb-predelay": { type: "reverb", param: "preDelay" },
+  "reverb-mod-depth": { type: "reverb", param: "modDepth" },
+  "reverb-mod-rate": { type: "reverb", param: "modRate" },
+};
+
+const PIN_SVG = `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M9.828 1.172a2 2 0 0 1 2.828 0l2.172 2.172a2 2 0 0 1 0 2.828l-3.5 3.5a1 1 0 0 1-.354.232l-2 .75a1 1 0 0 1-1.118-.226L6.5 9.072 2.354 13.22a.5.5 0 0 1-.708-.708L5.8 8.358 4.572 7.146a1 1 0 0 1-.226-1.118l.75-2a1 1 0 0 1 .232-.354l3.5-3.5z"/></svg>`;
+
+function initPinButtons() {
+  for (const [inputId, { param }] of Object.entries(PIN_MAP)) {
+    const input = document.getElementById(inputId);
+    if (!input) continue;
+    const label = input.closest("label");
+    if (!label) continue;
+    const btn = document.createElement("button");
+    btn.className = "pin-param";
+    btn.dataset.inputId = inputId;
+    btn.dataset.param = param;
+    btn.title = "Pin to block";
+    btn.innerHTML = PIN_SVG;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const node = getSelectedEffectNode();
+      if (!node || !state.chain) return;
+      if (state.chain.isPinned(node.id, param)) {
+        state.chain.unpinParam(node.id, param);
+        btn.classList.remove("pinned");
+      } else {
+        state.chain.pinParam(node.id, param);
+        btn.classList.add("pinned");
+      }
+    });
+    label.appendChild(btn);
+  }
+}
+
+/** Update pin button states when a node's detail panel is shown. */
+function updatePinButtonStates(node) {
+  if (!node) return;
+  document.querySelectorAll(".pin-param").forEach((btn) => {
+    const mapping = PIN_MAP[btn.dataset.inputId];
+    if (!mapping || mapping.type !== node.type) return;
+    const pinned = state.chain?.isPinned(node.id, mapping.param);
+    btn.classList.toggle("pinned", !!pinned);
+  });
 }
 
 buildStepUI();
@@ -2449,6 +2618,7 @@ initEQCanvas();
 startEQDrawLoop();
 initTheme();
 initEffectChain();
+initPinButtons();
 bindEvents();
 ensureDSP(48000)
   .then(() => {

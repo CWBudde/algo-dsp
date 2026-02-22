@@ -46,6 +46,195 @@
   const BYPASS_PAD = 6;
   const DRAG_THRESHOLD = 4;
 
+  // ---- pinned-param mini-slider geometry ------------------------------------
+  const LABEL_H      = 52;   // height of the label/header area (same as old NODE_H)
+  const SLIDER_H     = 22;   // row height per pinned param
+  const SLIDER_PAD   = 4;    // padding before first slider row
+  const SLIDER_TRACK_H = 4;  // track bar height
+  const SLIDER_THUMB_R = 5;  // thumb circle radius
+  const SLIDER_LEFT  = 10;   // left inset for label text
+  const SLIDER_RIGHT = 8;    // right inset from block edge
+  const SLIDER_TRACK_LEFT = 40; // track starts after short label
+  const SLIDER_VAL_W     = 38; // reserved width for value text at right
+
+  // ---- parameter registry (min/max/unit metadata for canvas sliders) --------
+  const PARAM_REGISTRY = {
+    chorus: {
+      mix:     { label: "Mix",   min: 0, max: 0.6, step: 0.01, unit: "%", scale: 100 },
+      depth:   { label: "Depth", min: 0, max: 0.01, step: 0.0001, unit: "ms", scale: 1000 },
+      speedHz: { label: "Speed", min: 0.05, max: 5, step: 0.01, unit: "Hz" },
+      stages:  { label: "Stg",   min: 1, max: 6, step: 1, unit: "" },
+    },
+    flanger: {
+      rateHz:    { label: "Rate",  min: 0.05, max: 5, step: 0.01, unit: "Hz" },
+      depth:     { label: "Depth", min: 0, max: 0.009, step: 0.0001, unit: "ms", scale: 1000 },
+      baseDelay: { label: "Base",  min: 0.0001, max: 0.01, step: 0.0001, unit: "ms", scale: 1000 },
+      feedback:  { label: "Fdbk",  min: -0.95, max: 0.95, step: 0.01, unit: "%" , scale: 100 },
+      mix:       { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+    },
+    ringmod: {
+      carrierHz: { label: "Freq", min: 20, max: 4000, step: 1, unit: "Hz" },
+      mix:       { label: "Mix",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+    },
+    bitcrusher: {
+      bitDepth:   { label: "Bits",  min: 1, max: 16, step: 0.1, unit: "bit" },
+      downsample: { label: "Down",  min: 1, max: 64, step: 1, unit: "x" },
+      mix:        { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+    },
+    distortion: {
+      drive:  { label: "Drive",  min: 0.1, max: 20, step: 0.01, unit: "x" },
+      mix:    { label: "Mix",    min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      output: { label: "Out",    min: 0, max: 4, step: 0.01, unit: "x" },
+      clip:   { label: "Clip",   min: 0.05, max: 1, step: 0.01, unit: "" },
+      shape:  { label: "Shape",  min: 0, max: 1, step: 0.01, unit: "" },
+      bias:   { label: "Bias",   min: -1, max: 1, step: 0.01, unit: "" },
+    },
+    transformer: {
+      drive:      { label: "Drive", min: 0.1, max: 20, step: 0.01, unit: "x" },
+      mix:        { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      output:     { label: "Out",   min: 0, max: 4, step: 0.01, unit: "x" },
+      highpassHz: { label: "HP",    min: 5, max: 400, step: 1, unit: "Hz" },
+      dampingHz:  { label: "Damp",  min: 500, max: 18000, step: 10, unit: "Hz" },
+    },
+    filter: {
+      freq: { label: "Freq", min: 20, max: 18000, step: 1, unit: "Hz" },
+      q:    { label: "Q",    min: 0.2, max: 8, step: 0.01, unit: "" },
+      gain: { label: "Gain", min: -24, max: 24, step: 0.1, unit: "dB" },
+      order:{ label: "Ord",  min: 1, max: 12, step: 1, unit: "" },
+    },
+    "dyn-compressor": {
+      thresholdDB: { label: "Thr",  min: -60, max: 0, step: 0.5, unit: "dB" },
+      ratio:       { label: "Rat",  min: 1, max: 20, step: 0.1, unit: ":1" },
+      kneeDB:      { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
+      attackMs:    { label: "Atk",  min: 0.1, max: 100, step: 0.1, unit: "ms" },
+      releaseMs:   { label: "Rel",  min: 10, max: 1000, step: 1, unit: "ms" },
+      makeupGainDB:{ label: "Make", min: 0, max: 24, step: 0.1, unit: "dB" },
+    },
+    "dyn-limiter": {
+      thresholdDB: { label: "Thr", min: -24, max: 0, step: 0.1, unit: "dB" },
+      releaseMs:   { label: "Rel", min: 1, max: 1000, step: 1, unit: "ms" },
+    },
+    "dyn-lookahead": {
+      thresholdDB: { label: "Thr",  min: -24, max: 0, step: 0.1, unit: "dB" },
+      releaseMs:   { label: "Rel",  min: 1, max: 1000, step: 1, unit: "ms" },
+      lookaheadMs: { label: "Look", min: 0, max: 200, step: 0.1, unit: "ms" },
+    },
+    "dyn-gate": {
+      thresholdDB: { label: "Thr",  min: -80, max: 0, step: 0.5, unit: "dB" },
+      ratio:       { label: "Rat",  min: 1, max: 20, step: 0.1, unit: ":1" },
+      kneeDB:      { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
+      attackMs:    { label: "Atk",  min: 0.1, max: 200, step: 0.1, unit: "ms" },
+      holdMs:      { label: "Hold", min: 0, max: 500, step: 1, unit: "ms" },
+      releaseMs:   { label: "Rel",  min: 1, max: 1000, step: 1, unit: "ms" },
+      rangeDB:     { label: "Rng",  min: -120, max: 0, step: 1, unit: "dB" },
+    },
+    "dyn-expander": {
+      thresholdDB: { label: "Thr",  min: -80, max: 0, step: 0.5, unit: "dB" },
+      ratio:       { label: "Rat",  min: 1, max: 20, step: 0.1, unit: ":1" },
+      kneeDB:      { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
+      attackMs:    { label: "Atk",  min: 0.1, max: 200, step: 0.1, unit: "ms" },
+      releaseMs:   { label: "Rel",  min: 1, max: 1000, step: 1, unit: "ms" },
+      rangeDB:     { label: "Rng",  min: -120, max: 0, step: 1, unit: "dB" },
+      rmsWindowMs: { label: "RMS",  min: 1, max: 200, step: 1, unit: "ms" },
+    },
+    "dyn-deesser": {
+      freqHz:      { label: "Freq", min: 1000, max: 16000, step: 10, unit: "Hz" },
+      q:           { label: "Q",    min: 0.1, max: 10, step: 0.01, unit: "" },
+      thresholdDB: { label: "Thr",  min: -80, max: 0, step: 0.5, unit: "dB" },
+      ratio:       { label: "Rat",  min: 1, max: 20, step: 0.1, unit: ":1" },
+      kneeDB:      { label: "Knee", min: 0, max: 12, step: 0.1, unit: "dB" },
+      attackMs:    { label: "Atk",  min: 0.01, max: 50, step: 0.01, unit: "ms" },
+      releaseMs:   { label: "Rel",  min: 1, max: 500, step: 1, unit: "ms" },
+      rangeDB:     { label: "Rng",  min: -60, max: 0, step: 1, unit: "dB" },
+    },
+    "dyn-transient": {
+      attack:    { label: "Atk",  min: -1, max: 1, step: 0.01, unit: "" },
+      sustain:   { label: "Sus",  min: -1, max: 1, step: 0.01, unit: "" },
+      attackMs:  { label: "AtkT", min: 0.1, max: 200, step: 0.1, unit: "ms" },
+      releaseMs: { label: "RelT", min: 1, max: 2000, step: 1, unit: "ms" },
+    },
+    "dyn-multiband": {
+      cross1Hz:       { label: "X1",    min: 40, max: 4000, step: 10, unit: "Hz" },
+      cross2Hz:       { label: "X2",    min: 400, max: 12000, step: 10, unit: "Hz" },
+      attackMs:       { label: "Atk",   min: 0.1, max: 200, step: 0.1, unit: "ms" },
+      releaseMs:      { label: "Rel",   min: 1, max: 1000, step: 1, unit: "ms" },
+      kneeDB:         { label: "Knee",  min: 0, max: 24, step: 0.5, unit: "dB" },
+      makeupGainDB:   { label: "Make",  min: 0, max: 24, step: 0.1, unit: "dB" },
+      lowThresholdDB: { label: "LThr",  min: -80, max: 0, step: 0.5, unit: "dB" },
+      lowRatio:       { label: "LRat",  min: 1, max: 20, step: 0.1, unit: ":1" },
+      midThresholdDB: { label: "MThr",  min: -80, max: 0, step: 0.5, unit: "dB" },
+      midRatio:       { label: "MRat",  min: 1, max: 20, step: 0.1, unit: ":1" },
+      highThresholdDB:{ label: "HThr",  min: -80, max: 0, step: 0.5, unit: "dB" },
+      highRatio:      { label: "HRat",  min: 1, max: 20, step: 0.1, unit: ":1" },
+    },
+    "split-freq": {
+      freqHz: { label: "Freq", min: 20, max: 20000, step: 1, unit: "Hz" },
+    },
+    widener: {
+      width: { label: "Width", min: 0, max: 3, step: 0.01, unit: "x" },
+      mix:   { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+    },
+    phaser: {
+      rateHz:     { label: "Rate",  min: 0.05, max: 5, step: 0.01, unit: "Hz" },
+      minFreqHz:  { label: "MinF",  min: 20, max: 3000, step: 1, unit: "Hz" },
+      maxFreqHz:  { label: "MaxF",  min: 40, max: 8000, step: 1, unit: "Hz" },
+      stages:     { label: "Stg",   min: 1, max: 12, step: 1, unit: "" },
+      feedback:   { label: "Fdbk",  min: -0.95, max: 0.95, step: 0.01, unit: "%", scale: 100 },
+      mix:        { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+    },
+    tremolo: {
+      rateHz:      { label: "Rate",  min: 0.1, max: 20, step: 0.1, unit: "Hz" },
+      depth:       { label: "Depth", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      smoothingMs: { label: "Smth",  min: 0, max: 200, step: 1, unit: "ms" },
+      mix:         { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+    },
+    delay: {
+      time:     { label: "Time", min: 0.01, max: 2, step: 0.01, unit: "ms", scale: 1000 },
+      feedback: { label: "Fdbk", min: 0, max: 0.95, step: 0.01, unit: "%", scale: 100 },
+      mix:      { label: "Mix",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+    },
+    "delay-simple": {
+      delayMs: { label: "Delay", min: 0, max: 500, step: 1, unit: "ms" },
+    },
+    bass: {
+      frequency:  { label: "Freq", min: 30, max: 200, step: 1, unit: "Hz" },
+      inputGain:  { label: "In",   min: 0, max: 2, step: 0.01, unit: "" },
+      highGain:   { label: "High", min: 0, max: 2, step: 0.01, unit: "" },
+      original:   { label: "Orig", min: 0, max: 2, step: 0.01, unit: "" },
+      harmonic:   { label: "Harm", min: 0, max: 2, step: 0.01, unit: "" },
+      decay:      { label: "Dcy",  min: -1, max: 1, step: 0.01, unit: "" },
+      responseMs: { label: "Resp", min: 1, max: 200, step: 1, unit: "ms" },
+    },
+    "pitch-time": {
+      semitones: { label: "Semi", min: -24, max: 24, step: 0.1, unit: "st" },
+      sequence:  { label: "Seq",  min: 20, max: 120, step: 1, unit: "ms" },
+      overlap:   { label: "Ovlp", min: 4, max: 60, step: 1, unit: "ms" },
+      search:    { label: "Srch", min: 2, max: 40, step: 1, unit: "ms" },
+    },
+    "pitch-spectral": {
+      semitones: { label: "Semi", min: -24, max: 24, step: 0.1, unit: "st" },
+    },
+    reverb: {
+      wet:      { label: "Wet",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      dry:      { label: "Dry",  min: 0, max: 1.5, step: 0.01, unit: "" },
+      roomSize: { label: "Room", min: 0, max: 0.98, step: 0.01, unit: "" },
+      damp:     { label: "Damp", min: 0, max: 0.99, step: 0.01, unit: "" },
+      rt60:     { label: "RT60", min: 0.2, max: 8, step: 0.05, unit: "s" },
+      preDelay: { label: "Pre",  min: 0, max: 0.08, step: 0.001, unit: "ms", scale: 1000 },
+      modDepth: { label: "ModD", min: 0, max: 0.01, step: 0.0001, unit: "ms", scale: 1000 },
+      modRate:  { label: "ModR", min: 0, max: 1, step: 0.01, unit: "Hz" },
+    },
+  };
+
+  /** Format a parameter value for display on a mini-slider. */
+  function fmtParam(val, meta) {
+    const v = meta.scale ? val * meta.scale : val;
+    const scaledStep = meta.scale ? meta.step * meta.scale : meta.step;
+    const digits = scaledStep >= 1 ? 0 : scaledStep >= 0.1 ? 1 : 2;
+    const num = v.toFixed(digits);
+    return meta.unit ? `${num}${meta.unit}` : num;
+  }
+
   // ---- id generator ---------------------------------------------------------
   let _nextId = 1;
   function genId() { return "n" + (_nextId++); }
@@ -159,6 +348,7 @@
         id, type, label,
         x: wx - NODE_W / 2, y: wy - NODE_H / 2,
         bypassed: false, fixed: false, params,
+        pinnedParams: [],
       });
       this._autoInsert(id);
       this._emitChange();
@@ -201,6 +391,36 @@
       this._emitChange();
       this.draw();
       return true;
+    }
+
+    /** Pin a param key onto the block so a mini-slider is shown. */
+    pinParam(nodeId, paramKey) {
+      const node = this._nodeById(nodeId);
+      if (!node || node.fixed) return;
+      if (!node.pinnedParams) node.pinnedParams = [];
+      if (!node.pinnedParams.includes(paramKey)) {
+        node.pinnedParams.push(paramKey);
+        this._emitChange();
+        this.draw();
+      }
+    }
+
+    /** Remove a pinned param from the block. */
+    unpinParam(nodeId, paramKey) {
+      const node = this._nodeById(nodeId);
+      if (!node || !node.pinnedParams) return;
+      const idx = node.pinnedParams.indexOf(paramKey);
+      if (idx >= 0) {
+        node.pinnedParams.splice(idx, 1);
+        this._emitChange();
+        this.draw();
+      }
+    }
+
+    /** Check whether a param is pinned on a node. */
+    isPinned(nodeId, paramKey) {
+      const node = this._nodeById(nodeId);
+      return node?.pinnedParams?.includes(paramKey) ?? false;
     }
 
     /** Returns a Set of effect type strings that are connected & not bypassed. */
@@ -249,7 +469,9 @@
       return {
         nodes: this.nodes.map((n) => ({
           id: n.id, type: n.type, label: n.label,
-          x: n.x, y: n.y, bypassed: n.bypassed, fixed: n.fixed, params: n.params || {},
+          x: n.x, y: n.y, bypassed: n.bypassed, fixed: n.fixed,
+          params: n.params || {},
+          pinnedParams: n.pinnedParams || [],
         })),
         connections: this.connections.map((c) => {
           const out = { from: c.from, to: c.to };
@@ -270,6 +492,7 @@
           if (!node.fixed && !node.params) {
             node.params = this.opts.createParams?.(node.type) || {};
           }
+          if (!node.pinnedParams) node.pinnedParams = [];
           return node;
         });
         // ensure _input and _output exist and are always marked fixed
@@ -488,13 +711,16 @@
       ctx.fillStyle = nodeColor(node, 1);
       ctx.textBaseline = "middle";
       const labelX = x + 14;
-      const labelY = y + h / 2;
+      const labelY = y + LABEL_H / 2;
       ctx.fillText(node.label, labelX, labelY);
 
       // bypass button (only for effect nodes)
       if (!node.fixed && !FX_TYPES[node.type]?.utility) {
         this._drawBypassBtn(node);
       }
+
+      // pinned param mini-sliders
+      this._drawPinnedSliders(node);
 
       // ports
       if (node.type !== "_input") {
@@ -526,7 +752,7 @@
           } else {
             // input port (left)
             const ipx = x;
-            const ipy = y + h / 2;
+            const ipy = y + LABEL_H / 2;
             const ihov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "input";
             this._drawPort(ipx, ipy, ihov, this._hasIncoming(node.id));
           }
@@ -545,7 +771,7 @@
         } else {
           // output port (right)
           const opx = x + NODE_W;
-          const opy = y + h / 2;
+          const opy = y + LABEL_H / 2;
           const ohov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "output";
           this._drawPort(opx, opy, ohov, this._hasOutgoing(node.id));
         }
@@ -557,7 +783,7 @@
     _drawBypassBtn(node) {
       const ctx = this.ctx;
       const bx = node.x + NODE_W - BYPASS_S - BYPASS_PAD;
-      const by = node.y + (this._nodeH(node) - BYPASS_S) / 2;
+      const by = node.y + (LABEL_H - BYPASS_S) / 2;
 
       // button background
       ctx.beginPath();
@@ -604,7 +830,116 @@
       ctx.stroke();
     }
 
+    // ---- pinned-param slider drawing ----------------------------------------
+
+    /** Returns { tx, ty, tw } describing the track geometry for the i-th pinned slider. */
+    _sliderTrackRect(node, i) {
+      const tx = node.x + SLIDER_TRACK_LEFT;
+      const ty = node.y + LABEL_H + SLIDER_PAD + i * SLIDER_H + (SLIDER_H - SLIDER_TRACK_H) / 2;
+      const tw = NODE_W - SLIDER_TRACK_LEFT - SLIDER_VAL_W - SLIDER_RIGHT;
+      return { tx, ty, tw };
+    }
+
+    _drawPinnedSliders(node) {
+      const pinned = node.pinnedParams;
+      if (!pinned || pinned.length === 0) return;
+      const reg = PARAM_REGISTRY[node.type];
+      if (!reg) return;
+      const ctx = this.ctx;
+      const bypassed = node.bypassed;
+      const alpha = bypassed ? 0.5 : 1;
+      ctx.globalAlpha = alpha;
+
+      for (let i = 0; i < pinned.length; i++) {
+        const key = pinned[i];
+        const meta = reg[key];
+        if (!meta) continue;
+        const val = node.params?.[key] ?? meta.min;
+        const norm = (val - meta.min) / (meta.max - meta.min);
+        const { tx, ty, tw } = this._sliderTrackRect(node, i);
+        const rowY = node.y + LABEL_H + SLIDER_PAD + i * SLIDER_H;
+
+        // label text (left side)
+        ctx.font = "500 9px 'IBM Plex Sans', 'Segoe UI', sans-serif";
+        ctx.fillStyle = nodeColor(node, 0.7);
+        ctx.textBaseline = "middle";
+        ctx.fillText(meta.label, node.x + SLIDER_LEFT, rowY + SLIDER_H / 2);
+
+        // track background
+        ctx.beginPath();
+        ctx.roundRect(tx, ty, tw, SLIDER_TRACK_H, 2);
+        ctx.fillStyle = isDark() ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+        ctx.fill();
+
+        // track fill (left portion)
+        const fillW = Math.max(0, norm * tw);
+        if (fillW > 0) {
+          ctx.beginPath();
+          ctx.roundRect(tx, ty, fillW, SLIDER_TRACK_H, 2);
+          ctx.fillStyle = nodeColor(node, 0.35);
+          ctx.fill();
+        }
+
+        // thumb
+        const thumbX = tx + norm * tw;
+        const thumbY = ty + SLIDER_TRACK_H / 2;
+        ctx.beginPath();
+        ctx.arc(thumbX, thumbY, SLIDER_THUMB_R, 0, Math.PI * 2);
+        ctx.fillStyle = nodeColor(node, 0.9);
+        ctx.fill();
+        ctx.strokeStyle = isDark() ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.15)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // value text — after the track
+        const valText = fmtParam(val, meta);
+        ctx.font = "400 8px 'IBM Plex Sans', 'Segoe UI', sans-serif";
+        ctx.fillStyle = nodeColor(node, 0.6);
+        ctx.textBaseline = "middle";
+        ctx.fillText(valText, tx + tw + 4, rowY + SLIDER_H / 2);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /** Apply the current mouse X position to update the active slider's param value. */
+    _applySliderValue(wx) {
+      const info = this._sliderInfo;
+      if (!info) return;
+      const node = this._nodeById(info.nodeId);
+      if (!node) return;
+      const reg = PARAM_REGISTRY[node.type]?.[info.paramKey];
+      if (!reg) return;
+      const norm = Math.max(0, Math.min(1, (wx - info.tx) / info.tw));
+      let val = reg.min + norm * (reg.max - reg.min);
+      // snap to step
+      if (reg.step) {
+        val = Math.round(val / reg.step) * reg.step;
+      }
+      val = Math.max(reg.min, Math.min(reg.max, val));
+      node.params[info.paramKey] = val;
+      this._emitChange();
+      this.draw();
+    }
+
     // ---- hit testing -------------------------------------------------------
+
+    /** Hit-test pinned sliders on a node. Returns { nodeId, paramKey, trackRect } or null. */
+    _hitSlider(wx, wy) {
+      for (let i = this.nodes.length - 1; i >= 0; i--) {
+        const n = this.nodes[i];
+        if (!n.pinnedParams || n.pinnedParams.length === 0) continue;
+        for (let j = 0; j < n.pinnedParams.length; j++) {
+          const { tx, ty, tw } = this._sliderTrackRect(n, j);
+          // generous hit area: full row height
+          const rowY = n.y + LABEL_H + SLIDER_PAD + j * SLIDER_H;
+          if (wx >= tx - SLIDER_THUMB_R && wx <= tx + tw + SLIDER_THUMB_R &&
+              wy >= rowY && wy <= rowY + SLIDER_H) {
+            return { nodeId: n.id, paramKey: n.pinnedParams[j], tx, tw, sliderIndex: j };
+          }
+        }
+      }
+      return null;
+    }
 
     _hitNode(wx, wy) {
       // reverse order so topmost node wins
@@ -620,7 +955,7 @@
     _hitBypass(wx, wy, node) {
       if (!node || node.fixed) return false;
       const bx = node.x + NODE_W - BYPASS_S - BYPASS_PAD;
-      const by = node.y + (this._nodeH(node) - BYPASS_S) / 2;
+      const by = node.y + (LABEL_H - BYPASS_S) / 2;
       return wx >= bx && wx <= bx + BYPASS_S && wy >= by && wy <= by + BYPASS_S;
     }
 
@@ -651,7 +986,7 @@
               }
             } else {
               const ipx = n.x;
-              const ipy = n.y + this._nodeH(n) / 2;
+              const ipy = this._portMidY(n);
               if (Math.hypot(wx - ipx, wy - ipy) <= hitR) {
                 return { nodeId: n.id, port: "input" };
               }
@@ -670,7 +1005,7 @@
             }
           } else {
             const opx = n.x + NODE_W;
-            const opy = n.y + this._nodeH(n) / 2;
+            const opy = this._portMidY(n);
             if (Math.hypot(wx - opx, wy - opy) <= hitR) {
               return { nodeId: n.id, port: "output" };
             }
@@ -811,6 +1146,14 @@
             this.draw();
             return;
           }
+          // check pinned-param slider
+          const slider = this._hitSlider(wx, wy);
+          if (slider) {
+            this._action = "slider";
+            this._sliderInfo = slider;
+            this._applySliderValue(wx);
+            return;
+          }
           this._action = "drag";
           this._dragNodeId = node.id;
           this._dragNodeStartX = node.x;
@@ -850,6 +1193,11 @@
         return;
       }
 
+      if (this._action === "slider") {
+        this._applySliderValue(wx);
+        return;
+      }
+
       if (this._action === "connect") {
         this._connectEnd = { x: wx, y: wy };
         this.draw();
@@ -858,6 +1206,7 @@
 
       // hover detection
       const port = this._hitPort(wx, wy);
+      const sliderHov = this._hitSlider(wx, wy);
       const node = this._hitNode(wx, wy);
       const wire = (!port && !node) ? this._hitWire(wx, wy) : null;
       const prevHovNode = this._hoveredNode;
@@ -866,8 +1215,8 @@
       this._hoveredNode = node ? node.id : null;
       this._hoveredPort = port;
       this._hoveredWire = wire;
-      if (this._hoveredNode !== prevHovNode || this._hoveredPort !== prevHovPort || this._hoveredWire !== prevHovWire) {
-        this.canvas.style.cursor = port ? "crosshair" : (node ? "grab" : (wire ? "pointer" : "default"));
+      if (this._hoveredNode !== prevHovNode || this._hoveredPort !== prevHovPort || this._hoveredWire !== prevHovWire || sliderHov) {
+        this.canvas.style.cursor = sliderHov ? "ew-resize" : (port ? "crosshair" : (node ? "grab" : (wire ? "pointer" : "default")));
         this.draw();
       }
     }
@@ -890,6 +1239,14 @@
       }
 
       if (e.button === 0) {
+        if (action === "slider") {
+          // slider interaction complete — select the node to show detail panel
+          if (this._sliderInfo) {
+            this.selectNode(this._sliderInfo.nodeId);
+          }
+          this._sliderInfo = null;
+          return;
+        }
         if (action === "connect") {
           // try to complete connection
           const port = this._hitPort(wx, wy);
@@ -934,6 +1291,9 @@
       if (e.button !== 0) return;
       const { cx, cy } = this._mousePos(e);
       const { x: wx, y: wy } = this._toWorld(cx, cy);
+
+      // don't delete node if double-clicking on a pinned slider
+      if (this._hitSlider(wx, wy)) return;
 
       const node = this._hitNode(wx, wy);
       if (node && !node.fixed) {
@@ -1391,10 +1751,18 @@
     }
 
     _nodeH(node) {
-      if (!node || node.type !== "sum") return NODE_H;
-      const inputs = this._sumInputCount(node.id);
-      const needed = SUM_PORT_PAD * 2 + (inputs - 1) * SUM_PORT_SPACING;
-      return Math.max(NODE_H, needed);
+      if (!node) return NODE_H;
+      let base = NODE_H;
+      if (node.type === "sum") {
+        const inputs = this._sumInputCount(node.id);
+        const needed = SUM_PORT_PAD * 2 + (inputs - 1) * SUM_PORT_SPACING;
+        base = Math.max(NODE_H, needed);
+      }
+      const pinned = node.pinnedParams?.length || 0;
+      if (pinned > 0) {
+        base = Math.max(base, LABEL_H + SLIDER_PAD + pinned * SLIDER_H + 4);
+      }
+      return base;
     }
 
     _sumInputCount(nodeId) {
@@ -1416,18 +1784,22 @@
       return 1;
     }
 
+    /** Port Y center — anchored to the label row, not the full block. */
+    _portMidY(node) {
+      return node.y + LABEL_H / 2;
+    }
+
     _inputPortY(node, portIndex) {
       if (!node) return 0;
       if (node.type !== "sum") {
         const count = this._inputPortCount(node.type);
-        if (count <= 1) return node.y + this._nodeH(node) / 2;
-        const h = this._nodeH(node);
-        const mid = node.y + h / 2;
+        if (count <= 1) return this._portMidY(node);
+        const mid = this._portMidY(node);
         const offset = SUM_PORT_SPACING / 2;
         return portIndex === 1 ? (mid + offset) : (mid - offset);
       }
       const ys = this._sumInputYs(node);
-      if (ys.length === 0) return node.y + this._nodeH(node) / 2;
+      if (ys.length === 0) return this._portMidY(node);
       if (!Number.isInteger(portIndex) || portIndex < 0) return ys[0];
       return ys[Math.min(portIndex, ys.length - 1)];
     }
@@ -1460,9 +1832,8 @@
 
     _outputPortY(node, portIndex) {
       if (!node) return 0;
-      if (node.type !== "split-freq") return node.y + this._nodeH(node) / 2;
-      const h = this._nodeH(node);
-      const mid = node.y + h / 2;
+      if (node.type !== "split-freq") return this._portMidY(node);
+      const mid = this._portMidY(node);
       const offset = SUM_PORT_SPACING / 2;
       return portIndex === 1 ? (mid + offset) : (mid - offset);
     }

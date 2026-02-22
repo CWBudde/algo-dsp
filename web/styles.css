@@ -618,6 +618,46 @@ button.active {
   display: none;
 }
 
+/* ---- Pin-to-block button ---- */
+
+.chain-detail-card label {
+  position: relative;
+}
+
+.pin-param {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pin-param:hover {
+  opacity: 0.7;
+  background: var(--surface-hover, rgba(128,128,128,0.1));
+}
+
+.pin-param.pinned {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.pin-param svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
 /* ---- Chain Context Menu ---- */
 
 .chain-context-menu {
