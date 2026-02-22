@@ -419,19 +419,19 @@ Tasks:
 
 Tasks:
 
-- [ ] Distortion
-  - [ ] Implement baseline waveshapers (soft/hard clip, tanh) and expose selectable shaping modes.
-  - [ ] Port and cover `legacy/Source/DSP/DAV_DspWaveshaper.pas` shaping family:
-  - [ ] Formula waveshapers (`Waveshaper1..8`, `Saturate`, `Saturate2`, `SoftSat`) with parameter-range validation.
-  - [ ] Chebyshev harmonic waveshaper core (order/gain-level/invert controls, odd/even constraints where applicable, optional DC bypass behavior).
-  - [ ] Add fast polynomial/approximation path options where they are numerically close and measurably faster.
-  - [ ] Add parity-oriented tests against legacy transfer-curve and harmonic-balance behavior + runnable examples.
-- [ ] Transformer simulation (waveshaping-based)
-  - [ ] Implement transformer-style saturation effect inspired by `legacy/Source/DSP/DAV_DspTransformerSimulation.pas`.
-  - [ ] Recreate processing topology: pre-emphasis/damping filters + oversampling path + nonlinear waveshaper + downsampling.
-  - [ ] Implement configurable high-pass and damping-frequency controls with sample-rate-aware updates.
-  - [ ] Provide both high-quality nonlinear path and lightweight polynomial approximation path; document tradeoffs.
-  - [ ] Add anti-aliasing validation (oversampling effectiveness), spectral characterization tests, and runnable example.
+- [x] Distortion
+  - [x] Implement baseline waveshapers (soft/hard clip, tanh) and expose selectable shaping modes.
+  - [x] Port and cover `legacy/Source/DSP/DAV_DspWaveshaper.pas` shaping family:
+  - [x] Formula waveshapers (`Waveshaper1..8`, `Saturate`, `Saturate2`, `SoftSat`) with parameter-range validation.
+  - [x] Chebyshev harmonic waveshaper core (order/gain-level/invert controls, odd/even constraints where applicable, optional DC bypass behavior).
+  - [x] Add fast polynomial/approximation path options where they are numerically close and measurably faster.
+  - [x] Add parity-oriented tests against legacy transfer-curve and harmonic-balance behavior + runnable examples.
+- [x] Transformer simulation (waveshaping-based)
+  - [x] Implement transformer-style saturation effect inspired by `legacy/Source/DSP/DAV_DspTransformerSimulation.pas`.
+  - [x] Recreate processing topology: pre-emphasis/damping filters + oversampling path + nonlinear waveshaper + downsampling.
+  - [x] Implement configurable high-pass and damping-frequency controls with sample-rate-aware updates.
+  - [x] Provide both high-quality nonlinear path and lightweight polynomial approximation path; document tradeoffs.
+  - [x] Add anti-aliasing validation (oversampling effectiveness), spectral characterization tests, and runnable example.
 - [ ] Bit crusher
   - [ ] Implement bit depth + sample rate reduction.
   - [ ] Add tests + example.
