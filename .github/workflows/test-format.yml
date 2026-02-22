@@ -17,6 +17,17 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
 
+      - name: Install Go formatters
+        run: go install mvdan.cc/gofumpt@latest && go install github.com/daixiang0/gci@latest
+
+      - name: Install shell tools
+        run: |
+          sudo apt-get install -y shellcheck
+          go install mvdan.cc/sh/v3/cmd/shfmt@latest
+
+      - name: Install prettier
+        run: npm install -g prettier
+
       - name: Run treefmt
         uses: isbecker/treefmt-action@v2
         with:

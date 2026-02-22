@@ -345,27 +345,27 @@ Tasks:
 - [x] De-esser
   - [x] Implement split-band detection and reduction.
   - [x] Add tests + example.
-- [ ] Dynamics core architecture (feedforward + feedback)
-  - [ ] Implement reusable dynamics core in `dsp/effects` with explicit detector/gain-computer separation and shared envelope state.
-  - [ ] Add topology option: `Feedforward` (detect from input/sidechain) and `Feedback` (detect from output/previous gain), based on `legacy/Source/DSP/DAV_DspDynamics.pas`.
-  - [ ] Implement detector modes:
-  - [ ] `Peak` detector with attack/release smoothing coefficients.
-  - [ ] `RMS` detector with configurable RMS window/time and ring-buffer update path.
-  - [ ] Optional sidechain prefilter path (low-cut/high-cut) for detector-only control signal.
-  - [ ] Implement gain-computer modes:
-  - [ ] Hard-knee compression curve (threshold + ratio).
-  - [ ] Soft-knee compression curve (knee width in dB, smooth transition around threshold).
-  - [ ] Manual make-up gain and auto make-up gain policies.
-  - [ ] Implement reset/state management for deterministic streaming behavior (peak/RMS history, feedback previous-abs sample, hold counters where used).
-  - [ ] Add sample-rate aware coefficient recalculation and strict parameter validation (threshold, ratio, knee, attack/release, RMS time, sidechain cutoff bounds).
+- [x] Dynamics core architecture (feedforward + feedback)
+  - [x] Implement reusable dynamics core in `dsp/effects` with explicit detector/gain-computer separation and shared envelope state.
+  - [x] Add topology option: `Feedforward` (detect from input/sidechain) and `Feedback` (detect from output/previous gain), based on `legacy/Source/DSP/DAV_DspDynamics.pas`.
+  - [x] Implement detector modes:
+  - [x] `Peak` detector with attack/release smoothing coefficients.
+  - [x] `RMS` detector with configurable RMS window/time and ring-buffer update path.
+  - [x] Optional sidechain prefilter path (low-cut/high-cut) for detector-only control signal.
+  - [x] Implement gain-computer modes:
+  - [x] Hard-knee compression curve (threshold + ratio).
+  - [x] Soft-knee compression curve (knee width in dB, smooth transition around threshold).
+  - [x] Manual make-up gain and auto make-up gain policies.
+  - [x] Implement reset/state management for deterministic streaming behavior (peak/RMS history, feedback previous-abs sample, hold counters where used).
+  - [x] Add sample-rate aware coefficient recalculation and strict parameter validation (threshold, ratio, knee, attack/release, RMS time, sidechain cutoff bounds).
 - [ ] Compressor implementations (topology-specific)
-  - [ ] Implement feedforward compressor variants:
-  - [ ] Peak feedforward compressor.
-  - [ ] RMS feedforward compressor.
-  - [ ] Sidechain-filtered feedforward compressor.
-  - [ ] Implement feedback compressor variants:
-  - [ ] Hard-knee feedback compressor.
-  - [ ] Soft-knee feedback compressor.
+  - [x] Implement feedforward compressor variants:
+  - [x] Peak feedforward compressor.
+  - [x] RMS feedforward compressor.
+  - [x] Sidechain-filtered feedforward compressor.
+  - [x] Implement feedback compressor variants:
+  - [x] Hard-knee feedback compressor.
+  - [x] Soft-knee feedback compressor.
   - [ ] Include feedback-specific time-constant behavior where attack/release scaling depends on ratio (legacy parity target).
   - [ ] Expose clear API surface (`ProcessSample`, `ProcessInPlace`, stereo/frame processing variant, `Reset`, constructor+options).
 - [ ] Legacy parity and characterization for dynamics
@@ -373,10 +373,10 @@ Tasks:
   - [ ] Validate characteristic curves (`in -> out` and gain reduction) for threshold/ratio/knee sweeps.
   - [ ] Validate temporal behavior on step/burst tests (attack, release, feedback recovery, RMS window response).
   - [ ] Add benchmark coverage for hot paths and allocation checks (`allocs/op` near zero for in-place processing).
-- [ ] Expander
-  - [ ] Implement downward expander on top of shared dynamics core (feedforward first, optional feedback mode if stable).
-  - [ ] Add hard-knee + soft-knee variants with range control where appropriate.
-  - [ ] Add tests + runnable example.
+- [x] Expander
+  - [x] Implement downward expander on top of shared dynamics core (feedforward first, optional feedback mode if stable).
+  - [x] Add hard-knee + soft-knee variants with range control where appropriate.
+  - [x] Add tests + runnable example.
 - [ ] Multiband compressor
   - [ ] Implement crossover + per-band compressors using feedforward core initially.
   - [ ] Add optional feedback mode per band once single-band feedback parity is validated.

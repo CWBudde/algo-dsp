@@ -2,6 +2,7 @@
 //
 // Included processors:
 //   - Compressor: Soft-knee compressor with log2-domain gain computation.
+//   - Expander: Downward expander with soft-knee and range control.
 //   - MultibandCompressor: Multiband compressor using Linkwitz-Riley crossovers
 //     with adjustable order and per-band soft-knee compression.
 //   - DeEsser: Split-band sibilance detector and reducer.
