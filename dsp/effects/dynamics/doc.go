@@ -8,4 +8,6 @@
 //   - DeEsser: Split-band sibilance detector and reducer.
 //   - Gate: Soft-knee noise gate with hold support.
 //   - Limiter: Peak limiter built on a high-ratio compressor.
+//   - TransientShaper: Attack/release transient splitting with independent
+//     attack and sustain shaping controls.
 package dynamics

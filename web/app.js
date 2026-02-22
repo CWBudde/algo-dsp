@@ -315,6 +315,12 @@ const el = {
   fxLimThreshValue: document.getElementById("fx-lim-thresh-value"),
   fxLimRelease: document.getElementById("fx-lim-release"),
   fxLimReleaseValue: document.getElementById("fx-lim-release-value"),
+  fxLookaheadThresh: document.getElementById("fx-lookahead-thresh"),
+  fxLookaheadThreshValue: document.getElementById("fx-lookahead-thresh-value"),
+  fxLookaheadRelease: document.getElementById("fx-lookahead-release"),
+  fxLookaheadReleaseValue: document.getElementById("fx-lookahead-release-value"),
+  fxLookaheadMs: document.getElementById("fx-lookahead-ms"),
+  fxLookaheadMsValue: document.getElementById("fx-lookahead-ms-value"),
   fxGateMode: document.getElementById("fx-gate-mode"),
   fxGateThresh: document.getElementById("fx-gate-thresh"),
   fxGateThreshValue: document.getElementById("fx-gate-thresh-value"),
@@ -367,6 +373,14 @@ const el = {
   fxDeessReleaseValue: document.getElementById("fx-deess-release-value"),
   fxDeessRange: document.getElementById("fx-deess-range"),
   fxDeessRangeValue: document.getElementById("fx-deess-range-value"),
+  fxTransientAttack: document.getElementById("fx-transient-attack"),
+  fxTransientAttackValue: document.getElementById("fx-transient-attack-value"),
+  fxTransientSustain: document.getElementById("fx-transient-sustain"),
+  fxTransientSustainValue: document.getElementById("fx-transient-sustain-value"),
+  fxTransientAttackMs: document.getElementById("fx-transient-attack-ms"),
+  fxTransientAttackMsValue: document.getElementById("fx-transient-attack-ms-value"),
+  fxTransientReleaseMs: document.getElementById("fx-transient-release-ms"),
+  fxTransientReleaseMsValue: document.getElementById("fx-transient-release-ms-value"),
   fxMBBands: document.getElementById("fx-mb-bands"),
   fxMBCross1: document.getElementById("fx-mb-cross1"),
   fxMBCross1Value: document.getElementById("fx-mb-cross1-value"),
@@ -427,6 +441,8 @@ const el = {
   delayFeedbackValue: document.getElementById("delay-feedback-value"),
   delayMix: document.getElementById("delay-mix"),
   delayMixValue: document.getElementById("delay-mix-value"),
+  simpleDelayMs: document.getElementById("simple-delay-ms"),
+  simpleDelayMsValue: document.getElementById("simple-delay-ms-value"),
   timePitchSemitones: document.getElementById("time-pitch-semitones"),
   timePitchSemitonesValue: document.getElementById("time-pitch-semitones-value"),
   timePitchSequence: document.getElementById("time-pitch-sequence"),
@@ -589,6 +605,12 @@ const EFFECT_NODE_DEFAULTS = {
     attackMs: 0.5,
     releaseMs: 20,
     rangeDB: -24,
+  },
+  "dyn-transient": {
+    attack: 0.0,
+    sustain: 0.0,
+    attackMs: 10.0,
+    releaseMs: 120.0,
   },
   "dyn-multiband": {
     bands: 3,
@@ -760,6 +782,12 @@ function applyNodeParamsToUI(node) {
       el.fxDeessAttack.value = p.attackMs;
       el.fxDeessRelease.value = p.releaseMs;
       el.fxDeessRange.value = p.rangeDB;
+      break;
+    case "dyn-transient":
+      el.fxTransientAttack.value = p.attack;
+      el.fxTransientSustain.value = p.sustain;
+      el.fxTransientAttackMs.value = p.attackMs;
+      el.fxTransientReleaseMs.value = p.releaseMs;
       break;
     case "dyn-multiband":
       el.fxMBBands.value = String(p.bands ?? 3);
@@ -969,6 +997,13 @@ function collectNodeParamsFromUI(nodeType) {
         attackMs: Number(el.fxDeessAttack.value),
         releaseMs: Number(el.fxDeessRelease.value),
         rangeDB: Number(el.fxDeessRange.value),
+      };
+    case "dyn-transient":
+      return {
+        attack: Number(el.fxTransientAttack.value),
+        sustain: Number(el.fxTransientSustain.value),
+        attackMs: Number(el.fxTransientAttackMs.value),
+        releaseMs: Number(el.fxTransientReleaseMs.value),
       };
     case "dyn-multiband":
       return {
@@ -1762,6 +1797,18 @@ function updateEffectsText() {
   if (el.fxDeessRangeValue) {
     el.fxDeessRangeValue.textContent = `${Number(el.fxDeessRange.value).toFixed(0)} dB`;
   }
+  if (el.fxTransientAttackValue) {
+    el.fxTransientAttackValue.textContent = Number(el.fxTransientAttack.value).toFixed(2);
+  }
+  if (el.fxTransientSustainValue) {
+    el.fxTransientSustainValue.textContent = Number(el.fxTransientSustain.value).toFixed(2);
+  }
+  if (el.fxTransientAttackMsValue) {
+    el.fxTransientAttackMsValue.textContent = `${Number(el.fxTransientAttackMs.value).toFixed(1)} ms`;
+  }
+  if (el.fxTransientReleaseMsValue) {
+    el.fxTransientReleaseMsValue.textContent = `${Number(el.fxTransientReleaseMs.value).toFixed(0)} ms`;
+  }
   if (el.fxMBCross1Value) {
     el.fxMBCross1Value.textContent = `${Number(el.fxMBCross1.value).toFixed(0)} Hz`;
   }
@@ -2186,6 +2233,10 @@ function bindEvents() {
     el.fxDeessAttack,
     el.fxDeessRelease,
     el.fxDeessRange,
+    el.fxTransientAttack,
+    el.fxTransientSustain,
+    el.fxTransientAttackMs,
+    el.fxTransientReleaseMs,
     el.fxMBBands,
     el.fxMBCross1,
     el.fxMBCross2,

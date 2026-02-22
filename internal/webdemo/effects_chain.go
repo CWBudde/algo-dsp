@@ -176,6 +176,9 @@ func init() {
 
 		return &delayChainRuntime{fx: fx}, nil
 	})
+	registerChainEffectFactory("delay-simple", func(_ *Engine) (chainEffectRuntime, error) {
+		return &simpleDelayChainRuntime{}, nil
+	})
 	registerChainEffectFactory("filter", func(e *Engine) (chainEffectRuntime, error) {
 		return &filterChainRuntime{fx: biquad.NewChain([]biquad.Coefficients{{B0: 1}})}, nil
 	})
@@ -227,6 +230,14 @@ func init() {
 
 		return &limiterChainRuntime{fx: fx}, nil
 	})
+	registerChainEffectFactory("dyn-lookahead", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := dynamics.NewLookaheadLimiter(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &lookaheadLimiterChainRuntime{fx: fx}, nil
+	})
 	registerChainEffectFactory("dyn-gate", func(e *Engine) (chainEffectRuntime, error) {
 		fx, err := dynamics.NewGate(e.sampleRate)
 		if err != nil {
@@ -250,6 +261,14 @@ func init() {
 		}
 
 		return &deesserChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("dyn-transient", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := dynamics.NewTransientShaper(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &transientShaperChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("dyn-multiband", func(e *Engine) (chainEffectRuntime, error) {
 		return &multibandChainRuntime{}, nil
@@ -1131,6 +1150,52 @@ func (r *delayChainRuntime) Process(_ *Engine, _ compiledChainNode, block []floa
 	r.fx.ProcessInPlace(block)
 }
 
+type simpleDelayChainRuntime struct {
+	sampleRate   float64
+	delayMs      float64
+	delaySamples int
+	write        int
+	buf          []float64
+}
+
+func (r *simpleDelayChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	r.sampleRate = e.sampleRate
+	r.delayMs = clamp(getNodeNum(node, "delayMs", 20), 0, 500)
+	r.delaySamples = int(math.Round(r.delayMs * r.sampleRate / 1000.0))
+	if r.delaySamples < 0 {
+		r.delaySamples = 0
+	}
+
+	size := r.delaySamples + 1
+	if size < 1 {
+		size = 1
+	}
+
+	if len(r.buf) != size {
+		r.buf = make([]float64, size)
+		r.write = 0
+	}
+
+	return nil
+}
+
+func (r *simpleDelayChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	if len(r.buf) <= 1 {
+		return
+	}
+
+	for i := range block {
+		r.buf[r.write] = block[i]
+		readPos := r.write + 1
+		if readPos >= len(r.buf) {
+			readPos = 0
+		}
+
+		block[i] = r.buf[readPos]
+		r.write = readPos
+	}
+}
+
 type filterChainRuntime struct {
 	fx *biquad.Chain
 }
@@ -1347,6 +1412,34 @@ func (r *limiterChainRuntime) Process(_ *Engine, _ compiledChainNode, block []fl
 	r.fx.ProcessInPlace(block)
 }
 
+type lookaheadLimiterChainRuntime struct {
+	fx *dynamics.LookaheadLimiter
+}
+
+func (r *lookaheadLimiterChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -1), -24, 0)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000)); err != nil {
+		return err
+	}
+
+	return r.fx.SetLookahead(clamp(getNodeNum(node, "lookaheadMs", 3), 0, 200))
+}
+
+func (r *lookaheadLimiterChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+func (r *lookaheadLimiterChainRuntime) ProcessWithSidechain(program, sidechain []float64) {
+	r.fx.ProcessInPlaceSidechain(program, sidechain)
+}
+
 type gateChainRuntime struct {
 	fx *dynamics.Gate
 }
@@ -1503,6 +1596,34 @@ func (r *deesserChainRuntime) Configure(e *Engine, node compiledChainNode) error
 }
 
 func (r *deesserChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type transientShaperChainRuntime struct {
+	fx *dynamics.TransientShaper
+}
+
+func (r *transientShaperChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetAttackAmount(clamp(getNodeNum(node, "attack", 0), -1, 1)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetSustainAmount(clamp(getNodeNum(node, "sustain", 0), -1, 1)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetAttack(clamp(getNodeNum(node, "attackMs", 10), 0.1, 200)); err != nil {
+		return err
+	}
+
+	return r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 120), 1, 2000))
+}
+
+func (r *transientShaperChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
 	r.fx.ProcessInPlace(block)
 }
 

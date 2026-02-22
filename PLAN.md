@@ -455,9 +455,9 @@ Web demo:
 
 Tasks:
 
-- [ ] Transient shaper
-  - [ ] Implement attack/release split + shaping.
-  - [ ] Add tests + example.
+- [x] Transient shaper
+  - [x] Implement attack/release split + shaping.
+  - [x] Add tests + example.
 - [ ] Lookahead limiter
   - [ ] Implement delay + detector + gain.
   - [ ] Add tests + example.

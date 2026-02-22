@@ -17,6 +17,7 @@
     transformer:      { label: "Transformer Sat",   hue: 44,  category: "Color" },
     filter:           { label: "Filter",            hue: 188, category: "Filters" },
     delay:            { label: "Delay",             hue: 35,  category: "Time/Space" },
+    "delay-simple":   { label: "Simple Delay",      hue: 48,  category: "Routing" },
     reverb:           { label: "Reverb",            hue: 260, category: "Time/Space" },
     widener:          { label: "Stereo Widener",    hue: 286, category: "Spatial" },
     bass:             { label: "Bass Enhancer",     hue: 10,  category: "Spatial" },
@@ -24,9 +25,11 @@
     "pitch-spectral": { label: "Pitch (Spectral)",  hue: 170, category: "Pitch" },
     "dyn-compressor": { label: "Compressor",        hue: 120, category: "Dynamics" },
     "dyn-limiter":    { label: "Limiter",           hue: 98,  category: "Dynamics" },
+    "dyn-lookahead":  { label: "Lookahead Limiter", hue: 92,  category: "Dynamics" },
     "dyn-gate":       { label: "Gate/Expander",     hue: 82,  category: "Dynamics" },
     "dyn-expander":   { label: "Expander",          hue: 66,  category: "Dynamics" },
     "dyn-deesser":    { label: "De-Esser",          hue: 58,  category: "Dynamics" },
+    "dyn-transient":  { label: "Transient Shaper",  hue: 50,  category: "Dynamics" },
     "dyn-multiband":  { label: "Multiband Comp",    hue: 108, category: "Dynamics" },
     "split-freq":     { label: "Split Freq",        hue: 210, category: "Routing", utility: true },
     split:            { label: "Split",             hue: 210, category: "Routing", utility: true, hidden: true },
@@ -508,11 +511,25 @@
             this._drawPort(ipx, ipy, ihov, connected, optional);
           }
         } else {
-          // input port (left)
-          const ipx = x;
-          const ipy = y + h / 2;
-          const ihov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "input";
-          this._drawPort(ipx, ipy, ihov, this._hasIncoming(node.id));
+          const inPorts = this._inputPortCount(node.type);
+          if (inPorts > 1) {
+            for (let i = 0; i < inPorts; i++) {
+              const ipx = x;
+              const ipy = this._inputPortY(node, i);
+              const ihov = this._hoveredPort?.nodeId === node.id &&
+                this._hoveredPort?.port === "input" &&
+                this._hoveredPort?.portIndex === i;
+              const connected = this._hasIncomingAtPort(node.id, i);
+              const optional = i > 0 && !connected;
+              this._drawPort(ipx, ipy, ihov, connected, optional);
+            }
+          } else {
+            // input port (left)
+            const ipx = x;
+            const ipy = y + h / 2;
+            const ihov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "input";
+            this._drawPort(ipx, ipy, ihov, this._hasIncoming(node.id));
+          }
         }
       }
       if (node.type !== "_output") {
@@ -623,10 +640,21 @@
               }
             }
           } else {
-            const ipx = n.x;
-            const ipy = n.y + this._nodeH(n) / 2;
-            if (Math.hypot(wx - ipx, wy - ipy) <= hitR) {
-              return { nodeId: n.id, port: "input" };
+            const inPorts = this._inputPortCount(n.type);
+            if (inPorts > 1) {
+              for (let i = 0; i < inPorts; i++) {
+                const ipx = n.x;
+                const ipy = this._inputPortY(n, i);
+                if (Math.hypot(wx - ipx, wy - ipy) <= hitR) {
+                  return { nodeId: n.id, port: "input", portIndex: i };
+                }
+              }
+            } else {
+              const ipx = n.x;
+              const ipy = n.y + this._nodeH(n) / 2;
+              if (Math.hypot(wx - ipx, wy - ipy) <= hitR) {
+                return { nodeId: n.id, port: "input" };
+              }
             }
           }
         }
@@ -973,6 +1001,10 @@
           if (typeof dstPortIndex === "number" && c.toPortIndex === dstPortIndex) return false;
           return true;
         }
+        if (this._inputPortCount(dstNode.type) > 1 && c.to === dstId) {
+          if (typeof dstPortIndex === "number" && c.toPortIndex === dstPortIndex) return false;
+          return true;
+        }
         if (c.to === dstId && dstInLimit === 1) return false;
         return true;
       });
@@ -984,6 +1016,11 @@
       }
       if (dstNode.type === "sum") {
         const preferredIndex = Number.isInteger(dstPortIndex) ? dstPortIndex : this._firstFreeSumPort(dstId);
+        newConn.toPortIndex = preferredIndex;
+      } else if (this._inputPortCount(dstNode.type) > 1) {
+        const preferredIndex = Number.isInteger(dstPortIndex)
+          ? dstPortIndex
+          : this._firstFreeInputPort(dstId, this._inputPortCount(dstNode.type));
         newConn.toPortIndex = preferredIndex;
       }
       this.connections.push(newConn);
@@ -1343,6 +1380,8 @@
     _incomingLimit(type) {
       if (type === "_input") return 0;
       if (type === "_output") return 1;
+      if (type === "sum") return -1;
+      if (type === "dyn-lookahead") return 2;
       return 1;
     }
 
@@ -1372,9 +1411,21 @@
       return out;
     }
 
+    _inputPortCount(type) {
+      if (type === "dyn-lookahead") return 2;
+      return 1;
+    }
+
     _inputPortY(node, portIndex) {
       if (!node) return 0;
-      if (node.type !== "sum") return node.y + this._nodeH(node) / 2;
+      if (node.type !== "sum") {
+        const count = this._inputPortCount(node.type);
+        if (count <= 1) return node.y + this._nodeH(node) / 2;
+        const h = this._nodeH(node);
+        const mid = node.y + h / 2;
+        const offset = SUM_PORT_SPACING / 2;
+        return portIndex === 1 ? (mid + offset) : (mid - offset);
+      }
       const ys = this._sumInputYs(node);
       if (ys.length === 0) return node.y + this._nodeH(node) / 2;
       if (!Number.isInteger(portIndex) || portIndex < 0) return ys[0];
@@ -1394,6 +1445,13 @@
       let i = 0;
       while (used.has(i)) i++;
       return i;
+    }
+
+    _firstFreeInputPort(nodeId, maxPorts) {
+      for (let i = 0; i < maxPorts; i++) {
+        if (!this._hasIncomingAtPort(nodeId, i)) return i;
+      }
+      return 0;
     }
 
     _hasOutgoingAtPort(nodeId, portIndex) {
