@@ -291,6 +291,17 @@
             return out;
           })
           .filter((c) => nodeIds.has(c.from) && nodeIds.has(c.to) && c.from !== c.to);
+
+        // Enforce single-input sinks (e.g. _output) when loading persisted state.
+        const seenIncoming = new Set();
+        this.connections = this.connections.filter((c) => {
+          const dst = this._nodeById(c.to);
+          if (!dst) return false;
+          if (this._incomingLimit(dst.type) !== 1) return true;
+          if (seenIncoming.has(c.to)) return false;
+          seenIncoming.add(c.to);
+          return true;
+        });
       }
       if (typeof data.panX === "number") this.panX = data.panX;
       if (typeof data.panY === "number") this.panY = data.panY;
@@ -1331,7 +1342,7 @@
 
     _incomingLimit(type) {
       if (type === "_input") return 0;
-      if (type === "_output") return -1;
+      if (type === "_output") return 1;
       return 1;
     }
 
