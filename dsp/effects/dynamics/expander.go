@@ -105,6 +105,7 @@ func NewExpander(sampleRate float64) (*Expander, error) {
 
 	e.core = core
 	e.updateCoefficients()
+
 	return e, nil
 }
 
@@ -113,8 +114,10 @@ func (e *Expander) SetThreshold(dB float64) error {
 	if err := e.core.SetThreshold(dB); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.thresholdDB = dB
 	e.syncFromCore()
+
 	return nil
 }
 
@@ -123,11 +126,14 @@ func (e *Expander) SetRatio(ratio float64) error {
 	if ratio < minExpanderRatio || ratio > maxExpanderRatio || !isFinite(ratio) {
 		return fmt.Errorf("expander ratio must be in [%f, %f]: %f", minExpanderRatio, maxExpanderRatio, ratio)
 	}
+
 	if err := e.core.SetRatio(ratio); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.ratio = ratio
 	e.syncFromCore()
+
 	return nil
 }
 
@@ -136,11 +142,14 @@ func (e *Expander) SetKnee(kneeDB float64) error {
 	if kneeDB < minExpanderKneeDB || kneeDB > maxExpanderKneeDB || !isFinite(kneeDB) {
 		return fmt.Errorf("expander knee must be in [%f, %f]: %f", minExpanderKneeDB, maxExpanderKneeDB, kneeDB)
 	}
+
 	if err := e.core.SetKnee(kneeDB); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.kneeDB = kneeDB
 	e.syncFromCore()
+
 	return nil
 }
 
@@ -149,11 +158,14 @@ func (e *Expander) SetAttack(ms float64) error {
 	if ms < minExpanderAttackMs || ms > maxExpanderAttackMs || !isFinite(ms) {
 		return fmt.Errorf("expander attack must be in [%f, %f]: %f", minExpanderAttackMs, maxExpanderAttackMs, ms)
 	}
+
 	if err := e.core.SetAttack(ms); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.attackMs = ms
 	e.syncFromCore()
+
 	return nil
 }
 
@@ -162,11 +174,14 @@ func (e *Expander) SetRelease(ms float64) error {
 	if ms < minExpanderReleaseMs || ms > maxExpanderReleaseMs || !isFinite(ms) {
 		return fmt.Errorf("expander release must be in [%f, %f]: %f", minExpanderReleaseMs, maxExpanderReleaseMs, ms)
 	}
+
 	if err := e.core.SetRelease(ms); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.releaseMs = ms
 	e.syncFromCore()
+
 	return nil
 }
 
@@ -175,8 +190,10 @@ func (e *Expander) SetRange(dB float64) error {
 	if dB < minExpanderRangeDB || dB > maxExpanderRangeDB || !isFinite(dB) {
 		return fmt.Errorf("expander range must be in [%f, %f]: %f", minExpanderRangeDB, maxExpanderRangeDB, dB)
 	}
+
 	e.rangeDB = dB
 	e.rangeLin = mathPower10(dB / 20.0)
+
 	return nil
 }
 
@@ -185,8 +202,10 @@ func (e *Expander) SetSampleRate(sampleRate float64) error {
 	if err := e.core.SetSampleRate(sampleRate); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.sampleRate = sampleRate
 	e.syncFromCore()
+
 	return nil
 }
 
@@ -195,7 +214,9 @@ func (e *Expander) SetTopology(topology DynamicsTopology) error {
 	if err := e.core.SetTopology(topology); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.topology = topology
+
 	return nil
 }
 
@@ -204,7 +225,9 @@ func (e *Expander) SetDetectorMode(mode DetectorMode) error {
 	if err := e.core.SetDetectorMode(mode); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.detectorMode = mode
+
 	return nil
 }
 
@@ -213,7 +236,9 @@ func (e *Expander) SetRMSWindow(ms float64) error {
 	if err := e.core.SetRMSWindow(ms); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.rmsWindowMs = ms
+
 	return nil
 }
 
@@ -222,7 +247,9 @@ func (e *Expander) SetSidechainLowCut(hz float64) error {
 	if err := e.core.SetSidechainLowCut(hz); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.sidechainLowCutHz = hz
+
 	return nil
 }
 
@@ -231,7 +258,9 @@ func (e *Expander) SetSidechainHighCut(hz float64) error {
 	if err := e.core.SetSidechainHighCut(hz); err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
+
 	e.sidechainHighCutHz = hz
+
 	return nil
 }
 
@@ -266,6 +295,7 @@ func (e *Expander) ProcessSampleSidechain(input, sidechain float64) float64 {
 
 	output := input * gain
 	e.updateMetrics(abs(input), abs(output), gain)
+
 	return output
 }
 
@@ -280,6 +310,7 @@ func (e *Expander) ProcessInPlace(buf []float64) {
 func (e *Expander) CalculateOutputLevel(inputMagnitude float64) float64 {
 	inputMagnitude = abs(inputMagnitude)
 	gain := e.calculateGain(inputMagnitude)
+
 	return inputMagnitude * gain
 }
 
@@ -312,19 +343,25 @@ func (e *Expander) calculateGain(level float64) float64 {
 		if undershoot <= 0 {
 			return 1.0
 		}
+
 		gainLog2 := -undershoot * (e.ratio - 1.0)
+
 		gain := mathPower2(gainLog2)
 		if gain < e.rangeLin {
 			return e.rangeLin
 		}
+
 		return gain
 	}
 
 	halfWidth := e.kneeWidthLog2 * 0.5
+
 	var effectiveUndershoot float64
+
 	if undershoot < -halfWidth {
 		return 1.0
 	}
+
 	if undershoot > halfWidth {
 		effectiveUndershoot = undershoot
 	} else {
@@ -333,10 +370,12 @@ func (e *Expander) calculateGain(level float64) float64 {
 	}
 
 	gainLog2 := -effectiveUndershoot * (e.ratio - 1.0)
+
 	gain := mathPower2(gainLog2)
 	if gain < e.rangeLin {
 		return e.rangeLin
 	}
+
 	return gain
 }
 
@@ -358,9 +397,11 @@ func (e *Expander) updateMetrics(inputLevel, outputLevel, gain float64) {
 	if inputLevel > e.metrics.InputPeak {
 		e.metrics.InputPeak = inputLevel
 	}
+
 	if outputLevel > e.metrics.OutputPeak {
 		e.metrics.OutputPeak = outputLevel
 	}
+
 	if e.metrics.GainReduction == 1.0 || gain < e.metrics.GainReduction {
 		e.metrics.GainReduction = gain
 	}

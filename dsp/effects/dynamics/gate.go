@@ -120,8 +120,10 @@ func NewGate(sampleRate float64) (*Gate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gate core init: %w", err)
 	}
+
 	g.core = core
 	g.updateCoefficients()
+
 	return g, nil
 }
 
@@ -130,8 +132,10 @@ func (g *Gate) SetThreshold(dB float64) error {
 	if err := g.core.SetThreshold(dB); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.thresholdDB = dB
 	g.syncFromCore()
+
 	return nil
 }
 
@@ -140,11 +144,14 @@ func (g *Gate) SetRatio(ratio float64) error {
 	if ratio < minGateRatio || ratio > maxGateRatio || !isFinite(ratio) {
 		return fmt.Errorf("gate ratio must be in [%f, %f]: %f", minGateRatio, maxGateRatio, ratio)
 	}
+
 	if err := g.core.SetRatio(ratio); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.ratio = ratio
 	g.syncFromCore()
+
 	return nil
 }
 
@@ -153,11 +160,14 @@ func (g *Gate) SetKnee(kneeDB float64) error {
 	if kneeDB < minGateKneeDB || kneeDB > maxGateKneeDB || !isFinite(kneeDB) {
 		return fmt.Errorf("gate knee must be in [%f, %f]: %f", minGateKneeDB, maxGateKneeDB, kneeDB)
 	}
+
 	if err := g.core.SetKnee(kneeDB); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.kneeDB = kneeDB
 	g.syncFromCore()
+
 	return nil
 }
 
@@ -166,11 +176,14 @@ func (g *Gate) SetAttack(ms float64) error {
 	if ms < minGateAttackMs || ms > maxGateAttackMs || !isFinite(ms) {
 		return fmt.Errorf("gate attack must be in [%f, %f]: %f", minGateAttackMs, maxGateAttackMs, ms)
 	}
+
 	if err := g.core.SetAttack(ms); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.attackMs = ms
 	g.updateTimeConstants()
+
 	return nil
 }
 
@@ -179,8 +192,10 @@ func (g *Gate) SetHold(ms float64) error {
 	if ms < minGateHoldMs || ms > maxGateHoldMs || !isFinite(ms) {
 		return fmt.Errorf("gate hold must be in [%f, %f]: %f", minGateHoldMs, maxGateHoldMs, ms)
 	}
+
 	g.holdMs = ms
 	g.updateTimeConstants()
+
 	return nil
 }
 
@@ -189,11 +204,14 @@ func (g *Gate) SetRelease(ms float64) error {
 	if ms < minGateReleaseMs || ms > maxGateReleaseMs || !isFinite(ms) {
 		return fmt.Errorf("gate release must be in [%f, %f]: %f", minGateReleaseMs, maxGateReleaseMs, ms)
 	}
+
 	if err := g.core.SetRelease(ms); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.releaseMs = ms
 	g.updateTimeConstants()
+
 	return nil
 }
 
@@ -202,8 +220,10 @@ func (g *Gate) SetRange(dB float64) error {
 	if dB < minGateRangeDB || dB > maxGateRangeDB || !isFinite(dB) {
 		return fmt.Errorf("gate range must be in [%f, %f]: %f", minGateRangeDB, maxGateRangeDB, dB)
 	}
+
 	g.rangeDB = dB
 	g.updateCoefficients()
+
 	return nil
 }
 
@@ -212,8 +232,10 @@ func (g *Gate) SetSampleRate(sampleRate float64) error {
 	if err := g.core.SetSampleRate(sampleRate); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.sampleRate = sampleRate
 	g.updateTimeConstants()
+
 	return nil
 }
 
@@ -222,7 +244,9 @@ func (g *Gate) SetTopology(topology DynamicsTopology) error {
 	if err := g.core.SetTopology(topology); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.topology = topology
+
 	return nil
 }
 
@@ -231,7 +255,9 @@ func (g *Gate) SetDetectorMode(mode DetectorMode) error {
 	if err := g.core.SetDetectorMode(mode); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.detectorMode = mode
+
 	return nil
 }
 
@@ -240,7 +266,9 @@ func (g *Gate) SetRMSWindow(ms float64) error {
 	if err := g.core.SetRMSWindow(ms); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.rmsWindowMs = ms
+
 	return nil
 }
 
@@ -249,7 +277,9 @@ func (g *Gate) SetSidechainLowCut(hz float64) error {
 	if err := g.core.SetSidechainLowCut(hz); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.sidechainLowCutHz = hz
+
 	return nil
 }
 
@@ -258,7 +288,9 @@ func (g *Gate) SetSidechainHighCut(hz float64) error {
 	if err := g.core.SetSidechainHighCut(hz); err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
+
 	g.sidechainHighCutHz = hz
+
 	return nil
 }
 
@@ -327,6 +359,7 @@ func (g *Gate) ProcessSampleSidechain(input, sidechain float64) float64 {
 
 	output := input * gain
 	g.updateMetrics(abs(input), abs(output), gain)
+
 	return output
 }
 
@@ -341,6 +374,7 @@ func (g *Gate) ProcessInPlace(buf []float64) {
 func (g *Gate) CalculateOutputLevel(inputMagnitude float64) float64 {
 	inputMagnitude = abs(inputMagnitude)
 	gain := g.calculateGain(inputMagnitude)
+
 	return inputMagnitude * gain
 }
 
@@ -388,15 +422,19 @@ func (g *Gate) calculateGain(peakLevel float64) float64 {
 		if undershoot <= 0 {
 			return 1.0
 		}
+
 		gainLog2 := -undershoot * (g.ratio - 1.0)
+
 		gain := mathPower2(gainLog2)
 		if gain < g.rangeLin {
 			return g.rangeLin
 		}
+
 		return gain
 	}
 
 	halfWidth := g.kneeWidthLog2 * 0.5
+
 	var effectiveUndershoot float64
 
 	if undershoot < -halfWidth {
@@ -409,10 +447,12 @@ func (g *Gate) calculateGain(peakLevel float64) float64 {
 	}
 
 	gainLog2 := -effectiveUndershoot * (g.ratio - 1.0)
+
 	gain := mathPower2(gainLog2)
 	if gain < g.rangeLin {
 		return g.rangeLin
 	}
+
 	return gain
 }
 
@@ -421,9 +461,11 @@ func (g *Gate) updateMetrics(inputLevel, outputLevel, gain float64) {
 	if inputLevel > g.metrics.InputPeak {
 		g.metrics.InputPeak = inputLevel
 	}
+
 	if outputLevel > g.metrics.OutputPeak {
 		g.metrics.OutputPeak = outputLevel
 	}
+
 	if g.metrics.GainReduction == 1.0 || gain < g.metrics.GainReduction {
 		g.metrics.GainReduction = gain
 	}

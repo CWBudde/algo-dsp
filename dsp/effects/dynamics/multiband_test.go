@@ -226,6 +226,54 @@ func TestMultibandSetBandParams(t *testing.T) {
 		if !mc.Band(0).AutoMakeup() {
 			t.Error("auto makeup should be re-enabled")
 		}
+
+		if err := mc.SetBandTopology(0, DynamicsTopologyFeedback); err != nil {
+			t.Errorf("SetBandTopology: %v", err)
+		}
+
+		if mc.Band(0).Topology() != DynamicsTopologyFeedback {
+			t.Errorf("topology = %v, want %v", mc.Band(0).Topology(), DynamicsTopologyFeedback)
+		}
+
+		if err := mc.SetBandDetectorMode(0, DetectorModeRMS); err != nil {
+			t.Errorf("SetBandDetectorMode: %v", err)
+		}
+
+		if mc.Band(0).DetectorMode() != DetectorModeRMS {
+			t.Errorf("detector mode = %v, want %v", mc.Band(0).DetectorMode(), DetectorModeRMS)
+		}
+
+		if err := mc.SetBandFeedbackRatioScale(0, false); err != nil {
+			t.Errorf("SetBandFeedbackRatioScale: %v", err)
+		}
+
+		if mc.Band(0).FeedbackRatioScale() {
+			t.Error("feedback ratio scale should be false")
+		}
+
+		if err := mc.SetBandRMSWindow(0, 25); err != nil {
+			t.Errorf("SetBandRMSWindow: %v", err)
+		}
+
+		if mc.Band(0).RMSWindow() != 25 {
+			t.Errorf("rms window = %f, want 25", mc.Band(0).RMSWindow())
+		}
+
+		if err := mc.SetBandSidechainLowCut(0, 300); err != nil {
+			t.Errorf("SetBandSidechainLowCut: %v", err)
+		}
+
+		if err := mc.SetBandSidechainHighCut(0, 5000); err != nil {
+			t.Errorf("SetBandSidechainHighCut: %v", err)
+		}
+
+		if mc.Band(0).SidechainLowCut() != 300 {
+			t.Errorf("sidechain low-cut = %f, want 300", mc.Band(0).SidechainLowCut())
+		}
+
+		if mc.Band(0).SidechainHighCut() != 5000 {
+			t.Errorf("sidechain high-cut = %f, want 5000", mc.Band(0).SidechainHighCut())
+		}
 	})
 
 	t.Run("invalid band index", func(t *testing.T) {
@@ -258,6 +306,30 @@ func TestMultibandSetBandParams(t *testing.T) {
 		}
 
 		if err := mc.SetBandAutoMakeup(5, true); err == nil {
+			t.Error("expected error for out-of-range band index")
+		}
+
+		if err := mc.SetBandTopology(5, DynamicsTopologyFeedback); err == nil {
+			t.Error("expected error for out-of-range band index")
+		}
+
+		if err := mc.SetBandDetectorMode(5, DetectorModeRMS); err == nil {
+			t.Error("expected error for out-of-range band index")
+		}
+
+		if err := mc.SetBandFeedbackRatioScale(5, true); err == nil {
+			t.Error("expected error for out-of-range band index")
+		}
+
+		if err := mc.SetBandRMSWindow(5, 20); err == nil {
+			t.Error("expected error for out-of-range band index")
+		}
+
+		if err := mc.SetBandSidechainLowCut(5, 100); err == nil {
+			t.Error("expected error for out-of-range band index")
+		}
+
+		if err := mc.SetBandSidechainHighCut(5, 1000); err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
@@ -329,6 +401,40 @@ func TestMultibandSetAllBands(t *testing.T) {
 			t.Errorf("band %d release = %f, want 250.0", i, mc.Band(i).Release())
 		}
 	}
+
+	if err := mc.SetAllBandsTopology(DynamicsTopologyFeedback); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mc.SetAllBandsDetectorMode(DetectorModeRMS); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mc.SetAllBandsFeedbackRatioScale(false); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mc.SetAllBandsRMSWindow(30); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < mc.NumBands(); i++ {
+		if mc.Band(i).Topology() != DynamicsTopologyFeedback {
+			t.Errorf("band %d topology = %v, want %v", i, mc.Band(i).Topology(), DynamicsTopologyFeedback)
+		}
+
+		if mc.Band(i).DetectorMode() != DetectorModeRMS {
+			t.Errorf("band %d detector mode = %v, want %v", i, mc.Band(i).DetectorMode(), DetectorModeRMS)
+		}
+
+		if mc.Band(i).FeedbackRatioScale() {
+			t.Errorf("band %d feedback ratio scale should be false", i)
+		}
+
+		if mc.Band(i).RMSWindow() != 30 {
+			t.Errorf("band %d rms window = %f, want 30", i, mc.Band(i).RMSWindow())
+		}
+	}
 }
 
 func TestMultibandSetAllBandsInvalid(t *testing.T) {
@@ -352,6 +458,10 @@ func TestMultibandSetAllBandsInvalid(t *testing.T) {
 
 	if err := mc.SetAllBandsRelease(0.1); err == nil {
 		t.Error("expected error for too-small release")
+	}
+
+	if err := mc.SetAllBandsRMSWindow(0.5); err == nil {
+		t.Error("expected error for too-small rms window")
 	}
 }
 
@@ -453,6 +563,25 @@ func TestMultibandProcessInPlaceEmpty(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{1000}, 4, 48000)
 	// Must not panic
 	mc.ProcessInPlace([]float64{})
+}
+
+func TestMultibandProcessStereoInPlace(t *testing.T) {
+	mc, _ := NewMultibandCompressor([]float64{500, 5000}, 4, 48000)
+	left := make([]float64, 128)
+	right := make([]float64, 128)
+
+	for i := range left {
+		left[i] = 0.3 * math.Sin(2*math.Pi*440*float64(i)/48000)
+		right[i] = 0.3 * math.Sin(2*math.Pi*880*float64(i)/48000)
+	}
+
+	if err := mc.ProcessStereoInPlace(left, right); err != nil {
+		t.Fatalf("ProcessStereoInPlace unexpected error: %v", err)
+	}
+
+	if err := mc.ProcessStereoInPlace(left, right[:64]); err == nil {
+		t.Fatal("expected length mismatch error")
+	}
 }
 
 func TestMultibandProcessInPlaceMulti(t *testing.T) {
@@ -661,6 +790,84 @@ func TestMultibandEnergyPreservation(t *testing.T) {
 	}
 }
 
+func TestMultibandRecombinationConsistency(t *testing.T) {
+	mc, _ := NewMultibandCompressor([]float64{300, 3000}, 4, 48000)
+	for i := 0; i < mc.NumBands(); i++ {
+		_ = mc.SetBandRatio(i, 1.0)
+		_ = mc.SetBandAutoMakeup(i, false)
+		_ = mc.SetBandMakeupGain(i, 0)
+	}
+
+	input := make([]float64, 512)
+	for i := range input {
+		input[i] = 0.4*math.Sin(2*math.Pi*220*float64(i)/48000) + 0.2*math.Sin(2*math.Pi*2200*float64(i)/48000)
+	}
+
+	perBand := mc.ProcessInPlaceMulti(input)
+
+	sum := make([]float64, len(input))
+	for b := range perBand {
+		for i := range sum {
+			sum[i] += perBand[b][i]
+		}
+	}
+
+	mc.Reset()
+
+	out := make([]float64, len(input))
+	copy(out, input)
+	mc.ProcessInPlace(out)
+
+	for i := range out {
+		if math.Abs(out[i]-sum[i]) > 1e-12 {
+			t.Fatalf("recombination mismatch at %d: out=%0.12f sum=%0.12f", i, out[i], sum[i])
+		}
+	}
+}
+
+func TestMultibandPhaseLatencySanity(t *testing.T) {
+	mc, _ := NewMultibandCompressor([]float64{500, 5000}, 4, 48000)
+	for i := 0; i < mc.NumBands(); i++ {
+		_ = mc.SetBandRatio(i, 1.0)
+		_ = mc.SetBandAutoMakeup(i, false)
+		_ = mc.SetBandMakeupGain(i, 0)
+	}
+
+	const n = 2048
+
+	out := make([]float64, n)
+	for i := 0; i < n; i++ {
+		x := 0.0
+		if i == 0 {
+			x = 1.0
+		}
+
+		out[i] = mc.ProcessSample(x)
+	}
+
+	// Causal IIR split/recombine should respond at sample 0.
+	if math.Abs(out[0]) < 1e-6 {
+		t.Fatalf("expected non-trivial sample-0 impulse response, got %g", out[0])
+	}
+
+	// No pathological group-delay build-up: major energy remains early.
+	total := 0.0
+	early := 0.0
+
+	for i := 0; i < n; i++ {
+		e := out[i] * out[i]
+
+		total += e
+		if i < 256 {
+			early += e
+		}
+	}
+
+	if total == 0 || early/total < 0.8 {
+		t.Fatalf("unexpectedly delayed response: early ratio=%f", early/total)
+	}
+}
+
 // --- SetBandConfig test ---
 
 func TestSetBandConfig(t *testing.T) {
@@ -668,13 +875,19 @@ func TestSetBandConfig(t *testing.T) {
 
 	autoFalse := false
 	cfg := BandConfig{
-		ThresholdDB:  Float64Ptr(-25),
-		Ratio:        6.0,
-		KneeDB:       Float64Ptr(8.0),
-		AttackMs:     15.0,
-		ReleaseMs:    150.0,
-		MakeupGainDB: Float64Ptr(5.0),
-		AutoMakeup:   &autoFalse,
+		ThresholdDB:        Float64Ptr(-25),
+		Ratio:              6.0,
+		KneeDB:             Float64Ptr(8.0),
+		AttackMs:           15.0,
+		ReleaseMs:          150.0,
+		MakeupGainDB:       Float64Ptr(5.0),
+		AutoMakeup:         &autoFalse,
+		Topology:           topologyPtr(DynamicsTopologyFeedback),
+		DetectorMode:       detectorModePtr(DetectorModeRMS),
+		FeedbackRatioScale: boolPtr(false),
+		RMSWindowMs:        Float64Ptr(20.0),
+		SidechainLowCutHz:  Float64Ptr(200.0),
+		SidechainHighCutHz: Float64Ptr(6000.0),
 	}
 
 	if err := mc.SetBandConfig(0, cfg); err != nil {
@@ -705,4 +918,26 @@ func TestSetBandConfig(t *testing.T) {
 	if b.AutoMakeup() {
 		t.Error("auto makeup should be false")
 	}
+
+	if b.Topology() != DynamicsTopologyFeedback {
+		t.Errorf("topology = %v, want %v", b.Topology(), DynamicsTopologyFeedback)
+	}
+
+	if b.DetectorMode() != DetectorModeRMS {
+		t.Errorf("detector mode = %v, want %v", b.DetectorMode(), DetectorModeRMS)
+	}
+
+	if b.FeedbackRatioScale() {
+		t.Error("feedback ratio scale should be false")
+	}
+
+	if b.RMSWindow() != 20.0 {
+		t.Errorf("rms window = %f, want 20", b.RMSWindow())
+	}
 }
+
+func boolPtr(v bool) *bool { return &v }
+
+func topologyPtr(v DynamicsTopology) *DynamicsTopology { return &v }
+
+func detectorModePtr(v DetectorMode) *DetectorMode { return &v }

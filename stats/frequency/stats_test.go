@@ -455,19 +455,19 @@ func TestBandwidthSinglePeak(t *testing.T) {
 		mag[i] = peakAmp * math.Max(0, 1-dist/10)
 	}
 
-	bw := Bandwidth(mag, sampleRate)
+	bandWidth := Bandwidth(mag, sampleRate)
 	binWidth := sampleRate / float64(fftSize)
 
 	// The -3 dB point is at peak/sqrt(2) ≈ 7.07.
 	// The triangle reaches 7.07 at dist ≈ 2.93 bins from center.
 	// So bandwidth ≈ 2 * 2.93 * binWidth ≈ 5.86 * binWidth.
 	expectedBW := 2 * (1 - 1/math.Sqrt2) * 10 * binWidth
-	if math.Abs(bw-expectedBW) > 2*binWidth {
-		t.Fatalf("Bandwidth: got %f, expected ~%f (binWidth=%f)", bw, expectedBW, binWidth)
+	if math.Abs(bandWidth-expectedBW) > 2*binWidth {
+		t.Fatalf("Bandwidth: got %f, expected ~%f (binWidth=%f)", bandWidth, expectedBW, binWidth)
 	}
 
-	if bw <= 0 {
-		t.Fatalf("Bandwidth should be positive, got %f", bw)
+	if bandWidth <= 0 {
+		t.Fatalf("Bandwidth should be positive, got %f", bandWidth)
 	}
 }
 

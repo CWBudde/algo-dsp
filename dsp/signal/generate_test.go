@@ -8,63 +8,63 @@ import (
 )
 
 func TestSineLength(t *testing.T) {
-	g := NewGenerator(core.WithSampleRate(48000))
+	generator := NewGenerator(core.WithSampleRate(48000))
 
-	s, err := g.Sine(1000, 1, 64)
+	sine, err := generator.Sine(1000, 1, 64)
 	if err != nil {
 		t.Fatalf("Sine() error = %v", err)
 	}
 
-	if len(s) != 64 {
-		t.Fatalf("len = %d, want 64", len(s))
+	if len(sine) != 64 {
+		t.Fatalf("len = %d, want 64", len(sine))
 	}
 }
 
 func TestWhiteNoiseDeterministic(t *testing.T) {
-	g1 := NewGeneratorWithOptions(nil, WithSeed(42))
-	g2 := NewGeneratorWithOptions(nil, WithSeed(42))
+	generator1 := NewGeneratorWithOptions(nil, WithSeed(42))
+	generator2 := NewGeneratorWithOptions(nil, WithSeed(42))
 
-	n1, err := g1.WhiteNoise(1, 16)
+	noise1, err := generator1.WhiteNoise(1, 16)
 	if err != nil {
 		t.Fatalf("WhiteNoise() error = %v", err)
 	}
 
-	n2, err := g2.WhiteNoise(1, 16)
+	noise2, err := generator2.WhiteNoise(1, 16)
 	if err != nil {
 		t.Fatalf("WhiteNoise() error = %v", err)
 	}
 
-	for i := range n1 {
-		if n1[i] != n2[i] {
-			t.Fatalf("noise mismatch at %d: %v != %v", i, n1[i], n2[i])
+	for i := range noise1 {
+		if noise1[i] != noise2[i] {
+			t.Fatalf("noise mismatch at %d: %v != %v", i, noise1[i], noise2[i])
 		}
 	}
 }
 
 func TestSetSeed(t *testing.T) {
-	g := NewGenerator()
-	g.SetSeed(99)
+	generator := NewGenerator()
+	generator.SetSeed(99)
 
-	if g.Seed() != 99 {
-		t.Fatalf("Seed()=%d, want 99", g.Seed())
+	if generator.Seed() != 99 {
+		t.Fatalf("Seed()=%d, want 99", generator.Seed())
 	}
 
-	a, err := g.WhiteNoise(1, 8)
+	whiteNoise1, err := generator.WhiteNoise(1, 8)
 	if err != nil {
 		t.Fatalf("WhiteNoise() error = %v", err)
 	}
 
-	g.SetSeed(100)
+	generator.SetSeed(100)
 
-	b, err := g.WhiteNoise(1, 8)
+	whiteNoise2, err := generator.WhiteNoise(1, 8)
 	if err != nil {
 		t.Fatalf("WhiteNoise() error = %v", err)
 	}
 
 	same := true
 
-	for i := range a {
-		if a[i] != b[i] {
+	for i := range whiteNoise1 {
+		if whiteNoise1[i] != whiteNoise2[i] {
 			same = false
 			break
 		}
@@ -76,22 +76,22 @@ func TestSetSeed(t *testing.T) {
 }
 
 func TestPinkNoiseDeterministic(t *testing.T) {
-	g1 := NewGeneratorWithOptions(nil, WithSeed(42))
-	g2 := NewGeneratorWithOptions(nil, WithSeed(42))
+	generator1 := NewGeneratorWithOptions(nil, WithSeed(42))
+	generator2 := NewGeneratorWithOptions(nil, WithSeed(42))
 
-	n1, err := g1.PinkNoise(1, 128)
+	pinkNoise1, err := generator1.PinkNoise(1, 128)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
 	}
 
-	n2, err := g2.PinkNoise(1, 128)
+	pinkNoise2, err := generator2.PinkNoise(1, 128)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
 	}
 
-	for i := range n1 {
-		if n1[i] != n2[i] {
-			t.Fatalf("pink noise mismatch at %d: %v != %v", i, n1[i], n2[i])
+	for i := range pinkNoise1 {
+		if pinkNoise1[i] != pinkNoise2[i] {
+			t.Fatalf("pink noise mismatch at %d: %v != %v", i, pinkNoise1[i], pinkNoise2[i])
 		}
 	}
 }
@@ -129,23 +129,23 @@ func TestPinkNoiseBounded(t *testing.T) {
 }
 
 func TestPinkNoiseDifferentSeeds(t *testing.T) {
-	g1 := NewGeneratorWithOptions(nil, WithSeed(1))
-	g2 := NewGeneratorWithOptions(nil, WithSeed(2))
+	generator1 := NewGeneratorWithOptions(nil, WithSeed(1))
+	generator2 := NewGeneratorWithOptions(nil, WithSeed(2))
 
-	n1, err := g1.PinkNoise(1, 64)
+	pinkNoise1, err := generator1.PinkNoise(1, 64)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
 	}
 
-	n2, err := g2.PinkNoise(1, 64)
+	pinkNoise2, err := generator2.PinkNoise(1, 64)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
 	}
 
 	same := true
 
-	for i := range n1 {
-		if n1[i] != n2[i] {
+	for i := range pinkNoise1 {
+		if pinkNoise1[i] != pinkNoise2[i] {
 			same = false
 			break
 		}
@@ -158,28 +158,28 @@ func TestPinkNoiseDifferentSeeds(t *testing.T) {
 
 func TestPinkNoiseSpectralSlope(t *testing.T) {
 	// Generate a long pink noise signal and verify approximate -3 dB/octave slope.
-	g := NewGeneratorWithOptions(
+	generator := NewGeneratorWithOptions(
 		[]core.ProcessorOption{core.WithSampleRate(48000)},
 		WithSeed(42),
 	)
 	n := 1 << 16 // 65536 samples
 
-	out, err := g.PinkNoise(1, n)
+	out, err := generator.PinkNoise(1, n)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
 	}
 
 	// Compute average power in octave bands using sampled DFT bins.
 	// We sample a fixed number of bins per band to keep the test fast.
-	sr := 48000.0
+	sampleRate := 48000.0
 	bands := []float64{500, 1000, 2000, 4000}
 	powers := make([]float64, len(bands))
 
 	const binsPerBand = 8
 
 	for bi, fc := range bands {
-		loK := int(fc / math.Sqrt2 * float64(n) / sr)
-		hiK := int(fc * math.Sqrt2 * float64(n) / sr)
+		loK := int(fc / math.Sqrt2 * float64(n) / sampleRate)
+		hiK := int(fc * math.Sqrt2 * float64(n) / sampleRate)
 
 		if loK < 1 {
 			loK = 1

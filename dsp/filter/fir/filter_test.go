@@ -181,14 +181,14 @@ func TestResponse_Differentiator_DC(t *testing.T) {
 }
 
 func TestMagnitudeDB_MatchesResponse(t *testing.T) {
-	f := New([]float64{0.25, 0.5, 0.25})
+	filterData := New([]float64{0.25, 0.5, 0.25})
 
 	sr := 48000.0
 	for _, freq := range []float64{100, 1000, 10000} {
-		h := f.Response(freq, sr)
+		h := filterData.Response(freq, sr)
 		fromResponse := 20 * math.Log10(cmplx.Abs(h))
 
-		fromMethod := f.MagnitudeDB(freq, sr)
+		fromMethod := filterData.MagnitudeDB(freq, sr)
 		if !almostEqual(fromMethod, fromResponse, 1e-10) {
 			t.Errorf("freq=%v: MagnitudeDB=%.15f, ref=%.15f", freq, fromMethod, fromResponse)
 		}
