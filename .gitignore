@@ -50,3 +50,6 @@ dsp/**/*.pdf
 # AI agents
 .claude/
 .serena/
+
+# Legacy
+/legacy/
