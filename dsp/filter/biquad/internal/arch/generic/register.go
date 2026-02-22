@@ -20,8 +20,8 @@ func processBlock(c registry.Coefficients, d0, d1 float64, buf []float64) (newD0
 
 	i := 0
 
-	n := len(buf)
-	for ; i+1 < n; i += 2 {
+	bufLen := len(buf)
+	for ; i+1 < bufLen; i += 2 {
 		x0 := buf[i]
 		y0 := b0*x0 + d0
 		d0n := b1*x0 - a1*y0 + d1
@@ -36,7 +36,7 @@ func processBlock(c registry.Coefficients, d0, d1 float64, buf []float64) (newD0
 		buf[i+1] = y1
 	}
 
-	if i < n {
+	if i < bufLen {
 		x := buf[i]
 		y := b0*x + d0
 		d0 = b1*x - a1*y + d1

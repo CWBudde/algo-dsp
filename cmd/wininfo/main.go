@@ -146,65 +146,65 @@ func resolveEntries(names []string, alphaFlag float64) []resolvedEntry {
 	for _, name := range names {
 		name = strings.ToLower(strings.TrimSpace(name))
 
-		e, ok := byName[name]
+		entry, ok := byName[name]
 		if !ok {
 			fmt.Fprintf(os.Stderr, "warning: unknown window %q (use -list to see available)\n", name)
 			continue
 		}
 
-		a := e.defAlpha
-		if e.hasAlpha && !math.IsNaN(alphaFlag) {
+		a := entry.defAlpha
+		if entry.hasAlpha && !math.IsNaN(alphaFlag) {
 			a = alphaFlag
 		}
 
-		result = append(result, resolvedEntry{e, a})
+		result = append(result, resolvedEntry{entry, a})
 	}
 
 	return result
 }
 
 func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) {
-	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintf(tw, "Window\tSize\tCoherent Gain\tENBW [bins]\tBW 3dB [bins]\tSidelobe [dB]\t1st Min [bins]\tScallop [dB]\n"); err != nil {
+	tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintf(tabWriter, "Window\tSize\tCoherent Gain\tENBW [bins]\tBW 3dB [bins]\tSidelobe [dB]\t1st Min [bins]\tScallop [dB]\n"); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output header: %v\n", err)
 		return
 	}
 
-	if _, err := fmt.Fprintf(tw, "------\t----\t-------------\t----------\t-------------\t-------------\t--------------\t-----------\n"); err != nil {
+	if _, err := fmt.Fprintf(tabWriter, "------\t----\t-------------\t----------\t-------------\t-------------\t--------------\t-----------\n"); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output header: %v\n", err)
 		return
 	}
 
-	for _, e := range entries {
+	for _, entry := range entries {
 		opts := append([]window.Option(nil), baseOpts...)
-		if e.hasAlpha {
-			opts = append(opts, window.WithAlpha(e.alphaOverride))
+		if entry.hasAlpha {
+			opts = append(opts, window.WithAlpha(entry.alphaOverride))
 		}
 
-		coeffs := window.Generate(e.typ, size, opts...)
-		a := window.Analyze(coeffs)
+		coeffs := window.Generate(entry.typ, size, opts...)
+		analyze := window.Analyze(coeffs)
 
-		label := e.name
-		if e.hasAlpha {
-			label = fmt.Sprintf("%s (a=%.2f)", e.name, e.alphaOverride)
+		label := entry.name
+		if entry.hasAlpha {
+			label = fmt.Sprintf("%s (a=%.2f)", entry.name, entry.alphaOverride)
 		}
 
-		if _, err := fmt.Fprintf(tw, "%s\t%d\t%.6f\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\n",
+		if _, err := fmt.Fprintf(tabWriter, "%s\t%d\t%.6f\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\n",
 			label,
 			size,
-			a.CoherentGain,
-			a.ENBW,
-			a.Bandwidth3dB,
-			a.HighestSidelobedB,
-			a.FirstMinimumBins,
-			a.ScallopLossdB,
+			analyze.CoherentGain,
+			analyze.ENBW,
+			analyze.Bandwidth3dB,
+			analyze.HighestSidelobedB,
+			analyze.FirstMinimumBins,
+			analyze.ScallopLossdB,
 		); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output row: %v\n", err)
 			return
 		}
 	}
 
-	if err := tw.Flush(); err != nil {
+	if err := tabWriter.Flush(); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to flush output: %v\n", err)
 	}
 }

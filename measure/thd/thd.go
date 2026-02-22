@@ -119,7 +119,7 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 
 	coeffs := window.Generate(winType, len(signal))
 
-	in := make([]complex128, fftSize)
+	inData := make([]complex128, fftSize)
 
 	for i := range signal {
 		w := 1.0
@@ -127,7 +127,7 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 			w = coeffs[i]
 		}
 
-		in[i] = complex(signal[i]*w, 0)
+		inData[i] = complex(signal[i]*w, 0)
 	}
 
 	plan, err := algofft.NewPlan64(fftSize)
@@ -136,7 +136,7 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 	}
 
 	out := make([]complex128, fftSize)
-	if err := plan.Forward(out, in); err != nil {
+	if err := plan.Forward(out, inData); err != nil {
 		return Result{}
 	}
 
@@ -392,18 +392,18 @@ func getBinValue(magSquared []float64, bin, captureBins int) float64 {
 		return sqrtPositive(magSquared[bin])
 	}
 
-	lo := bin - captureBins
-	if lo < 0 {
-		lo = 0
+	loBin := bin - captureBins
+	if loBin < 0 {
+		loBin = 0
 	}
 
-	hi := bin + captureBins
-	if hi >= len(magSquared) {
-		hi = len(magSquared) - 1
+	hiBin := bin + captureBins
+	if hiBin >= len(magSquared) {
+		hiBin = len(magSquared) - 1
 	}
 
 	sum := 0.0
-	for i := lo; i <= hi; i++ {
+	for i := loBin; i <= hiBin; i++ {
 		sum += sqrtPositive(magSquared[i])
 	}
 
@@ -426,16 +426,16 @@ func ratioToDB(v float64) float64 {
 	return 20 * math.Log10(v)
 }
 
-func clampInt(v, lo, hi int) int {
-	if v < lo {
+func clampInt(val, lo, hi int) int {
+	if val < lo {
 		return lo
 	}
 
-	if v > hi {
+	if val > hi {
 		return hi
 	}
 
-	return v
+	return val
 }
 
 func nextPowerOf2(n int) int {

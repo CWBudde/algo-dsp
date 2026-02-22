@@ -1,21 +1,21 @@
 package webdemo
 
 // SetCompressor updates compressor parameters.
-func (e *Engine) SetCompressor(p CompressorParams) error {
+func (e *Engine) SetCompressor(param CompressorParams) error {
 	prevEnabled := e.compParams.Enabled
-	p.ThresholdDB = clamp(p.ThresholdDB, -60, 0)
-	p.Ratio = clamp(p.Ratio, 1, 100)
-	p.KneeDB = clamp(p.KneeDB, 0, 24)
-	p.AttackMs = clamp(p.AttackMs, 0.1, 1000)
-	p.ReleaseMs = clamp(p.ReleaseMs, 1, 5000)
-	p.MakeupGainDB = clamp(p.MakeupGainDB, 0, 24)
+	param.ThresholdDB = clamp(param.ThresholdDB, -60, 0)
+	param.Ratio = clamp(param.Ratio, 1, 100)
+	param.KneeDB = clamp(param.KneeDB, 0, 24)
+	param.AttackMs = clamp(param.AttackMs, 0.1, 1000)
+	param.ReleaseMs = clamp(param.ReleaseMs, 1, 5000)
+	param.MakeupGainDB = clamp(param.MakeupGainDB, 0, 24)
 
-	e.compParams = p
+	e.compParams = param
 	if err := e.rebuildCompressor(); err != nil {
 		return err
 	}
 
-	if prevEnabled && !p.Enabled {
+	if prevEnabled && !param.Enabled {
 		e.compressor.Reset()
 	}
 

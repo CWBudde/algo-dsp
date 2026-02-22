@@ -5,7 +5,7 @@ import (
 )
 
 func BenchmarkLogSweepGenerate(b *testing.B) {
-	s := &LogSweep{
+	sweep := &LogSweep{
 		StartFreq:  20,
 		EndFreq:    20000,
 		Duration:   1,
@@ -15,14 +15,14 @@ func BenchmarkLogSweepGenerate(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := s.Generate(); err != nil {
+		if _, err := sweep.Generate(); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 func BenchmarkLogSweepInverseFilter(b *testing.B) {
-	s := &LogSweep{
+	sweep := &LogSweep{
 		StartFreq:  20,
 		EndFreq:    20000,
 		Duration:   1,
@@ -32,7 +32,7 @@ func BenchmarkLogSweepInverseFilter(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := s.InverseFilter(); err != nil {
+		if _, err := sweep.InverseFilter(); err != nil {
 			b.Fatal(err)
 		}
 	}

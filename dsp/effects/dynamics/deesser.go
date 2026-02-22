@@ -332,14 +332,14 @@ func (d *DeEsser) SetRelease(ms float64) error {
 
 // SetRange sets the maximum gain reduction depth in dB.
 // Range: [-60, 0]. Limits how much the de-esser can attenuate.
-func (d *DeEsser) SetRange(dB float64) error {
-	if dB < minDeEsserRangeDB || dB > maxDeEsserRangeDB ||
-		math.IsNaN(dB) || math.IsInf(dB, 0) {
+func (d *DeEsser) SetRange(valDB float64) error {
+	if valDB < minDeEsserRangeDB || valDB > maxDeEsserRangeDB ||
+		math.IsNaN(valDB) || math.IsInf(valDB, 0) {
 		return fmt.Errorf("de-esser range must be in [%g, %g]: %f",
-			minDeEsserRangeDB, maxDeEsserRangeDB, dB)
+			minDeEsserRangeDB, maxDeEsserRangeDB, valDB)
 	}
 
-	d.rangeDB = dB
+	d.rangeDB = valDB
 	d.updateCoefficients()
 
 	return nil
@@ -458,7 +458,16 @@ func (d *DeEsser) ProcessSample(input float64) float64 {
 		// Reduce only the band, then recombine.
 		// output = (input - band) + band * gain
 		//        = input + band * (gain - 1)
-		return input + band*(gain-1)
+		out := input + band*(gain-1)
+		// The split-band formula can add energy when the band filter has
+		// significant phase shift (e.g. highpass at off-centre frequencies).
+		// Clamp to the wideband-limited output so we never increase level.
+		widebandOut := input * gain
+		if math.Abs(out) > math.Abs(widebandOut) {
+			return widebandOut
+		}
+
+		return out
 	default:
 		return input * gain
 	}
@@ -605,13 +614,8 @@ func (d *DeEsser) rebuildFilters() {
 
 	// Compute the normalisation factor for the extracted band so that it has
 	// unity peak gain before recombination in split-band mode.
-	// design.Bandpass uses a constant-skirt design whose passband peak equals Q
-	// per section; highpass (and fallback) sections have unity passband gain.
-	switch d.detector {
-	case DeEsserDetectBandpass:
-		// Peak gain per section = Q; N cascaded sections → Q^N.
-		d.bandNorm = 1.0 / math.Pow(d.q, float64(d.filterOrder))
-	default:
-		d.bandNorm = 1.0
-	}
+	// Both design.Bandpass and design.Highpass use bilinear-transformed
+	// Butterworth/constant-skirt designs whose resonance peak equals Q per
+	// section; N cascaded sections give a peak of Q^N.
+	d.bandNorm = 1.0 / math.Pow(d.q, float64(d.filterOrder))
 }

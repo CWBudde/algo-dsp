@@ -67,7 +67,7 @@ func NewSpectralPitchShifter(sampleRate float64) (*SpectralPitchShifter, error) 
 		return nil, fmt.Errorf("spectral pitch shifter sample rate must be positive and finite: %f", sampleRate)
 	}
 
-	s := &SpectralPitchShifter{
+	spectralPitchShifter := &SpectralPitchShifter{
 		sampleRate:      sampleRate,
 		pitchRatio:      defaultSpectralPitchRatio,
 		frameSize:       defaultSpectralFrameSize,
@@ -75,13 +75,13 @@ func NewSpectralPitchShifter(sampleRate float64) (*SpectralPitchShifter, error) 
 		windowType:      window.TypeHann,
 		resampleQuality: resample.QualityBalanced,
 	}
-	s.updateSynthesisHop()
+	spectralPitchShifter.updateSynthesisHop()
 
-	if err := s.rebuildState(); err != nil {
+	if err := spectralPitchShifter.rebuildState(); err != nil {
 		return nil, err
 	}
 
-	return s, nil
+	return spectralPitchShifter, nil
 }
 
 // NewSpectralPitchShifterDefault creates a spectral shifter at 44.1 kHz.
