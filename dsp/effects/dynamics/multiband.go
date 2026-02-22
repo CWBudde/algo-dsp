@@ -23,13 +23,19 @@ func Float64Ptr(v float64) *float64 { return &v }
 // indicate "keep default". Non-pointer fields use zero to indicate "keep default";
 // this is safe because zero is not a valid value for Ratio, AttackMs, or ReleaseMs.
 type BandConfig struct {
-	ThresholdDB  *float64 // Compression threshold in dB (nil = keep default)
-	Ratio        float64  // Compression ratio (1.0 = no compression, 0 = keep default)
-	KneeDB       *float64 // Soft-knee width in dB (nil = keep default, ptr to 0 = hard knee)
-	AttackMs     float64  // Attack time in milliseconds (0 = keep default)
-	ReleaseMs    float64  // Release time in milliseconds (0 = keep default)
-	MakeupGainDB *float64 // Manual makeup gain in dB (nil = keep default; disables auto makeup when set)
-	AutoMakeup   *bool    // Auto makeup gain toggle (nil = keep default)
+	ThresholdDB        *float64 // Compression threshold in dB (nil = keep default)
+	Ratio              float64  // Compression ratio (1.0 = no compression, 0 = keep default)
+	KneeDB             *float64 // Soft-knee width in dB (nil = keep default, ptr to 0 = hard knee)
+	AttackMs           float64  // Attack time in milliseconds (0 = keep default)
+	ReleaseMs          float64  // Release time in milliseconds (0 = keep default)
+	MakeupGainDB       *float64 // Manual makeup gain in dB (nil = keep default; disables auto makeup when set)
+	AutoMakeup         *bool    // Auto makeup gain toggle (nil = keep default)
+	Topology           *DynamicsTopology
+	DetectorMode       *DetectorMode
+	FeedbackRatioScale *bool
+	RMSWindowMs        *float64
+	SidechainLowCutHz  *float64
+	SidechainHighCutHz *float64
 }
 
 // MultibandMetrics holds per-band metering information.
@@ -241,6 +247,60 @@ func (mc *MultibandCompressor) SetBandAutoMakeup(band int, enable bool) error {
 	return mc.compressors[band].SetAutoMakeup(enable)
 }
 
+// SetBandTopology sets detector topology for the specified band.
+func (mc *MultibandCompressor) SetBandTopology(band int, topology DynamicsTopology) error {
+	if err := mc.checkBand(band); err != nil {
+		return err
+	}
+
+	return mc.compressors[band].SetTopology(topology)
+}
+
+// SetBandDetectorMode sets detector mode for the specified band.
+func (mc *MultibandCompressor) SetBandDetectorMode(band int, mode DetectorMode) error {
+	if err := mc.checkBand(band); err != nil {
+		return err
+	}
+
+	return mc.compressors[band].SetDetectorMode(mode)
+}
+
+// SetBandFeedbackRatioScale toggles legacy feedback ratio-dependent time scaling.
+func (mc *MultibandCompressor) SetBandFeedbackRatioScale(band int, enable bool) error {
+	if err := mc.checkBand(band); err != nil {
+		return err
+	}
+
+	return mc.compressors[band].SetFeedbackRatioScale(enable)
+}
+
+// SetBandRMSWindow sets RMS detector window length in milliseconds.
+func (mc *MultibandCompressor) SetBandRMSWindow(band int, ms float64) error {
+	if err := mc.checkBand(band); err != nil {
+		return err
+	}
+
+	return mc.compressors[band].SetRMSWindow(ms)
+}
+
+// SetBandSidechainLowCut sets detector-only low-cut frequency in Hz (0 disables).
+func (mc *MultibandCompressor) SetBandSidechainLowCut(band int, hz float64) error {
+	if err := mc.checkBand(band); err != nil {
+		return err
+	}
+
+	return mc.compressors[band].SetSidechainLowCut(hz)
+}
+
+// SetBandSidechainHighCut sets detector-only high-cut frequency in Hz (0 disables).
+func (mc *MultibandCompressor) SetBandSidechainHighCut(band int, hz float64) error {
+	if err := mc.checkBand(band); err != nil {
+		return err
+	}
+
+	return mc.compressors[band].SetSidechainHighCut(hz)
+}
+
 // SetBandConfig applies a full BandConfig to the specified band.
 func (mc *MultibandCompressor) SetBandConfig(band int, cfg BandConfig) error {
 	if err := mc.checkBand(band); err != nil {
@@ -305,6 +365,50 @@ func (mc *MultibandCompressor) SetAllBandsRelease(ms float64) error {
 	return nil
 }
 
+// SetAllBandsTopology sets detector topology for all bands.
+func (mc *MultibandCompressor) SetAllBandsTopology(topology DynamicsTopology) error {
+	for i := range mc.compressors {
+		if err := mc.compressors[i].SetTopology(topology); err != nil {
+			return fmt.Errorf("band %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// SetAllBandsDetectorMode sets detector mode for all bands.
+func (mc *MultibandCompressor) SetAllBandsDetectorMode(mode DetectorMode) error {
+	for i := range mc.compressors {
+		if err := mc.compressors[i].SetDetectorMode(mode); err != nil {
+			return fmt.Errorf("band %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// SetAllBandsFeedbackRatioScale sets feedback ratio scaling for all bands.
+func (mc *MultibandCompressor) SetAllBandsFeedbackRatioScale(enable bool) error {
+	for i := range mc.compressors {
+		if err := mc.compressors[i].SetFeedbackRatioScale(enable); err != nil {
+			return fmt.Errorf("band %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// SetAllBandsRMSWindow sets RMS window in milliseconds for all bands.
+func (mc *MultibandCompressor) SetAllBandsRMSWindow(ms float64) error {
+	for i := range mc.compressors {
+		if err := mc.compressors[i].SetRMSWindow(ms); err != nil {
+			return fmt.Errorf("band %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
 // --- Processing ---
 
 // ProcessSample splits one input sample into frequency bands, compresses
@@ -355,6 +459,19 @@ func (mc *MultibandCompressor) ProcessInPlace(buf []float64) {
 			buf[j] += v
 		}
 	}
+}
+
+// ProcessStereoInPlace applies multiband compression independently to left and
+// right channels. Slices must have the same length.
+func (mc *MultibandCompressor) ProcessStereoInPlace(left, right []float64) error {
+	if len(left) != len(right) {
+		return fmt.Errorf("multiband compressor: stereo buffers must have equal length, got %d and %d", len(left), len(right))
+	}
+
+	mc.ProcessInPlace(left)
+	mc.ProcessInPlace(right)
+
+	return nil
 }
 
 // ProcessInPlaceMulti applies multiband compression and returns per-band
@@ -457,6 +574,42 @@ func (mc *MultibandCompressor) applyBandConfig(band int, cfg BandConfig) error {
 
 	if cfg.AutoMakeup != nil {
 		if err := c.SetAutoMakeup(*cfg.AutoMakeup); err != nil {
+			return err
+		}
+	}
+
+	if cfg.Topology != nil {
+		if err := c.SetTopology(*cfg.Topology); err != nil {
+			return err
+		}
+	}
+
+	if cfg.DetectorMode != nil {
+		if err := c.SetDetectorMode(*cfg.DetectorMode); err != nil {
+			return err
+		}
+	}
+
+	if cfg.FeedbackRatioScale != nil {
+		if err := c.SetFeedbackRatioScale(*cfg.FeedbackRatioScale); err != nil {
+			return err
+		}
+	}
+
+	if cfg.RMSWindowMs != nil {
+		if err := c.SetRMSWindow(*cfg.RMSWindowMs); err != nil {
+			return err
+		}
+	}
+
+	if cfg.SidechainLowCutHz != nil {
+		if err := c.SetSidechainLowCut(*cfg.SidechainLowCutHz); err != nil {
+			return err
+		}
+	}
+
+	if cfg.SidechainHighCutHz != nil {
+		if err := c.SetSidechainHighCut(*cfg.SidechainHighCutHz); err != nil {
 			return err
 		}
 	}

@@ -66,24 +66,24 @@ func Calculate(magnitude []float64, sampleRate float64) Stats {
 
 	if n == 1 {
 		// DC-only spectrum (single bin).
-		v := magnitude[0]
+		valDC := magnitude[0]
 
 		return Stats{
 			BinCount:   1,
-			DC:         v,
-			DC_dB:      toDB(v),
-			Sum:        v,
-			Sum_dB:     toDB(v),
-			Max:        v,
+			DC:         valDC,
+			DC_dB:      toDB(valDC),
+			Sum:        valDC,
+			Sum_dB:     toDB(valDC),
+			Max:        valDC,
 			MaxBin:     0,
-			Min:        v,
+			Min:        valDC,
 			MinBin:     0,
-			Average:    v,
-			Average_dB: toDB(v),
+			Average:    valDC,
+			Average_dB: toDB(valDC),
 			Range:      0,
 			Range_dB:   toDB(0),
-			Energy:     v * v,
-			Power:      v * v,
+			Energy:     valDC * valDC,
+			Power:      valDC * valDC,
 		}
 	}
 
@@ -97,17 +97,17 @@ func Calculate(magnitude []float64, sampleRate float64) Stats {
 	s.Min = magnitude[0]
 
 	s.Max = magnitude[0]
-	for i, v := range magnitude {
-		s.Sum += v
+	for i, val := range magnitude {
+		s.Sum += val
 
-		s.Energy += v * v
-		if v > s.Max {
-			s.Max = v
+		s.Energy += val * val
+		if val > s.Max {
+			s.Max = val
 			s.MaxBin = i
 		}
 
-		if v < s.Min {
-			s.Min = v
+		if val < s.Min {
+			s.Min = val
 			s.MinBin = i
 		}
 	}

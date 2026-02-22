@@ -173,7 +173,7 @@ Phase 13: Advanced Parametric EQ Design               [2 weeks]  ✅ Complete
 Phase 14: High-Order Graphic EQ Bands                 [4 weeks]  ✅ Complete
 Phase 15: Effects — High-Priority Modulation          [2 weeks]  📋 Planned
 Phase 16: Effects — High-Priority Dynamics            [2 weeks]  📋 Planned
-Phase 17: Effects — High-Priority Spatial             [1 week]   📋 Planned
+Phase 17: Effects — High-Priority Spatial             [1 week]   ✅ Complete
 Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  📋 Planned
 Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  📋 Planned
 Phase 20: Effects — Medium-Priority Dynamics          [2 weeks]  📋 Planned
@@ -366,22 +366,22 @@ Tasks:
   - [x] Implement feedback compressor variants:
   - [x] Hard-knee feedback compressor.
   - [x] Soft-knee feedback compressor.
-  - [ ] Include feedback-specific time-constant behavior where attack/release scaling depends on ratio (legacy parity target).
+  - [x] Include feedback-specific time-constant behavior where attack/release scaling depends on ratio (legacy parity target).
   - [ ] Expose clear API surface (`ProcessSample`, `ProcessInPlace`, stereo/frame processing variant, `Reset`, constructor+options).
 - [ ] Legacy parity and characterization for dynamics
-  - [ ] Build parity-oriented reference tests for feedforward and feedback paths using vectors derived from `legacy/Source/DSP/DAV_DspDynamics.pas`.
+  - [x] Build parity-oriented reference tests for feedforward and feedback paths using vectors derived from `legacy/Source/DSP/DAV_DspDynamics.pas`.
   - [ ] Validate characteristic curves (`in -> out` and gain reduction) for threshold/ratio/knee sweeps.
-  - [ ] Validate temporal behavior on step/burst tests (attack, release, feedback recovery, RMS window response).
-  - [ ] Add benchmark coverage for hot paths and allocation checks (`allocs/op` near zero for in-place processing).
+  - [x] Validate temporal behavior on step/burst tests (attack, release, feedback recovery, RMS window response).
+  - [x] Add benchmark coverage for hot paths and allocation checks (`allocs/op` near zero for in-place processing).
 - [x] Expander
   - [x] Implement downward expander on top of shared dynamics core (feedforward first, optional feedback mode if stable).
   - [x] Add hard-knee + soft-knee variants with range control where appropriate.
   - [x] Add tests + runnable example.
-- [ ] Multiband compressor
-  - [ ] Implement crossover + per-band compressors using feedforward core initially.
-  - [ ] Add optional feedback mode per band once single-band feedback parity is validated.
-  - [ ] Add recombination gain-normalization checks and phase/latency sanity tests.
-  - [ ] Add tests + runnable example.
+- [x] Multiband compressor
+  - [x] Implement crossover + per-band compressors using feedforward core initially.
+  - [x] Add optional feedback mode per band once single-band feedback parity is validated.
+  - [x] Add recombination gain-normalization checks and phase/latency sanity tests.
+  - [x] Add tests + runnable example.
 
 Exit criteria:
 
@@ -389,31 +389,31 @@ Exit criteria:
 - [ ] Parity/characterization tests pass for legacy-aligned behavior envelopes.
 - [ ] `go test -race ./dsp/effects/` passes with new dynamics processors.
 
-### Phase 17: Effects — High-Priority Spatial (Planned)
+### Phase 17: Effects — High-Priority Spatial (Complete)
 
 Tasks:
 
-- [ ] Stereo widener
-  - [ ] Implement M/S gain controls with safe bounds.
-  - [ ] Add mono-compatibility tests + example.
-- [ ] Crosstalk cancellation
-  - [ ] Implement stereo crosstalk cancellation effect (`dsp/effects`) with constructor/options, `ProcessStereo`, `ProcessInPlace`, and `Reset`.
-  - [ ] Port the legacy geometric delay model from `legacy/Source/DSP/DAV_DspCrosstalkCancellation.pas` (listener distance, speaker distance, head radius, attenuation, stage count).
-  - [ ] Implement staged crossfeed cancellation path per channel: delay line + highshelf crosstalk filter + attenuation.
-  - [ ] Add parameter validation and guard rails (distance constraints, stage bounds, sample-rate updates).
-  - [ ] Add parity-oriented tests against legacy behavior (delay-time calculation + staged processing sanity) and runnable example.
-- [ ] Crosstalk simulator (IIR model)
-  - [ ] Implement stereo crosstalk simulator effect (`dsp/effects`) based on `legacy/Source/DSP/DAV_DspCrosstalkSimulator.pas`.
-  - [ ] Port configurable model presets (`Handcrafted`, `IRCAM`, `HDPHX`) as cascaded biquad shaping on the crossfeed path.
-  - [ ] Port delayed crossfeed buffer model with physical-diameter-derived delay (`diameter / speed_of_sound`), polarity toggle, and dry/crossfeed mix mapping.
-  - [ ] Add parameter validation and sample-rate dependent delay/buffer recalculation.
-  - [ ] Add parity-oriented tests for preset responses, delay-size calculation, and stereo processing behavior + runnable example.
-- [ ] Crosstalk simulator (HRTF)
-  - [ ] Implement HRTF-based stereo crosstalk simulator in `dsp/effects`, informed by `legacy/Source/DSP/DAV_DspCrosstalkSimulatorHRTF.pas`.
-  - [ ] Provide two modes: simple crossfeed-only convolution and complete direct+crossfeed convolution.
-  - [ ] Define an HRTF provider interface contract (transport-agnostic) and support impulse-response reload on HRTF/sample-rate changes.
-  - [ ] Implement convolution routing/mixing for left/right direct and opposite-channel crossfeed paths.
-  - [ ] Add deterministic tests (routing/parity sanity with fixture IRs), parameter validation, and runnable example.
+- [x] Stereo widener
+  - [x] Implement M/S gain controls with safe bounds.
+  - [x] Add mono-compatibility tests + example.
+- [x] Crosstalk cancellation
+  - [x] Implement stereo crosstalk cancellation effect (`dsp/effects`) with constructor/options, `ProcessStereo`, `ProcessInPlace`, and `Reset`.
+  - [x] Port the legacy geometric delay model from `legacy/Source/DSP/DAV_DspCrosstalkCancellation.pas` (listener distance, speaker distance, head radius, attenuation, stage count).
+  - [x] Implement staged crossfeed cancellation path per channel: delay line + highshelf crosstalk filter + attenuation.
+  - [x] Add parameter validation and guard rails (distance constraints, stage bounds, sample-rate updates).
+  - [x] Add parity-oriented tests against legacy behavior (delay-time calculation + staged processing sanity) and runnable example.
+- [x] Crosstalk simulator (IIR model)
+  - [x] Implement stereo crosstalk simulator effect (`dsp/effects`) based on `legacy/Source/DSP/DAV_DspCrosstalkSimulator.pas`.
+  - [x] Port configurable model presets (`Handcrafted`, `IRCAM`, `HDPHX`) as cascaded biquad shaping on the crossfeed path.
+  - [x] Port delayed crossfeed buffer model with physical-diameter-derived delay (`diameter / speed_of_sound`), polarity toggle, and dry/crossfeed mix mapping.
+  - [x] Add parameter validation and sample-rate dependent delay/buffer recalculation.
+  - [x] Add parity-oriented tests for preset responses, delay-size calculation, and stereo processing behavior + runnable example.
+- [x] Crosstalk simulator (HRTF)
+  - [x] Implement HRTF-based stereo crosstalk simulator in `dsp/effects`, informed by `legacy/Source/DSP/DAV_DspCrosstalkSimulatorHRTF.pas`.
+  - [x] Provide two modes: simple crossfeed-only convolution and complete direct+crossfeed convolution.
+  - [x] Define an HRTF provider interface contract (transport-agnostic) and support impulse-response reload on HRTF/sample-rate changes.
+  - [x] Implement convolution routing/mixing for left/right direct and opposite-channel crossfeed paths.
+  - [x] Add deterministic tests (routing/parity sanity with fixture IRs), parameter validation, and runnable example.
 
 ### Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi (Planned)
 

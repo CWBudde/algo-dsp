@@ -47,6 +47,7 @@ type Compressor struct {
 	autoMakeup         bool
 	topology           DynamicsTopology
 	detectorMode       DetectorMode
+	feedbackRatioScale bool
 	rmsWindowMs        float64
 	sidechainLowCutHz  float64
 	sidechainHighCutHz float64
@@ -88,6 +89,7 @@ func NewCompressor(sampleRate float64) (*Compressor, error) {
 		autoMakeup:         true,
 		topology:           DynamicsTopologyFeedforward,
 		detectorMode:       DetectorModePeak,
+		feedbackRatioScale: true,
 		rmsWindowMs:        defaultCompressorRMSWindowMs,
 		sidechainLowCutHz:  0,
 		sidechainHighCutHz: 0,
@@ -99,6 +101,7 @@ func NewCompressor(sampleRate float64) (*Compressor, error) {
 		sampleRate:         sampleRate,
 		topology:           c.topology,
 		detectorMode:       c.detectorMode,
+		feedbackRatioScale: c.feedbackRatioScale,
 		thresholdDB:        c.thresholdDB,
 		ratio:              c.ratio,
 		kneeDB:             c.kneeDB,
@@ -115,6 +118,7 @@ func NewCompressor(sampleRate float64) (*Compressor, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compressor core init: %w", err)
 	}
+
 	c.core = core
 	c.syncFromCore()
 
@@ -126,8 +130,10 @@ func (c *Compressor) SetThreshold(dB float64) error {
 	if err := c.core.SetThreshold(dB); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.thresholdDB = dB
 	c.syncFromCore()
+
 	return nil
 }
 
@@ -136,8 +142,10 @@ func (c *Compressor) SetRatio(ratio float64) error {
 	if err := c.core.SetRatio(ratio); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.ratio = ratio
 	c.syncFromCore()
+
 	return nil
 }
 
@@ -146,8 +154,10 @@ func (c *Compressor) SetKnee(kneeDB float64) error {
 	if err := c.core.SetKnee(kneeDB); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.kneeDB = kneeDB
 	c.syncFromCore()
+
 	return nil
 }
 
@@ -156,8 +166,10 @@ func (c *Compressor) SetAttack(ms float64) error {
 	if err := c.core.SetAttack(ms); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.attackMs = ms
 	c.syncFromCore()
+
 	return nil
 }
 
@@ -166,8 +178,10 @@ func (c *Compressor) SetRelease(ms float64) error {
 	if err := c.core.SetRelease(ms); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.releaseMs = ms
 	c.syncFromCore()
+
 	return nil
 }
 
@@ -176,9 +190,11 @@ func (c *Compressor) SetMakeupGain(dB float64) error {
 	if err := c.core.SetManualMakeupGain(dB); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.makeupGainDB = dB
 	c.autoMakeup = false
 	c.syncFromCore()
+
 	return nil
 }
 
@@ -187,8 +203,10 @@ func (c *Compressor) SetAutoMakeup(enable bool) error {
 	if err := c.core.SetAutoMakeup(enable); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.autoMakeup = enable
 	c.syncFromCore()
+
 	return nil
 }
 
@@ -197,8 +215,10 @@ func (c *Compressor) SetSampleRate(sampleRate float64) error {
 	if err := c.core.SetSampleRate(sampleRate); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.sampleRate = sampleRate
 	c.syncFromCore()
+
 	return nil
 }
 
@@ -207,7 +227,9 @@ func (c *Compressor) SetTopology(topology DynamicsTopology) error {
 	if err := c.core.SetTopology(topology); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.topology = topology
+
 	return nil
 }
 
@@ -216,7 +238,21 @@ func (c *Compressor) SetDetectorMode(mode DetectorMode) error {
 	if err := c.core.SetDetectorMode(mode); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.detectorMode = mode
+
+	return nil
+}
+
+// SetFeedbackRatioScale controls legacy feedback ratio-dependent time scaling.
+func (c *Compressor) SetFeedbackRatioScale(enable bool) error {
+	if err := c.core.SetFeedbackRatioScale(enable); err != nil {
+		return fmt.Errorf("compressor %w", err)
+	}
+
+	c.feedbackRatioScale = enable
+	c.syncFromCore()
+
 	return nil
 }
 
@@ -225,7 +261,9 @@ func (c *Compressor) SetRMSWindow(ms float64) error {
 	if err := c.core.SetRMSWindow(ms); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.rmsWindowMs = ms
+
 	return nil
 }
 
@@ -234,7 +272,9 @@ func (c *Compressor) SetSidechainLowCut(hz float64) error {
 	if err := c.core.SetSidechainLowCut(hz); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.sidechainLowCutHz = hz
+
 	return nil
 }
 
@@ -243,7 +283,9 @@ func (c *Compressor) SetSidechainHighCut(hz float64) error {
 	if err := c.core.SetSidechainHighCut(hz); err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
+
 	c.sidechainHighCutHz = hz
+
 	return nil
 }
 
@@ -276,6 +318,7 @@ func (c *Compressor) Topology() DynamicsTopology { return c.topology }
 
 // DetectorMode returns current detector mode.
 func (c *Compressor) DetectorMode() DetectorMode { return c.detectorMode }
+func (c *Compressor) FeedbackRatioScale() bool   { return c.feedbackRatioScale }
 
 // RMSWindow returns RMS detector window in milliseconds.
 func (c *Compressor) RMSWindow() float64 { return c.rmsWindowMs }
@@ -296,6 +339,7 @@ func (c *Compressor) ProcessSampleSidechain(input, sidechain float64) float64 {
 	output, gain := c.core.ProcessSample(input, sidechain)
 	c.syncFromCore()
 	c.updateMetrics(abs(input), abs(output), gain)
+
 	return output
 }
 
@@ -310,6 +354,7 @@ func (c *Compressor) ProcessInPlace(buf []float64) {
 func (c *Compressor) CalculateOutputLevel(inputMagnitude float64) float64 {
 	inputMagnitude = abs(inputMagnitude)
 	gain := c.calculateGain(inputMagnitude)
+
 	return inputMagnitude * gain * c.makeupGainLin
 }
 
@@ -344,6 +389,7 @@ func (c *Compressor) syncFromCore() {
 	c.makeupGainDB = c.core.MakeupGainDB()
 	c.makeupGainLin = c.core.makeupGainLin
 	c.autoMakeup = c.core.AutoMakeup()
+	c.feedbackRatioScale = c.core.FeedbackRatioScale()
 	c.peakLevel = c.core.Envelope()
 }
 
@@ -351,9 +397,11 @@ func (c *Compressor) updateMetrics(inputLevel, outputLevel, gain float64) {
 	if inputLevel > c.metrics.InputPeak {
 		c.metrics.InputPeak = inputLevel
 	}
+
 	if outputLevel > c.metrics.OutputPeak {
 		c.metrics.OutputPeak = outputLevel
 	}
+
 	if c.metrics.GainReduction == 1.0 || gain < c.metrics.GainReduction {
 		c.metrics.GainReduction = gain
 	}
@@ -363,5 +411,6 @@ func abs(v float64) float64 {
 	if v < 0 {
 		return -v
 	}
+
 	return v
 }

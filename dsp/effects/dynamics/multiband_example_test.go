@@ -109,3 +109,20 @@ func ExampleMultibandCompressor_metering() {
 	}
 	// Output varies due to dynamic processing
 }
+
+// ExampleMultibandCompressor_feedbackRMS demonstrates enabling feedback/RMS
+// mode per band using the shared dynamics core controls.
+func ExampleMultibandCompressor_feedbackRMS() {
+	mc, _ := dynamics.NewMultibandCompressor([]float64{250, 2500}, 4, 48000)
+
+	_ = mc.SetAllBandsTopology(dynamics.DynamicsTopologyFeedback)
+	_ = mc.SetAllBandsDetectorMode(dynamics.DetectorModeRMS)
+	_ = mc.SetAllBandsRMSWindow(20)
+	_ = mc.SetAllBandsFeedbackRatioScale(true)
+
+	fmt.Printf("Band0 topology: %v\n", mc.Band(0).Topology())
+	fmt.Printf("Band0 detector: %v\n", mc.Band(0).DetectorMode())
+	// Output:
+	// Band0 topology: 1
+	// Band0 detector: 1
+}

@@ -639,21 +639,21 @@ func TestStreamingStats_MatchesCalculate(t *testing.T) {
 	blockSizes := []int{1, 7, 64, 256, 1000}
 
 	for name, signal := range signals {
-		for _, bs := range blockSizes {
-			t.Run(name+"/block_"+itoa(bs), func(t *testing.T) {
+		for _, blockSize := range blockSizes {
+			t.Run(name+"/block_"+itoa(blockSize), func(t *testing.T) {
 				expected := Calculate(signal)
-				ss := NewStreamingStats()
+				streamingStats := NewStreamingStats()
 
-				for i := 0; i < len(signal); i += bs {
-					end := i + bs
+				for i := 0; i < len(signal); i += blockSize {
+					end := i + blockSize
 					if end > len(signal) {
 						end = len(signal)
 					}
 
-					ss.Update(signal[i:end])
+					streamingStats.Update(signal[i:end])
 				}
 
-				got := ss.Result()
+				got := streamingStats.Result()
 				compareStats(t, got, expected)
 			})
 		}
@@ -674,19 +674,19 @@ func TestStreamingStats_Empty(t *testing.T) {
 }
 
 func TestStreamingStats_Reset(t *testing.T) {
-	ss := NewStreamingStats()
-	ss.Update([]float64{1, 2, 3, 4, 5})
-	ss.Reset()
+	streamingStats := NewStreamingStats()
+	streamingStats.Update([]float64{1, 2, 3, 4, 5})
+	streamingStats.Reset()
 
-	s := ss.Result()
+	s := streamingStats.Result()
 	if s.Length != 0 {
 		t.Errorf("after Reset, Length: got %d, want 0", s.Length)
 	}
 
 	// Use after reset.
-	ss.Update([]float64{10})
+	streamingStats.Update([]float64{10})
 
-	s = ss.Result()
+	s = streamingStats.Result()
 	if s.Length != 1 {
 		t.Errorf("after Reset+Update, Length: got %d, want 1", s.Length)
 	}
