@@ -582,6 +582,15 @@ const EFFECT_NODE_DEFAULTS = {
     oversampling: 4,
   },
   filter: { family: "rbj", kind: "lowpass", order: 2, freq: 1200, q: 0.707, gain: 0 },
+  "filter-lowpass": { family: "rbj", kind: "lowpass", order: 2, freq: 1200, q: 0.707, gain: 0 },
+  "filter-highpass": { family: "rbj", kind: "highpass", order: 2, freq: 1200, q: 0.707, gain: 0 },
+  "filter-bandpass": { family: "rbj", kind: "bandpass", order: 2, freq: 1200, q: 0.707, gain: 0 },
+  "filter-notch": { family: "rbj", kind: "notch", order: 2, freq: 1200, q: 0.707, gain: 0 },
+  "filter-allpass": { family: "rbj", kind: "allpass", order: 2, freq: 1200, q: 0.707, gain: 0 },
+  "filter-peak": { family: "rbj", kind: "peak", order: 2, freq: 1200, q: 0.707, gain: 0 },
+  "filter-lowshelf": { family: "rbj", kind: "lowshelf", order: 2, freq: 1200, q: 0.707, gain: 0 },
+  "filter-highshelf": { family: "rbj", kind: "highshelf", order: 2, freq: 1200, q: 0.707, gain: 0 },
+  "filter-moog": { family: "moog", kind: "lowpass", order: 8, freq: 1200, q: 1.2, gain: 0 },
   "dyn-compressor": {
     thresholdDB: -20,
     ratio: 4,
@@ -708,6 +717,15 @@ function defaultNodeParams(type) {
   return { ...src };
 }
 
+function isFilterNodeType(type) {
+  return type === "filter" || (typeof type === "string" && type.startsWith("filter-"));
+}
+
+function chainDetailTypeForNode(nodeType) {
+  if (isFilterNodeType(nodeType)) return "filter";
+  return nodeType;
+}
+
 function getSelectedEffectNode() {
   const node = state.chain?.getSelectedNode?.();
   if (!node || node.fixed) return null;
@@ -716,8 +734,19 @@ function getSelectedEffectNode() {
 
 function applyNodeParamsToUI(node) {
   if (!node || node.fixed) return;
-  const p = { ...defaultNodeParams(node.type), ...(node.params || {}) };
-  switch (node.type) {
+  const nodeType = node.type;
+  const p = { ...defaultNodeParams(nodeType), ...(node.params || {}) };
+  if (isFilterNodeType(nodeType)) {
+    el.fxFilterFamily.value = p.family || "rbj";
+    el.fxFilterKind.value = p.kind || "lowpass";
+    el.fxFilterOrder.value = p.order ?? 2;
+    el.fxFilterFreq.value = p.freq;
+    el.fxFilterQ.value = p.q;
+    el.fxFilterGain.value = p.gain;
+    return;
+  }
+
+  switch (nodeType) {
     case "chorus":
       el.chorusMix.value = p.mix;
       el.chorusDepth.value = p.depth;
@@ -764,14 +793,6 @@ function applyNodeParamsToUI(node) {
       el.transformerHighpass.value = p.highpassHz;
       el.transformerDamping.value = p.dampingHz;
       el.transformerOversampling.value = String(p.oversampling ?? 4);
-      break;
-    case "filter":
-      el.fxFilterFamily.value = p.family || "rbj";
-      el.fxFilterKind.value = p.kind || "lowpass";
-      el.fxFilterOrder.value = p.order ?? 2;
-      el.fxFilterFreq.value = p.freq;
-      el.fxFilterQ.value = p.q;
-      el.fxFilterGain.value = p.gain;
       break;
     case "dyn-compressor":
       el.fxCompThresh.value = p.thresholdDB;
@@ -930,6 +951,17 @@ function applyNodeParamsToUI(node) {
 }
 
 function collectNodeParamsFromUI(nodeType) {
+  if (isFilterNodeType(nodeType)) {
+    return {
+      family: String(el.fxFilterFamily.value || "rbj"),
+      kind: String(el.fxFilterKind.value || "lowpass"),
+      order: Number(el.fxFilterOrder.value),
+      freq: Number(el.fxFilterFreq.value),
+      q: Number(el.fxFilterQ.value),
+      gain: Number(el.fxFilterGain.value),
+    };
+  }
+
   switch (nodeType) {
     case "chorus":
       return {
@@ -996,15 +1028,6 @@ function collectNodeParamsFromUI(nodeType) {
         highpassHz: Number(el.transformerHighpass.value),
         dampingHz: Number(el.transformerDamping.value),
         oversampling: Number(el.transformerOversampling.value),
-      };
-    case "filter":
-      return {
-        family: String(el.fxFilterFamily.value || "rbj"),
-        kind: String(el.fxFilterKind.value || "lowpass"),
-        order: Number(el.fxFilterOrder.value),
-        freq: Number(el.fxFilterFreq.value),
-        q: Number(el.fxFilterQ.value),
-        gain: Number(el.fxFilterGain.value),
       };
     case "dyn-compressor":
       return {
@@ -2530,7 +2553,7 @@ function showChainDetail(node) {
     return;
   }
   // Map node type to the data-chain-detail attribute
-  const type = node.type;
+  const type = chainDetailTypeForNode(node.type);
   document.querySelectorAll("[data-chain-detail]").forEach((card) => {
     card.hidden = card.dataset.chainDetail !== type;
   });
@@ -2716,7 +2739,9 @@ function updatePinButtonStates(node) {
   if (!node) return;
   document.querySelectorAll(".pin-param").forEach((btn) => {
     const mapping = PIN_MAP[btn.dataset.inputId];
-    if (!mapping || mapping.type !== node.type) return;
+    if (!mapping) return;
+    if (mapping.type === "filter" && !isFilterNodeType(node.type)) return;
+    if (mapping.type !== "filter" && mapping.type !== node.type) return;
     const pinned = state.chain?.isPinned(node.id, mapping.param);
     btn.classList.toggle("pinned", !!pinned);
   });

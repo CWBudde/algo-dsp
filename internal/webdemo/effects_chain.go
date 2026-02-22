@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
@@ -12,6 +13,7 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
 	"github.com/cwbudde/algo-dsp/dsp/effects/spatial"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+	"github.com/cwbudde/algo-dsp/dsp/filter/moog"
 	"github.com/cwbudde/algo-dsp/dsp/window"
 )
 
@@ -180,9 +182,24 @@ func init() {
 	registerChainEffectFactory("delay-simple", func(_ *Engine) (chainEffectRuntime, error) {
 		return &simpleDelayChainRuntime{}, nil
 	})
-	registerChainEffectFactory("filter", func(e *Engine) (chainEffectRuntime, error) {
-		return &filterChainRuntime{fx: biquad.NewChain([]biquad.Coefficients{{B0: 1}})}, nil
-	})
+	filterNodeTypes := []string{
+		"filter",
+		"filter-lowpass",
+		"filter-highpass",
+		"filter-bandpass",
+		"filter-notch",
+		"filter-allpass",
+		"filter-peak",
+		"filter-lowshelf",
+		"filter-highshelf",
+		"filter-moog",
+	}
+	for _, effectType := range filterNodeTypes {
+		t := effectType
+		registerChainEffectFactory(t, func(e *Engine) (chainEffectRuntime, error) {
+			return &filterChainRuntime{fx: biquad.NewChain([]biquad.Coefficients{{B0: 1}})}, nil
+		})
+	}
 	registerChainEffectFactory("bass", func(e *Engine) (chainEffectRuntime, error) {
 		fx, err := effects.NewHarmonicBass(e.sampleRate)
 		if err != nil {
@@ -1287,23 +1304,84 @@ func (r *simpleDelayChainRuntime) Process(_ *Engine, _ compiledChainNode, block 
 }
 
 type filterChainRuntime struct {
-	fx *biquad.Chain
+	fx     *biquad.Chain
+	moogLP *moog.Filter
 }
 
 func (r *filterChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	family := normalizeEQFamily(node.Str["family"])
-	kind := normalizeEQType("mid", node.Str["kind"])
-	family = normalizeEQFamilyForType(kind, family)
-	order := normalizeEQOrder(kind, family, int(math.Round(getNodeNum(node, "order", 2))))
+	family := normalizeChainFilterFamily(node.Str["family"], node.Type)
+	kind := normalizeChainFilterKind(node.Type, node.Str["kind"])
 	freq := clamp(getNodeNum(node, "freq", 1200), 20, e.sampleRate*0.49)
 	gainDB := clamp(getNodeNum(node, "gain", 0), -24, 24)
-	shape := clampEQShape(kind, family, freq, e.sampleRate, getNodeNum(node, "q", 0.707))
+	shape := clamp(getNodeNum(node, "q", 0.707), 0.2, 8)
+
+	if family == "moog" {
+		order := int(math.Round(getNodeNum(node, "order", 8)))
+		oversampling := moogOversamplingFromOrder(order)
+		resonance := clamp(shape, 0, 4)
+		drive := clamp(math.Pow(10, gainDB/20), 0.1, 24)
+
+		if r.moogLP == nil {
+			fx, err := moog.New(
+				e.sampleRate,
+				moog.WithVariant(moog.VariantHuovilainen),
+				moog.WithOversampling(oversampling),
+				moog.WithCutoffHz(freq),
+				moog.WithResonance(resonance),
+				moog.WithDrive(drive),
+				moog.WithInputGain(1),
+				moog.WithOutputGain(1),
+				moog.WithNormalizeOutput(true),
+			)
+			if err != nil {
+				return err
+			}
+
+			r.moogLP = fx
+		} else {
+			if err := r.moogLP.SetSampleRate(e.sampleRate); err != nil {
+				return err
+			}
+
+			if err := r.moogLP.SetOversampling(oversampling); err != nil {
+				return err
+			}
+
+			if err := r.moogLP.SetCutoffHz(freq); err != nil {
+				return err
+			}
+
+			if err := r.moogLP.SetResonance(resonance); err != nil {
+				return err
+			}
+
+			if err := r.moogLP.SetDrive(drive); err != nil {
+				return err
+			}
+		}
+
+		r.fx = nil
+
+		return nil
+	}
+
+	r.moogLP = nil
+
+	family = normalizeEQFamily(family)
+	family = normalizeEQFamilyForType(kind, family)
+	order := normalizeEQOrder(kind, family, int(math.Round(getNodeNum(node, "order", 2))))
+	shape = clampEQShape(kind, family, freq, e.sampleRate, shape)
 	r.fx = buildEQChain(family, kind, order, freq, gainDB, shape, e.sampleRate)
 
 	return nil
 }
 
 func (r *filterChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	if r.moogLP != nil {
+		r.moogLP.ProcessInPlace(block)
+		return
+	}
+
 	if r.fx != nil {
 		r.fx.ProcessBlock(block)
 	}
@@ -1901,6 +1979,67 @@ func (r *multibandChainRuntime) Process(_ *Engine, _ compiledChainNode, block []
 	}
 
 	r.fx.ProcessInPlace(block)
+}
+
+func normalizeChainFilterFamily(raw, nodeType string) string {
+	family := strings.ToLower(strings.TrimSpace(raw))
+	if family == "" {
+		if nodeType == "filter-moog" {
+			return "moog"
+		}
+
+		return "rbj"
+	}
+
+	switch family {
+	case "rbj", "butterworth", "bessel", "chebyshev1", "chebyshev2", "elliptic", "moog":
+		return family
+	default:
+		if nodeType == "filter-moog" {
+			return "moog"
+		}
+
+		return "rbj"
+	}
+}
+
+func normalizeChainFilterKind(nodeType, raw string) string {
+	kind := normalizeEQType("mid", raw)
+	if strings.TrimSpace(raw) != "" {
+		return kind
+	}
+
+	switch nodeType {
+	case "filter-highpass":
+		return "highpass"
+	case "filter-bandpass":
+		return "bandpass"
+	case "filter-notch":
+		return "notch"
+	case "filter-allpass":
+		return "allpass"
+	case "filter-peak":
+		return "peak"
+	case "filter-lowshelf":
+		return "lowshelf"
+	case "filter-highshelf":
+		return "highshelf"
+	default:
+		return "lowpass"
+	}
+}
+
+func moogOversamplingFromOrder(order int) int {
+	switch {
+	case order >= 12:
+		return 8
+	case order >= 8:
+		return 4
+	case order >= 4:
+		return 2
+	default:
+		return 1
+	}
 }
 
 func normalizeDistortionMode(raw string) effects.DistortionMode {

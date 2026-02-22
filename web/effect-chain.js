@@ -15,7 +15,16 @@
     bitcrusher:       { label: "Bit Crusher",       hue: 24,  category: "Color" },
     distortion:       { label: "Distortion",        hue: 6,   category: "Color" },
     transformer:      { label: "Transformer Sat",   hue: 44,  category: "Color" },
-    filter:           { label: "Filter",            hue: 188, category: "Filters" },
+    filter:           { label: "Filter",            hue: 188, category: "Filters", hidden: true },
+    "filter-lowpass": { label: "Lowpass",           hue: 188, category: "Filters" },
+    "filter-highpass":{ label: "Highpass",          hue: 204, category: "Filters" },
+    "filter-bandpass":{ label: "Bandpass",          hue: 220, category: "Filters" },
+    "filter-notch":   { label: "Notch",             hue: 236, category: "Filters" },
+    "filter-allpass": { label: "Allpass",           hue: 252, category: "Filters" },
+    "filter-peak":    { label: "Peak EQ",           hue: 268, category: "Filters" },
+    "filter-lowshelf":{ label: "Low Shelf",         hue: 284, category: "Filters" },
+    "filter-highshelf":{ label: "High Shelf",       hue: 300, category: "Filters" },
+    "filter-moog":    { label: "Moog Ladder LP",    hue: 326, category: "Filters" },
     delay:            { label: "Delay",             hue: 35,  category: "Time/Space" },
     "delay-simple":   { label: "Simple Delay",      hue: 48,  category: "Routing" },
     reverb:           { label: "Reverb",            hue: 260, category: "Time/Space" },
@@ -63,6 +72,22 @@
   const DEFAULT_PINNED = {
     "split-freq": ["freqHz"],
     filter: ["freq"],
+    "filter-lowpass": ["freq"],
+    "filter-highpass": ["freq"],
+    "filter-bandpass": ["freq"],
+    "filter-notch": ["freq"],
+    "filter-allpass": ["freq"],
+    "filter-peak": ["freq"],
+    "filter-lowshelf": ["freq"],
+    "filter-highshelf": ["freq"],
+    "filter-moog": ["freq"],
+  };
+
+  const FILTER_PARAM_REGISTRY = {
+    freq: { label: "Freq", min: 20, max: 18000, step: 1, unit: "Hz" },
+    q:    { label: "Q",    min: 0.2, max: 8, step: 0.01, unit: "" },
+    gain: { label: "Gain", min: -24, max: 24, step: 0.1, unit: "dB" },
+    order:{ label: "Ord",  min: 1, max: 12, step: 1, unit: "" },
   };
 
   // ---- parameter registry (min/max/unit metadata for canvas sliders) --------
@@ -104,12 +129,16 @@
       highpassHz: { label: "HP",    min: 5, max: 400, step: 1, unit: "Hz" },
       dampingHz:  { label: "Damp",  min: 500, max: 18000, step: 10, unit: "Hz" },
     },
-    filter: {
-      freq: { label: "Freq", min: 20, max: 18000, step: 1, unit: "Hz" },
-      q:    { label: "Q",    min: 0.2, max: 8, step: 0.01, unit: "" },
-      gain: { label: "Gain", min: -24, max: 24, step: 0.1, unit: "dB" },
-      order:{ label: "Ord",  min: 1, max: 12, step: 1, unit: "" },
-    },
+    filter: FILTER_PARAM_REGISTRY,
+    "filter-lowpass": FILTER_PARAM_REGISTRY,
+    "filter-highpass": FILTER_PARAM_REGISTRY,
+    "filter-bandpass": FILTER_PARAM_REGISTRY,
+    "filter-notch": FILTER_PARAM_REGISTRY,
+    "filter-allpass": FILTER_PARAM_REGISTRY,
+    "filter-peak": FILTER_PARAM_REGISTRY,
+    "filter-lowshelf": FILTER_PARAM_REGISTRY,
+    "filter-highshelf": FILTER_PARAM_REGISTRY,
+    "filter-moog": FILTER_PARAM_REGISTRY,
     "dyn-compressor": {
       thresholdDB: { label: "Thr",  min: -60, max: 0, step: 0.5, unit: "dB" },
       ratio:       { label: "Rat",  min: 1, max: 20, step: 0.1, unit: ":1" },
@@ -363,8 +392,7 @@
       const def = FX_TYPES[type];
       if (!def) return null;
       const id = genId();
-      const instances = this.nodes.filter((n) => n.type === type).length;
-      const label = instances > 0 ? `${def.label} ${instances + 1}` : def.label;
+      const label = def.label;
       const params = this.opts.createParams?.(type) || {};
       const defaultPins = DEFAULT_PINNED[type] || [];
       this.nodes.push({
@@ -1604,8 +1632,7 @@
               const defNode = FX_TYPES[type];
               if (!defNode) return;
               const newId = genId();
-              const instances = this.nodes.filter((n) => n.type === type).length;
-              const label = instances > 0 ? `${defNode.label} ${instances + 1}` : defNode.label;
+              const label = defNode.label;
               const params = this.opts.createParams?.(type) || {};
               this.nodes.push({
                 id: newId, type, label,
@@ -1639,7 +1666,7 @@
           if (!entries || entries.length === 0) continue;
           const item = document.createElement("button");
           item.className = "chain-menu-item chain-menu-item--submenu";
-          item.textContent = `${category} (${entries.length})`;
+          item.textContent = category;
           item.addEventListener("mouseenter", () => showTypesFlyout(category, item));
           item.addEventListener("click", () => showTypesFlyout(category, item));
           menu.appendChild(item);
@@ -1717,7 +1744,7 @@
           if (!entries || entries.length === 0) continue;
           const item = document.createElement("button");
           item.className = "chain-menu-item chain-menu-item--submenu";
-          item.textContent = `${category} (${entries.length})`;
+          item.textContent = category;
           item.addEventListener("mouseenter", () => showTypesFlyout(category, item));
           item.addEventListener("click", () => showTypesFlyout(category, item));
           menu.appendChild(item);
