@@ -10,6 +10,7 @@ func TestBitCrusherProcessInPlaceMatchesSample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewBitCrusher() error = %v", err)
 	}
+
 	bc2, err := NewBitCrusher(48000)
 	if err != nil {
 		t.Fatalf("NewBitCrusher() error = %v", err)
@@ -22,6 +23,7 @@ func TestBitCrusherProcessInPlaceMatchesSample(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = bc1.ProcessSample(want[i])
 	}
@@ -82,6 +84,7 @@ func TestBitCrusherMixZeroIsTransparent(t *testing.T) {
 
 	for i := 0; i < 512; i++ {
 		in := 0.5 * math.Sin(2*math.Pi*440*float64(i)/48000)
+
 		out := bc.ProcessSample(in)
 		if diff := math.Abs(out - in); diff > 1e-12 {
 			t.Fatalf("sample %d: mix=0 should be transparent, got=%g want=%g", i, out, in)
@@ -139,6 +142,7 @@ func TestBitCrusherQuantization(t *testing.T) {
 
 	for _, tt := range tests {
 		bc.Reset()
+
 		got := bc.ProcessSample(tt.input)
 		if got != tt.want {
 			t.Errorf("1-bit quantize(%g) = %g, want %g", tt.input, got, tt.want)
@@ -159,6 +163,7 @@ func TestBitCrusherDownsampleHold(t *testing.T) {
 	}
 
 	input := []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8}
+
 	output := make([]float64, len(input))
 	for i, v := range input {
 		output[i] = bc.ProcessSample(v)
@@ -291,24 +296,31 @@ func TestBitCrusherSetterValidation(t *testing.T) {
 	if err := bc.SetSampleRate(0); err == nil {
 		t.Error("SetSampleRate(0) expected error")
 	}
+
 	if err := bc.SetSampleRate(math.NaN()); err == nil {
 		t.Error("SetSampleRate(NaN) expected error")
 	}
+
 	if err := bc.SetBitDepth(0.5); err == nil {
 		t.Error("SetBitDepth(0.5) expected error")
 	}
+
 	if err := bc.SetBitDepth(33); err == nil {
 		t.Error("SetBitDepth(33) expected error")
 	}
+
 	if err := bc.SetDownsample(0); err == nil {
 		t.Error("SetDownsample(0) expected error")
 	}
+
 	if err := bc.SetDownsample(257); err == nil {
 		t.Error("SetDownsample(257) expected error")
 	}
+
 	if err := bc.SetMix(-0.1); err == nil {
 		t.Error("SetMix(-0.1) expected error")
 	}
+
 	if err := bc.SetMix(1.1); err == nil {
 		t.Error("SetMix(1.1) expected error")
 	}
@@ -327,12 +339,15 @@ func TestBitCrusherGetters(t *testing.T) {
 	if bc.SampleRate() != 48000 {
 		t.Errorf("SampleRate() = %g, want 48000", bc.SampleRate())
 	}
+
 	if bc.BitDepth() != 12 {
 		t.Errorf("BitDepth() = %g, want 12", bc.BitDepth())
 	}
+
 	if bc.Downsample() != 3 {
 		t.Errorf("Downsample() = %d, want 3", bc.Downsample())
 	}
+
 	if bc.Mix() != 0.8 {
 		t.Errorf("Mix() = %g, want 0.8", bc.Mix())
 	}
@@ -347,6 +362,7 @@ func TestBitCrusherSettersUpdateState(t *testing.T) {
 	if err := bc.SetSampleRate(96000); err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
+
 	if bc.SampleRate() != 96000 {
 		t.Errorf("SampleRate() = %g, want 96000", bc.SampleRate())
 	}
@@ -354,6 +370,7 @@ func TestBitCrusherSettersUpdateState(t *testing.T) {
 	if err := bc.SetBitDepth(16); err != nil {
 		t.Fatalf("SetBitDepth() error = %v", err)
 	}
+
 	if bc.BitDepth() != 16 {
 		t.Errorf("BitDepth() = %g, want 16", bc.BitDepth())
 	}
@@ -361,6 +378,7 @@ func TestBitCrusherSettersUpdateState(t *testing.T) {
 	if err := bc.SetDownsample(8); err != nil {
 		t.Fatalf("SetDownsample() error = %v", err)
 	}
+
 	if bc.Downsample() != 8 {
 		t.Errorf("Downsample() = %d, want 8", bc.Downsample())
 	}
@@ -368,6 +386,7 @@ func TestBitCrusherSettersUpdateState(t *testing.T) {
 	if err := bc.SetMix(0.5); err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
+
 	if bc.Mix() != 0.5 {
 		t.Errorf("Mix() = %g, want 0.5", bc.Mix())
 	}
@@ -378,6 +397,7 @@ func TestBitCrusherNilOption(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewBitCrusher() with nil option should not fail: %v", err)
 	}
+
 	if bc.BitDepth() != defaultBitCrusherBitDepth {
 		t.Errorf("BitDepth() = %g, want default %g", bc.BitDepth(), defaultBitCrusherBitDepth)
 	}
@@ -401,7 +421,9 @@ func TestBitCrusherQuantizationError(t *testing.T) {
 
 		for i := 0; i < 1000; i++ {
 			in := 2.0*float64(i)/999.0 - 1.0 // sweep [-1, 1]
+
 			bc.Reset()
+
 			out := bc.ProcessSample(in)
 			if diff := math.Abs(out - in); diff > maxErr+1e-12 {
 				t.Errorf("bits=%g sample %d: error %g exceeds max %g (in=%g out=%g)",
@@ -423,6 +445,7 @@ func BenchmarkBitCrusherProcessSample(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
+
 	for i := 0; i < b.N; i++ {
 		bc.ProcessSample(0.5)
 	}
@@ -445,6 +468,7 @@ func BenchmarkBitCrusherProcessInPlace(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
+
 	for i := 0; i < b.N; i++ {
 		bc.ProcessInPlace(buf)
 	}

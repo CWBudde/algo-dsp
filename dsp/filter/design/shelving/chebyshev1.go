@@ -18,9 +18,11 @@ func Chebyshev1LowShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int)
 	if err := validateParams(sampleRate, freqHz, order); err != nil {
 		return nil, err
 	}
+
 	if rippleDB <= 0 {
 		return nil, ErrInvalidParams
 	}
+
 	if gainDB == 0 {
 		return passthroughSections(), nil
 	}
@@ -42,9 +44,11 @@ func Chebyshev1HighShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int
 	if err := validateParams(sampleRate, freqHz, order); err != nil {
 		return nil, err
 	}
+
 	if rippleDB <= 0 {
 		return nil, ErrInvalidParams
 	}
+
 	if gainDB == 0 {
 		return passthroughSections(), nil
 	}
@@ -56,5 +60,6 @@ func Chebyshev1HighShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int
 
 	sections := lowShelfSections(K, P, pairs, realSigma)
 	negateOddPowers(sections)
+
 	return sections, nil
 }

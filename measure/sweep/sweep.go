@@ -38,15 +38,19 @@ func (s *LogSweep) Validate() error {
 	if s.StartFreq <= 0 || s.EndFreq <= 0 {
 		return ErrInvalidFrequency
 	}
+
 	if s.StartFreq >= s.EndFreq {
 		return ErrFrequencyOrder
 	}
+
 	if s.Duration <= 0 {
 		return ErrInvalidDuration
 	}
+
 	if s.SampleRate <= 0 {
 		return ErrInvalidSampleRate
 	}
+
 	return nil
 }
 
@@ -101,6 +105,7 @@ func (s *LogSweep) InverseFilter() ([]float64, error) {
 	}
 
 	n := s.samples()
+
 	sweep, err := s.Generate()
 	if err != nil {
 		return nil, err
@@ -155,6 +160,7 @@ func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
+
 	if len(response) == 0 {
 		return nil, ErrEmptyResponse
 	}
@@ -178,6 +184,7 @@ func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 	for i, v := range response {
 		respPadded[i] = complex(v, 0)
 	}
+
 	respFreq := make([]complex128, fftSize)
 	if err := plan.Forward(respFreq, respPadded); err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
@@ -188,6 +195,7 @@ func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 	for i, v := range inv {
 		invPadded[i] = complex(v, 0)
 	}
+
 	invFreq := make([]complex128, fftSize)
 	if err := plan.Forward(invFreq, invPadded); err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
@@ -232,6 +240,7 @@ func (s *LogSweep) ExtractHarmonicIRs(response []float64, maxHarmonic int) ([][]
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
+
 	if maxHarmonic < 2 {
 		return nil, ErrMaxHarmonic
 	}
@@ -270,6 +279,7 @@ func (s *LogSweep) ExtractHarmonicIRs(response []float64, maxHarmonic int) ([][]
 
 		// Window half-width: half distance to adjacent harmonic
 		var halfWidth int
+
 		if k == 1 {
 			// For linear IR, use distance to H2 divided by 2
 			if maxHarmonic >= 2 {
@@ -295,9 +305,11 @@ func (s *LogSweep) ExtractHarmonicIRs(response []float64, maxHarmonic int) ([][]
 		// Extract windowed region
 		start := center - halfWidth
 		end := center + halfWidth
+
 		if start < 0 {
 			start = 0
 		}
+
 		if end > len(deconv) {
 			end = len(deconv)
 		}
@@ -329,15 +341,19 @@ func (s *LinearSweep) Validate() error {
 	if s.StartFreq <= 0 || s.EndFreq <= 0 {
 		return ErrInvalidFrequency
 	}
+
 	if s.StartFreq >= s.EndFreq {
 		return ErrFrequencyOrder
 	}
+
 	if s.Duration <= 0 {
 		return ErrInvalidDuration
 	}
+
 	if s.SampleRate <= 0 {
 		return ErrInvalidSampleRate
 	}
+
 	return nil
 }
 
@@ -391,6 +407,7 @@ func (s *LinearSweep) InverseFilter() ([]float64, error) {
 	for i, v := range sweep {
 		sweepPadded[i] = complex(v, 0)
 	}
+
 	sweepFreq := make([]complex128, fftSize)
 	if err := plan.Forward(sweepFreq, sweepPadded); err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
@@ -398,6 +415,7 @@ func (s *LinearSweep) InverseFilter() ([]float64, error) {
 
 	// Compute regularized inverse: conj(H) / (|H|^2 + epsilon)
 	const epsilon = 1e-6
+
 	invFreq := make([]complex128, fftSize)
 	for i := range invFreq {
 		hConj := cmplx.Conj(sweepFreq[i])
@@ -424,6 +442,7 @@ func (s *LinearSweep) Deconvolve(response []float64) ([]float64, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
+
 	if len(response) == 0 {
 		return nil, ErrEmptyResponse
 	}
@@ -445,6 +464,7 @@ func (s *LinearSweep) Deconvolve(response []float64) ([]float64, error) {
 	for i, v := range response {
 		respPadded[i] = complex(v, 0)
 	}
+
 	respFreq := make([]complex128, fftSize)
 	if err := plan.Forward(respFreq, respPadded); err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
@@ -454,6 +474,7 @@ func (s *LinearSweep) Deconvolve(response []float64) ([]float64, error) {
 	for i, v := range inv {
 		invPadded[i] = complex(v, 0)
 	}
+
 	invFreq := make([]complex128, fftSize)
 	if err := plan.Forward(invFreq, invPadded); err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
@@ -482,9 +503,11 @@ func nextPowerOf2(n int) int {
 	if n <= 1 {
 		return 1
 	}
+
 	p := 1
 	for p < n {
 		p *= 2
 	}
+
 	return p
 }

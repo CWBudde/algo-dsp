@@ -10,8 +10,10 @@ func TestStreamingConvolverInterface(t *testing.T) {
 	kernel := []float64{1.0, 0.5, 0.25}
 	blockSize := 8
 
-	var _ StreamingConvolver = (*StreamingOverlapAdd)(nil)
-	var _ StreamingConvolver = (*StreamingOverlapSave)(nil)
+	var (
+		_ StreamingConvolver = (*StreamingOverlapAdd)(nil)
+		_ StreamingConvolver = (*StreamingOverlapSave)(nil)
+	)
 
 	// Test both implementations
 	implementations := []struct {
@@ -45,6 +47,7 @@ func TestStreamingConvolverInterface(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ProcessBlock failed: %v", err)
 			}
+
 			if len(output) != blockSize {
 				t.Errorf("output length = %d, want %d", len(output), blockSize)
 			}
@@ -52,6 +55,7 @@ func TestStreamingConvolverInterface(t *testing.T) {
 			conv.Reset()
 
 			outputBuf := make([]float64, blockSize)
+
 			err = conv.ProcessBlockTo(outputBuf, input)
 			if err != nil {
 				t.Fatalf("ProcessBlockTo failed: %v", err)
@@ -65,8 +69,10 @@ func TestStreamingConvolverInterface32(t *testing.T) {
 	kernel := []float32{1.0, 0.5, 0.25}
 	blockSize := 8
 
-	var _ StreamingConvolverT[float32, complex64] = (*StreamingOverlapAddT[float32, complex64])(nil)
-	var _ StreamingConvolverT[float32, complex64] = (*StreamingOverlapSaveT[float32, complex64])(nil)
+	var (
+		_ StreamingConvolverT[float32, complex64] = (*StreamingOverlapAddT[float32, complex64])(nil)
+		_ StreamingConvolverT[float32, complex64] = (*StreamingOverlapSaveT[float32, complex64])(nil)
+	)
 
 	implementations := []struct {
 		name string
@@ -95,6 +101,7 @@ func TestStreamingConvolverInterface32(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ProcessBlock failed: %v", err)
 			}
+
 			if len(output) != blockSize {
 				t.Errorf("output length = %d, want %d", len(output), blockSize)
 			}
@@ -102,6 +109,7 @@ func TestStreamingConvolverInterface32(t *testing.T) {
 			conv.Reset()
 
 			outputBuf := make([]float32, blockSize)
+
 			err = conv.ProcessBlockTo(outputBuf, input)
 			if err != nil {
 				t.Fatalf("ProcessBlockTo failed: %v", err)
@@ -129,10 +137,12 @@ func TestStreamingAlgorithmEquivalence(t *testing.T) {
 	olaResult := make([]float64, 0, len(signal))
 	for i := range numBlocks {
 		block := signal[i*blockSize : (i+1)*blockSize]
+
 		out, err := ola.ProcessBlock(block)
 		if err != nil {
 			t.Fatalf("OverlapAdd ProcessBlock failed: %v", err)
 		}
+
 		olaResult = append(olaResult, out...)
 	}
 
@@ -144,10 +154,12 @@ func TestStreamingAlgorithmEquivalence(t *testing.T) {
 	olsResult := make([]float64, 0, len(signal))
 	for i := range numBlocks {
 		block := signal[i*blockSize : (i+1)*blockSize]
+
 		out, err := ols.ProcessBlock(block)
 		if err != nil {
 			t.Fatalf("OverlapSave ProcessBlock failed: %v", err)
 		}
+
 		olsResult = append(olsResult, out...)
 	}
 
@@ -182,10 +194,12 @@ func TestStreamingAlgorithmEquivalence32(t *testing.T) {
 	olaResult := make([]float32, 0, len(signal))
 	for i := range numBlocks {
 		block := signal[i*blockSize : (i+1)*blockSize]
+
 		out, err := ola.ProcessBlock(block)
 		if err != nil {
 			t.Fatalf("OverlapAdd32 ProcessBlock failed: %v", err)
 		}
+
 		olaResult = append(olaResult, out...)
 	}
 
@@ -197,10 +211,12 @@ func TestStreamingAlgorithmEquivalence32(t *testing.T) {
 	olsResult := make([]float32, 0, len(signal))
 	for i := range numBlocks {
 		block := signal[i*blockSize : (i+1)*blockSize]
+
 		out, err := ols.ProcessBlock(block)
 		if err != nil {
 			t.Fatalf("OverlapSave32 ProcessBlock failed: %v", err)
 		}
+
 		olsResult = append(olsResult, out...)
 	}
 
@@ -289,14 +305,17 @@ func TestStreamingAlgorithmProcessBlockToEquivalence(t *testing.T) {
 func BenchmarkStreamingConvolvers(b *testing.B) {
 	kernel64 := make([]float64, 4096)
 	kernel32 := make([]float32, 4096)
+
 	for i := range kernel64 {
 		kernel64[i] = 1.0 / float64(len(kernel64))
 		kernel32[i] = float32(kernel64[i])
 	}
+
 	blockSize := 128
 
 	input64 := make([]float64, blockSize)
 	input32 := make([]float32, blockSize)
+
 	for i := range input64 {
 		input64[i] = math.Sin(float64(i) * 0.1)
 		input32[i] = float32(input64[i])
@@ -304,8 +323,10 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 
 	b.Run("OverlapAdd/f64", func(b *testing.B) {
 		ola, _ := NewStreamingOverlapAdd(kernel64, blockSize)
+
 		b.ReportAllocs()
 		b.ResetTimer()
+
 		for i := 0; i < b.N; i++ {
 			_, _ = ola.ProcessBlock(input64)
 		}
@@ -313,8 +334,10 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 
 	b.Run("OverlapAdd/f32", func(b *testing.B) {
 		ola, _ := NewStreamingOverlapAdd32(kernel32, blockSize)
+
 		b.ReportAllocs()
 		b.ResetTimer()
+
 		for i := 0; i < b.N; i++ {
 			_, _ = ola.ProcessBlock(input32)
 		}
@@ -322,8 +345,10 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 
 	b.Run("OverlapSave/f64", func(b *testing.B) {
 		ols, _ := NewStreamingOverlapSave(kernel64, blockSize)
+
 		b.ReportAllocs()
 		b.ResetTimer()
+
 		for i := 0; i < b.N; i++ {
 			_, _ = ols.ProcessBlock(input64)
 		}
@@ -331,8 +356,10 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 
 	b.Run("OverlapSave/f32", func(b *testing.B) {
 		ols, _ := NewStreamingOverlapSave32(kernel32, blockSize)
+
 		b.ReportAllocs()
 		b.ResetTimer()
+
 		for i := 0; i < b.N; i++ {
 			_, _ = ols.ProcessBlock(input32)
 		}
@@ -341,8 +368,10 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 	b.Run("OverlapAddTo/f64", func(b *testing.B) {
 		ola, _ := NewStreamingOverlapAdd(kernel64, blockSize)
 		output := make([]float64, blockSize)
+
 		b.ReportAllocs()
 		b.ResetTimer()
+
 		for i := 0; i < b.N; i++ {
 			_ = ola.ProcessBlockTo(output, input64)
 		}
@@ -351,8 +380,10 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 	b.Run("OverlapAddTo/f32", func(b *testing.B) {
 		ola, _ := NewStreamingOverlapAdd32(kernel32, blockSize)
 		output := make([]float32, blockSize)
+
 		b.ReportAllocs()
 		b.ResetTimer()
+
 		for i := 0; i < b.N; i++ {
 			_ = ola.ProcessBlockTo(output, input32)
 		}
@@ -361,8 +392,10 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 	b.Run("OverlapSaveTo/f64", func(b *testing.B) {
 		ols, _ := NewStreamingOverlapSave(kernel64, blockSize)
 		output := make([]float64, blockSize)
+
 		b.ReportAllocs()
 		b.ResetTimer()
+
 		for i := 0; i < b.N; i++ {
 			_ = ols.ProcessBlockTo(output, input64)
 		}
@@ -371,8 +404,10 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 	b.Run("OverlapSaveTo/f32", func(b *testing.B) {
 		ols, _ := NewStreamingOverlapSave32(kernel32, blockSize)
 		output := make([]float32, blockSize)
+
 		b.ReportAllocs()
 		b.ResetTimer()
+
 		for i := 0; i < b.N; i++ {
 			_ = ols.ProcessBlockTo(output, input32)
 		}
@@ -385,6 +420,7 @@ func mustNewStreamingOverlapAdd(kernel []float64, blockSize int) *StreamingOverl
 	if err != nil {
 		panic(err)
 	}
+
 	return conv
 }
 
@@ -393,6 +429,7 @@ func mustNewStreamingOverlapSave(kernel []float64, blockSize int) *StreamingOver
 	if err != nil {
 		panic(err)
 	}
+
 	return conv
 }
 
@@ -401,6 +438,7 @@ func mustNewStreamingOverlapAdd32(kernel []float32, blockSize int) *StreamingOve
 	if err != nil {
 		panic(err)
 	}
+
 	return conv
 }
 
@@ -409,5 +447,6 @@ func mustNewStreamingOverlapSave32(kernel []float32, blockSize int) *StreamingOv
 	if err != nil {
 		panic(err)
 	}
+
 	return conv
 }

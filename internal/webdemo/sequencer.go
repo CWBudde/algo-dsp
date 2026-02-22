@@ -40,9 +40,11 @@ func (e *Engine) SetTransport(tempoBPM, decaySec, shuffle float64) {
 	if tempoBPM > 0 {
 		e.tempoBPM = tempoBPM
 	}
+
 	if decaySec < minDecaySeconds {
 		decaySec = minDecaySeconds
 	}
+
 	e.decaySec = decaySec
 	e.shuffle = clamp(shuffle, 0, 1)
 }
@@ -53,6 +55,7 @@ func (e *Engine) SetRunning(running bool) {
 		e.currentStep = 0
 		e.samplesUntilNextStep = 0
 	}
+
 	e.running = running
 }
 
@@ -63,6 +66,7 @@ func (e *Engine) SetSteps(steps []StepConfig) {
 		if cfg.FreqHz <= 0 {
 			cfg.FreqHz = 110
 		}
+
 		e.steps[i] = cfg
 	}
 }
@@ -72,14 +76,17 @@ func (e *Engine) triggerCurrentStep() {
 	if !step.Enabled || step.FreqHz <= 0 {
 		return
 	}
+
 	if len(e.voices) >= maxVoices {
 		copy(e.voices, e.voices[1:])
 		e.voices = e.voices[:maxVoices-1]
 	}
+
 	decaySamples := int(e.decaySec * e.sampleRate)
 	if decaySamples < 1 {
 		decaySamples = 1
 	}
+
 	e.voices = append(e.voices, voice{
 		waveform:    e.waveform,
 		phase:       0,
@@ -93,6 +100,7 @@ func (e *Engine) nextSample() float64 {
 	if len(e.voices) == 0 {
 		return 0
 	}
+
 	attackSamples := int(0.005 * e.sampleRate)
 	if attackSamples < 1 {
 		attackSamples = 1
@@ -100,24 +108,28 @@ func (e *Engine) nextSample() float64 {
 
 	sum := 0.0
 	write := 0
+
 	for i := range e.voices {
-		v := e.voices[i]
-		if v.ageSamples >= v.decaySample {
+		voice := e.voices[i]
+		if voice.ageSamples >= voice.decaySample {
 			continue
 		}
 
-		env := envelope(v.ageSamples, attackSamples, v.decaySample)
-		sum += env * waveSample(v.waveform, v.phase)
+		env := envelope(voice.ageSamples, attackSamples, voice.decaySample)
+		sum += env * waveSample(voice.waveform, voice.phase)
 
-		v.phase += v.phaseStep
-		if v.phase > math.Pi {
-			v.phase -= 2 * math.Pi
+		voice.phase += voice.phaseStep
+		if voice.phase > math.Pi {
+			voice.phase -= 2 * math.Pi
 		}
-		v.ageSamples++
-		e.voices[write] = v
+
+		voice.ageSamples++
+		e.voices[write] = voice
 		write++
 	}
+
 	e.voices = e.voices[:write]
+
 	return sum
 }
 
@@ -127,13 +139,16 @@ func (e *Engine) stepDurationSamples() float64 {
 
 func (e *Engine) stepDurationSamplesForStep(stepIndex int) float64 {
 	base := e.stepDurationSamples()
+
 	ratio := shuffleRatio(e.shuffle)
 	if ratio <= 0 {
 		return base
 	}
+
 	if stepIndex%2 == 0 {
 		return base * (1 + ratio)
 	}
+
 	return base * (1 - ratio)
 }
 
@@ -143,18 +158,23 @@ func shuffleRatio(shuffle float64) float64 {
 }
 
 func envelope(age, attack, decay int) float64 {
-	const start = 0.0001
-	const peak = 0.22
-	const end = 0.0001
+	const (
+		start = 0.0001
+		peak  = 0.22
+		end   = 0.0001
+	)
 
 	if age < attack {
 		t := float64(age) / float64(attack)
 		return start * math.Pow(peak/start, t)
 	}
+
 	if decay <= attack {
 		return end
 	}
+
 	t := float64(age-attack) / float64(decay-attack)
+
 	return peak * math.Pow(end/peak, t)
 }
 
@@ -173,6 +193,7 @@ func waveSample(w Waveform, phase float64) float64 {
 		if math.Sin(phase) >= 0 {
 			return 1
 		}
+
 		return -1
 	default:
 		return math.Sin(phase)

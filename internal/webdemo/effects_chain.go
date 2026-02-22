@@ -74,12 +74,15 @@ func registerChainEffectFactory(effectType string, factory chainEffectFactory) {
 	if effectType == "" {
 		panic("chain effect registry: empty effect type")
 	}
+
 	if factory == nil {
 		panic("chain effect registry: nil factory")
 	}
+
 	if _, exists := chainEffectRegistry[effectType]; exists {
 		panic("chain effect registry: duplicate effect type: " + effectType)
 	}
+
 	chainEffectRegistry[effectType] = factory
 }
 
@@ -89,6 +92,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &chorusChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("flanger", func(e *Engine) (chainEffectRuntime, error) {
@@ -96,6 +100,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &flangerChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("ringmod", func(e *Engine) (chainEffectRuntime, error) {
@@ -103,6 +108,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &ringModChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("bitcrusher", func(e *Engine) (chainEffectRuntime, error) {
@@ -110,6 +116,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &bitCrusherChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("widener", func(e *Engine) (chainEffectRuntime, error) {
@@ -117,6 +124,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &widenerChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("phaser", func(e *Engine) (chainEffectRuntime, error) {
@@ -124,6 +132,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &phaserChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("tremolo", func(e *Engine) (chainEffectRuntime, error) {
@@ -131,6 +140,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &tremoloChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("delay", func(e *Engine) (chainEffectRuntime, error) {
@@ -138,6 +148,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &delayChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("filter", func(e *Engine) (chainEffectRuntime, error) {
@@ -148,6 +159,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &bassChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("pitch-time", func(e *Engine) (chainEffectRuntime, error) {
@@ -155,6 +167,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &timePitchChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("pitch-spectral", func(e *Engine) (chainEffectRuntime, error) {
@@ -162,6 +175,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &spectralPitchChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("reverb", func(e *Engine) (chainEffectRuntime, error) {
@@ -169,6 +183,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &reverbChainRuntime{freeverb: reverb.NewReverb(), fdn: fdn}, nil
 	})
 	registerChainEffectFactory("dyn-compressor", func(e *Engine) (chainEffectRuntime, error) {
@@ -176,6 +191,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &compressorChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("dyn-limiter", func(e *Engine) (chainEffectRuntime, error) {
@@ -183,6 +199,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &limiterChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("dyn-gate", func(e *Engine) (chainEffectRuntime, error) {
@@ -190,6 +207,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+
 		return &gateChainRuntime{fx: fx}, nil
 	})
 }
@@ -200,6 +218,7 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 	if raw == "" {
 		return nil, nil
 	}
+
 	var state chainGraphState
 	if err := json.Unmarshal([]byte(raw), &state); err != nil {
 		return nil, fmt.Errorf("invalid chain graph json: %w", err)
@@ -210,6 +229,7 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 		if n.ID == "" || n.Type == "" {
 			continue
 		}
+
 		num, str := parseNodeParams(n.Params)
 		nodes[n.ID] = compiledChainNode{
 			ID:       n.ID,
@@ -219,46 +239,56 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 			Str:      str,
 		}
 	}
+
 	if _, ok := nodes["_input"]; !ok {
 		return nil, nil
 	}
+
 	if _, ok := nodes["_output"]; !ok {
 		return nil, nil
 	}
 
 	incoming := make(map[string][]string, len(nodes))
 	outgoing := make(map[string][]string, len(nodes))
+
 	indegree := make(map[string]int, len(nodes))
 	for id := range nodes {
 		incoming[id] = nil
 		outgoing[id] = nil
 		indegree[id] = 0
 	}
+
 	for _, c := range state.Connections {
 		if c.From == "" || c.To == "" || c.From == c.To {
 			continue
 		}
+
 		if _, ok := nodes[c.From]; !ok {
 			continue
 		}
+
 		if _, ok := nodes[c.To]; !ok {
 			continue
 		}
+
 		outgoing[c.From] = append(outgoing[c.From], c.To)
 		incoming[c.To] = append(incoming[c.To], c.From)
 		indegree[c.To]++
 	}
 
 	queue := make([]string, 0, len(nodes))
+
 	for id, d := range indegree {
 		if d == 0 {
 			queue = append(queue, id)
 		}
 	}
+
 	order := make([]string, 0, len(nodes))
 	for len(queue) > 0 {
 		id := queue[0]
 		queue = queue[1:]
+
 		order = append(order, id)
 		for _, to := range outgoing[id] {
 			indegree[to]--
@@ -267,6 +297,7 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 			}
 		}
 	}
+
 	if len(order) != len(nodes) {
 		return nil, fmt.Errorf("invalid chain graph: contains cycle")
 	}
@@ -283,10 +314,12 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 func parseNodeParams(raw any) (map[string]float64, map[string]string) {
 	num := map[string]float64{}
 	str := map[string]string{}
+
 	params, ok := raw.(map[string]any)
 	if !ok || params == nil {
 		return num, str
 	}
+
 	for k, v := range params {
 		switch t := v.(type) {
 		case float64:
@@ -307,6 +340,7 @@ func parseNodeParams(raw any) (map[string]float64, map[string]string) {
 			}
 		}
 	}
+
 	return num, str
 }
 
@@ -317,36 +351,46 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 		e.chainNodes = nil
 		return nil
 	}
+
 	if e.chainNodes == nil {
 		e.chainNodes = map[string]*chainNodeRuntime{}
 	}
+
 	seen := map[string]struct{}{}
+
 	for _, node := range graph.Nodes {
 		if node.Type == "_input" || node.Type == "_output" || node.Type == "split" || node.Type == "sum" {
 			continue
 		}
+
 		seen[node.ID] = struct{}{}
+
 		rt := e.chainNodes[node.ID]
 		if rt == nil || rt.effectType != node.Type {
 			effect, err := e.newChainEffectRuntime(node.Type)
 			if err != nil {
 				return err
 			}
+
 			if effect == nil {
 				continue
 			}
+
 			rt = &chainNodeRuntime{effectType: node.Type, effect: effect}
 			e.chainNodes[node.ID] = rt
 		}
+
 		if err := rt.effect.Configure(e, node); err != nil {
 			return err
 		}
 	}
+
 	for id := range e.chainNodes {
 		if _, ok := seen[id]; !ok {
 			delete(e.chainNodes, id)
 		}
 	}
+
 	return nil
 }
 
@@ -355,6 +399,7 @@ func (e *Engine) newChainEffectRuntime(effectType string) (chainEffectRuntime, e
 	if factory == nil {
 		return nil, nil
 	}
+
 	return factory(e)
 }
 
@@ -363,10 +408,12 @@ func getNodeNum(node compiledChainNode, key string, def float64) float64 {
 	if node.Num == nil {
 		return def
 	}
+
 	v, ok := node.Num[key]
 	if !ok || math.IsNaN(v) || math.IsInf(v, 0) {
 		return def
 	}
+
 	return v
 }
 
@@ -374,15 +421,19 @@ func configureChorus(fx *modulation.Chorus, sampleRate, mix, depth, speedHz floa
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetMix(mix); err != nil {
 		return err
 	}
+
 	if err := fx.SetDepth(depth); err != nil {
 		return err
 	}
+
 	if err := fx.SetSpeedHz(speedHz); err != nil {
 		return err
 	}
+
 	return fx.SetStages(stages)
 }
 
@@ -390,6 +441,7 @@ func configureFlanger(fx *modulation.Flanger, sampleRate, rateHz, baseDelay, dep
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetRateHz(rateHz); err != nil {
 		return err
 	}
@@ -398,15 +450,19 @@ func configureFlanger(fx *modulation.Flanger, sampleRate, rateHz, baseDelay, dep
 	if err := fx.SetDepthSeconds(0); err != nil {
 		return err
 	}
+
 	if err := fx.SetBaseDelaySeconds(baseDelay); err != nil {
 		return err
 	}
+
 	if err := fx.SetDepthSeconds(depth); err != nil {
 		return err
 	}
+
 	if err := fx.SetFeedback(feedback); err != nil {
 		return err
 	}
+
 	return fx.SetMix(mix)
 }
 
@@ -414,9 +470,11 @@ func configureRingMod(fx *modulation.RingModulator, sampleRate, carrierHz, mix f
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetCarrierHz(carrierHz); err != nil {
 		return err
 	}
+
 	return fx.SetMix(mix)
 }
 
@@ -424,12 +482,15 @@ func configureBitCrusher(fx *effects.BitCrusher, sampleRate, bitDepth float64, d
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetBitDepth(bitDepth); err != nil {
 		return err
 	}
+
 	if err := fx.SetDownsample(downsample); err != nil {
 		return err
 	}
+
 	return fx.SetMix(mix)
 }
 
@@ -437,9 +498,11 @@ func configureWidener(fx *spatial.StereoWidener, sampleRate, width float64) erro
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetWidth(width); err != nil {
 		return err
 	}
+
 	return fx.SetBassMonoFreq(0)
 }
 
@@ -447,18 +510,23 @@ func configurePhaser(fx *modulation.Phaser, sampleRate, rateHz, minFreqHz, maxFr
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetRateHz(rateHz); err != nil {
 		return err
 	}
+
 	if err := fx.SetFrequencyRangeHz(minFreqHz, maxFreqHz); err != nil {
 		return err
 	}
+
 	if err := fx.SetStages(stages); err != nil {
 		return err
 	}
+
 	if err := fx.SetFeedback(feedback); err != nil {
 		return err
 	}
+
 	return fx.SetMix(mix)
 }
 
@@ -466,15 +534,19 @@ func configureTremolo(fx *modulation.Tremolo, sampleRate, rateHz, depth, smoothi
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetRateHz(rateHz); err != nil {
 		return err
 	}
+
 	if err := fx.SetDepth(depth); err != nil {
 		return err
 	}
+
 	if err := fx.SetSmoothingMs(smoothingMs); err != nil {
 		return err
 	}
+
 	return fx.SetMix(mix)
 }
 
@@ -482,12 +554,15 @@ func configureDelay(fx *effects.Delay, sampleRate, time, feedback, mix float64) 
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetTime(time); err != nil {
 		return err
 	}
+
 	if err := fx.SetFeedback(feedback); err != nil {
 		return err
 	}
+
 	return fx.SetMix(mix)
 }
 
@@ -495,15 +570,19 @@ func configureTimePitch(fx *pitch.PitchShifter, sampleRate, semitones, sequence,
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetPitchSemitones(semitones); err != nil {
 		return err
 	}
+
 	if err := fx.SetSequence(sequence); err != nil {
 		return err
 	}
+
 	if err := fx.SetOverlap(overlap); err != nil {
 		return err
 	}
+
 	return fx.SetSearch(search)
 }
 
@@ -511,12 +590,15 @@ func configureSpectralPitch(fx *pitch.SpectralPitchShifter, sampleRate, semitone
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetPitchSemitones(semitones); err != nil {
 		return err
 	}
+
 	if err := fx.SetFrameSize(frameSize); err != nil {
 		return err
 	}
+
 	return fx.SetAnalysisHop(analysisHop)
 }
 
@@ -524,24 +606,31 @@ func configureFDNReverb(fx *reverb.FDNReverb, sampleRate, wet, dry, rt60, preDel
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetWet(wet); err != nil {
 		return err
 	}
+
 	if err := fx.SetDry(dry); err != nil {
 		return err
 	}
+
 	if err := fx.SetRT60(rt60); err != nil {
 		return err
 	}
+
 	if err := fx.SetPreDelay(preDelay); err != nil {
 		return err
 	}
+
 	if err := fx.SetDamp(damp); err != nil {
 		return err
 	}
+
 	if err := fx.SetModDepth(modDepth); err != nil {
 		return err
 	}
+
 	return fx.SetModRate(modRate)
 }
 
@@ -557,27 +646,35 @@ func configureHarmonicBass(fx *effects.HarmonicBass, sampleRate, frequency, inpu
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
 	}
+
 	if err := fx.SetFrequency(frequency); err != nil {
 		return err
 	}
+
 	if err := fx.SetInputLevel(inputGain); err != nil {
 		return err
 	}
+
 	if err := fx.SetHighFrequencyLevel(highGain); err != nil {
 		return err
 	}
+
 	if err := fx.SetOriginalBassLevel(original); err != nil {
 		return err
 	}
+
 	if err := fx.SetHarmonicBassLevel(harmonic); err != nil {
 		return err
 	}
+
 	if err := fx.SetDecay(decay); err != nil {
 		return err
 	}
+
 	if err := fx.SetResponse(responseMs); err != nil {
 		return err
 	}
+
 	return fx.SetHighpassMode(effects.HighpassSelect(highpass))
 }
 
@@ -590,9 +687,11 @@ func (r *chorusChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 	if stages < 1 {
 		stages = 1
 	}
+
 	if stages > 6 {
 		stages = 6
 	}
+
 	return configureChorus(
 		r.fx,
 		e.sampleRate,
@@ -653,9 +752,11 @@ func (r *bitCrusherChainRuntime) Configure(e *Engine, node compiledChainNode) er
 	if ds < 1 {
 		ds = 1
 	}
+
 	if ds > 256 {
 		ds = 256
 	}
+
 	return configureBitCrusher(
 		r.fx,
 		e.sampleRate,
@@ -688,13 +789,16 @@ type phaserChainRuntime struct {
 func (r *phaserChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	minHz := clamp(getNodeNum(node, "minFreqHz", 300), 20, e.sampleRate*0.45)
 	maxHz := clamp(getNodeNum(node, "maxFreqHz", 1600), minHz+1, e.sampleRate*0.49)
+
 	stages := int(math.Round(getNodeNum(node, "stages", 6)))
 	if stages < 1 {
 		stages = 1
 	}
+
 	if stages > 12 {
 		stages = 12
 	}
+
 	return configurePhaser(
 		r.fx,
 		e.sampleRate,
@@ -761,6 +865,7 @@ func (r *filterChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 	gainDB := clamp(getNodeNum(node, "gain", 0), -24, 24)
 	shape := clampEQShape(kind, family, freq, e.sampleRate, getNodeNum(node, "q", 0.707))
 	r.fx = buildEQChain(family, kind, order, freq, gainDB, shape, e.sampleRate)
+
 	return nil
 }
 
@@ -779,9 +884,11 @@ func (r *bassChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	if hp < 0 {
 		hp = 0
 	}
+
 	if hp > 2 {
 		hp = 2
 	}
+
 	return configureHarmonicBass(
 		r.fx,
 		e.sampleRate,
@@ -806,10 +913,12 @@ type timePitchChainRuntime struct {
 
 func (r *timePitchChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	seq := clamp(getNodeNum(node, "sequence", 40), 20, 120)
+
 	ov := clamp(getNodeNum(node, "overlap", 10), 4, 60)
 	if ov >= seq {
 		ov = seq - 1
 	}
+
 	return configureTimePitch(
 		r.fx,
 		e.sampleRate,
@@ -830,13 +939,16 @@ type spectralPitchChainRuntime struct {
 
 func (r *spectralPitchChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	frame := sanitizeSpectralPitchFrameSize(int(math.Round(getNodeNum(node, "frameSize", 1024))))
+
 	hop := int(math.Round(float64(frame) * clamp(getNodeNum(node, "hopRatio", 0.25), 0.01, 0.99)))
 	if hop < 1 {
 		hop = 1
 	}
+
 	if hop >= frame {
 		hop = frame - 1
 	}
+
 	return configureSpectralPitch(
 		r.fx,
 		e.sampleRate,
@@ -860,6 +972,7 @@ func (r *reverbChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 	if model != "fdn" && model != "freeverb" {
 		model = "freeverb"
 	}
+
 	if model == "fdn" {
 		return configureFDNReverb(
 			r.fdn,
@@ -873,6 +986,7 @@ func (r *reverbChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 			clamp(getNodeNum(node, "modRate", 0.1), 0, 1),
 		)
 	}
+
 	configureFreeverb(
 		r.freeverb,
 		clamp(getNodeNum(node, "wet", 0.22), 0, 1.5),
@@ -881,6 +995,7 @@ func (r *reverbChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 		clamp(getNodeNum(node, "damp", 0.45), 0, 0.99),
 		clamp(getNodeNum(node, "gain", 0.015), 0, 0.1),
 	)
+
 	return nil
 }
 
@@ -889,6 +1004,7 @@ func (r *reverbChainRuntime) Process(_ *Engine, node compiledChainNode, block []
 		r.fdn.ProcessInPlace(block)
 		return
 	}
+
 	r.freeverb.ProcessInPlace(block)
 }
 
@@ -900,24 +1016,31 @@ func (r *compressorChainRuntime) Configure(e *Engine, node compiledChainNode) er
 	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -20), -60, 0)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetRatio(clamp(getNodeNum(node, "ratio", 4), 1, 100)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetKnee(clamp(getNodeNum(node, "kneeDB", 6), 0, 24)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetAttack(clamp(getNodeNum(node, "attackMs", 10), 0.1, 1000)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetAutoMakeup(false); err != nil {
 		return err
 	}
+
 	return r.fx.SetMakeupGain(clamp(getNodeNum(node, "makeupGainDB", 0), 0, 24))
 }
 
@@ -933,9 +1056,11 @@ func (r *limiterChainRuntime) Configure(e *Engine, node compiledChainNode) error
 	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -0.1), -24, 0)); err != nil {
 		return err
 	}
+
 	return r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000))
 }
 
@@ -951,24 +1076,31 @@ func (r *gateChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -40), -80, 0)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetRatio(clamp(getNodeNum(node, "ratio", 10), 1, 100)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetKnee(clamp(getNodeNum(node, "kneeDB", 6), 0, 24)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetAttack(clamp(getNodeNum(node, "attackMs", 0.1), 0.1, 1000)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetHold(clamp(getNodeNum(node, "holdMs", 50), 0, 5000)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000)); err != nil {
 		return err
 	}
+
 	return r.fx.SetRange(clamp(getNodeNum(node, "rangeDB", -80), -120, 0))
 }
 

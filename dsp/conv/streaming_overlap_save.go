@@ -46,6 +46,7 @@ func NewStreamingOverlapSaveT[F algofft.Float, C algofft.Complex](kernel []F, bl
 	if len(kernel) == 0 {
 		return nil, ErrEmptyKernel
 	}
+
 	if blockSize <= 0 {
 		return nil, fmt.Errorf("conv: blockSize must be positive, got %d", blockSize)
 	}
@@ -141,6 +142,7 @@ func (sos *StreamingOverlapSaveT[F, C]) ProcessBlock(input []F) ([]F, error) {
 
 	output := make([]F, sos.blockSize)
 	sos.processBlockCore(output, input)
+
 	return output, nil
 }
 
@@ -151,11 +153,13 @@ func (sos *StreamingOverlapSaveT[F, C]) ProcessBlockTo(output, input []F) error 
 	if len(input) != sos.blockSize {
 		return fmt.Errorf("%w: expected %d input samples, got %d", ErrLengthMismatch, sos.blockSize, len(input))
 	}
+
 	if len(output) != sos.blockSize {
 		return fmt.Errorf("%w: expected %d output samples, got %d", ErrLengthMismatch, sos.blockSize, len(output))
 	}
 
 	sos.processBlockCore(output, input)
+
 	return nil
 }
 

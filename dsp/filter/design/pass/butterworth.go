@@ -13,6 +13,7 @@ func ButterworthLP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 	if order <= 0 {
 		return nil
 	}
+
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
 
 	n2 := order / 2
@@ -20,9 +21,11 @@ func ButterworthLP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 		q := butterworthQ(order, i)
 		sections = append(sections, LowpassRBJ(freq, q, sampleRate))
 	}
+
 	if order%2 != 0 {
 		sections = append(sections, butterworthFirstOrderLP(freq, sampleRate))
 	}
+
 	return sections
 }
 
@@ -33,6 +36,7 @@ func ButterworthHP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 	if order <= 0 {
 		return nil
 	}
+
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
 
 	n2 := order / 2
@@ -40,9 +44,11 @@ func ButterworthHP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 		q := butterworthQ(order, i)
 		sections = append(sections, HighpassRBJ(freq, q, sampleRate))
 	}
+
 	if order%2 != 0 {
 		sections = append(sections, butterworthFirstOrderHP(freq, sampleRate))
 	}
+
 	return sections
 }
 
@@ -51,9 +57,11 @@ func LowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return biquad.Coefficients{}
 	}
+
 	if q <= 0 {
 		q = 1 / math.Sqrt2
 	}
+
 	w0 := 2 * math.Pi * freq / sampleRate
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
@@ -69,6 +77,7 @@ func LowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	if a0 == 0 {
 		return biquad.Coefficients{}
 	}
+
 	return biquad.Coefficients{
 		B0: b0 / a0,
 		B1: b1 / a0,
@@ -83,9 +92,11 @@ func HighpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return biquad.Coefficients{}
 	}
+
 	if q <= 0 {
 		q = 1 / math.Sqrt2
 	}
+
 	w0 := 2 * math.Pi * freq / sampleRate
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
@@ -101,6 +112,7 @@ func HighpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	if a0 == 0 {
 		return biquad.Coefficients{}
 	}
+
 	return biquad.Coefficients{
 		B0: b0 / a0,
 		B1: b1 / a0,

@@ -14,10 +14,12 @@ func Chebyshev1LP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 	if order <= 0 {
 		return nil
 	}
+
 	k, ok := bilinearK(freq, sampleRate)
 	if !ok {
 		return nil
 	}
+
 	r0, r1 := cheby1RippleFactors(order, rippleDB)
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
 	k2 := k * k
@@ -35,11 +37,13 @@ func Chebyshev1LP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 			A2: -(a - k2 - b) * t,
 		})
 	}
+
 	if order%2 != 0 {
 		// Legacy code does not implement odd-order Chebyshev first-order sections.
 		// Use Butterworth first-order section for deterministic behavior.
 		sections = append(sections, butterworthFirstOrderLP(freq, sampleRate))
 	}
+
 	return sections
 }
 
@@ -51,10 +55,12 @@ func Chebyshev1HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 	if order <= 0 {
 		return nil
 	}
+
 	k, ok := bilinearK(freq, sampleRate)
 	if !ok {
 		return nil
 	}
+
 	r0, r1 := cheby1RippleFactors(order, rippleDB)
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
 	k2 := k * k
@@ -73,10 +79,12 @@ func Chebyshev1HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 			A2: -(b - 1 - a*k2) * t,
 		})
 	}
+
 	if order%2 != 0 {
 		// Legacy code does not implement odd-order Chebyshev first-order sections.
 		// Use Butterworth first-order section for deterministic behavior.
 		sections = append(sections, butterworthFirstOrderHP(freq, sampleRate))
 	}
+
 	return sections
 }

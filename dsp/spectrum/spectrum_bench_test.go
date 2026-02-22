@@ -80,6 +80,7 @@ func BenchmarkMagnitudeFromParts(b *testing.B) {
 			re := make([]float64, tc.size)
 			im := make([]float64, tc.size)
 			dst := make([]float64, tc.size)
+
 			for i := range re {
 				re[i] = float64(i) / 10.0
 				im[i] = float64(tc.size-i) / 10.0
@@ -112,6 +113,7 @@ func BenchmarkPowerFromParts(b *testing.B) {
 			re := make([]float64, tc.size)
 			im := make([]float64, tc.size)
 			dst := make([]float64, tc.size)
+
 			for i := range re {
 				re[i] = float64(i) / 10.0
 				im[i] = float64(tc.size-i) / 10.0
@@ -132,10 +134,12 @@ func magnitudeNaive(in []complex128) []float64 {
 	if len(in) == 0 {
 		return nil
 	}
+
 	out := make([]float64, len(in))
 	for i := range out {
 		out[i] = cmplx.Abs(in[i])
 	}
+
 	return out
 }
 
@@ -143,6 +147,7 @@ func powerNaive(in []complex128) []float64 {
 	if len(in) == 0 {
 		return nil
 	}
+
 	out := make([]float64, len(in))
 	for i := range out {
 		x := in[i]
@@ -150,6 +155,7 @@ func powerNaive(in []complex128) []float64 {
 		im := imag(x)
 		out[i] = re*re + im*im
 	}
+
 	return out
 }
 

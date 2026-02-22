@@ -31,7 +31,9 @@ func WithRingModCarrierHz(carrierHz float64) RingModulatorOption {
 		if carrierHz <= 0 || math.IsNaN(carrierHz) || math.IsInf(carrierHz, 0) {
 			return fmt.Errorf("ring modulator carrier frequency must be > 0 and finite: %f", carrierHz)
 		}
+
 		cfg.carrierHz = carrierHz
+
 		return nil
 	}
 }
@@ -42,7 +44,9 @@ func WithRingModMix(mix float64) RingModulatorOption {
 		if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 			return fmt.Errorf("ring modulator mix must be in [0, 1]: %f", mix)
 		}
+
 		cfg.mix = mix
+
 		return nil
 	}
 }
@@ -73,10 +77,12 @@ func NewRingModulator(sampleRate float64, opts ...RingModulatorOption) (*RingMod
 	}
 
 	cfg := defaultRingModConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -88,6 +94,7 @@ func NewRingModulator(sampleRate float64, opts ...RingModulatorOption) (*RingMod
 		mix:        cfg.mix,
 	}
 	r.updatePhaseIncrement()
+
 	return r, nil
 }
 
@@ -96,8 +103,10 @@ func (r *RingModulator) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("ring modulator sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	r.sampleRate = sampleRate
 	r.updatePhaseIncrement()
+
 	return nil
 }
 
@@ -106,8 +115,10 @@ func (r *RingModulator) SetCarrierHz(carrierHz float64) error {
 	if carrierHz <= 0 || math.IsNaN(carrierHz) || math.IsInf(carrierHz, 0) {
 		return fmt.Errorf("ring modulator carrier frequency must be > 0 and finite: %f", carrierHz)
 	}
+
 	r.carrierHz = carrierHz
 	r.updatePhaseIncrement()
+
 	return nil
 }
 
@@ -116,7 +127,9 @@ func (r *RingModulator) SetMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("ring modulator mix must be in [0, 1]: %f", mix)
 	}
+
 	r.mix = mix
+
 	return nil
 }
 

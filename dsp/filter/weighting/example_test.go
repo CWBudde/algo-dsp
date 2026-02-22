@@ -32,6 +32,7 @@ func ExampleNew_processBlock() {
 	for i := range buf {
 		buf[i] = math.Sin(2 * math.Pi * 1000 * float64(i) / sr)
 	}
+
 	chain.ProcessBlock(buf)
 
 	// Measure peak amplitude after weighting (should be ~1.0 at 1 kHz).
@@ -41,6 +42,7 @@ func ExampleNew_processBlock() {
 			peak = a
 		}
 	}
+
 	fmt.Printf("Peak after C-weighting: %.2f\n", peak)
 	// Output:
 	// Peak after C-weighting: 1.03

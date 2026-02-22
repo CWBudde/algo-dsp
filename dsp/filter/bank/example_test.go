@@ -11,6 +11,7 @@ func ExampleOctave() {
 	// Build a full-octave filter bank at 48 kHz.
 	b := bank.Octave(1, 48000)
 	fmt.Printf("Octave bands: %d\n", b.NumBands())
+
 	for _, band := range b.Bands() {
 		fmt.Printf("  %.0f Hz (%.0f – %.0f)\n",
 			band.CenterFreq, band.LowCutoff, band.HighCutoff)
@@ -46,6 +47,7 @@ func ExampleNewOctaveAnalyzer() {
 	for i := range input {
 		input[i] = math.Sin(2 * math.Pi * 1000 * float64(i) / 48000)
 	}
+
 	peaks := an.ProcessBlock(input)
 
 	fmt.Printf("bands=%d peaks=%d\n", len(an.Bands()), len(peaks))

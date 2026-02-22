@@ -19,6 +19,7 @@ func Chebyshev2LP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 	if order <= 0 {
 		return nil
 	}
+
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return nil
 	}
@@ -77,9 +78,11 @@ func Chebyshev2LP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 			A1: a1, A2: a2,
 		})
 	}
+
 	if order%2 != 0 {
 		sections = append(sections, cheby2FirstOrderLP(wc, mu))
 	}
+
 	return sections
 }
 
@@ -92,6 +95,7 @@ func Chebyshev2HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 	if order <= 0 {
 		return nil
 	}
+
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return nil
 	}
@@ -141,9 +145,11 @@ func Chebyshev2HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 			A1: a1, A2: a2,
 		})
 	}
+
 	if order%2 != 0 {
 		sections = append(sections, cheby2FirstOrderHP(wc, mu))
 	}
+
 	return sections
 }
 
@@ -152,6 +158,7 @@ func cheby2Mu(order int, ripple float64) float64 {
 	if ripple <= 0 {
 		ripple = 1
 	}
+
 	return math.Asinh(ripple) / float64(order)
 }
 
@@ -159,6 +166,7 @@ func cheby2Mu(order int, ripple float64) float64 {
 func cheby2FirstOrderLP(wc, mu float64) biquad.Coefficients {
 	sp := wc / math.Sinh(mu) // real pole magnitude
 	g := sp / (1 + sp)
+
 	return biquad.Coefficients{
 		B0: g,
 		B1: g,
@@ -172,6 +180,7 @@ func cheby2FirstOrderLP(wc, mu float64) biquad.Coefficients {
 func cheby2FirstOrderHP(wc, mu float64) biquad.Coefficients {
 	sp := wc * math.Sinh(mu) // HP-transformed real pole
 	g := 1.0 / (1 + sp)
+
 	return biquad.Coefficients{
 		B0: g,
 		B1: -g,

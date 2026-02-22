@@ -43,7 +43,9 @@ func WithFlangerRateHz(rateHz float64) FlangerOption {
 		if rateHz <= 0 || math.IsNaN(rateHz) || math.IsInf(rateHz, 0) {
 			return fmt.Errorf("flanger rate must be > 0 and finite: %f", rateHz)
 		}
+
 		cfg.rateHz = rateHz
+
 		return nil
 	}
 }
@@ -54,7 +56,9 @@ func WithFlangerDepthSeconds(depth float64) FlangerOption {
 		if depth < 0 || math.IsNaN(depth) || math.IsInf(depth, 0) {
 			return fmt.Errorf("flanger depth must be >= 0 and finite: %f", depth)
 		}
+
 		cfg.depthSeconds = depth
+
 		return nil
 	}
 }
@@ -67,7 +71,9 @@ func WithFlangerBaseDelaySeconds(baseDelay float64) FlangerOption {
 			return fmt.Errorf("flanger base delay must be in [%f, %f]: %f",
 				minFlangerDelaySeconds, maxFlangerDelaySeconds, baseDelay)
 		}
+
 		cfg.baseDelay = baseDelay
+
 		return nil
 	}
 }
@@ -78,7 +84,9 @@ func WithFlangerFeedback(feedback float64) FlangerOption {
 		if feedback < -0.99 || feedback > 0.99 || math.IsNaN(feedback) || math.IsInf(feedback, 0) {
 			return fmt.Errorf("flanger feedback must be in [-0.99, 0.99]: %f", feedback)
 		}
+
 		cfg.feedback = feedback
+
 		return nil
 	}
 }
@@ -89,7 +97,9 @@ func WithFlangerMix(mix float64) FlangerOption {
 		if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 			return fmt.Errorf("flanger mix must be in [0, 1]: %f", mix)
 		}
+
 		cfg.mix = mix
+
 		return nil
 	}
 }
@@ -117,10 +127,12 @@ func NewFlanger(sampleRate float64, opts ...FlangerOption) (*Flanger, error) {
 	}
 
 	cfg := defaultFlangerConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -137,9 +149,11 @@ func NewFlanger(sampleRate float64, opts ...FlangerOption) (*Flanger, error) {
 	if err := f.validateParams(); err != nil {
 		return nil, err
 	}
+
 	if err := f.reconfigureDelayLine(); err != nil {
 		return nil, err
 	}
+
 	return f, nil
 }
 
@@ -148,7 +162,9 @@ func (f *Flanger) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("flanger sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	f.sampleRate = sampleRate
+
 	return f.reconfigureDelayLine()
 }
 
@@ -157,7 +173,9 @@ func (f *Flanger) SetRateHz(rateHz float64) error {
 	if rateHz <= 0 || math.IsNaN(rateHz) || math.IsInf(rateHz, 0) {
 		return fmt.Errorf("flanger rate must be > 0 and finite: %f", rateHz)
 	}
+
 	f.rateHz = rateHz
+
 	return nil
 }
 
@@ -166,12 +184,15 @@ func (f *Flanger) SetDepthSeconds(depth float64) error {
 	if depth < 0 || math.IsNaN(depth) || math.IsInf(depth, 0) {
 		return fmt.Errorf("flanger depth must be >= 0 and finite: %f", depth)
 	}
+
 	prev := f.depth
+
 	f.depth = depth
 	if err := f.reconfigureDelayLine(); err != nil {
 		f.depth = prev
 		return err
 	}
+
 	return nil
 }
 
@@ -182,12 +203,15 @@ func (f *Flanger) SetBaseDelaySeconds(baseDelay float64) error {
 		return fmt.Errorf("flanger base delay must be in [%f, %f]: %f",
 			minFlangerDelaySeconds, maxFlangerDelaySeconds, baseDelay)
 	}
+
 	prev := f.baseDelay
+
 	f.baseDelay = baseDelay
 	if err := f.reconfigureDelayLine(); err != nil {
 		f.baseDelay = prev
 		return err
 	}
+
 	return nil
 }
 
@@ -196,7 +220,9 @@ func (f *Flanger) SetFeedback(feedback float64) error {
 	if feedback < -0.99 || feedback > 0.99 || math.IsNaN(feedback) || math.IsInf(feedback, 0) {
 		return fmt.Errorf("flanger feedback must be in [-0.99, 0.99]: %f", feedback)
 	}
+
 	f.feedback = feedback
+
 	return nil
 }
 
@@ -205,7 +231,9 @@ func (f *Flanger) SetMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("flanger mix must be in [0, 1]: %f", mix)
 	}
+
 	f.mix = mix
+
 	return nil
 }
 
@@ -214,6 +242,7 @@ func (f *Flanger) Reset() {
 	for i := range f.delayLine {
 		f.delayLine[i] = 0
 	}
+
 	f.write = 0
 	f.lfoPhase = 0
 }
@@ -221,13 +250,16 @@ func (f *Flanger) Reset() {
 // Process processes one sample.
 func (f *Flanger) Process(sample float64) float64 {
 	mod := 0.5 * (1 + math.Sin(f.lfoPhase))
+
 	delaySamples := (f.baseDelay + f.depth*mod) * f.sampleRate
 	if delaySamples < 1 {
 		delaySamples = 1
 	}
+
 	delayed := f.sampleFractionalDelay(delaySamples)
 
 	f.delayLine[f.write] = sample + delayed*f.feedback
+
 	f.write++
 	if f.write >= len(f.delayLine) {
 		f.write = 0
@@ -251,6 +283,7 @@ func (f *Flanger) ProcessInPlace(buf []float64) error {
 	for i := range buf {
 		buf[i] = f.Process(buf[i])
 	}
+
 	return nil
 }
 
@@ -276,27 +309,34 @@ func (f *Flanger) validateParams() error {
 	if f.sampleRate <= 0 || math.IsNaN(f.sampleRate) || math.IsInf(f.sampleRate, 0) {
 		return fmt.Errorf("flanger sample rate must be > 0 and finite: %f", f.sampleRate)
 	}
+
 	if f.rateHz <= 0 || math.IsNaN(f.rateHz) || math.IsInf(f.rateHz, 0) {
 		return fmt.Errorf("flanger rate must be > 0 and finite: %f", f.rateHz)
 	}
+
 	if f.depth < 0 || math.IsNaN(f.depth) || math.IsInf(f.depth, 0) {
 		return fmt.Errorf("flanger depth must be >= 0 and finite: %f", f.depth)
 	}
+
 	if f.baseDelay < minFlangerDelaySeconds || f.baseDelay > maxFlangerDelaySeconds ||
 		math.IsNaN(f.baseDelay) || math.IsInf(f.baseDelay, 0) {
 		return fmt.Errorf("flanger base delay must be in [%f, %f]: %f",
 			minFlangerDelaySeconds, maxFlangerDelaySeconds, f.baseDelay)
 	}
+
 	if f.baseDelay+f.depth > maxFlangerDelaySeconds {
 		return fmt.Errorf("flanger max delay exceeds %f seconds: base=%f depth=%f",
 			maxFlangerDelaySeconds, f.baseDelay, f.depth)
 	}
+
 	if f.feedback < -0.99 || f.feedback > 0.99 || math.IsNaN(f.feedback) || math.IsInf(f.feedback, 0) {
 		return fmt.Errorf("flanger feedback must be in [-0.99, 0.99]: %f", f.feedback)
 	}
+
 	if f.mix < 0 || f.mix > 1 || math.IsNaN(f.mix) || math.IsInf(f.mix, 0) {
 		return fmt.Errorf("flanger mix must be in [0, 1]: %f", f.mix)
 	}
+
 	return nil
 }
 
@@ -309,6 +349,7 @@ func (f *Flanger) reconfigureDelayLine() error {
 	if needed < 4 {
 		needed = 4
 	}
+
 	if needed == len(f.delayLine) {
 		f.maxDelay = needed - 3
 		return nil
@@ -325,15 +366,18 @@ func (f *Flanger) reconfigureDelayLine() error {
 		if copyCount > len(f.delayLine) {
 			copyCount = len(f.delayLine)
 		}
+
 		for i := 0; i < copyCount; i++ {
 			src := oldWrite - 1 - i
 			if src < 0 {
 				src += len(old)
 			}
+
 			dst := f.write - 1 - i
 			if dst < 0 {
 				dst += len(f.delayLine)
 			}
+
 			f.delayLine[dst] = old[src]
 		}
 	}
@@ -345,6 +389,7 @@ func (f *Flanger) sampleFractionalDelay(delay float64) float64 {
 	if delay < 0 {
 		delay = 0
 	}
+
 	maxDelay := float64(f.maxDelay)
 	if delay > maxDelay {
 		delay = maxDelay
@@ -357,6 +402,7 @@ func (f *Flanger) sampleFractionalDelay(delay float64) float64 {
 	x0 := f.sampleDelayInt(p)
 	x1 := f.sampleDelayInt(p + 1)
 	x2 := f.sampleDelayInt(p + 2)
+
 	return hermite4(t, xm1, x0, x1, x2)
 }
 
@@ -364,9 +410,11 @@ func (f *Flanger) sampleDelayInt(delay int) float64 {
 	if delay < 0 || delay >= len(f.delayLine) {
 		return 0
 	}
+
 	idx := f.write - delay
 	if idx < 0 {
 		idx += len(f.delayLine)
 	}
+
 	return f.delayLine[idx]
 }

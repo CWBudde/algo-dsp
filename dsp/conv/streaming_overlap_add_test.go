@@ -40,6 +40,7 @@ func TestStreamingOverlapAdd(t *testing.T) {
 	if len(out1) != blockSize {
 		t.Errorf("out1 length = %d, want %d", len(out1), blockSize)
 	}
+
 	if len(out2) != blockSize {
 		t.Errorf("out2 length = %d, want %d", len(out2), blockSize)
 	}
@@ -70,6 +71,7 @@ func TestStreamingOverlapAddVsBatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOverlapAdd failed: %v", err)
 	}
+
 	batchResult, err := batchOLA.Process(signal)
 	if err != nil {
 		t.Fatalf("Batch Process failed: %v", err)
@@ -84,10 +86,12 @@ func TestStreamingOverlapAddVsBatch(t *testing.T) {
 	streamResult := make([]float64, 0, len(signal))
 	for i := 0; i < numBlocks; i++ {
 		block := signal[i*blockSize : (i+1)*blockSize]
+
 		out, err := streamOLA.ProcessBlock(block)
 		if err != nil {
 			t.Fatalf("ProcessBlock failed at block %d: %v", i, err)
 		}
+
 		streamResult = append(streamResult, out...)
 	}
 
@@ -111,6 +115,7 @@ func TestStreamingOverlapAddReset(t *testing.T) {
 
 	// Process a block
 	block1 := []float64{1, 1, 1, 1}
+
 	_, err = soa.ProcessBlock(block1)
 	if err != nil {
 		t.Fatalf("ProcessBlock failed: %v", err)
@@ -147,6 +152,7 @@ func TestStreamingOverlapAddProcessBlockTo(t *testing.T) {
 
 	// Test with pre-allocated output
 	output := make([]float64, blockSize)
+
 	err = soa.ProcessBlockTo(output, input)
 	if err != nil {
 		t.Fatalf("ProcessBlockTo failed: %v", err)
@@ -154,6 +160,7 @@ func TestStreamingOverlapAddProcessBlockTo(t *testing.T) {
 
 	// Compare with ProcessBlock
 	soa.Reset()
+
 	expected, err := soa.ProcessBlock(input)
 	if err != nil {
 		t.Fatalf("ProcessBlock failed: %v", err)
@@ -171,6 +178,7 @@ func BenchmarkStreamingOverlapAdd(b *testing.B) {
 	for i := range kernel {
 		kernel[i] = 1.0 / float64(len(kernel))
 	}
+
 	blockSize := 128
 
 	soa, err := NewStreamingOverlapAdd(kernel, blockSize)
@@ -185,6 +193,7 @@ func BenchmarkStreamingOverlapAdd(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, _ = soa.ProcessBlock(input)
 	}
@@ -195,6 +204,7 @@ func BenchmarkStreamingOverlapAddTo(b *testing.B) {
 	for i := range kernel {
 		kernel[i] = 1.0 / float64(len(kernel))
 	}
+
 	blockSize := 128
 
 	soa, err := NewStreamingOverlapAdd(kernel, blockSize)
@@ -204,12 +214,14 @@ func BenchmarkStreamingOverlapAddTo(b *testing.B) {
 
 	input := make([]float64, blockSize)
 	output := make([]float64, blockSize)
+
 	for i := range input {
 		input[i] = math.Sin(float64(i) * 0.1)
 	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_ = soa.ProcessBlockTo(output, input)
 	}
@@ -246,6 +258,7 @@ func TestStreamingOverlapAddErrors(t *testing.T) {
 
 		// Wrong size input
 		wrongInput := []float64{1, 2, 3} // Expected 4
+
 		_, err = soa.ProcessBlock(wrongInput)
 		if err == nil {
 			t.Error("expected error for wrong input size")
@@ -260,6 +273,7 @@ func TestStreamingOverlapAddErrors(t *testing.T) {
 
 		input := []float64{1, 2, 3, 4}
 		wrongOutput := []float64{0, 0, 0} // Expected 4
+
 		err = soa.ProcessBlockTo(wrongOutput, input)
 		if err == nil {
 			t.Error("expected error for wrong output size")
@@ -303,6 +317,7 @@ func TestStreamingOverlapAddDiracDelta(t *testing.T) {
 	}
 
 	input := []float64{1, 2, 3, 4, 5, 6, 7, 8}
+
 	output, err := soa.ProcessBlock(input)
 	if err != nil {
 		t.Fatalf("ProcessBlock failed: %v", err)
@@ -320,10 +335,12 @@ func TestStreamingOverlapAddDiracDelta(t *testing.T) {
 func TestStreamingOverlapAddLongKernel(t *testing.T) {
 	// Kernel longer than block size with slower decay
 	kernel := make([]float64, 256)
+
 	kernel[0] = 1.0
 	for i := 1; i < len(kernel); i++ {
 		kernel[i] = 0.95 * kernel[i-1] // Slower exponential decay
 	}
+
 	blockSize := 64
 
 	soa, err := NewStreamingOverlapAdd(kernel, blockSize)
@@ -349,6 +366,7 @@ func TestStreamingOverlapAddLongKernel(t *testing.T) {
 	// With kernel length 256 and block size 64, we expect tail for at least 3 blocks
 	for i := 0; i < 3; i++ {
 		zeros := make([]float64, blockSize)
+
 		out, err := soa.ProcessBlock(zeros)
 		if err != nil {
 			t.Fatalf("ProcessBlock %d failed: %v", i, err)
@@ -360,6 +378,7 @@ func TestStreamingOverlapAddLongKernel(t *testing.T) {
 				maxVal = math.Abs(v)
 			}
 		}
+
 		if maxVal < 1e-6 {
 			t.Errorf("Block %d: expected stronger tail from long kernel, got max=%e", i, maxVal)
 		}
@@ -379,6 +398,7 @@ func TestStreamingOverlapAddContinuity(t *testing.T) {
 	// Generate continuous sine wave
 	numBlocks := 8
 	totalSamples := blockSize * numBlocks
+
 	fullSignal := make([]float64, totalSamples)
 	for i := range fullSignal {
 		fullSignal[i] = math.Sin(float64(i) * 0.2)
@@ -386,12 +406,15 @@ func TestStreamingOverlapAddContinuity(t *testing.T) {
 
 	// Process in blocks
 	streamOutput := make([]float64, 0, totalSamples)
+
 	for i := 0; i < numBlocks; i++ {
 		block := fullSignal[i*blockSize : (i+1)*blockSize]
+
 		out, err := soa.ProcessBlock(block)
 		if err != nil {
 			t.Fatalf("Block %d failed: %v", i, err)
 		}
+
 		streamOutput = append(streamOutput, out...)
 	}
 

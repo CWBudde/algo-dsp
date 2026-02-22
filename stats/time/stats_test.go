@@ -11,12 +11,15 @@ func almostEqual(a, b, tol float64) bool {
 	if math.IsInf(a, -1) && math.IsInf(b, -1) {
 		return true
 	}
+
 	if math.IsInf(a, 1) && math.IsInf(b, 1) {
 		return true
 	}
+
 	if math.IsNaN(a) && math.IsNaN(b) {
 		return true
 	}
+
 	return math.Abs(a-b) <= tol
 }
 
@@ -25,10 +28,12 @@ func almostEqual(a, b, tol float64) bool {
 func generateSine(amplitude, freq, sampleRate float64, numCycles int) []float64 {
 	samplesPerCycle := int(sampleRate / freq)
 	n := samplesPerCycle * numCycles
+
 	out := make([]float64, n)
 	for i := range out {
 		out[i] = amplitude * math.Sin(2*math.Pi*freq*float64(i)/sampleRate)
 	}
+
 	return out
 }
 
@@ -38,6 +43,7 @@ func generateDC(value float64, length int) []float64 {
 	for i := range out {
 		out[i] = value
 	}
+
 	return out
 }
 
@@ -51,6 +57,7 @@ func generateSquare(val float64, length int) []float64 {
 			out[i] = -val
 		}
 	}
+
 	return out
 }
 
@@ -60,6 +67,7 @@ func generateUniform(n int) []float64 {
 	for i := range out {
 		out[i] = -1 + 2*float64(i)/float64(n-1)
 	}
+
 	return out
 }
 
@@ -70,39 +78,51 @@ func TestCalculate_DCSignal(t *testing.T) {
 	if s.Length != 1000 {
 		t.Errorf("Length: got %d, want 1000", s.Length)
 	}
+
 	if !almostEqual(s.DC, 1.0, tolerance) {
 		t.Errorf("DC: got %g, want 1.0", s.DC)
 	}
+
 	if !almostEqual(s.RMS, 1.0, tolerance) {
 		t.Errorf("RMS: got %g, want 1.0", s.RMS)
 	}
+
 	if !almostEqual(s.Peak, 1.0, tolerance) {
 		t.Errorf("Peak: got %g, want 1.0", s.Peak)
 	}
+
 	if !almostEqual(s.CrestFactor, 1.0, tolerance) {
 		t.Errorf("CrestFactor: got %g, want 1.0", s.CrestFactor)
 	}
+
 	if s.ZeroCrossings != 0 {
 		t.Errorf("ZeroCrossings: got %d, want 0", s.ZeroCrossings)
 	}
+
 	if !almostEqual(s.Variance, 0, tolerance) {
 		t.Errorf("Variance: got %g, want 0", s.Variance)
 	}
+
 	if !almostEqual(s.Skewness, 0, tolerance) {
 		t.Errorf("Skewness: got %g, want 0", s.Skewness)
 	}
+
 	if !almostEqual(s.Max, 1.0, tolerance) {
 		t.Errorf("Max: got %g, want 1.0", s.Max)
 	}
+
 	if !almostEqual(s.Min, 1.0, tolerance) {
 		t.Errorf("Min: got %g, want 1.0", s.Min)
 	}
+
 	if !almostEqual(s.Range, 0, tolerance) {
 		t.Errorf("Range: got %g, want 0", s.Range)
 	}
+
 	if !almostEqual(s.Energy, 1000, tolerance) {
 		t.Errorf("Energy: got %g, want 1000", s.Energy)
 	}
+
 	if !almostEqual(s.Power, 1.0, tolerance) {
 		t.Errorf("Power: got %g, want 1.0", s.Power)
 	}
@@ -110,9 +130,11 @@ func TestCalculate_DCSignal(t *testing.T) {
 	if !almostEqual(s.DC_dB, 0, tolerance) {
 		t.Errorf("DC_dB: got %g, want 0", s.DC_dB)
 	}
+
 	if !almostEqual(s.RMS_dB, 0, tolerance) {
 		t.Errorf("RMS_dB: got %g, want 0", s.RMS_dB)
 	}
+
 	if !almostEqual(s.CrestFactor_dB, 0, tolerance) {
 		t.Errorf("CrestFactor_dB: got %g, want 0", s.CrestFactor_dB)
 	}
@@ -127,6 +149,7 @@ func TestCalculate_SineWave(t *testing.T) {
 	if !almostEqual(s.RMS, expectedRMS, 1e-6) {
 		t.Errorf("RMS: got %g, want %g", s.RMS, expectedRMS)
 	}
+
 	if !almostEqual(s.DC, 0, 1e-10) {
 		t.Errorf("DC: got %g, want ~0", s.DC)
 	}
@@ -134,6 +157,7 @@ func TestCalculate_SineWave(t *testing.T) {
 	if !almostEqual(s.Peak, 1.0, 1e-3) {
 		t.Errorf("Peak: got %g, want ~1.0", s.Peak)
 	}
+
 	expectedCrest := 1.0 / expectedRMS
 	if !almostEqual(s.CrestFactor, expectedCrest, 1e-3) {
 		t.Errorf("CrestFactor: got %g, want %g", s.CrestFactor, expectedCrest)
@@ -162,21 +186,27 @@ func TestCalculate_SquareWave(t *testing.T) {
 	if !almostEqual(s.DC, 0, tolerance) {
 		t.Errorf("DC: got %g, want 0", s.DC)
 	}
+
 	if !almostEqual(s.RMS, 1.0, tolerance) {
 		t.Errorf("RMS: got %g, want 1.0", s.RMS)
 	}
+
 	if !almostEqual(s.Peak, 1.0, tolerance) {
 		t.Errorf("Peak: got %g, want 1.0", s.Peak)
 	}
+
 	if !almostEqual(s.CrestFactor, 1.0, tolerance) {
 		t.Errorf("CrestFactor: got %g, want 1.0", s.CrestFactor)
 	}
+
 	if !almostEqual(s.Max, 1.0, tolerance) {
 		t.Errorf("Max: got %g, want 1.0", s.Max)
 	}
+
 	if !almostEqual(s.Min, -1.0, tolerance) {
 		t.Errorf("Min: got %g, want -1.0", s.Min)
 	}
+
 	if !almostEqual(s.Range, 2.0, tolerance) {
 		t.Errorf("Range: got %g, want 2.0", s.Range)
 	}
@@ -196,24 +226,31 @@ func TestCalculate_EmptySignal(t *testing.T) {
 	if s.Length != 0 {
 		t.Errorf("Length: got %d, want 0", s.Length)
 	}
+
 	if s.DC != 0 {
 		t.Errorf("DC: got %g, want 0", s.DC)
 	}
+
 	if s.RMS != 0 {
 		t.Errorf("RMS: got %g, want 0", s.RMS)
 	}
+
 	if !math.IsInf(s.DC_dB, -1) {
 		t.Errorf("DC_dB: got %g, want -Inf", s.DC_dB)
 	}
+
 	if !math.IsInf(s.RMS_dB, -1) {
 		t.Errorf("RMS_dB: got %g, want -Inf", s.RMS_dB)
 	}
+
 	if !math.IsInf(s.Peak_dB, -1) {
 		t.Errorf("Peak_dB: got %g, want -Inf", s.Peak_dB)
 	}
+
 	if !math.IsInf(s.Range_dB, -1) {
 		t.Errorf("Range_dB: got %g, want -Inf", s.Range_dB)
 	}
+
 	if !math.IsInf(s.CrestFactor_dB, -1) {
 		t.Errorf("CrestFactor_dB: got %g, want -Inf", s.CrestFactor_dB)
 	}
@@ -225,21 +262,27 @@ func TestCalculate_SingleSample(t *testing.T) {
 	if s.Length != 1 {
 		t.Errorf("Length: got %d, want 1", s.Length)
 	}
+
 	if !almostEqual(s.DC, 3.5, tolerance) {
 		t.Errorf("DC: got %g, want 3.5", s.DC)
 	}
+
 	if !almostEqual(s.RMS, 3.5, tolerance) {
 		t.Errorf("RMS: got %g, want 3.5", s.RMS)
 	}
+
 	if !almostEqual(s.Peak, 3.5, tolerance) {
 		t.Errorf("Peak: got %g, want 3.5", s.Peak)
 	}
+
 	if !almostEqual(s.CrestFactor, 1.0, tolerance) {
 		t.Errorf("CrestFactor: got %g, want 1.0", s.CrestFactor)
 	}
+
 	if s.ZeroCrossings != 0 {
 		t.Errorf("ZeroCrossings: got %d, want 0", s.ZeroCrossings)
 	}
+
 	if !almostEqual(s.Variance, 0, tolerance) {
 		t.Errorf("Variance: got %g, want 0", s.Variance)
 	}
@@ -252,21 +295,27 @@ func TestCalculate_ZeroSignal(t *testing.T) {
 	if !almostEqual(s.DC, 0, tolerance) {
 		t.Errorf("DC: got %g, want 0", s.DC)
 	}
+
 	if !almostEqual(s.RMS, 0, tolerance) {
 		t.Errorf("RMS: got %g, want 0", s.RMS)
 	}
+
 	if !almostEqual(s.CrestFactor, 0, tolerance) {
 		t.Errorf("CrestFactor: got %g, want 0", s.CrestFactor)
 	}
+
 	if !almostEqual(s.CrestFactor_dB, 0, tolerance) {
 		t.Errorf("CrestFactor_dB: got %g, want 0", s.CrestFactor_dB)
 	}
+
 	if !math.IsInf(s.DC_dB, -1) {
 		t.Errorf("DC_dB: got %g, want -Inf", s.DC_dB)
 	}
+
 	if !math.IsInf(s.RMS_dB, -1) {
 		t.Errorf("RMS_dB: got %g, want -Inf", s.RMS_dB)
 	}
+
 	if !math.IsInf(s.Peak_dB, -1) {
 		t.Errorf("Peak_dB: got %g, want -Inf", s.Peak_dB)
 	}
@@ -303,15 +352,19 @@ func TestCalculate_MaxMinPositions(t *testing.T) {
 	if s.MaxPos != 5 {
 		t.Errorf("MaxPos: got %d, want 5", s.MaxPos)
 	}
+
 	if s.MinPos != 4 {
 		t.Errorf("MinPos: got %d, want 4", s.MinPos)
 	}
+
 	if !almostEqual(s.Max, 5, tolerance) {
 		t.Errorf("Max: got %g, want 5", s.Max)
 	}
+
 	if !almostEqual(s.Min, -4, tolerance) {
 		t.Errorf("Min: got %g, want -4", s.Min)
 	}
+
 	if !almostEqual(s.Peak, 5, tolerance) {
 		t.Errorf("Peak: got %g, want 5", s.Peak)
 	}
@@ -325,9 +378,11 @@ func TestCalculate_dBValues(t *testing.T) {
 	if !almostEqual(s.DC_dB, wantdB, tolerance) {
 		t.Errorf("DC_dB: got %g, want %g", s.DC_dB, wantdB)
 	}
+
 	if !almostEqual(s.RMS_dB, wantdB, tolerance) {
 		t.Errorf("RMS_dB: got %g, want %g", s.RMS_dB, wantdB)
 	}
+
 	if !almostEqual(s.Peak_dB, wantdB, tolerance) {
 		t.Errorf("Peak_dB: got %g, want %g", s.Peak_dB, wantdB)
 	}
@@ -469,12 +524,15 @@ func TestMoments(t *testing.T) {
 		if !almostEqual(mean, 5.0, tolerance) {
 			t.Errorf("mean: got %g, want 5.0", mean)
 		}
+
 		if !almostEqual(variance, 0, tolerance) {
 			t.Errorf("variance: got %g, want 0", variance)
 		}
+
 		if !almostEqual(skewness, 0, tolerance) {
 			t.Errorf("skewness: got %g, want 0", skewness)
 		}
+
 		if !almostEqual(kurtosis, 0, tolerance) {
 			t.Errorf("kurtosis: got %g, want 0", kurtosis)
 		}
@@ -487,12 +545,15 @@ func TestMoments(t *testing.T) {
 		if !almostEqual(mean, 0, 1e-10) {
 			t.Errorf("mean: got %g, want ~0", mean)
 		}
+
 		if !almostEqual(variance, 1.0/3.0, 1e-4) {
 			t.Errorf("variance: got %g, want %g", variance, 1.0/3.0)
 		}
+
 		if !almostEqual(skewness, 0, 1e-4) {
 			t.Errorf("skewness: got %g, want ~0", skewness)
 		}
+
 		if !almostEqual(kurtosis, -6.0/5.0, 1e-3) {
 			t.Errorf("kurtosis: got %g, want %g", kurtosis, -6.0/5.0)
 		}
@@ -506,12 +567,15 @@ func TestMoments(t *testing.T) {
 		if !almostEqual(mean, s.DC, tolerance) {
 			t.Errorf("mean mismatch: Moments=%g, Calculate=%g", mean, s.DC)
 		}
+
 		if !almostEqual(variance, s.Variance, tolerance) {
 			t.Errorf("variance mismatch: Moments=%g, Calculate=%g", variance, s.Variance)
 		}
+
 		if !almostEqual(skewness, s.Skewness, tolerance) {
 			t.Errorf("skewness mismatch: Moments=%g, Calculate=%g", skewness, s.Skewness)
 		}
+
 		if !almostEqual(kurtosis, s.Kurtosis, tolerance) {
 			t.Errorf("kurtosis mismatch: Moments=%g, Calculate=%g", kurtosis, s.Kurtosis)
 		}
@@ -585,6 +649,7 @@ func TestStreamingStats_MatchesCalculate(t *testing.T) {
 					if end > len(signal) {
 						end = len(signal)
 					}
+
 					ss.Update(signal[i:end])
 				}
 
@@ -602,6 +667,7 @@ func TestStreamingStats_Empty(t *testing.T) {
 	if s.Length != 0 {
 		t.Errorf("Length: got %d, want 0", s.Length)
 	}
+
 	if !math.IsInf(s.DC_dB, -1) {
 		t.Errorf("DC_dB: got %g, want -Inf", s.DC_dB)
 	}
@@ -619,10 +685,12 @@ func TestStreamingStats_Reset(t *testing.T) {
 
 	// Use after reset.
 	ss.Update([]float64{10})
+
 	s = ss.Result()
 	if s.Length != 1 {
 		t.Errorf("after Reset+Update, Length: got %d, want 1", s.Length)
 	}
+
 	if !almostEqual(s.DC, 10, tolerance) {
 		t.Errorf("after Reset+Update, DC: got %g, want 10", s.DC)
 	}
@@ -646,6 +714,7 @@ func TestStreamingStats_SampleBySample(t *testing.T) {
 	for _, x := range signal {
 		ss.Update([]float64{x})
 	}
+
 	got := ss.Result()
 
 	compareStats(t, got, expected)
@@ -658,18 +727,23 @@ func compareStats(t *testing.T, got, want Stats) {
 	if got.Length != want.Length {
 		t.Errorf("Length: got %d, want %d", got.Length, want.Length)
 	}
+
 	checkFloat(t, "DC", got.DC, want.DC)
 	checkFloat(t, "DC_dB", got.DC_dB, want.DC_dB)
 	checkFloat(t, "RMS", got.RMS, want.RMS)
 	checkFloat(t, "RMS_dB", got.RMS_dB, want.RMS_dB)
 	checkFloat(t, "Max", got.Max, want.Max)
+
 	if got.MaxPos != want.MaxPos {
 		t.Errorf("MaxPos: got %d, want %d", got.MaxPos, want.MaxPos)
 	}
+
 	checkFloat(t, "Min", got.Min, want.Min)
+
 	if got.MinPos != want.MinPos {
 		t.Errorf("MinPos: got %d, want %d", got.MinPos, want.MinPos)
 	}
+
 	checkFloat(t, "Peak", got.Peak, want.Peak)
 	checkFloat(t, "Peak_dB", got.Peak_dB, want.Peak_dB)
 	checkFloat(t, "Range", got.Range, want.Range)
@@ -678,9 +752,11 @@ func compareStats(t *testing.T, got, want Stats) {
 	checkFloat(t, "CrestFactor_dB", got.CrestFactor_dB, want.CrestFactor_dB)
 	checkFloat(t, "Energy", got.Energy, want.Energy)
 	checkFloat(t, "Power", got.Power, want.Power)
+
 	if got.ZeroCrossings != want.ZeroCrossings {
 		t.Errorf("ZeroCrossings: got %d, want %d", got.ZeroCrossings, want.ZeroCrossings)
 	}
+
 	checkFloat(t, "Variance", got.Variance, want.Variance)
 	checkFloat(t, "Skewness", got.Skewness, want.Skewness)
 	checkFloat(t, "Kurtosis", got.Kurtosis, want.Kurtosis)
@@ -688,6 +764,7 @@ func compareStats(t *testing.T, got, want Stats) {
 
 func checkFloat(t *testing.T, name string, got, want float64) {
 	t.Helper()
+
 	if !almostEqual(got, want, tolerance) {
 		t.Errorf("%s: got %g, want %g", name, got, want)
 	}
@@ -698,12 +775,15 @@ func itoa(n int) string {
 	if n == 0 {
 		return "0"
 	}
+
 	buf := [20]byte{}
+
 	i := len(buf)
 	for n > 0 {
 		i--
 		buf[i] = byte('0' + n%10)
 		n /= 10
 	}
+
 	return string(buf[i:])
 }

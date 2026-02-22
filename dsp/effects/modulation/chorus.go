@@ -50,6 +50,7 @@ func NewChorus() (*Chorus, error) {
 	if err := c.reconfigureDelayLine(); err != nil {
 		return nil, err
 	}
+
 	return c, nil
 }
 
@@ -58,7 +59,9 @@ func (c *Chorus) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("chorus sample rate must be > 0: %f", sampleRate)
 	}
+
 	c.sampleRate = sampleRate
+
 	return c.reconfigureDelayLine()
 }
 
@@ -67,7 +70,9 @@ func (c *Chorus) SetSpeedHz(speedHz float64) error {
 	if speedHz <= 0 || math.IsNaN(speedHz) || math.IsInf(speedHz, 0) {
 		return fmt.Errorf("chorus speed must be > 0: %f", speedHz)
 	}
+
 	c.speedHz = speedHz
+
 	return nil
 }
 
@@ -76,7 +81,9 @@ func (c *Chorus) SetDepth(depth float64) error {
 	if depth < 0 || math.IsNaN(depth) || math.IsInf(depth, 0) {
 		return fmt.Errorf("chorus depth must be >= 0 and finite: %f", depth)
 	}
+
 	c.depthSeconds = depth
+
 	return c.reconfigureDelayLine()
 }
 
@@ -85,7 +92,9 @@ func (c *Chorus) SetBaseDelay(baseDelay float64) error {
 	if baseDelay < minChorusDelaySeconds || math.IsNaN(baseDelay) || math.IsInf(baseDelay, 0) {
 		return fmt.Errorf("chorus base delay must be >= %f: %f", minChorusDelaySeconds, baseDelay)
 	}
+
 	c.baseDelaySeconds = baseDelay
+
 	return c.reconfigureDelayLine()
 }
 
@@ -94,7 +103,9 @@ func (c *Chorus) SetStages(stages int) error {
 	if stages <= 0 {
 		return fmt.Errorf("chorus stages must be > 0: %d", stages)
 	}
+
 	c.stages = stages
+
 	return nil
 }
 
@@ -103,7 +114,9 @@ func (c *Chorus) SetMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("chorus mix must be in [0,1]: %f", mix)
 	}
+
 	c.mix = mix
+
 	return nil
 }
 
@@ -112,6 +125,7 @@ func (c *Chorus) Reset() {
 	for i := range c.delayLine {
 		c.delayLine[i] = 0
 	}
+
 	c.write = 0
 	c.lfoPhase = 0
 }
@@ -119,6 +133,7 @@ func (c *Chorus) Reset() {
 // ProcessSample processes one sample.
 func (c *Chorus) ProcessSample(input float64) float64 {
 	c.delayLine[c.write] = input
+
 	c.write++
 	if c.write >= len(c.delayLine) {
 		c.write = 0
@@ -128,6 +143,7 @@ func (c *Chorus) ProcessSample(input float64) float64 {
 	depthSamples := c.depthSeconds * c.sampleRate
 
 	wetSum := 0.0
+
 	stageCount := float64(c.stages)
 	for i := 0; i < c.stages; i++ {
 		phaseOffset := (2 * math.Pi * float64(i)) / stageCount
@@ -135,6 +151,7 @@ func (c *Chorus) ProcessSample(input float64) float64 {
 		delay := baseDelaySamples + depthSamples*mod
 		wetSum += c.sampleFractionalDelay(delay)
 	}
+
 	wet := wetSum / stageCount
 
 	c.lfoPhase += 2 * math.Pi * c.speedHz / c.sampleRate
@@ -174,9 +191,11 @@ func (c *Chorus) reconfigureDelayLine() error {
 	if c.sampleRate <= 0 {
 		return fmt.Errorf("chorus sample rate must be > 0: %f", c.sampleRate)
 	}
+
 	if c.baseDelaySeconds < minChorusDelaySeconds {
 		return fmt.Errorf("chorus base delay must be >= %f: %f", minChorusDelaySeconds, c.baseDelaySeconds)
 	}
+
 	if c.depthSeconds < 0 {
 		return fmt.Errorf("chorus depth must be >= 0: %f", c.depthSeconds)
 	}
@@ -185,6 +204,7 @@ func (c *Chorus) reconfigureDelayLine() error {
 	if neededMax < 4 {
 		neededMax = 4
 	}
+
 	if neededMax == len(c.delayLine) {
 		return nil
 	}
@@ -201,15 +221,18 @@ func (c *Chorus) reconfigureDelayLine() error {
 		if copyCount > len(c.delayLine) {
 			copyCount = len(c.delayLine)
 		}
+
 		for i := 0; i < copyCount; i++ {
 			src := oldWrite - 1 - i
 			if src < 0 {
 				src += len(old)
 			}
+
 			dst := c.write - 1 - i
 			if dst < 0 {
 				dst += len(c.delayLine)
 			}
+
 			c.delayLine[dst] = old[src]
 		}
 	}
@@ -221,6 +244,7 @@ func (c *Chorus) sampleFractionalDelay(delay float64) float64 {
 	if delay < 0 {
 		delay = 0
 	}
+
 	maxDelay := float64(c.maxDelay)
 	if delay > maxDelay {
 		delay = maxDelay
@@ -233,6 +257,7 @@ func (c *Chorus) sampleFractionalDelay(delay float64) float64 {
 	x0 := c.sampleDelayInt(p)
 	x1 := c.sampleDelayInt(p + 1)
 	x2 := c.sampleDelayInt(p + 2)
+
 	return hermite4(t, xm1, x0, x1, x2)
 }
 
@@ -240,10 +265,12 @@ func (c *Chorus) sampleDelayInt(delay int) float64 {
 	if delay < 0 || delay >= len(c.delayLine) {
 		return 0
 	}
+
 	idx := c.write - 1 - delay
 	if idx < 0 {
 		idx += len(c.delayLine)
 	}
+
 	return c.delayLine[idx]
 }
 
@@ -252,6 +279,7 @@ func hermite4(t, xm1, x0, x1, x2 float64) float64 {
 	c1 := 0.5 * (x1 - xm1)
 	c2 := xm1 - 2.5*x0 + 2*x1 - 0.5*x2
 	c3 := 0.5*(x2-xm1) + 1.5*(x0-x1)
+
 	return ((c3*t+c2)*t+c1)*t + c0
 }
 
@@ -259,5 +287,6 @@ func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}
+
 	return b
 }

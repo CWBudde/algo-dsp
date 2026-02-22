@@ -61,6 +61,7 @@ func NewPitchShifter(sampleRate float64) (*PitchShifter, error) {
 	if !isFinitePositive(sampleRate) {
 		return nil, fmt.Errorf("pitch shifter sample rate must be positive and finite: %f", sampleRate)
 	}
+
 	p := &PitchShifter{
 		sampleRate: sampleRate,
 		pitchRatio: defaultPitchShifterRatio,
@@ -71,6 +72,7 @@ func NewPitchShifter(sampleRate float64) (*PitchShifter, error) {
 	if err := p.rebuild(); err != nil {
 		return nil, err
 	}
+
 	return p, nil
 }
 
@@ -97,13 +99,17 @@ func (p *PitchShifter) SetSampleRate(sampleRate float64) error {
 	if !isFinitePositive(sampleRate) {
 		return fmt.Errorf("pitch shifter sample rate must be positive and finite: %f", sampleRate)
 	}
+
 	old := p.sampleRate
+
 	p.sampleRate = sampleRate
 	if err := p.rebuild(); err != nil {
 		p.sampleRate = old
 		_ = p.rebuild()
+
 		return err
 	}
+
 	return nil
 }
 
@@ -113,7 +119,9 @@ func (p *PitchShifter) SetPitchRatio(ratio float64) error {
 		return fmt.Errorf("pitch shifter ratio must be in [%f, %f]: %f",
 			minPitchShifterRatio, maxPitchShifterRatio, ratio)
 	}
+
 	p.pitchRatio = ratio
+
 	return nil
 }
 
@@ -122,10 +130,12 @@ func (p *PitchShifter) SetPitchSemitones(semitones float64) error {
 	if math.IsNaN(semitones) || math.IsInf(semitones, 0) {
 		return fmt.Errorf("pitch shifter semitones must be finite: %f", semitones)
 	}
+
 	ratio := math.Pow(2, semitones/12.0)
 	if err := p.SetPitchRatio(ratio); err != nil {
 		return fmt.Errorf("pitch shifter semitones out of range: %w", err)
 	}
+
 	return nil
 }
 
@@ -136,13 +146,17 @@ func (p *PitchShifter) SetSequence(ms float64) error {
 		return fmt.Errorf("pitch shifter sequence must be in [%f, %f] ms: %f",
 			minPitchShifterSequenceMs, maxPitchShifterSequenceMs, ms)
 	}
+
 	old := p.sequenceMs
+
 	p.sequenceMs = ms
 	if err := p.rebuild(); err != nil {
 		p.sequenceMs = old
 		_ = p.rebuild()
+
 		return err
 	}
+
 	return nil
 }
 
@@ -153,13 +167,17 @@ func (p *PitchShifter) SetOverlap(ms float64) error {
 		return fmt.Errorf("pitch shifter overlap must be in [%f, %f] ms: %f",
 			minPitchShifterOverlapMs, maxPitchShifterOverlapMs, ms)
 	}
+
 	old := p.overlapMs
+
 	p.overlapMs = ms
 	if err := p.rebuild(); err != nil {
 		p.overlapMs = old
 		_ = p.rebuild()
+
 		return err
 	}
+
 	return nil
 }
 
@@ -170,13 +188,17 @@ func (p *PitchShifter) SetSearch(ms float64) error {
 		return fmt.Errorf("pitch shifter search must be in [%f, %f] ms: %f",
 			minPitchShifterSearchMs, maxPitchShifterSearchMs, ms)
 	}
+
 	old := p.searchMs
+
 	p.searchMs = ms
 	if err := p.rebuild(); err != nil {
 		p.searchMs = old
 		_ = p.rebuild()
+
 		return err
 	}
+
 	return nil
 }
 
@@ -190,13 +212,16 @@ func (p *PitchShifter) Process(input []float64) []float64 {
 	if len(input) == 0 {
 		return nil
 	}
+
 	if math.Abs(p.pitchRatio-1) <= pitchShifterIdentityEps {
 		out := make([]float64, len(input))
 		copy(out, input)
+
 		return out
 	}
 
 	stretched := p.timeStretch(input)
+
 	return pitchResampleHermite(stretched, len(input))
 }
 
@@ -205,6 +230,7 @@ func (p *PitchShifter) ProcessInPlace(buf []float64) {
 	if len(buf) == 0 {
 		return
 	}
+
 	out := p.Process(buf)
 	copy(buf, out)
 }
@@ -213,6 +239,7 @@ func (p *PitchShifter) rebuild() error {
 	if !isFinitePositive(p.sampleRate) {
 		return fmt.Errorf("pitch shifter sample rate must be positive and finite: %f", p.sampleRate)
 	}
+
 	if p.overlapMs >= p.sequenceMs {
 		return fmt.Errorf("pitch shifter overlap must be smaller than sequence: overlap=%f sequence=%f",
 			p.overlapMs, p.sequenceMs)
@@ -222,14 +249,17 @@ func (p *PitchShifter) rebuild() error {
 	if p.sequenceLen < 32 {
 		p.sequenceLen = 32
 	}
+
 	p.overlapLen = int(math.Round(p.overlapMs * 0.001 * p.sampleRate))
 	if p.overlapLen < 8 {
 		p.overlapLen = 8
 	}
+
 	if p.overlapLen >= p.sequenceLen {
 		return fmt.Errorf("pitch shifter overlap too large for sequence: overlap=%d sequence=%d",
 			p.overlapLen, p.sequenceLen)
 	}
+
 	p.stepOut = p.sequenceLen - p.overlapLen
 	if p.stepOut < 4 {
 		return fmt.Errorf("pitch shifter output hop too small: %d", p.stepOut)
@@ -241,18 +271,22 @@ func (p *PitchShifter) rebuild() error {
 	}
 
 	p.fadeIn = make([]float64, p.overlapLen)
+
 	p.fadeOut = make([]float64, p.overlapLen)
 	if p.overlapLen == 1 {
 		p.fadeIn[0] = 1
 		p.fadeOut[0] = 0
+
 		return nil
 	}
+
 	for i := range p.overlapLen {
 		t := float64(i) / float64(p.overlapLen-1)
 		in := 0.5 - 0.5*math.Cos(math.Pi*t)
 		p.fadeIn[i] = in
 		p.fadeOut[i] = 1 - in
 	}
+
 	return nil
 }
 
@@ -274,6 +308,7 @@ func (p *PitchShifter) timeStretch(input []float64) []float64 {
 	for i := 0; i < p.sequenceLen; i++ {
 		out[i] = pitchSampleZero(input, i)
 	}
+
 	outLen := p.sequenceLen
 	prevStart := 0
 	nextNominal := nominalInStep
@@ -294,6 +329,7 @@ func (p *PitchShifter) timeStretch(input []float64) []float64 {
 			yNew := pitchSampleZero(input, candStart+i)
 			out[outStart+i] = yOld*p.fadeOut[i] + yNew*p.fadeIn[i]
 		}
+
 		writePos := outStart + p.overlapLen
 		for i := p.overlapLen; i < p.sequenceLen; i++ {
 			out[writePos+i-p.overlapLen] = pitchSampleZero(input, candStart+i)
@@ -311,8 +347,10 @@ func (p *PitchShifter) timeStretch(input []float64) []float64 {
 	if targetLen <= len(out) {
 		return out[:targetLen]
 	}
+
 	padded := make([]float64, targetLen)
 	copy(padded, out)
+
 	return padded
 }
 
@@ -331,11 +369,13 @@ func (p *PitchShifter) findBestOverlap(ref, input []float64, predicted int) int 
 	for cand := searchStart; cand <= searchEnd; cand++ {
 		dot := 0.0
 		candEnergy := pitchShifterTiny
+
 		for i, rv := range ref {
 			cv := pitchSampleZero(input, cand+i)
 			dot += rv * cv
 			candEnergy += cv * cv
 		}
+
 		score := dot / math.Sqrt(refEnergy*candEnergy)
 		if score > bestScore {
 			bestScore = score
@@ -356,19 +396,23 @@ func pitchResampleHermite(input []float64, outLen int) []float64 {
 		for i := range out {
 			out[i] = input[0]
 		}
+
 		return out
 	}
+
 	if outLen == 1 {
 		out[0] = input[0]
 		return out
 	}
 
 	step := float64(len(input)-1) / float64(outLen-1)
+
 	pos := 0.0
 	for i := range out {
 		out[i] = pitchSampleHermite(input, pos)
 		pos += step
 	}
+
 	return out
 }
 
@@ -379,6 +423,7 @@ func pitchSampleHermite(input []float64, pos float64) float64 {
 	x0 := pitchSampleClamp(input, idx)
 	x1 := pitchSampleClamp(input, idx+1)
 	x2 := pitchSampleClamp(input, idx+2)
+
 	return interp.Hermite4(frac, xm1, x0, x1, x2)
 }
 
@@ -386,6 +431,7 @@ func pitchSampleZero(x []float64, idx int) float64 {
 	if idx < 0 || idx >= len(x) {
 		return 0
 	}
+
 	return x[idx]
 }
 
@@ -393,12 +439,15 @@ func pitchSampleClamp(x []float64, idx int) float64 {
 	if len(x) == 0 {
 		return 0
 	}
+
 	if idx < 0 {
 		return x[0]
 	}
+
 	if idx >= len(x) {
 		return x[len(x)-1]
 	}
+
 	return x[idx]
 }
 

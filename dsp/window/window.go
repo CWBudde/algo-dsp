@@ -130,6 +130,7 @@ func WithBartlett() Option {
 // WithCustomCoeffs sets cosine-term coefficients for FreeCosine.
 func WithCustomCoeffs(coeffs []float64) Option {
 	copyCoeffs := append([]float64(nil), coeffs...)
+
 	return func(c *config) {
 		c.customCoeffs = copyCoeffs
 	}
@@ -140,7 +141,9 @@ func Generate(t Type, length int, opts ...Option) []float64 {
 	if length <= 0 {
 		return nil
 	}
+
 	cfg := defaultConfig()
+
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&cfg)
@@ -152,7 +155,9 @@ func Generate(t Type, length int, opts ...Option) []float64 {
 		x := samplePosition(i, length, cfg.periodic)
 		out[i] = evalWindow(t, x, cfg)
 	}
+
 	postProcess(out, cfg)
+
 	return out
 }
 
@@ -161,10 +166,12 @@ func Apply(t Type, buf []float64, opts ...Option) {
 	if len(buf) == 0 {
 		return
 	}
+
 	coeffs := Generate(t, len(buf), opts...)
 	if len(coeffs) != len(buf) {
 		return
 	}
+
 	vecmath.MulBlockInPlace(buf, coeffs)
 }
 
@@ -173,6 +180,7 @@ func Info(t Type) Metadata {
 	if m, ok := metadataByType[t]; ok {
 		return m
 	}
+
 	return Metadata{}
 }
 
@@ -201,6 +209,7 @@ func Kaiser(size int, beta float64, opts ...Option) ([]float64, error) {
 	if size <= 0 || beta < 0 {
 		return nil, validateKaiser(size, beta)
 	}
+
 	return Generate(TypeKaiser, size, append(opts, WithAlpha(beta))...), nil
 }
 
@@ -209,6 +218,7 @@ func Tukey(size int, alpha float64, opts ...Option) ([]float64, error) {
 	if size <= 0 || alpha < 0 || alpha > 1 {
 		return nil, validateTukey(size, alpha)
 	}
+
 	return Generate(TypeTukey, size, append(opts, WithAlpha(alpha))...), nil
 }
 
@@ -217,6 +227,7 @@ func Gaussian(size int, alpha float64, opts ...Option) ([]float64, error) {
 	if size <= 0 || alpha <= 0 {
 		return nil, validateGauss(size, alpha)
 	}
+
 	return Generate(TypeGauss, size, append(opts, WithAlpha(alpha))...), nil
 }
 
@@ -230,15 +241,19 @@ func EquivalentNoiseBandwidth(coeffs []float64) (float64, error) {
 	if len(coeffs) == 0 {
 		return 0, errEmptyCoeffs
 	}
+
 	sum := 0.0
 	sumSquares := 0.0
+
 	for _, c := range coeffs {
 		sum += c
 		sumSquares += c * c
 	}
+
 	if sum == 0 {
 		return 0, errZeroCoherentGain
 	}
+
 	return float64(len(coeffs)) * sumSquares / (sum * sum), nil
 }
 
@@ -247,8 +262,10 @@ func ApplyCoefficients(samples, coeffs []float64) ([]float64, error) {
 	if len(samples) != len(coeffs) {
 		return nil, errMismatchedLength
 	}
+
 	out := make([]float64, len(samples))
 	vecmath.MulBlock(out, samples, coeffs)
+
 	return out, nil
 }
 
@@ -257,7 +274,9 @@ func ApplyCoefficientsInPlace(samples, coeffs []float64) error {
 	if len(samples) != len(coeffs) {
 		return errMismatchedLength
 	}
+
 	vecmath.MulBlockInPlace(samples, coeffs)
+
 	return nil
 }
 
@@ -267,16 +286,20 @@ func evalWindow(t Type, x float64, cfg config) float64 {
 		if x >= 0.5 {
 			return 1
 		}
+
 		x *= 2
 	case SlopeRight:
 		if x <= 0.5 {
 			return 1
 		}
+
 		x = 2*x - 1
 	}
+
 	if x < 0 {
 		x = 0
 	}
+
 	if x > 1 {
 		x = 1
 	}
@@ -352,6 +375,7 @@ func evalWindow(t Type, x float64, cfg config) float64 {
 		if len(cfg.customCoeffs) == 0 {
 			return 1
 		}
+
 		return cosineFromCoeffs(x, cfg.customCoeffs)
 	default:
 		return 1
@@ -364,11 +388,13 @@ func postProcess(coeffs []float64, cfg config) {
 			coeffs[i] = 1 - coeffs[i]
 		}
 	}
+
 	if cfg.dcRemoval {
 		sum := 0.0
 		for _, v := range coeffs {
 			sum += v
 		}
+
 		mean := sum / float64(len(coeffs))
 		for i := range coeffs {
 			coeffs[i] -= mean
@@ -378,10 +404,12 @@ func postProcess(coeffs []float64, cfg config) {
 
 func cosineFromCoeffs(x float64, coeffs []float64) float64 {
 	phase := 2 * math.Pi * x
+
 	sum := 0.0
 	for k, c := range coeffs {
 		sum += c * math.Cos(float64(k)*phase)
 	}
+
 	return sum
 }
 
@@ -389,10 +417,12 @@ func samplePosition(n, size int, periodic bool) float64 {
 	if size <= 1 {
 		return 0
 	}
+
 	den := float64(size - 1)
 	if periodic {
 		den = float64(size)
 	}
+
 	return float64(n) / den
 }
 
@@ -400,8 +430,10 @@ func kaiserAt(x, beta float64) float64 {
 	if beta <= 0 {
 		return 1
 	}
+
 	r := 2*x - 1
 	term := math.Sqrt(math.Max(0, 1-r*r))
+
 	return besselI0(beta*term) / besselI0(beta)
 }
 
@@ -409,9 +441,11 @@ func tukeyAt(x, alpha float64) float64 {
 	if alpha <= 0 {
 		return 1
 	}
+
 	if alpha >= 1 {
 		return cosineFromCoeffs(x, hannCoeffs)
 	}
+
 	a := alpha / 2
 	switch {
 	case x < a:
@@ -427,9 +461,11 @@ func triangleAt(x float64, bartlett bool) float64 {
 	if bartlett {
 		return 1 - math.Abs(2*x-1)
 	}
+
 	if x <= 0.5 {
 		return 2 * x
 	}
+
 	return 2 * (1 - x)
 }
 
@@ -437,7 +473,9 @@ func sinc(x float64) float64 {
 	if x == 0 {
 		return 1
 	}
+
 	px := math.Pi * x
+
 	return math.Sin(px) / px
 }
 
@@ -447,9 +485,12 @@ func besselI0(x float64) float64 {
 	if ax < 3.75 {
 		y := x / 3.75
 		y *= y
+
 		return 1.0 + y*(3.5156229+y*(3.0899424+y*(1.2067492+y*(0.2659732+y*(0.0360768+y*0.0045813)))))
 	}
+
 	y := 3.75 / ax
+
 	return (math.Exp(ax) / math.Sqrt(ax)) *
 		(0.39894228 + y*(0.01328592+y*(0.00225319+y*(-0.00157565+y*(0.00916281+y*(-0.02057706+y*(0.02635537+y*(-0.01647633+y*0.00392377))))))))
 }

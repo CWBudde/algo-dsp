@@ -51,5 +51,6 @@ func applyPeakOpts(opts []PeakOption) peakConfig {
 	for _, o := range opts {
 		o(&cfg)
 	}
+
 	return cfg
 }

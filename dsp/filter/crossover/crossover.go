@@ -32,20 +32,24 @@ func New(freq float64, order int, sampleRate float64) (*Crossover, error) {
 	if order <= 0 || order%2 != 0 {
 		return nil, fmt.Errorf("crossover: order must be a positive even integer, got %d", order)
 	}
+
 	if sampleRate <= 0 {
 		return nil, fmt.Errorf("crossover: sample rate must be positive, got %v", sampleRate)
 	}
+
 	if freq <= 0 || freq >= sampleRate/2 {
 		return nil, fmt.Errorf("crossover: frequency must be in (0, %v), got %v", sampleRate/2, freq)
 	}
 
 	lpCoeffs := pass.LinkwitzRileyLP(freq, order, sampleRate)
+
 	var hpCoeffs []biquad.Coefficients
 	if pass.LinkwitzRileyNeedsHPInvert(order) {
 		hpCoeffs = pass.LinkwitzRileyHPInverted(freq, order, sampleRate)
 	} else {
 		hpCoeffs = pass.LinkwitzRileyHP(freq, order, sampleRate)
 	}
+
 	if lpCoeffs == nil || hpCoeffs == nil {
 		return nil, fmt.Errorf("crossover: failed to design LR%d at %.1f Hz", order, freq)
 	}
@@ -73,8 +77,10 @@ func (c *Crossover) ProcessBlock(input, lo, hi []float64) {
 	if n == 0 {
 		return
 	}
+
 	_ = lo[n-1]
 	_ = hi[n-1]
+
 	copy(lo, input)
 	copy(hi, input)
 	c.lp.ProcessBlock(lo)
@@ -129,6 +135,7 @@ func NewMultiBand(freqs []float64, order int, sampleRate float64) (*MultiBand, e
 	if len(freqs) == 0 {
 		return nil, fmt.Errorf("crossover: at least one frequency is required")
 	}
+
 	for i := 1; i < len(freqs); i++ {
 		if freqs[i] <= freqs[i-1] {
 			return nil, fmt.Errorf("crossover: frequencies must be strictly ascending, got %.1f after %.1f", freqs[i], freqs[i-1])
@@ -141,6 +148,7 @@ func NewMultiBand(freqs []float64, order int, sampleRate float64) (*MultiBand, e
 		if err != nil {
 			return nil, fmt.Errorf("crossover: stage %d: %w", i, err)
 		}
+
 		stages[i] = xo
 	}
 
@@ -166,13 +174,16 @@ func (m *MultiBand) Stages() []*Crossover { return m.stages }
 // accuracy of this cascade topology.
 func (m *MultiBand) ProcessSample(x float64) []float64 {
 	out := make([]float64, m.bands)
+
 	remainder := x
 	for i, stage := range m.stages {
 		lo, hi := stage.ProcessSample(remainder)
 		out[i] = lo
 		remainder = hi
 	}
+
 	out[m.bands-1] = remainder
+
 	return out
 }
 
@@ -181,6 +192,7 @@ func (m *MultiBand) ProcessSample(x float64) []float64 {
 // the same length as input.
 func (m *MultiBand) ProcessBlock(input []float64) [][]float64 {
 	n := len(input)
+
 	out := make([][]float64, m.bands)
 	for i := range out {
 		out[i] = make([]float64, n)
@@ -195,7 +207,9 @@ func (m *MultiBand) ProcessBlock(input []float64) [][]float64 {
 		stage.ProcessBlock(remainder, out[i], hi)
 		copy(remainder, hi)
 	}
+
 	copy(out[m.bands-1], remainder)
+
 	return out
 }
 

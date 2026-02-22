@@ -38,6 +38,7 @@ func chebyshev2BWGainDB(gainDB float64) float64 {
 func chebyshev2BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coefficients, error) {
 	G0 := 1.0 // db2Lin(0) is always exactly 1
 	G := db2Lin(gainDB)
+
 	Gb := db2Lin(gbDB)
 	if Gb*Gb == G0*G0 {
 		return nil, ErrInvalidParams
@@ -53,11 +54,13 @@ func chebyshev2BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 	c0 := math.Cos(w0)
 
 	sections := make([]biquad.Coefficients, 0, order)
+
 	L := order / 2
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1.0) / float64(order)
 		ci := math.Cos(math.Pi * ui * 0.5)
 		si := math.Sin(math.Pi * ui * 0.5)
+
 		Di := tb*tb + 2*A*si*tb + A*A + ci*ci
 		if Di == 0 {
 			return nil, ErrInvalidParams
@@ -83,6 +86,7 @@ func chebyshev2BandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffi
 		if err != nil {
 			return nil, err
 		}
+
 		sections = append(sections, biquads...)
 	}
 

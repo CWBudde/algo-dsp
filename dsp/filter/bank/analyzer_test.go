@@ -7,6 +7,7 @@ import (
 
 func TestAnalyzer_PeakNearTone(t *testing.T) {
 	const sr = 48000
+
 	an, err := NewOctaveAnalyzer(3, sr, WithAnalyzerFrequencyRange(100, 10000), WithAnalyzerEnvelopeHz(200))
 	if err != nil {
 		t.Fatalf("NewOctaveAnalyzer error: %v", err)
@@ -14,10 +15,12 @@ func TestAnalyzer_PeakNearTone(t *testing.T) {
 
 	freq := 1000.0
 	n := 4096
+
 	input := make([]float64, n)
 	for i := range input {
 		input[i] = math.Sin(2 * math.Pi * freq * float64(i) / sr)
 	}
+
 	peaks := an.ProcessBlock(input)
 	if len(peaks) == 0 {
 		t.Fatal("expected non-empty peaks")

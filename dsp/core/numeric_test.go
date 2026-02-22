@@ -33,6 +33,7 @@ func TestNearlyEqual(t *testing.T) {
 	if !NearlyEqual(1.0, 1.0+1e-13, 1e-12) {
 		t.Fatal("expected values to be nearly equal")
 	}
+
 	if NearlyEqual(1.0, 1.1, 1e-3) {
 		t.Fatal("expected values to differ")
 	}
@@ -42,9 +43,11 @@ func TestFlushDenormals(t *testing.T) {
 	if got := FlushDenormals(1e-40); got != 0 {
 		t.Fatalf("FlushDenormals(1e-40) = %v, want 0", got)
 	}
+
 	if got := FlushDenormals(-1e-40); got != 0 {
 		t.Fatalf("FlushDenormals(-1e-40) = %v, want 0", got)
 	}
+
 	if got := FlushDenormals(1e-8); got != 1e-8 {
 		t.Fatalf("FlushDenormals(1e-8) = %v, want 1e-8", got)
 	}
@@ -52,13 +55,16 @@ func TestFlushDenormals(t *testing.T) {
 
 func TestDBConversions(t *testing.T) {
 	linear := DBToLinear(-6)
+
 	db := LinearToDB(linear)
 	if !NearlyEqual(db, -6, 1e-10) {
 		t.Fatalf("LinearToDB(DBToLinear(-6)) = %v, want -6", db)
 	}
+
 	if !math.IsInf(LinearToDB(0), -1) {
 		t.Fatal("expected -Inf for zero")
 	}
+
 	if !math.IsNaN(LinearToDB(-1)) {
 		t.Fatal("expected NaN for negative amplitude")
 	}
@@ -80,6 +86,7 @@ func TestDBPowerConversions(t *testing.T) {
 	if !math.IsInf(LinearPowerToDB(0), -1) {
 		t.Fatal("expected -Inf for zero power")
 	}
+
 	if !math.IsNaN(LinearPowerToDB(-1)) {
 		t.Fatal("expected NaN for negative power")
 	}
