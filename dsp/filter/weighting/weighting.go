@@ -100,6 +100,7 @@ func newAWeighting(sr float64) *biquad.Chain {
 		hpFirstOrder(f4, sr),
 	}
 	gain := normalizationGain(coeffs, sr)
+
 	return biquad.NewChain(coeffs, biquad.WithGain(gain))
 }
 
@@ -121,6 +122,7 @@ func newBWeighting(sr float64) *biquad.Chain {
 		hpFirstOrder(f3, sr),
 	}
 	gain := normalizationGain(coeffs, sr)
+
 	return biquad.NewChain(coeffs, biquad.WithGain(gain))
 }
 
@@ -140,6 +142,7 @@ func newCWeighting(sr float64) *biquad.Chain {
 		lpFirstOrder(f5, sr),
 	}
 	gain := normalizationGain(coeffs, sr)
+
 	return biquad.NewChain(coeffs, biquad.WithGain(gain))
 }
 
@@ -161,6 +164,7 @@ func newZWeighting() *biquad.Chain {
 func lpFirstOrder(f, sr float64) biquad.Coefficients {
 	k := math.Tan(math.Pi * f / sr)
 	d := 1 + k
+
 	return biquad.Coefficients{
 		B0: k / d,
 		B1: k / d,
@@ -181,6 +185,7 @@ func hpSecondOrder(f, sr float64) biquad.Coefficients {
 	k := math.Tan(math.Pi * f / sr)
 	k2 := k * k
 	d := 1 + 2*k + k2
+
 	return biquad.Coefficients{
 		B0: 1 / d,
 		B1: -2 / d,
@@ -201,6 +206,7 @@ func hpSecondOrder(f, sr float64) biquad.Coefficients {
 func hpFirstOrder(f, sr float64) biquad.Coefficients {
 	k := math.Tan(math.Pi * f / sr)
 	d := 1 + k
+
 	return biquad.Coefficients{
 		B0: 1 / d,
 		B1: -1 / d,
@@ -215,5 +221,6 @@ func normalizationGain(coeffs []biquad.Coefficients, sr float64) float64 {
 	for i := range coeffs {
 		h *= coeffs[i].Response(1000, sr)
 	}
+
 	return 1 / cmplx.Abs(h)
 }

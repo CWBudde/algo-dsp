@@ -39,6 +39,7 @@ func TestButterworthHighShelf_InvalidParams(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for zero sample rate")
 	}
+
 	_, err = ButterworthHighShelf(48000, 1000, 6, 0)
 	if err == nil {
 		t.Error("expected error for zero order")
@@ -54,9 +55,11 @@ func TestLowShelf_ZeroGain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(sections) != 1 {
 		t.Fatalf("expected 1 passthrough section, got %d", len(sections))
 	}
+
 	mag := cascadeMagnitudeDB(sections, 1000, testSR)
 	if !almostEqual(mag, 0, 1e-10) {
 		t.Errorf("zero gain: mag = %v dB, expected 0", mag)
@@ -68,6 +71,7 @@ func TestHighShelf_ZeroGain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(sections) != 1 {
 		t.Fatalf("expected 1 passthrough section, got %d", len(sections))
 	}
@@ -84,6 +88,7 @@ func TestLowShelf_SectionCount(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			expected := (M + 1) / 2
 			if len(sections) != expected {
 				t.Errorf("order %d: got %d sections, expected %d", M, len(sections), expected)
@@ -101,9 +106,11 @@ func TestLowShelf_Order1_FirstOrderSection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(sections) != 1 {
 		t.Fatalf("expected 1 section, got %d", len(sections))
 	}
+
 	s := sections[0]
 	if s.B2 != 0 || s.A2 != 0 {
 		t.Errorf("M=1 should produce first-order section, but B2=%.6f A2=%.6f", s.B2, s.A2)
@@ -115,6 +122,7 @@ func TestLowShelf_Order3_HasFirstOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(sections) != 2 {
 		t.Fatalf("expected 2 sections, got %d", len(sections))
 	}
@@ -136,6 +144,7 @@ func TestLowShelf_DCGain(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
 			if !almostEqual(dcMag, gainDB, 0.1) {
 				t.Errorf("DC gain = %.4f dB, expected %.4f dB", dcMag, gainDB)
@@ -151,6 +160,7 @@ func TestLowShelf_NyquistGain(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
 			if math.Abs(nyqMag) > 0.1 {
 				t.Errorf("Nyquist gain = %.4f dB, expected ~0 dB", nyqMag)
@@ -170,6 +180,7 @@ func TestLowShelf_CutoffGain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	cutoffMag := cascadeMagnitudeDB(sections, 1000, testSR)
 	if !almostEqual(cutoffMag, expectedDB, 0.2) {
 		t.Errorf("cutoff gain = %.4f dB, expected %.4f dB", cutoffMag, expectedDB)
@@ -187,6 +198,7 @@ func TestHighShelf_NyquistGain(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
 			if !almostEqual(nyqMag, gainDB, 0.2) {
 				t.Errorf("Nyquist gain = %.4f dB, expected %.4f dB", nyqMag, gainDB)
@@ -202,6 +214,7 @@ func TestHighShelf_DCGain(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
 			if math.Abs(dcMag) > 0.1 {
 				t.Errorf("DC gain = %.4f dB, expected ~0 dB", dcMag)
@@ -221,6 +234,7 @@ func TestLowShelf_Stability(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
 		})
 	}
@@ -233,6 +247,7 @@ func TestHighShelf_Stability(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
 		})
 	}
@@ -250,6 +265,7 @@ func TestLowShelf_BoostCutInversion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	cut, err := ButterworthLowShelf(testSR, 1000, -12, 6)
 	if err != nil {
 		t.Fatal(err)
@@ -260,6 +276,7 @@ func TestLowShelf_BoostCutInversion(t *testing.T) {
 		hBoost := cascadeResponse(boost, freq, testSR)
 		hCut := cascadeResponse(cut, freq, testSR)
 		hCombined := hBoost * hCut
+
 		magDB := 20 * math.Log10(cmplx.Abs(hCombined))
 		if math.Abs(magDB) > 0.1 {
 			t.Errorf("freq=%v: boost*cut = %.4f dB, expected ~0 dB", freq, magDB)
@@ -271,6 +288,7 @@ func TestLowShelf_BoostCutInversion(t *testing.T) {
 		hBoost := cascadeResponse(boost, freq, testSR)
 		hCut := cascadeResponse(cut, freq, testSR)
 		hCombined := hBoost * hCut
+
 		magDB := 20 * math.Log10(cmplx.Abs(hCombined))
 		if math.Abs(magDB) > 0.5 {
 			t.Errorf("freq=%v: boost*cut = %.4f dB, expected ~0 dB", freq, magDB)
@@ -283,6 +301,7 @@ func TestHighShelf_BoostCutInversion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	cut, err := ButterworthHighShelf(testSR, 1000, -12, 6)
 	if err != nil {
 		t.Fatal(err)
@@ -292,6 +311,7 @@ func TestHighShelf_BoostCutInversion(t *testing.T) {
 		hBoost := cascadeResponse(boost, freq, testSR)
 		hCut := cascadeResponse(cut, freq, testSR)
 		hCombined := hBoost * hCut
+
 		magDB := 20 * math.Log10(cmplx.Abs(hCombined))
 		if math.Abs(magDB) > 0.5 {
 			t.Errorf("freq=%v: boost*cut = %.4f dB, expected ~0 dB", freq, magDB)
@@ -310,11 +330,14 @@ func TestLowShelf_VariousOrders(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
+
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
 			if !almostEqual(dcMag, 12, 0.1) {
 				t.Errorf("M=%d: DC gain = %.4f dB, expected ~12 dB", M, dcMag)
 			}
+
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
 			if math.Abs(nyqMag) > 0.1 {
 				t.Errorf("M=%d: Nyquist gain = %.4f dB, expected ~0 dB", M, nyqMag)
@@ -334,7 +357,9 @@ func TestLowShelf_VariousFrequencies(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
+
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
 			if !almostEqual(dcMag, 12, 0.1) {
 				t.Errorf("freq=%v: DC gain = %.4f dB, expected ~12 dB", freq, dcMag)
@@ -350,7 +375,9 @@ func TestHighShelf_VariousFrequencies(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
+
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
 			if !almostEqual(nyqMag, 12, 0.2) {
 				t.Errorf("freq=%v: Nyquist gain = %.4f dB, expected ~12 dB", freq, nyqMag)
@@ -370,7 +397,9 @@ func TestLowShelf_ExtremeGains(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
+
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
 			if !almostEqual(dcMag, gainDB, 0.2) {
 				t.Errorf("DC gain = %.4f dB, expected %.4f dB", dcMag, gainDB)
@@ -398,6 +427,7 @@ func TestLowShelf_Monotonic(t *testing.T) {
 			t.Errorf("non-monotonic at %.0f Hz: %.4f dB > %.4f dB (prev)", f, mag, prevMag)
 			break
 		}
+
 		prevMag = mag
 	}
 }
@@ -417,6 +447,7 @@ func TestHighShelf_Monotonic(t *testing.T) {
 			t.Errorf("non-monotonic at %.0f Hz: %.4f dB < %.4f dB (prev)", f, mag, prevMag)
 			break
 		}
+
 		prevMag = mag
 	}
 }
@@ -441,7 +472,9 @@ func TestPaperDesignExample(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
+
 			dcMag := cascadeMagnitudeDB(sections, 1, 48000)
 			if !almostEqual(dcMag, -5, 0.1) {
 				t.Errorf("DC gain = %.4f dB, expected -5 dB", dcMag)

@@ -123,16 +123,19 @@ func (oa *OverlapAdd) Process(input []float64) ([]float64, error) {
 	for blockIdx := 0; blockIdx < numBlocks; blockIdx++ {
 		// Determine block boundaries
 		start := blockIdx * oa.blockSize
+
 		end := start + oa.blockSize
 		if end > len(input) {
 			end = len(input)
 		}
+
 		blockLen := end - start
 
 		// Zero-pad input block to FFT size
 		for i := range oa.inputPadded {
 			oa.inputPadded[i] = 0
 		}
+
 		for i := 0; i < blockLen; i++ {
 			oa.inputPadded[i] = complex(input[start+i], 0)
 		}
@@ -180,6 +183,7 @@ func (oa *OverlapAdd) ProcessTo(output, input []float64) error {
 	}
 
 	copy(output, result)
+
 	return nil
 }
 
@@ -191,8 +195,11 @@ func (oa *OverlapAdd) Reset() {
 // getOverlapAddPool returns the pool for the given FFT size, creating it if needed.
 func getOverlapAddPool(fftSize int) *sync.Pool {
 	overlapAddPoolsMu.RLock()
+
 	pool, ok := overlapAddPools[fftSize]
+
 	overlapAddPoolsMu.RUnlock()
+
 	if ok {
 		return pool
 	}
@@ -211,6 +218,7 @@ func getOverlapAddPool(fftSize int) *sync.Pool {
 		},
 	}
 	overlapAddPools[fftSize] = pool
+
 	return pool
 }
 
@@ -234,6 +242,7 @@ func OverlapAddConvolve(signal, kernel []float64) ([]float64, error) {
 
 	// Get a pooled instance
 	pool := getOverlapAddPool(fftSize)
+
 	oa := pool.Get().(*OverlapAdd)
 	defer pool.Put(oa)
 
@@ -261,6 +270,7 @@ func initOverlapAdd(oa *OverlapAdd, kernel []float64, blockSize, fftSize int) er
 		if err != nil {
 			return fmt.Errorf("conv: failed to create FFT plan: %w", err)
 		}
+
 		oa.plan = plan
 	}
 
@@ -273,6 +283,7 @@ func initOverlapAdd(oa *OverlapAdd, kernel []float64, blockSize, fftSize int) er
 	for i := range kernelPadded {
 		kernelPadded[i] = 0
 	}
+
 	for i, v := range kernel {
 		kernelPadded[i] = complex(v, 0)
 	}
@@ -291,5 +302,6 @@ func OverlapAddConvolveTo(output, signal, kernel []float64) error {
 	if err != nil {
 		return err
 	}
+
 	return oa.ProcessTo(output, signal)
 }

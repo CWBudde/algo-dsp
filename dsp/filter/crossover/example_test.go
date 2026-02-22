@@ -31,15 +31,18 @@ func ExampleCrossover_ProcessSample() {
 	// For an allpass crossover, the total energy of the summed impulse
 	// response equals the input energy (1.0).
 	energy := 0.0
+
 	for i := 0; i < 4096; i++ {
 		x := 0.0
 		if i == 0 {
 			x = 1.0
 		}
+
 		lo, hi := xo.ProcessSample(x)
 		s := lo + hi
 		energy += s * s
 	}
+
 	fmt.Printf("allpass impulse energy=%.4f\n", energy)
 	// Output:
 	// allpass impulse energy=1.0000

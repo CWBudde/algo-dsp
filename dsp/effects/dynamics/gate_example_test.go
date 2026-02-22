@@ -41,6 +41,7 @@ func ExampleGate_configuration() {
 	for i := range buf {
 		buf[i] = 0.3 * math.Sin(2*math.Pi*440*float64(i)/48000)
 	}
+
 	gate.ProcessInPlace(buf)
 
 	fmt.Println("Configured gate parameters:")

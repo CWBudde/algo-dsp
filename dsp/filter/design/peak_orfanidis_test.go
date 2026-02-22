@@ -12,15 +12,19 @@ func TestPeakRaw_InvalidParams(t *testing.T) {
 	if _, err := PeakRaw(0, 1, 1, 1, 1, 1); err == nil {
 		t.Fatal("expected error for G0 <= 0")
 	}
+
 	if _, err := PeakRaw(1, 1, 1, 1, 0, 1); err == nil {
 		t.Fatal("expected error for w0 <= 0")
 	}
+
 	if _, err := PeakRaw(1, 1, 1, 1, math.Pi, 1); err == nil {
 		t.Fatal("expected error for w0 >= pi")
 	}
+
 	if _, err := PeakRaw(1, 1, 1, 1, 1, 0); err == nil {
 		t.Fatal("expected error for dw <= 0")
 	}
+
 	if _, err := PeakRaw(1, 1, 1, 1, 1, math.Pi); err == nil {
 		t.Fatal("expected error for dw >= pi")
 	}
@@ -38,6 +42,7 @@ func TestPeak_WithOrfanidisOptions_ResponseSanity(t *testing.T) {
 	}
 
 	G := math.Pow(10, gainDB/20.0)
+
 	magAtF0 := cmplx.Abs(c.Response(f0, sr))
 	if math.Abs(magAtF0-G) > 1e-2 {
 		t.Fatalf("peak magnitude=%.6f, want %.6f", magAtF0, G)
@@ -85,9 +90,11 @@ func TestPeakCascade_ResponseAtF0(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	chain := biquad.NewChain(coeffs)
 
 	G := math.Pow(10, gainDB/20.0)
+
 	magAtF0 := cmplx.Abs(chain.Response(f0, sr))
 	if math.Abs(magAtF0-G) > 2e-2 {
 		t.Fatalf("cascade magnitude=%.6f, want %.6f", magAtF0, G)
@@ -110,9 +117,11 @@ func TestPeakCascade_WithoutOptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if len(coeffs) != 3 {
 		t.Fatalf("expected 3 sections, got %d", len(coeffs))
 	}
+
 	for _, c := range coeffs {
 		assertStableSection(t, c)
 	}

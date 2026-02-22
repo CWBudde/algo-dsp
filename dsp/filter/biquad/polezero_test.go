@@ -24,6 +24,7 @@ func TestCoefficientsPoleZeroPair_SecondOrder(t *testing.T) {
 	if !unorderedRootsClose(pair.Poles, p1, p2, 1e-12) {
 		t.Fatalf("unexpected poles: got=%v want={%v,%v}", pair.Poles, p1, p2)
 	}
+
 	if !unorderedRootsClose(pair.Zeros, z1, z2, 1e-12) {
 		t.Fatalf("unexpected zeros: got=%v want={%v,%v}", pair.Zeros, z1, z2)
 	}
@@ -42,6 +43,7 @@ func TestCoefficientsPoleZeroPair_FirstOrder(t *testing.T) {
 	if !unorderedRootsClose(pair.Poles, complex(0.8, 0), complex(0, 0), 1e-12) {
 		t.Fatalf("unexpected first-order poles: %v", pair.Poles)
 	}
+
 	if !unorderedRootsClose(pair.Zeros, complex(0.3, 0), complex(0, 0), 1e-12) {
 		t.Fatalf("unexpected first-order zeros: %v", pair.Zeros)
 	}
@@ -59,6 +61,7 @@ func TestPoleZeroPairs_ChainAndSliceAgree(t *testing.T) {
 	if len(fromSlice) != len(coeffs) {
 		t.Fatalf("slice pair count=%d, want=%d", len(fromSlice), len(coeffs))
 	}
+
 	if len(fromChain) != len(coeffs) {
 		t.Fatalf("chain pair count=%d, want=%d", len(fromChain), len(coeffs))
 	}
@@ -67,6 +70,7 @@ func TestPoleZeroPairs_ChainAndSliceAgree(t *testing.T) {
 		if !sameRootSet(fromSlice[i].Poles, fromChain[i].Poles, 1e-12) {
 			t.Fatalf("section %d poles differ: slice=%v chain=%v", i, fromSlice[i].Poles, fromChain[i].Poles)
 		}
+
 		if !sameRootSet(fromSlice[i].Zeros, fromChain[i].Zeros, 1e-12) {
 			t.Fatalf("section %d zeros differ: slice=%v chain=%v", i, fromSlice[i].Zeros, fromChain[i].Zeros)
 		}

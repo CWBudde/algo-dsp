@@ -29,6 +29,7 @@ func NewChain(coeffs []Coefficients, opts ...ChainOption) *Chain {
 	for _, o := range opts {
 		o(&cfg)
 	}
+
 	c := &Chain{
 		sections: make([]Section, len(coeffs)),
 		gain:     cfg.gain,
@@ -36,6 +37,7 @@ func NewChain(coeffs []Coefficients, opts ...ChainOption) *Chain {
 	for i := range coeffs {
 		c.sections[i].Coefficients = coeffs[i]
 	}
+
 	return c
 }
 
@@ -49,6 +51,7 @@ func (c *Chain) ProcessSample(x float64) float64 {
 	for i := range c.sections {
 		x = c.sections[i].ProcessSample(x)
 	}
+
 	return x
 }
 
@@ -59,6 +62,7 @@ func (c *Chain) ProcessBlock(buf []float64) {
 			buf[i] = x * c.gain
 		}
 	}
+
 	for i := range c.sections {
 		c.sections[i].ProcessBlock(buf)
 	}
@@ -92,6 +96,7 @@ func (c *Chain) State() [][2]float64 {
 	for i := range c.sections {
 		states[i] = c.sections[i].State()
 	}
+
 	return states
 }
 

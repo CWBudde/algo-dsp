@@ -36,6 +36,7 @@ func toDB(v float64) float64 {
 	if v <= 0 {
 		return math.Inf(-1)
 	}
+
 	return 20 * math.Log10(v)
 }
 
@@ -62,9 +63,11 @@ func Calculate(magnitude []float64, sampleRate float64) Stats {
 			Range_dB:   math.Inf(-1),
 		}
 	}
+
 	if n == 1 {
 		// DC-only spectrum (single bin).
 		v := magnitude[0]
+
 		return Stats{
 			BinCount:   1,
 			DC:         v,
@@ -85,25 +88,30 @@ func Calculate(magnitude []float64, sampleRate float64) Stats {
 	}
 
 	var s Stats
+
 	s.BinCount = n
 	s.DC = magnitude[0]
 	s.DC_dB = toDB(s.DC)
 
 	// First pass: basic statistics.
 	s.Min = magnitude[0]
+
 	s.Max = magnitude[0]
 	for i, v := range magnitude {
 		s.Sum += v
+
 		s.Energy += v * v
 		if v > s.Max {
 			s.Max = v
 			s.MaxBin = i
 		}
+
 		if v < s.Min {
 			s.Min = v
 			s.MinBin = i
 		}
 	}
+
 	s.Sum_dB = toDB(s.Sum)
 	s.Average = s.Sum / float64(n)
 	s.Average_dB = toDB(s.Average)
@@ -128,6 +136,7 @@ func CalculateFromComplex(spectrum []complex128, sampleRate float64) Stats {
 	for i, c := range spectrum {
 		mag[i] = cmplx.Abs(c)
 	}
+
 	return Calculate(mag, sampleRate)
 }
 
@@ -138,10 +147,12 @@ func Centroid(magnitude []float64, sampleRate float64) float64 {
 	if len(magnitude) < 2 {
 		return 0
 	}
+
 	sum := 0.0
 	for _, v := range magnitude {
 		sum += v
 	}
+
 	return centroid(magnitude, sampleRate, sum)
 }
 
@@ -150,10 +161,12 @@ func centroid(magnitude []float64, sampleRate float64, sumMag float64) float64 {
 	if n < 2 || sumMag == 0 {
 		return 0
 	}
+
 	weightedSum := 0.0
 	for i, v := range magnitude {
 		weightedSum += binFreq(i, sampleRate, n) * v
 	}
+
 	return weightedSum / sumMag
 }
 
@@ -163,11 +176,14 @@ func spread(magnitude []float64, sampleRate float64, cent float64, sumMag float6
 	if n < 2 || sumMag == 0 {
 		return 0
 	}
+
 	weightedSqSum := 0.0
+
 	for i, v := range magnitude {
 		diff := binFreq(i, sampleRate, n) - cent
 		weightedSqSum += diff * diff * v
 	}
+
 	return math.Sqrt(weightedSqSum / sumMag)
 }
 
@@ -195,6 +211,7 @@ func flatness(magnitude []float64) float64 {
 
 	for i := 1; i < n; i++ {
 		v := magnitude[i]
+
 		sumLin += v
 		if v > 0 {
 			sumLog += math.Log(v)
@@ -228,10 +245,12 @@ func Rolloff(magnitude []float64, sampleRate float64, percent float64) float64 {
 	if len(magnitude) < 2 {
 		return 0
 	}
+
 	energy := 0.0
 	for _, v := range magnitude {
 		energy += v * v
 	}
+
 	return rolloff(magnitude, sampleRate, percent, energy)
 }
 
@@ -240,7 +259,9 @@ func rolloff(magnitude []float64, sampleRate float64, percent float64, totalEner
 	if n < 2 || totalEnergy == 0 {
 		return 0
 	}
+
 	threshold := percent * totalEnergy
+
 	cumEnergy := 0.0
 	for i, v := range magnitude {
 		cumEnergy += v * v
@@ -248,6 +269,7 @@ func rolloff(magnitude []float64, sampleRate float64, percent float64, totalEner
 			return binFreq(i, sampleRate, n)
 		}
 	}
+
 	return binFreq(n-1, sampleRate, n)
 }
 
@@ -268,6 +290,7 @@ func bandwidth(magnitude []float64, sampleRate float64) float64 {
 
 	// Find peak.
 	peakBin := 0
+
 	peakVal := magnitude[0]
 	for i, v := range magnitude {
 		if v > peakVal {
@@ -275,6 +298,7 @@ func bandwidth(magnitude []float64, sampleRate float64) float64 {
 			peakBin = i
 		}
 	}
+
 	if peakVal == 0 {
 		return 0
 	}
@@ -283,6 +307,7 @@ func bandwidth(magnitude []float64, sampleRate float64) float64 {
 
 	// Find lower -3 dB point (search left from peak).
 	lowerFreq := binFreq(0, sampleRate, n)
+
 	for i := peakBin; i >= 1; i-- {
 		if magnitude[i-1] <= threshold && magnitude[i] > threshold {
 			// Interpolate between bins i-1 and i.
@@ -305,6 +330,7 @@ func bandwidth(magnitude []float64, sampleRate float64) float64 {
 	if bw < 0 {
 		return 0
 	}
+
 	return bw
 }
 
@@ -318,6 +344,8 @@ func interpFreq(binLow, binHigh int, magLow, magHigh, threshold, sampleRate floa
 	if denom == 0 {
 		return (fLow + fHigh) / 2
 	}
+
 	t := (threshold - magLow) / denom
+
 	return fLow + t*(fHigh-fLow)
 }

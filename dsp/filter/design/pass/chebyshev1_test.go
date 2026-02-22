@@ -13,6 +13,7 @@ func cascadeMagDB(sections []biquad.Coefficients, freq, sr float64) float64 {
 	for _, c := range sections {
 		h *= c.Response(freq, sr)
 	}
+
 	return 20 * math.Log10(cmplx.Abs(h))
 }
 
@@ -20,13 +21,16 @@ func cascadeMagDB(sections []biquad.Coefficients, freq, sr float64) float64 {
 
 func TestChebyshev1LP_Basic(t *testing.T) {
 	sr := 48000.0
+
 	sections := Chebyshev1LP(1000, 4, 1.0, sr)
 	if len(sections) != 2 {
 		t.Fatalf("expected 2 sections for order 4, got %d", len(sections))
 	}
+
 	for i, s := range sections {
 		assertFiniteCoefficients(t, s)
 		assertStableSection(t, s)
+
 		if s.B0 <= 0 {
 			t.Errorf("section %d: B0 should be positive, got %v", i, s.B0)
 		}
@@ -39,6 +43,7 @@ func TestChebyshev1LP_PassbandGain(t *testing.T) {
 
 	for _, order := range []int{2, 4, 6, 8} {
 		sections := Chebyshev1LP(fc, order, 1.0, sr)
+
 		dcGain := cascadeMagDB(sections, 10, sr)
 		if dcGain < -1 || dcGain > 1 {
 			t.Errorf("order %d: DC gain = %.2f dB, expected near 0 dB", order, dcGain)
@@ -53,6 +58,7 @@ func TestChebyshev1LP_CutoffAttenuation(t *testing.T) {
 	// At cutoff, Chebyshev Type I should have gain near 0 dB (within ripple)
 	for _, order := range []int{2, 4, 6} {
 		sections := Chebyshev1LP(fc, order, 1.0, sr)
+
 		atCutoff := cascadeMagDB(sections, fc, sr)
 		if atCutoff > 1 || atCutoff < -6 {
 			t.Errorf("order %d: gain at cutoff = %.2f dB, expected within [-6, 1] dB", order, atCutoff)
@@ -113,6 +119,7 @@ func TestChebyshev1LP_RippleEffect(t *testing.T) {
 	if lowAt2x > -5 {
 		t.Errorf("low ripple: insufficient stopband attenuation at 2x: %.2f dB", lowAt2x)
 	}
+
 	if highAt2x > -5 {
 		t.Errorf("high ripple: insufficient stopband attenuation at 2x: %.2f dB", highAt2x)
 	}
@@ -124,21 +131,26 @@ func TestChebyshev1LP_OddOrder(t *testing.T) {
 
 	for _, order := range []int{1, 3, 5, 7} {
 		sections := Chebyshev1LP(fc, order, 1.0, sr)
+
 		expected := (order + 1) / 2
 		if len(sections) != expected {
 			t.Errorf("order %d: expected %d sections, got %d", order, expected, len(sections))
 		}
+
 		for i, s := range sections {
 			assertFiniteCoefficients(t, s)
 			assertStableSection(t, s)
+
 			_ = i
 		}
 		// Should still be a lowpass
 		dcGain := cascadeMagDB(sections, 10, sr)
 		highGain := cascadeMagDB(sections, 10*fc, sr)
+
 		if dcGain < -3 {
 			t.Errorf("order %d: DC gain too low: %.2f dB", order, dcGain)
 		}
+
 		if highGain > dcGain-10 {
 			t.Errorf("order %d: high freq (%.2f dB) should be well below DC (%.2f dB)", order, highGain, dcGain)
 		}
@@ -159,6 +171,7 @@ func TestChebyshev1LP_Monotonic_Stopband(t *testing.T) {
 		if cur > prev+0.5 { // small tolerance for numerical
 			t.Errorf("stopband not monotonic: %.0f Hz = %.2f dB > %.2f dB", f, cur, prev)
 		}
+
 		prev = cur
 	}
 }
@@ -171,6 +184,7 @@ func TestChebyshev1LP_Stability_AllOrders(t *testing.T) {
 		sections := Chebyshev1LP(fc, order, 1.0, sr)
 		for i, s := range sections {
 			assertFiniteCoefficients(t, s)
+
 			r1, r2 := sectionRoots(s)
 			if cmplx.Abs(r1) >= 1 || cmplx.Abs(r2) >= 1 {
 				t.Errorf("order %d section %d: unstable poles |r1|=%.6f |r2|=%.6f",
@@ -183,10 +197,12 @@ func TestChebyshev1LP_Stability_AllOrders(t *testing.T) {
 func TestChebyshev1LP_SampleRates(t *testing.T) {
 	for _, sr := range []float64{8000, 22050, 44100, 48000, 96000, 192000} {
 		fc := sr * 0.1 // 10% of sample rate
+
 		sections := Chebyshev1LP(fc, 4, 1.0, sr)
 		if len(sections) != 2 {
 			t.Errorf("sr=%.0f: expected 2 sections, got %d", sr, len(sections))
 		}
+
 		dcGain := cascadeMagDB(sections, fc*0.1, sr)
 		if dcGain < -2 || dcGain > 2 {
 			t.Errorf("sr=%.0f: DC gain = %.2f dB, expected near 0 dB", sr, dcGain)
@@ -226,6 +242,7 @@ func TestChebyshev1LP_RippleEdgeCases(t *testing.T) {
 	if len(sections) != 2 {
 		t.Fatalf("zero ripple: expected 2 sections, got %d", len(sections))
 	}
+
 	for _, s := range sections {
 		assertFiniteCoefficients(t, s)
 		assertStableSection(t, s)
@@ -236,6 +253,7 @@ func TestChebyshev1LP_RippleEdgeCases(t *testing.T) {
 	if len(sections) != 2 {
 		t.Fatalf("negative ripple: expected 2 sections, got %d", len(sections))
 	}
+
 	for _, s := range sections {
 		assertFiniteCoefficients(t, s)
 		assertStableSection(t, s)
@@ -246,13 +264,16 @@ func TestChebyshev1LP_RippleEdgeCases(t *testing.T) {
 
 func TestChebyshev1HP_Basic(t *testing.T) {
 	sr := 48000.0
+
 	sections := Chebyshev1HP(1000, 4, 1.0, sr)
 	if len(sections) != 2 {
 		t.Fatalf("expected 2 sections for order 4, got %d", len(sections))
 	}
+
 	for i, s := range sections {
 		assertFiniteCoefficients(t, s)
 		assertStableSection(t, s)
+
 		_ = i
 	}
 }
@@ -309,10 +330,12 @@ func TestChebyshev1HP_OddOrder(t *testing.T) {
 
 	for _, order := range []int{1, 3, 5, 7} {
 		sections := Chebyshev1HP(fc, order, 1.0, sr)
+
 		expected := (order + 1) / 2
 		if len(sections) != expected {
 			t.Errorf("order %d: expected %d sections, got %d", order, expected, len(sections))
 		}
+
 		for _, s := range sections {
 			assertFiniteCoefficients(t, s)
 			assertStableSection(t, s)
@@ -328,6 +351,7 @@ func TestChebyshev1HP_Stability_AllOrders(t *testing.T) {
 		sections := Chebyshev1HP(fc, order, 1.0, sr)
 		for i, s := range sections {
 			assertFiniteCoefficients(t, s)
+
 			r1, r2 := sectionRoots(s)
 			if cmplx.Abs(r1) >= 1 || cmplx.Abs(r2) >= 1 {
 				t.Errorf("order %d section %d: unstable poles |r1|=%.6f |r2|=%.6f",
@@ -341,9 +365,11 @@ func TestChebyshev1HP_EdgeCases(t *testing.T) {
 	if sections := Chebyshev1HP(1000, 0, 1.0, 48000); sections != nil {
 		t.Error("order 0 should return nil")
 	}
+
 	if sections := Chebyshev1HP(0, 4, 1.0, 48000); sections != nil {
 		t.Error("zero freq should return nil")
 	}
+
 	if sections := Chebyshev1HP(24000, 4, 1.0, 48000); sections != nil {
 		t.Error("freq at Nyquist should return nil")
 	}
@@ -355,6 +381,7 @@ func TestChebyshev1HP_CutoffAttenuation(t *testing.T) {
 
 	for _, order := range []int{2, 4, 6} {
 		sections := Chebyshev1HP(fc, order, 1.0, sr)
+
 		atCutoff := cascadeMagDB(sections, fc, sr)
 		if atCutoff > 1 || atCutoff < -6 {
 			t.Errorf("order %d: gain at cutoff = %.2f dB, expected within [-6, 1] dB", order, atCutoff)
@@ -397,6 +424,7 @@ func TestChebyshev1LP_FrequencyRange(t *testing.T) {
 			t.Errorf("fc=%.0f: returned nil", fc)
 			continue
 		}
+
 		dcGain := cascadeMagDB(sections, fc*0.01, sr)
 		if dcGain < -2 || dcGain > 2 {
 			t.Errorf("fc=%.0f: DC gain = %.2f dB, expected near 0 dB", fc, dcGain)

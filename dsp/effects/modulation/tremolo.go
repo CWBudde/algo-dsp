@@ -37,7 +37,9 @@ func WithTremoloRateHz(rateHz float64) TremoloOption {
 		if rateHz <= 0 || math.IsNaN(rateHz) || math.IsInf(rateHz, 0) {
 			return fmt.Errorf("tremolo rate must be > 0 and finite: %f", rateHz)
 		}
+
 		cfg.rateHz = rateHz
+
 		return nil
 	}
 }
@@ -48,7 +50,9 @@ func WithTremoloDepth(depth float64) TremoloOption {
 		if depth < 0 || depth > 1 || math.IsNaN(depth) || math.IsInf(depth, 0) {
 			return fmt.Errorf("tremolo depth must be in [0, 1]: %f", depth)
 		}
+
 		cfg.depth = depth
+
 		return nil
 	}
 }
@@ -59,7 +63,9 @@ func WithTremoloSmoothingMs(smoothingMs float64) TremoloOption {
 		if smoothingMs < 0 || math.IsNaN(smoothingMs) || math.IsInf(smoothingMs, 0) {
 			return fmt.Errorf("tremolo smoothing must be >= 0 and finite: %f", smoothingMs)
 		}
+
 		cfg.smoothingMs = smoothingMs
+
 		return nil
 	}
 }
@@ -70,7 +76,9 @@ func WithTremoloMix(mix float64) TremoloOption {
 		if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 			return fmt.Errorf("tremolo mix must be in [0, 1]: %f", mix)
 		}
+
 		cfg.mix = mix
+
 		return nil
 	}
 }
@@ -95,10 +103,12 @@ func NewTremolo(sampleRate float64, opts ...TremoloOption) (*Tremolo, error) {
 	}
 
 	cfg := defaultTremoloConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -115,7 +125,9 @@ func NewTremolo(sampleRate float64, opts ...TremoloOption) (*Tremolo, error) {
 	if err := t.validateParams(); err != nil {
 		return nil, err
 	}
+
 	t.updateSmoothingCoefficient()
+
 	return t, nil
 }
 
@@ -124,8 +136,10 @@ func (t *Tremolo) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("tremolo sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	t.sampleRate = sampleRate
 	t.updateSmoothingCoefficient()
+
 	return nil
 }
 
@@ -134,7 +148,9 @@ func (t *Tremolo) SetRateHz(rateHz float64) error {
 	if rateHz <= 0 || math.IsNaN(rateHz) || math.IsInf(rateHz, 0) {
 		return fmt.Errorf("tremolo rate must be > 0 and finite: %f", rateHz)
 	}
+
 	t.rateHz = rateHz
+
 	return nil
 }
 
@@ -143,7 +159,9 @@ func (t *Tremolo) SetDepth(depth float64) error {
 	if depth < 0 || depth > 1 || math.IsNaN(depth) || math.IsInf(depth, 0) {
 		return fmt.Errorf("tremolo depth must be in [0, 1]: %f", depth)
 	}
+
 	t.depth = depth
+
 	return nil
 }
 
@@ -152,8 +170,10 @@ func (t *Tremolo) SetSmoothingMs(smoothingMs float64) error {
 	if smoothingMs < 0 || math.IsNaN(smoothingMs) || math.IsInf(smoothingMs, 0) {
 		return fmt.Errorf("tremolo smoothing must be >= 0 and finite: %f", smoothingMs)
 	}
+
 	t.smoothing = smoothingMs
 	t.updateSmoothingCoefficient()
+
 	return nil
 }
 
@@ -162,7 +182,9 @@ func (t *Tremolo) SetMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("tremolo mix must be in [0, 1]: %f", mix)
 	}
+
 	t.mix = mix
+
 	return nil
 }
 
@@ -180,6 +202,7 @@ func (t *Tremolo) Process(sample float64) float64 {
 	} else {
 		t.currentMod += (targetMod - t.currentMod) * t.smoothingCoef
 	}
+
 	wet := sample * t.currentMod
 
 	t.lfoPhase += 2 * math.Pi * t.rateHz / t.sampleRate
@@ -200,6 +223,7 @@ func (t *Tremolo) ProcessInPlace(buf []float64) error {
 	for i := range buf {
 		buf[i] = t.Process(buf[i])
 	}
+
 	return nil
 }
 
@@ -222,18 +246,23 @@ func (t *Tremolo) validateParams() error {
 	if t.sampleRate <= 0 || math.IsNaN(t.sampleRate) || math.IsInf(t.sampleRate, 0) {
 		return fmt.Errorf("tremolo sample rate must be > 0 and finite: %f", t.sampleRate)
 	}
+
 	if t.rateHz <= 0 || math.IsNaN(t.rateHz) || math.IsInf(t.rateHz, 0) {
 		return fmt.Errorf("tremolo rate must be > 0 and finite: %f", t.rateHz)
 	}
+
 	if t.depth < 0 || t.depth > 1 || math.IsNaN(t.depth) || math.IsInf(t.depth, 0) {
 		return fmt.Errorf("tremolo depth must be in [0, 1]: %f", t.depth)
 	}
+
 	if t.smoothing < 0 || math.IsNaN(t.smoothing) || math.IsInf(t.smoothing, 0) {
 		return fmt.Errorf("tremolo smoothing must be >= 0 and finite: %f", t.smoothing)
 	}
+
 	if t.mix < 0 || t.mix > 1 || math.IsNaN(t.mix) || math.IsInf(t.mix, 0) {
 		return fmt.Errorf("tremolo mix must be in [0, 1]: %f", t.mix)
 	}
+
 	return nil
 }
 
@@ -242,11 +271,14 @@ func (t *Tremolo) updateSmoothingCoefficient() {
 		t.smoothingCoef = 1
 		return
 	}
+
 	tauSeconds := t.smoothing / 1000
+
 	t.smoothingCoef = 1 - math.Exp(-1/(tauSeconds*t.sampleRate))
 	if t.smoothingCoef < 0 {
 		t.smoothingCoef = 0
 	}
+
 	if t.smoothingCoef > 1 {
 		t.smoothingCoef = 1
 	}

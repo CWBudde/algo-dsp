@@ -18,15 +18,18 @@ func BilinearTransform(sCoeffs [3]float64, sampleRate float64) [3]float64 {
 	if sampleRate <= 0 {
 		return [3]float64{1, 0, 0}
 	}
+
 	k := 2 * sampleRate
 	c0, c1, c2 := sCoeffs[0], sCoeffs[1], sCoeffs[2]
 
 	d0 := c0*k*k + c1*k + c2
 	d1 := -2*c0*k*k + 2*c2
 	d2 := c0*k*k - c1*k + c2
+
 	if d0 == 0 || math.IsNaN(d0) || math.IsInf(d0, 0) {
 		return [3]float64{1, 0, 0}
 	}
+
 	return [3]float64{1, d1 / d0, d2 / d0}
 }
 
@@ -46,6 +49,7 @@ func Bandpass(freq, q, sampleRate float64) biquad.Coefficients {
 	if !ok {
 		return biquad.Coefficients{}
 	}
+
 	q = normalizedQ(q)
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
@@ -57,6 +61,7 @@ func Bandpass(freq, q, sampleRate float64) biquad.Coefficients {
 	a0 := 1 + alpha
 	a1 := -2 * cw
 	a2 := 1 - alpha
+
 	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
 }
 
@@ -66,6 +71,7 @@ func Notch(freq, q, sampleRate float64) biquad.Coefficients {
 	if !ok {
 		return biquad.Coefficients{}
 	}
+
 	q = normalizedQ(q)
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
@@ -77,6 +83,7 @@ func Notch(freq, q, sampleRate float64) biquad.Coefficients {
 	a0 := 1 + alpha
 	a1 := -2 * cw
 	a2 := 1 - alpha
+
 	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
 }
 
@@ -86,6 +93,7 @@ func Allpass(freq, q, sampleRate float64) biquad.Coefficients {
 	if !ok {
 		return biquad.Coefficients{}
 	}
+
 	q = normalizedQ(q)
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
@@ -97,6 +105,7 @@ func Allpass(freq, q, sampleRate float64) biquad.Coefficients {
 	a0 := 1 + alpha
 	a1 := -2 * cw
 	a2 := 1 - alpha
+
 	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
 }
 
@@ -115,6 +124,7 @@ func peakRBJ(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	if !ok {
 		return biquad.Coefficients{}
 	}
+
 	q = normalizedQ(q)
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
@@ -127,6 +137,7 @@ func peakRBJ(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	a0 := 1 + alpha/a
 	a1 := -2 * cw
 	a2 := 1 - alpha/a
+
 	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
 }
 
@@ -136,6 +147,7 @@ func LowShelf(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	if !ok {
 		return biquad.Coefficients{}
 	}
+
 	q = normalizedQ(q)
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
@@ -149,6 +161,7 @@ func LowShelf(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	a0 := (a + 1) + (a-1)*cw + beta
 	a1 := -2 * ((a - 1) + (a+1)*cw)
 	a2 := (a + 1) + (a-1)*cw - beta
+
 	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
 }
 
@@ -158,6 +171,7 @@ func HighShelf(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	if !ok {
 		return biquad.Coefficients{}
 	}
+
 	q = normalizedQ(q)
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
@@ -171,6 +185,7 @@ func HighShelf(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	a0 := (a + 1) - (a-1)*cw + beta
 	a1 := 2 * ((a - 1) - (a+1)*cw)
 	a2 := (a + 1) - (a-1)*cw - beta
+
 	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
 }
 
@@ -178,10 +193,12 @@ func normalizedW0(freq, sampleRate float64) (float64, bool) {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return 0, false
 	}
+
 	nyquist := sampleRate / 2
 	if freq <= 0 || freq >= nyquist || math.IsNaN(freq) || math.IsInf(freq, 0) {
 		return 0, false
 	}
+
 	return 2 * math.Pi * freq / sampleRate, true
 }
 
@@ -189,6 +206,7 @@ func normalizedQ(q float64) float64 {
 	if q <= 0 || math.IsNaN(q) || math.IsInf(q, 0) {
 		return defaultQ
 	}
+
 	return q
 }
 
@@ -196,6 +214,7 @@ func normalizeBiquad(b0, b1, b2, a0, a1, a2 float64) biquad.Coefficients {
 	if a0 == 0 || math.IsNaN(a0) || math.IsInf(a0, 0) {
 		return biquad.Coefficients{}
 	}
+
 	return biquad.Coefficients{
 		B0: b0 / a0,
 		B1: b1 / a0,

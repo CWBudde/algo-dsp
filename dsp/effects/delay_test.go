@@ -10,6 +10,7 @@ func TestDelayProcessInPlaceMatchesSample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDelay() error = %v", err)
 	}
+
 	d2, err := NewDelay(48000)
 	if err != nil {
 		t.Fatalf("NewDelay() error = %v", err)
@@ -22,6 +23,7 @@ func TestDelayProcessInPlaceMatchesSample(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = d1.ProcessSample(want[i])
 	}
@@ -67,22 +69,27 @@ func TestDelayResetRestoresState(t *testing.T) {
 
 func TestDelayImpulseAtConfiguredTime(t *testing.T) {
 	const sampleRate = 1000.0
+
 	d, err := NewDelay(sampleRate)
 	if err != nil {
 		t.Fatalf("NewDelay() error = %v", err)
 	}
+
 	if err := d.SetTime(0.01); err != nil {
 		t.Fatalf("SetTime() error = %v", err)
 	}
+
 	if err := d.SetMix(1); err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
+
 	if err := d.SetFeedback(0); err != nil {
 		t.Fatalf("SetFeedback() error = %v", err)
 	}
 
 	in := make([]float64, 20)
 	in[0] = 1
+
 	out := make([]float64, len(in))
 	for i := range in {
 		out[i] = d.ProcessSample(in[i])
@@ -93,6 +100,7 @@ func TestDelayImpulseAtConfiguredTime(t *testing.T) {
 		if i == 10 {
 			want = 1
 		}
+
 		if diff := math.Abs(out[i] - want); diff > 1e-12 {
 			t.Fatalf("sample %d mismatch: got=%g want=%g", i, out[i], want)
 		}

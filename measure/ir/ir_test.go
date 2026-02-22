@@ -11,10 +11,12 @@ func makeExponentialDecay(sampleRate float64, rt60 float64, durationSec float64)
 	n := int(sampleRate * durationSec)
 	ir := make([]float64, n)
 	decayRate := 6.9078 / rt60 // ln(10^3) / RT60
+
 	for i := range ir {
 		t := float64(i) / sampleRate
 		ir[i] = math.Exp(-decayRate * t)
 	}
+
 	return ir
 }
 
@@ -24,6 +26,7 @@ func TestAnalyzerAnalyze(t *testing.T) {
 	ir := makeExponentialDecay(sampleRate, rt60, 3.0)
 
 	analyzer := NewAnalyzer(sampleRate)
+
 	metrics, err := analyzer.Analyze(ir)
 	if err != nil {
 		t.Fatal(err)
@@ -60,6 +63,7 @@ func TestSchroederIntegral(t *testing.T) {
 	ir := makeExponentialDecay(sampleRate, 1.0, 3.0)
 
 	analyzer := NewAnalyzer(sampleRate)
+
 	schroeder, err := analyzer.SchroederIntegral(ir)
 	if err != nil {
 		t.Fatal(err)
@@ -79,6 +83,7 @@ func TestSchroederIntegral(t *testing.T) {
 		if schroeder[i] > schroeder[i-1]+0.001 { // small tolerance for numerical noise
 			t.Errorf("Schroeder not monotonically decreasing at sample %d: %.3f > %.3f",
 				i, schroeder[i], schroeder[i-1])
+
 			break
 		}
 	}
@@ -91,6 +96,7 @@ func TestSchroederIntegral(t *testing.T) {
 	if schroeder[idx25] > -5 {
 		t.Errorf("Schroeder[25%%] = %.1f dB, expected < -5 dB", schroeder[idx25])
 	}
+
 	if schroeder[idx50] >= schroeder[idx25] {
 		t.Errorf("Schroeder[50%%] = %.1f >= Schroeder[25%%] = %.1f",
 			schroeder[idx50], schroeder[idx25])
@@ -99,6 +105,7 @@ func TestSchroederIntegral(t *testing.T) {
 
 func TestSchroederIntegralEmpty(t *testing.T) {
 	analyzer := NewAnalyzer(48000)
+
 	_, err := analyzer.SchroederIntegral(nil)
 	if err != ErrEmptyIR {
 		t.Errorf("SchroederIntegral(nil) = %v, want ErrEmptyIR", err)
@@ -140,6 +147,7 @@ func TestRT60NoDecay(t *testing.T) {
 	ir := []float64{1.0}
 
 	analyzer := NewAnalyzer(48000)
+
 	_, err := analyzer.RT60(ir)
 	if err != ErrNoDecay {
 		t.Errorf("RT60(single sample) = %v, want ErrNoDecay", err)
@@ -150,6 +158,7 @@ func TestRT60TooShortForRegression(t *testing.T) {
 	// Very short IR where Schroeder can't reach -35 dB or -25 dB
 	ir := []float64{1.0, 0.5}
 	analyzer := NewAnalyzer(48000)
+
 	_, err := analyzer.RT60(ir)
 	if err != ErrNoDecay {
 		t.Errorf("RT60(2 samples) = %v, want ErrNoDecay", err)
@@ -169,6 +178,7 @@ func TestDefinition(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		if d50 != 1.0 {
 			t.Errorf("D50 = %.3f, want 1.0 for all-early IR", d50)
 		}
@@ -204,14 +214,17 @@ func TestDefinition(t *testing.T) {
 
 	t.Run("validation", func(t *testing.T) {
 		analyzer := NewAnalyzer(48000)
+
 		_, err := analyzer.Definition(nil, 50)
 		if err != ErrEmptyIR {
 			t.Errorf("Definition(nil) = %v, want ErrEmptyIR", err)
 		}
+
 		_, err = analyzer.Definition([]float64{1}, 0)
 		if err != ErrInvalidTime {
 			t.Errorf("Definition(t=0) = %v, want ErrInvalidTime", err)
 		}
+
 		_, err = analyzer.Definition([]float64{1}, -10)
 		if err != ErrInvalidTime {
 			t.Errorf("Definition(t=-10) = %v, want ErrInvalidTime", err)
@@ -264,10 +277,12 @@ func TestClarity(t *testing.T) {
 
 	t.Run("validation", func(t *testing.T) {
 		analyzer := NewAnalyzer(48000)
+
 		_, err := analyzer.Clarity(nil, 80)
 		if err != ErrEmptyIR {
 			t.Errorf("Clarity(nil) = %v, want ErrEmptyIR", err)
 		}
+
 		_, err = analyzer.Clarity([]float64{1}, 0)
 		if err != ErrInvalidTime {
 			t.Errorf("Clarity(t=0) = %v, want ErrInvalidTime", err)
@@ -284,10 +299,12 @@ func TestCenterTime(t *testing.T) {
 		ir[0] = 1.0
 
 		analyzer := NewAnalyzer(sampleRate)
+
 		ct, err := analyzer.CenterTime(ir)
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		if ct != 0 {
 			t.Errorf("CenterTime = %g, want 0 for impulse at t=0", ct)
 		}
@@ -301,6 +318,7 @@ func TestCenterTime(t *testing.T) {
 		ir[reflSample] = 1.0
 
 		analyzer := NewAnalyzer(sampleRate)
+
 		ct, err := analyzer.CenterTime(ir)
 		if err != nil {
 			t.Fatal(err)
@@ -314,6 +332,7 @@ func TestCenterTime(t *testing.T) {
 
 	t.Run("validation", func(t *testing.T) {
 		analyzer := NewAnalyzer(48000)
+
 		_, err := analyzer.CenterTime(nil)
 		if err != ErrEmptyIR {
 			t.Errorf("CenterTime(nil) = %v, want ErrEmptyIR", err)
@@ -329,10 +348,12 @@ func TestFindImpulseStart(t *testing.T) {
 		ir[0] = 1.0
 
 		analyzer := NewAnalyzer(sampleRate)
+
 		idx, err := analyzer.FindImpulseStart(ir)
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		if idx != 0 {
 			t.Errorf("FindImpulseStart = %d, want 0", idx)
 		}
@@ -345,6 +366,7 @@ func TestFindImpulseStart(t *testing.T) {
 		ir[5001] = 0.5
 
 		analyzer := NewAnalyzer(sampleRate)
+
 		idx, err := analyzer.FindImpulseStart(ir)
 		if err != nil {
 			t.Fatal(err)
@@ -361,9 +383,11 @@ func TestFindImpulseStart(t *testing.T) {
 		for i := 0; i < 5000; i++ {
 			ir[i] = 0.001 * float64(i%2*2-1)
 		}
+
 		ir[5000] = 1.0
 
 		analyzer := NewAnalyzer(sampleRate)
+
 		idx, err := analyzer.FindImpulseStart(ir)
 		if err != nil {
 			t.Fatal(err)
@@ -376,6 +400,7 @@ func TestFindImpulseStart(t *testing.T) {
 
 	t.Run("empty", func(t *testing.T) {
 		analyzer := NewAnalyzer(48000)
+
 		_, err := analyzer.FindImpulseStart(nil)
 		if err != ErrEmptyIR {
 			t.Errorf("FindImpulseStart(nil) = %v, want ErrEmptyIR", err)
@@ -392,12 +417,14 @@ func TestAnalyzeValidation(t *testing.T) {
 	}
 
 	analyzer2 := NewAnalyzer(0)
+
 	_, err = analyzer2.Analyze([]float64{1})
 	if err != ErrInvalidSampleRate {
 		t.Errorf("Analyze(sr=0) = %v, want ErrInvalidSampleRate", err)
 	}
 
 	analyzer3 := NewAnalyzer(-1)
+
 	_, err = analyzer3.Analyze([]float64{1})
 	if err != ErrInvalidSampleRate {
 		t.Errorf("Analyze(sr=-1) = %v, want ErrInvalidSampleRate", err)
@@ -410,6 +437,7 @@ func TestEDT(t *testing.T) {
 	ir := makeExponentialDecay(sampleRate, rt60, 6.0)
 
 	analyzer := NewAnalyzer(sampleRate)
+
 	metrics, err := analyzer.Analyze(ir)
 	if err != nil {
 		t.Fatal(err)
@@ -428,6 +456,7 @@ func TestT20T30Consistency(t *testing.T) {
 	ir := makeExponentialDecay(sampleRate, rt60, 5.0)
 
 	analyzer := NewAnalyzer(sampleRate)
+
 	metrics, err := analyzer.Analyze(ir)
 	if err != nil {
 		t.Fatal(err)
@@ -438,6 +467,7 @@ func TestT20T30Consistency(t *testing.T) {
 	if math.Abs(metrics.T20-rt60) > tolerance {
 		t.Errorf("T20 = %.4f, want %.4f (±5%%)", metrics.T20, rt60)
 	}
+
 	if math.Abs(metrics.T30-rt60) > tolerance {
 		t.Errorf("T30 = %.4f, want %.4f (±5%%)", metrics.T30, rt60)
 	}
@@ -449,6 +479,7 @@ func TestDefinitionAndClarityRelationship(t *testing.T) {
 	ir := makeExponentialDecay(sampleRate, 1.0, 3.0)
 
 	analyzer := NewAnalyzer(sampleRate)
+
 	metrics, err := analyzer.Analyze(ir)
 	if err != nil {
 		t.Fatal(err)

@@ -52,6 +52,7 @@ func (e *Engine) SetEQ(eq EQParams) error {
 
 	eq.Master = clamp(eq.Master, 0, 1)
 	e.eq = eq
+
 	return e.rebuildEQ()
 }
 
@@ -61,6 +62,7 @@ func (e *Engine) rebuildEQ() error {
 	e.mid = buildEQChain(e.eq.MidFamily, e.eq.MidType, e.eq.MidOrder, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
 	e.high = buildEQChain(e.eq.HighFamily, e.eq.HighType, e.eq.HighOrder, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
 	e.lp = buildEQChain(e.eq.LPFamily, e.eq.LPType, e.eq.LPOrder, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ, e.sampleRate)
+
 	return nil
 }
 
@@ -70,6 +72,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 	q = clampEQShape(kind, family, freq, sampleRate, q)
 	linGain := nodeLinearGain(family, kind, gainDB)
 	ripple := chebyshevRippleFromShape(q)
+
 	switch family {
 	case "butterworth":
 		switch kind {
@@ -79,6 +82,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			return chainFromCoeffs(design.ButterworthLP(freq, order, sampleRate), linGain)
 		case "peak":
 			bw := peakBandwidthHz(kind, family, freq, sampleRate, q)
+
 			coeffs, err := band.ButterworthBand(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
@@ -102,6 +106,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			return chainFromCoeffs(design.Chebyshev1LP(freq, order, ripple, sampleRate), linGain)
 		case "peak":
 			bw := peakBandwidthHz(kind, family, freq, sampleRate, q)
+
 			coeffs, err := band.Chebyshev1Band(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
@@ -125,6 +130,7 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			return chainFromCoeffs(design.Chebyshev2LP(freq, order, ripple, sampleRate), linGain)
 		case "peak":
 			bw := peakBandwidthHz(kind, family, freq, sampleRate, q)
+
 			coeffs, err := band.Chebyshev2Band(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
@@ -155,12 +161,14 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			return chainFromCoeffs(design.EllipticLP(freq, order, ripple, eqEllipticStopbandDB, sampleRate), linGain)
 		case "peak":
 			bw := peakBandwidthHz(kind, family, freq, sampleRate, q)
+
 			coeffs, err := band.EllipticBand(sampleRate, freq, bw, gainDB, order)
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		}
 	}
+
 	switch kind {
 	case "highpass":
 		return chainFromCoeffs([]biquad.Coefficients{design.Highpass(freq, q, sampleRate)}, linGain)
@@ -185,6 +193,7 @@ func chainFromCoeffs(coeffs []biquad.Coefficients, gain float64) *biquad.Chain {
 	if len(coeffs) == 0 {
 		coeffs = []biquad.Coefficients{{B0: 1}}
 	}
+
 	return biquad.NewChain(coeffs, biquad.WithGain(gain))
 }
 
@@ -192,6 +201,7 @@ func typeUsesEmbeddedGain(family, kind string) bool {
 	if kind == "peak" || kind == "lowshelf" || kind == "highshelf" {
 		return true
 	}
+
 	return kind == "bandpass" && family != "rbj"
 }
 
@@ -199,6 +209,7 @@ func nodeLinearGain(family, kind string, gainDB float64) float64 {
 	if typeUsesEmbeddedGain(family, kind) {
 		return 1
 	}
+
 	return math.Pow(10, gainDB/20)
 }
 
@@ -211,22 +222,27 @@ func eqShapeMode(kind, family string) string {
 	if kind == "peak" && family != "rbj" {
 		return "bandwidth"
 	}
+
 	if (family == "chebyshev1" || family == "chebyshev2") &&
 		(kind == "highpass" || kind == "lowpass" || kind == "highshelf" || kind == "lowshelf") {
 		return "ripple"
 	}
+
 	if family == "elliptic" && (kind == "highpass" || kind == "lowpass") {
 		return "ripple"
 	}
+
 	return "q"
 }
 
 func maxPeakBandwidth(freq, sampleRate float64) float64 {
 	nyquist := sampleRate * 0.5
+
 	maxBW := 2 * math.Min(math.Max(freq, 1), math.Max(nyquist-freq, 1))
 	if maxBW < 1 {
 		maxBW = 1
 	}
+
 	return maxBW
 }
 
@@ -238,6 +254,7 @@ func clampEQShape(kind, family string, freq, sampleRate, value float64) float64 
 		if family == "chebyshev2" {
 			return clamp(value, 0.05, 24)
 		}
+
 		return clamp(value, 0.05, 12)
 	default:
 		return clamp(value, 0.2, 8)
@@ -248,6 +265,7 @@ func peakBandwidthHz(kind, family string, freq, sampleRate, shape float64) float
 	if eqShapeMode(kind, family) == "bandwidth" {
 		return clamp(shape, 1, maxPeakBandwidth(freq, sampleRate))
 	}
+
 	return clamp(freq/math.Max(shape, 1e-6), 1, maxPeakBandwidth(freq, sampleRate))
 }
 
@@ -255,6 +273,7 @@ func rbjQFromShape(kind, family string, freq, shape float64) float64 {
 	if eqShapeMode(kind, family) == "bandwidth" {
 		return clamp(freq/math.Max(shape, 1e-6), 0.2, 8)
 	}
+
 	return clamp(shape, 0.2, 8)
 }
 
@@ -286,6 +305,7 @@ func normalizeEQFamilyForType(kind, family string) string {
 	if supportsEQFamily(kind, family) {
 		return family
 	}
+
 	return "rbj"
 }
 
@@ -293,15 +313,19 @@ func supportsEQOrder(kind, family string) bool {
 	if family == "rbj" {
 		return false
 	}
+
 	if family == "bessel" {
 		return kind == "highpass" || kind == "lowpass"
 	}
+
 	if family == "elliptic" {
 		return kind == "highpass" || kind == "lowpass" || kind == "peak"
 	}
+
 	if family == "butterworth" || family == "chebyshev1" || family == "chebyshev2" {
 		return kind == "highpass" || kind == "lowpass" || kind == "peak" || kind == "lowshelf" || kind == "highshelf"
 	}
+
 	return false
 }
 
@@ -309,20 +333,25 @@ func normalizeEQOrder(kind, family string, order int) int {
 	if !supportsEQOrder(kind, family) {
 		return 1
 	}
+
 	if order <= 0 {
 		order = eqDefaultOrder
 	}
+
 	maxOrder := 12.0
 	if family == "bessel" {
 		maxOrder = 10
 	}
+
 	if kind == "peak" {
 		order = int(clamp(float64(order), 4, maxOrder))
 		if order%2 != 0 {
 			order++
 		}
+
 		return order
 	}
+
 	return int(clamp(float64(order), 1, maxOrder))
 }
 
@@ -332,11 +361,13 @@ func normalizeEQType(node, kind string) string {
 	case "bandeq", "band-eq", "bandeqpeak", "bell", "bandbell":
 		normalized = "peak"
 	}
+
 	switch normalized {
 	case "highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "highshelf", "lowshelf":
 	default:
 		normalized = ""
 	}
+
 	switch node {
 	case "hp":
 		switch normalized {

@@ -58,10 +58,12 @@ func (a *reverbAllpass) process(input float64) float64 {
 	bufOut := a.buffer[a.index]
 	output := bufOut - input
 	a.buffer[a.index] = input + bufOut*a.feedback
+
 	a.index++
 	if a.index >= len(a.buffer) {
 		a.index = 0
 	}
+
 	return output
 }
 
@@ -69,6 +71,7 @@ func (a *reverbAllpass) reset() {
 	for i := range a.buffer {
 		a.buffer[i] = 0
 	}
+
 	a.index = 0
 }
 
@@ -86,6 +89,7 @@ func newReverbComb(size int) reverbComb {
 		buffer: make([]float64, size),
 	}
 	c.setDamp(defaultReverbDamp)
+
 	return c
 }
 
@@ -96,15 +100,19 @@ func (c *reverbComb) setDamp(v float64) {
 
 func (c *reverbComb) process(input float64) float64 {
 	output := c.buffer[c.index]
+
 	c.filterStore = output*c.dampB + c.filterStore*c.dampA
 	if math.Abs(c.filterStore) < 1e-23 {
 		c.filterStore = 0
 	}
+
 	c.buffer[c.index] = input + c.filterStore*c.feedback
+
 	c.index++
 	if c.index >= len(c.buffer) {
 		c.index = 0
 	}
+
 	return output
 }
 
@@ -112,6 +120,7 @@ func (c *reverbComb) reset() {
 	for i := range c.buffer {
 		c.buffer[i] = 0
 	}
+
 	c.index = 0
 	c.filterStore = 0
 }
@@ -141,6 +150,7 @@ func NewReverb() *Reverb {
 	r.SetDry(defaultReverbDry)
 	r.SetRoomSize(defaultReverbRoomSize)
 	r.SetDamp(defaultReverbDamp)
+
 	return r
 }
 
@@ -149,6 +159,7 @@ func (r *Reverb) Reset() {
 	for i := range r.combs {
 		r.combs[i].reset()
 	}
+
 	for i := range r.allpass {
 		r.allpass[i].reset()
 	}
@@ -162,9 +173,11 @@ func (r *Reverb) ProcessSample(input float64) float64 {
 	for i := range r.combs {
 		acc += r.combs[i].process(x)
 	}
+
 	for i := range r.allpass {
 		acc = r.allpass[i].process(acc)
 	}
+
 	return acc*r.wet + input*r.dry
 }
 

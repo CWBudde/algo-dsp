@@ -109,6 +109,7 @@ func TestLogSweepInverseFilter(t *testing.T) {
 			maxAbs = math.Abs(v)
 		}
 	}
+
 	if maxAbs == 0 {
 		t.Error("inverse filter is all zeros")
 	}
@@ -137,6 +138,7 @@ func TestLogSweepDeconvolveIdentity(t *testing.T) {
 
 	// Find the peak in the recovered IR
 	peakIdx := 0
+
 	peakVal := 0.0
 	for i, v := range ir {
 		if math.Abs(v) > peakVal {
@@ -155,6 +157,7 @@ func TestLogSweepDeconvolveIdentity(t *testing.T) {
 	for _, v := range ir {
 		totalEnergy += v * v
 	}
+
 	avgEnergy := totalEnergy / float64(len(ir))
 	peakEnergy := peakVal * peakVal
 
@@ -188,6 +191,7 @@ func TestLogSweepDeconvolveKnownIR(t *testing.T) {
 	// Convolve sweep with known IR to simulate system response
 	responseLen := len(sweep) + irLen - 1
 	response := make([]float64, responseLen)
+
 	for i, sv := range sweep {
 		for j, iv := range knownIR {
 			if i+j < responseLen {
@@ -204,6 +208,7 @@ func TestLogSweepDeconvolveKnownIR(t *testing.T) {
 
 	// Find the main peak
 	peakIdx := 0
+
 	peakVal := 0.0
 	for i, v := range recovered {
 		if math.Abs(v) > peakVal {
@@ -215,6 +220,7 @@ func TestLogSweepDeconvolveKnownIR(t *testing.T) {
 	// There should be a secondary peak ~100 samples after the main peak
 	// with amplitude roughly 0.3 of the main peak
 	searchStart := peakIdx + 80
+
 	searchEnd := peakIdx + 120
 	if searchEnd > len(recovered) {
 		searchEnd = len(recovered)
@@ -236,10 +242,12 @@ func TestLogSweepDeconvolveKnownIR(t *testing.T) {
 
 func TestLogSweepDeconvolveEmptyResponse(t *testing.T) {
 	s := &LogSweep{100, 4000, 0.5, 16000}
+
 	_, err := s.Deconvolve(nil)
 	if err != ErrEmptyResponse {
 		t.Errorf("Deconvolve(nil) = %v, want ErrEmptyResponse", err)
 	}
+
 	_, err = s.Deconvolve([]float64{})
 	if err != ErrEmptyResponse {
 		t.Errorf("Deconvolve([]) = %v, want ErrEmptyResponse", err)

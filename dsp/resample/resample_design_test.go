@@ -10,6 +10,7 @@ func TestNewForRatesCommon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewForRates() error = %v", err)
 	}
+
 	up, down := r.Ratio()
 	if up != 160 || down != 147 {
 		t.Fatalf("ratio = %d/%d, want 160/147", up, down)
@@ -33,6 +34,7 @@ func TestQualityModes_PassbandAndStopband(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: NewRational passband error = %v", tc.name, err)
 		}
+
 		rStop, err := NewRational(1, 2, WithQuality(tc.quality))
 		if err != nil {
 			t.Fatalf("%s: NewRational stopband error = %v", tc.name, err)
@@ -46,6 +48,7 @@ func TestQualityModes_PassbandAndStopband(t *testing.T) {
 
 		inPassRMS := rms(inPass[4096:])
 		outPassRMS := rms(outPass[2048:])
+
 		passbandDB := math.Abs(dbRatio(outPassRMS, inPassRMS))
 		if passbandDB > tc.maxPassbandDB {
 			t.Fatalf("%s: passband droop %.2f dB > %.2f dB", tc.name, passbandDB, tc.maxPassbandDB)
@@ -53,6 +56,7 @@ func TestQualityModes_PassbandAndStopband(t *testing.T) {
 
 		inStopRMS := rms(inStop[4096:])
 		outStopRMS := rms(outStop[2048:])
+
 		stopAttenDB := -dbRatio(outStopRMS, inStopRMS)
 		if stopAttenDB < tc.minStopbandDB {
 			t.Fatalf("%s: stopband attenuation %.2f dB < %.2f dB", tc.name, stopAttenDB, tc.minStopbandDB)

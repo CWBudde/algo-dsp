@@ -10,6 +10,7 @@ func TestFlangerProcessInPlaceMatchesProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewFlanger() error = %v", err)
 	}
+
 	f2, err := NewFlanger(48000)
 	if err != nil {
 		t.Fatalf("NewFlanger() error = %v", err)
@@ -22,12 +23,14 @@ func TestFlangerProcessInPlaceMatchesProcess(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = f1.Process(want[i])
 	}
 
 	got := make([]float64, len(input))
 	copy(got, input)
+
 	if err := f2.ProcessInPlace(got); err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
@@ -80,6 +83,7 @@ func TestFlangerImpulseAtConfiguredDelayWhenDepthZero(t *testing.T) {
 
 	in := make([]float64, 16)
 	in[0] = 1
+
 	out := make([]float64, len(in))
 	for i := range in {
 		out[i] = f.Process(in[i])
@@ -90,6 +94,7 @@ func TestFlangerImpulseAtConfiguredDelayWhenDepthZero(t *testing.T) {
 		if i == 5 {
 			want = 1
 		}
+
 		if diff := math.Abs(out[i] - want); diff > 1e-12 {
 			t.Fatalf("sample %d mismatch: got=%g want=%g", i, out[i], want)
 		}
@@ -128,9 +133,11 @@ func TestFlangerSetDepthSecondsRollsBackOnInvalidCombination(t *testing.T) {
 	if err := f.SetDepthSeconds(0.0014); err == nil {
 		t.Fatal("SetDepthSeconds() expected error for base+depth > max")
 	}
+
 	if got := f.BaseDelaySeconds(); math.Abs(got-prevBase) > 1e-12 {
 		t.Fatalf("base delay changed after failed update: got=%g want=%g", got, prevBase)
 	}
+
 	if got := f.DepthSeconds(); math.Abs(got-prevDepth) > 1e-12 {
 		t.Fatalf("depth changed after failed update: got=%g want=%g", got, prevDepth)
 	}
@@ -155,9 +162,11 @@ func TestFlangerSetBaseDelaySecondsRollsBackOnInvalidCombination(t *testing.T) {
 	if err := f.SetBaseDelaySeconds(0.007); err == nil {
 		t.Fatal("SetBaseDelaySeconds() expected error for base+depth > max")
 	}
+
 	if got := f.BaseDelaySeconds(); math.Abs(got-prevBase) > 1e-12 {
 		t.Fatalf("base delay changed after failed update: got=%g want=%g", got, prevBase)
 	}
+
 	if got := f.DepthSeconds(); math.Abs(got-prevDepth) > 1e-12 {
 		t.Fatalf("depth changed after failed update: got=%g want=%g", got, prevDepth)
 	}

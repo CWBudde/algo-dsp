@@ -21,6 +21,7 @@ func New(coeffs []float64) *Filter {
 	c := make([]float64, len(coeffs))
 	copy(c, coeffs)
 	n := len(coeffs)
+
 	return &Filter{
 		coeffs: c,
 		delay:  make([]float64, n),
@@ -34,20 +35,26 @@ func New(coeffs []float64) *Filter {
 //	y[n] = sum_{k=0}^{N-1} h[k] * x[n-k]
 func (f *Filter) ProcessSample(x float64) float64 {
 	f.delay[f.pos] = x
+
 	var y float64
+
 	n := len(f.coeffs)
+
 	p := f.pos
 	for k := range n {
 		y += f.coeffs[k] * f.delay[p]
+
 		p--
 		if p < 0 {
 			p = n - 1
 		}
 	}
+
 	f.pos++
 	if f.pos >= n {
 		f.pos = 0
 	}
+
 	return y
 }
 
@@ -67,6 +74,7 @@ func (f *Filter) ProcessBlock(buf []float64) {
 		for i, x := range buf {
 			buf[i] = f.ProcessSample(x)
 		}
+
 		return
 	}
 
@@ -100,6 +108,7 @@ func (f *Filter) ProcessBlock(buf []float64) {
 // for significant performance improvement with large tap counts (128+).
 func (f *Filter) ProcessBlockTo(dst, src []float64) {
 	_ = dst[len(src)-1] // bounds check hint
+
 	n := len(f.coeffs)
 	if n == 0 {
 		return
@@ -111,6 +120,7 @@ func (f *Filter) ProcessBlockTo(dst, src []float64) {
 		for i, x := range src {
 			dst[i] = f.ProcessSample(x)
 		}
+
 		return
 	}
 
@@ -143,9 +153,11 @@ func (f *Filter) Reset() {
 	for i := range f.delay {
 		f.delay[i] = 0
 	}
+
 	for i := range f.linear {
 		f.linear[i] = 0
 	}
+
 	f.pos = 0
 }
 
@@ -158,6 +170,7 @@ func (f *Filter) Order() int {
 func (f *Filter) Coefficients() []float64 {
 	c := make([]float64, len(f.coeffs))
 	copy(c, f.coeffs)
+
 	return c
 }
 
@@ -165,10 +178,12 @@ func (f *Filter) Coefficients() []float64 {
 // frequency (Hz) and sample rate (Hz).
 func (f *Filter) Response(freqHz, sampleRate float64) complex128 {
 	w := 2 * math.Pi * freqHz / sampleRate
+
 	var h complex128
 	for k, c := range f.coeffs {
 		h += complex(c, 0) * cmplx.Exp(complex(0, -w*float64(k)))
 	}
+
 	return h
 }
 

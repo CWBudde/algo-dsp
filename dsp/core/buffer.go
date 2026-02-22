@@ -5,9 +5,11 @@ func EnsureLen(buf []float64, n int) []float64 {
 	if n <= 0 {
 		return buf[:0]
 	}
+
 	if cap(buf) >= n {
 		return buf[:n]
 	}
+
 	return make([]float64, n)
 }
 
@@ -24,6 +26,8 @@ func CopyInto(dst, src []float64) int {
 	if len(src) < n {
 		n = len(src)
 	}
+
 	copy(dst[:n], src[:n])
+
 	return n
 }

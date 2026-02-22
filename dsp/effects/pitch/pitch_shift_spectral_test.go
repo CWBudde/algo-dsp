@@ -27,27 +27,35 @@ func TestNewSpectralPitchShifter(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("NewSpectralPitchShifter() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			if tt.wantErr {
 				return
 			}
+
 			if s == nil {
 				t.Fatal("NewSpectralPitchShifter() returned nil")
 			}
+
 			if got := s.SampleRate(); got != tt.sampleRate {
 				t.Fatalf("SampleRate() = %f, want %f", got, tt.sampleRate)
 			}
+
 			if got := s.PitchRatio(); got != defaultSpectralPitchRatio {
 				t.Fatalf("PitchRatio() = %f, want %f", got, defaultSpectralPitchRatio)
 			}
+
 			if got := s.FrameSize(); got != defaultSpectralFrameSize {
 				t.Fatalf("FrameSize() = %d, want %d", got, defaultSpectralFrameSize)
 			}
+
 			if got := s.AnalysisHop(); got != defaultSpectralAnalysisHop {
 				t.Fatalf("AnalysisHop() = %d, want %d", got, defaultSpectralAnalysisHop)
 			}
+
 			if got := s.SynthesisHop(); got != defaultSpectralAnalysisHop {
 				t.Fatalf("SynthesisHop() = %d, want %d", got, defaultSpectralAnalysisHop)
 			}
+
 			if got := s.EffectivePitchRatio(); got != 1 {
 				t.Fatalf("EffectivePitchRatio() = %f, want 1", got)
 			}
@@ -64,27 +72,35 @@ func TestSpectralPitchShifterSettersValidate(t *testing.T) {
 	if err := s.SetPitchRatio(0); err == nil {
 		t.Fatal("expected error for zero pitch ratio")
 	}
+
 	if err := s.SetPitchRatio(0.1); err == nil {
 		t.Fatal("expected error for too-small pitch ratio")
 	}
+
 	if err := s.SetPitchRatio(6); err == nil {
 		t.Fatal("expected error for too-large pitch ratio")
 	}
+
 	if err := s.SetPitchRatio(math.NaN()); err == nil {
 		t.Fatal("expected error for NaN pitch ratio")
 	}
+
 	if err := s.SetPitchRatio(math.Inf(1)); err == nil {
 		t.Fatal("expected error for Inf pitch ratio")
 	}
+
 	if err := s.SetPitchSemitones(math.NaN()); err == nil {
 		t.Fatal("expected error for NaN semitones")
 	}
+
 	if err := s.SetPitchSemitones(7); err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
+
 	if err := s.SetSampleRate(0); err == nil {
 		t.Fatal("expected error for invalid sample rate")
 	}
+
 	if err := s.SetSampleRate(96000); err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
@@ -92,9 +108,11 @@ func TestSpectralPitchShifterSettersValidate(t *testing.T) {
 	if err := s.SetFrameSize(1000); err == nil {
 		t.Fatal("expected error for non power-of-two frame size")
 	}
+
 	if err := s.SetFrameSize(32); err == nil {
 		t.Fatal("expected error for too-small frame size")
 	}
+
 	if err := s.SetFrameSize(2048); err != nil {
 		t.Fatalf("SetFrameSize() error = %v", err)
 	}
@@ -102,9 +120,11 @@ func TestSpectralPitchShifterSettersValidate(t *testing.T) {
 	if err := s.SetAnalysisHop(0); err == nil {
 		t.Fatal("expected error for zero hop")
 	}
+
 	if err := s.SetAnalysisHop(2048); err == nil {
 		t.Fatal("expected error for hop >= frame size")
 	}
+
 	if err := s.SetAnalysisHop(512); err != nil {
 		t.Fatalf("SetAnalysisHop() error = %v", err)
 	}
@@ -115,15 +135,18 @@ func TestSpectralPitchShifterProcessLengthAndFinite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 	}
+
 	if err := s.SetPitchRatio(1.25); err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
 
 	input := testutil.DeterministicSine(220, 48000, 0.8, 4096)
+
 	out := s.Process(input)
 	if len(out) != len(input) {
 		t.Fatalf("len(out) = %d, want %d", len(out), len(input))
 	}
+
 	testutil.RequireFinite(t, out)
 }
 
@@ -132,6 +155,7 @@ func TestSpectralPitchShifterProcessInPlaceMatchesProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 	}
+
 	if err := s.SetPitchRatio(0.8); err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
@@ -146,6 +170,7 @@ func TestSpectralPitchShifterProcessInPlaceMatchesProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MaxAbsDiff() error = %v", err)
 	}
+
 	if maxDiff > 1e-9 {
 		t.Fatalf("max diff = %g, want <= 1e-9", maxDiff)
 	}
@@ -165,12 +190,14 @@ func TestSpectralPitchShifterIdentityKeepsDominantFrequency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 	}
+
 	if err := s.SetPitchRatio(1); err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
 
 	out := s.Process(input)
 	gotFreq := dominantFrequencyHz(t, out[n/4:3*n/4], sampleRate)
+
 	relErr := math.Abs(gotFreq-freq) / freq
 	if relErr > 0.04 {
 		t.Fatalf("dominant frequency rel err = %f (got %f Hz, want %f Hz)", relErr, gotFreq, freq)
@@ -201,6 +228,7 @@ func TestSpectralPitchShifterMovesDominantFrequency(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 			}
+
 			if err := s.SetPitchRatio(tc.ratio); err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
@@ -208,6 +236,7 @@ func TestSpectralPitchShifterMovesDominantFrequency(t *testing.T) {
 			out := s.Process(input)
 			gotFreq := dominantFrequencyHz(t, out[n/4:3*n/4], sampleRate)
 			wantFreq := inputFreq * s.EffectivePitchRatio()
+
 			relErr := math.Abs(gotFreq-wantFreq) / wantFreq
 			if relErr > 0.10 {
 				t.Fatalf(
@@ -245,6 +274,7 @@ func TestSpectralPitchShifterSignalQuality(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 			}
+
 			if err := s.SetPitchRatio(tc.ratio); err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
@@ -267,17 +297,21 @@ func TestSpectralPitchShifterSignalQuality(t *testing.T) {
 			if mid < 0 {
 				mid = 0
 			}
+
 			chunk := out[mid : mid+fftLen]
 
 			plan, err := algofft.NewPlan64(fftLen)
 			if err != nil {
 				t.Fatalf("NewPlan64 error: %v", err)
 			}
+
 			fftIn := make([]complex128, fftLen)
 			fftOut := make([]complex128, fftLen)
+
 			for i, v := range chunk {
 				fftIn[i] = complex(v, 0)
 			}
+
 			if err := plan.Forward(fftOut, fftIn); err != nil {
 				t.Fatalf("Forward FFT error: %v", err)
 			}
@@ -286,6 +320,7 @@ func TestSpectralPitchShifterSignalQuality(t *testing.T) {
 			sigBW := 10
 			sigPower := 0.0
 			noisePower := 0.0
+
 			for k := 1; k <= fftLen/2; k++ {
 				mag2 := real(fftOut[k])*real(fftOut[k]) + imag(fftOut[k])*imag(fftOut[k])
 				if k >= targetBin-sigBW && k <= targetBin+sigBW {
@@ -341,12 +376,15 @@ func TestSpectralPitchShifterSignalQualityOverlap(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 			}
+
 			if err := s.SetFrameSize(tc.frameSize); err != nil {
 				t.Fatalf("SetFrameSize() error = %v", err)
 			}
+
 			if err := s.SetAnalysisHop(tc.analysisHop); err != nil {
 				t.Fatalf("SetAnalysisHop() error = %v", err)
 			}
+
 			if err := s.SetPitchRatio(ratio); err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
@@ -383,25 +421,32 @@ func measureSNR(t *testing.T, out []float64, targetFreq, sampleRate float64, fft
 	if mid < 0 {
 		mid = 0
 	}
+
 	chunk := out[mid : mid+fftLen]
 
 	plan, err := algofft.NewPlan64(fftLen)
 	if err != nil {
 		t.Fatalf("NewPlan64 error: %v", err)
 	}
+
 	fftIn := make([]complex128, fftLen)
 	fftOut := make([]complex128, fftLen)
+
 	for i, v := range chunk {
 		fftIn[i] = complex(v, 0)
 	}
+
 	if err := plan.Forward(fftOut, fftIn); err != nil {
 		t.Fatalf("Forward FFT error: %v", err)
 	}
 
 	targetBin := int(math.Round(targetFreq * float64(fftLen) / sampleRate))
+
 	const sigBW = 10
+
 	sigPower := 0.0
 	noisePower := 0.0
+
 	for k := 1; k <= fftLen/2; k++ {
 		mag2 := real(fftOut[k])*real(fftOut[k]) + imag(fftOut[k])*imag(fftOut[k])
 		if k >= targetBin-sigBW && k <= targetBin+sigBW {
@@ -414,11 +459,13 @@ func measureSNR(t *testing.T, out []float64, targetFreq, sampleRate float64, fft
 	if noisePower <= 1e-30 {
 		return 100.0
 	}
+
 	return 10 * math.Log10(sigPower/noisePower)
 }
 
 func dominantFrequencyHz(t *testing.T, signal []float64, sampleRate float64) float64 {
 	t.Helper()
+
 	if len(signal) == 0 {
 		return 0
 	}
@@ -429,6 +476,7 @@ func dominantFrequencyHz(t *testing.T, signal []float64, sampleRate float64) flo
 	}
 
 	in := make([]complex128, len(signal))
+
 	out := make([]complex128, len(signal))
 	for i, v := range signal {
 		in[i] = complex(v, 0)
@@ -440,9 +488,11 @@ func dominantFrequencyHz(t *testing.T, signal []float64, sampleRate float64) flo
 
 	maxBin := 1
 	maxMag := 0.0
+
 	for k := 1; k <= len(signal)/2; k++ {
 		re := real(out[k])
 		im := imag(out[k])
+
 		mag := re*re + im*im
 		if mag > maxMag {
 			maxMag = mag

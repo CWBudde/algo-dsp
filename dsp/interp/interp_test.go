@@ -17,6 +17,7 @@ func TestLinear2Endpoints(t *testing.T) {
 	if got := Linear2(0, 3, 7); got != 3 {
 		t.Fatalf("t=0: got %v want 3", got)
 	}
+
 	if got := Linear2(1, 3, 7); got != 7 {
 		t.Fatalf("t=1: got %v want 7", got)
 	}
@@ -59,6 +60,7 @@ func TestHermite4EndpointsReturnBracketSamples(t *testing.T) {
 	if got := Hermite4(0, xm1, x0, x1, x2); !approxEqual(got, x0, tol) {
 		t.Fatalf("t=0: got %v want %v", got, x0)
 	}
+
 	if got := Hermite4(1, xm1, x0, x1, x2); !approxEqual(got, x1, tol) {
 		t.Fatalf("t=1: got %v want %v", got, x1)
 	}
@@ -67,9 +69,11 @@ func TestHermite4EndpointsReturnBracketSamples(t *testing.T) {
 func TestHermite4QuadraticExact(t *testing.T) {
 	// f(x) = x^2 sampled at -1,0,1,2
 	f := func(x float64) float64 { return x * x }
+
 	xm1, x0, x1, x2 := f(-1), f(0), f(1), f(2)
 	for _, frac := range []float64{0.1, 0.3, 0.5, 0.7, 0.9} {
 		want := f(frac)
+
 		got := Hermite4(frac, xm1, x0, x1, x2)
 		if !approxEqual(got, want, 1e-10) {
 			t.Fatalf("t=%v: got %v want %v", frac, got, want)
@@ -81,8 +85,10 @@ func TestHermite4QuadraticExact(t *testing.T) {
 
 func TestLagrange4LinearRamp(t *testing.T) {
 	xm1, x0, x1, x2 := -1.0, 0.0, 1.0, 2.0
+
 	for _, frac := range []float64{0, 0.25, 0.5, 0.75, 1.0} {
 		want := frac
+
 		got := Lagrange4(frac, xm1, x0, x1, x2)
 		if !approxEqual(got, want, tol) {
 			t.Fatalf("t=%v: got %v want %v", frac, got, want)
@@ -93,9 +99,11 @@ func TestLagrange4LinearRamp(t *testing.T) {
 func TestLagrange4CubicExact(t *testing.T) {
 	// Lagrange order-3 should exactly reproduce a cubic polynomial.
 	f := func(x float64) float64 { return x*x*x - 2*x*x + x - 3 }
+
 	xm1, x0, x1, x2 := f(-1), f(0), f(1), f(2)
 	for _, frac := range []float64{0.1, 0.3, 0.5, 0.7, 0.9} {
 		want := f(frac)
+
 		got := Lagrange4(frac, xm1, x0, x1, x2)
 		if !approxEqual(got, want, 1e-10) {
 			t.Fatalf("t=%v: got %v want %v", frac, got, want)
@@ -108,6 +116,7 @@ func TestLagrange4Endpoints(t *testing.T) {
 	if got := Lagrange4(0, xm1, x0, x1, x2); !approxEqual(got, x0, tol) {
 		t.Fatalf("t=0: got %v want %v", got, x0)
 	}
+
 	if got := Lagrange4(1, xm1, x0, x1, x2); !approxEqual(got, x1, tol) {
 		t.Fatalf("t=1: got %v want %v", got, x1)
 	}
@@ -122,6 +131,7 @@ func TestLagrangeInterpolator(t *testing.T) {
 	}
 
 	l3 := NewLagrangeInterpolator(3)
+
 	got := l3.Interpolate([]float64{0, 1, 2, 3}, 0.5)
 	if !approxEqual(got, 1.5, tol) {
 		t.Fatalf("order3 got %v want 1.5", got)
@@ -159,8 +169,10 @@ func TestLanczos6LinearRamp(t *testing.T) {
 	// Lanczos reproduces a linear ramp approximately; verify it stays
 	// close (within ~10%) rather than requiring machine precision.
 	samples := []float64{-2, -1, 0, 1, 2, 3}
+
 	for _, frac := range []float64{0, 0.25, 0.5, 0.75} {
 		want := frac
+
 		got := Lanczos6(frac, samples)
 		if !approxEqual(got, want, 0.1) {
 			t.Fatalf("t=%v: got %v want ~%v", frac, got, want)
@@ -175,6 +187,7 @@ func TestLanczosNVariousWidths(t *testing.T) {
 		for i := range samples {
 			samples[i] = 5.0
 		}
+
 		got := LanczosN(0.3, samples, a)
 		if !approxEqual(got, 5.0, 1e-10) {
 			t.Fatalf("a=%d DC: got %v want 5", a, got)
@@ -186,11 +199,14 @@ func TestLanczos6SineWave(t *testing.T) {
 	// A low-frequency sine should be well-interpolated by Lanczos3.
 	freq := 0.05
 	frac := 0.4
+
 	samples := make([]float64, 6)
 	for i := range samples {
 		samples[i] = math.Sin(2 * math.Pi * freq * float64(i-2))
 	}
+
 	got := Lanczos6(frac, samples)
+
 	exact := math.Sin(2 * math.Pi * freq * frac)
 	if !approxEqual(got, exact, 5e-3) {
 		t.Fatalf("sine: got %v want %v (err=%e)", got, exact, math.Abs(got-exact))
@@ -206,6 +222,7 @@ func TestSincInterpDC(t *testing.T) {
 		for i := range samples {
 			samples[i] = 7.0
 		}
+
 		got := SincInterp(0.3, samples, n)
 		if !approxEqual(got, 7.0, 1e-6) {
 			t.Fatalf("n=%d DC: got %v want 7", n, got)
@@ -215,12 +232,15 @@ func TestSincInterpDC(t *testing.T) {
 
 func TestSincInterpLinearRamp(t *testing.T) {
 	n := 8
+
 	samples := make([]float64, 2*n)
 	for i := range samples {
 		samples[i] = float64(i - (n - 1)) // centered ramp
 	}
+
 	for _, frac := range []float64{0, 0.25, 0.5, 0.75} {
 		want := frac
+
 		got := SincInterp(frac, samples, n)
 		if !approxEqual(got, want, 1e-4) {
 			t.Fatalf("t=%v: got %v want %v", frac, got, want)
@@ -239,14 +259,17 @@ func TestSincInterpVsLanczosQuality(t *testing.T) {
 	for i := range lanSamples {
 		lanSamples[i] = math.Sin(2 * math.Pi * freq * float64(i-2))
 	}
+
 	lanResult := Lanczos6(frac, lanSamples)
 
 	// Generate sinc samples (16 taps, n=8).
 	n := 8
+
 	sincSamples := make([]float64, 2*n)
 	for i := range sincSamples {
 		sincSamples[i] = math.Sin(2 * math.Pi * freq * float64(i-(n-1)))
 	}
+
 	sincResult := SincInterp(frac, sincSamples, n)
 
 	exact := math.Sin(2 * math.Pi * freq * frac)
@@ -265,9 +288,11 @@ func TestAllpassCoeff(t *testing.T) {
 	if got := AllpassCoeff(0); !approxEqual(got, 1, tol) {
 		t.Fatalf("t=0: got %v want 1", got)
 	}
+
 	if got := AllpassCoeff(1); !approxEqual(got, 0, tol) {
 		t.Fatalf("t=1: got %v want 0", got)
 	}
+
 	if got := AllpassCoeff(0.5); !approxEqual(got, 1.0/3.0, tol) {
 		t.Fatalf("t=0.5: got %v want 1/3", got)
 	}
@@ -278,10 +303,12 @@ func TestAllpassTickDCPassthrough(t *testing.T) {
 	// once the state settles.
 	state := 0.0
 	dc := 5.0
+
 	var last float64
 	for i := 0; i < 100; i++ {
 		last = AllpassTick(0.3, dc, dc, &state)
 	}
+
 	if !approxEqual(last, dc, 1e-6) {
 		t.Fatalf("DC settled: got %v want %v", last, dc)
 	}
@@ -294,16 +321,20 @@ func TestAllpassTickUnityMagnitude(t *testing.T) {
 	freq := 0.1
 	frac := 0.4
 	n := 1000
+
 	var sumSqIn, sumSqOut float64
+
 	for i := 0; i < n; i++ {
 		x0 := math.Sin(2 * math.Pi * freq * float64(i))
 		x1 := math.Sin(2 * math.Pi * freq * float64(i+1))
+
 		out := AllpassTick(frac, x0, x1, &state)
 		if i >= 100 { // skip transient
 			sumSqIn += x0 * x0
 			sumSqOut += out * out
 		}
 	}
+
 	ratio := sumSqOut / sumSqIn
 	if !approxEqual(ratio, 1.0, 0.05) {
 		t.Fatalf("magnitude ratio: got %v want ~1.0", ratio)
@@ -368,11 +399,14 @@ func BenchmarkLanczos6(b *testing.B) {
 
 func BenchmarkSincInterp8(b *testing.B) {
 	n := 8
+
 	s := make([]float64, 2*n)
 	for i := range s {
 		s[i] = float64(i)
 	}
+
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		SincInterp(0.3, s, n)
 	}

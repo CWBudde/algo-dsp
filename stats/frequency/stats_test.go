@@ -12,9 +12,11 @@ func almostEqual(a, b, tol float64) bool {
 	if math.IsInf(a, -1) && math.IsInf(b, -1) {
 		return true
 	}
+
 	if math.IsInf(a, 1) && math.IsInf(b, 1) {
 		return true
 	}
+
 	return math.Abs(a-b) <= tol
 }
 
@@ -25,6 +27,7 @@ func makeSingleBinSpectrum(n, bin int, amplitude float64) []float64 {
 	if bin >= 0 && bin < n {
 		mag[bin] = amplitude
 	}
+
 	return mag
 }
 
@@ -34,6 +37,7 @@ func makeFlatSpectrum(n int, amplitude float64) []float64 {
 	for i := range mag {
 		mag[i] = amplitude
 	}
+
 	return mag
 }
 
@@ -42,12 +46,15 @@ func TestCalculateEmpty(t *testing.T) {
 	if s.BinCount != 0 {
 		t.Fatalf("expected BinCount=0, got %d", s.BinCount)
 	}
+
 	if !math.IsInf(s.DC_dB, -1) {
 		t.Fatalf("expected DC_dB=-Inf, got %f", s.DC_dB)
 	}
+
 	if !math.IsInf(s.Sum_dB, -1) {
 		t.Fatalf("expected Sum_dB=-Inf, got %f", s.Sum_dB)
 	}
+
 	if !math.IsInf(s.Average_dB, -1) {
 		t.Fatalf("expected Average_dB=-Inf, got %f", s.Average_dB)
 	}
@@ -55,19 +62,24 @@ func TestCalculateEmpty(t *testing.T) {
 
 func TestCalculateAllZero(t *testing.T) {
 	mag := make([]float64, 513) // FFT size 1024
+
 	s := Calculate(mag, 48000)
 	if s.BinCount != 513 {
 		t.Fatalf("expected BinCount=513, got %d", s.BinCount)
 	}
+
 	if s.Sum != 0 {
 		t.Fatalf("expected Sum=0, got %f", s.Sum)
 	}
+
 	if s.Energy != 0 {
 		t.Fatalf("expected Energy=0, got %f", s.Energy)
 	}
+
 	if s.Centroid != 0 {
 		t.Fatalf("expected Centroid=0, got %f", s.Centroid)
 	}
+
 	if s.Flatness != 0 {
 		t.Fatalf("expected Flatness=0, got %f", s.Flatness)
 	}
@@ -110,6 +122,7 @@ func TestCalculateSingleBin(t *testing.T) {
 	if s.MaxBin != bin {
 		t.Fatalf("MaxBin: got %d, want %d", s.MaxBin, bin)
 	}
+
 	if !almostEqual(s.Max, amplitude, tolerance) {
 		t.Fatalf("Max: got %f, want %f", s.Max, amplitude)
 	}
@@ -221,9 +234,11 @@ func TestCalculateSingleElement(t *testing.T) {
 	if s.BinCount != 1 {
 		t.Fatalf("BinCount: got %d, want 1", s.BinCount)
 	}
+
 	if !almostEqual(s.DC, 3.5, tolerance) {
 		t.Fatalf("DC: got %f, want 3.5", s.DC)
 	}
+
 	if !almostEqual(s.Energy, 3.5*3.5, tolerance) {
 		t.Fatalf("Energy: got %f, want %f", s.Energy, 3.5*3.5)
 	}
@@ -249,26 +264,33 @@ func TestCalculateFromComplexMatchesCalculate(t *testing.T) {
 	for i, c := range spectrum {
 		mag[i] = cmplx.Abs(c)
 	}
+
 	s2 := Calculate(mag, sampleRate)
 
 	if s1.BinCount != s2.BinCount {
 		t.Fatalf("BinCount mismatch: %d vs %d", s1.BinCount, s2.BinCount)
 	}
+
 	if !almostEqual(s1.Sum, s2.Sum, tolerance) {
 		t.Fatalf("Sum mismatch: %f vs %f", s1.Sum, s2.Sum)
 	}
+
 	if !almostEqual(s1.Energy, s2.Energy, tolerance) {
 		t.Fatalf("Energy mismatch: %f vs %f", s1.Energy, s2.Energy)
 	}
+
 	if !almostEqual(s1.Centroid, s2.Centroid, tolerance) {
 		t.Fatalf("Centroid mismatch: %f vs %f", s1.Centroid, s2.Centroid)
 	}
+
 	if !almostEqual(s1.Flatness, s2.Flatness, tolerance) {
 		t.Fatalf("Flatness mismatch: %f vs %f", s1.Flatness, s2.Flatness)
 	}
+
 	if !almostEqual(s1.Rolloff, s2.Rolloff, tolerance) {
 		t.Fatalf("Rolloff mismatch: %f vs %f", s1.Rolloff, s2.Rolloff)
 	}
+
 	if !almostEqual(s1.Bandwidth, s2.Bandwidth, tolerance) {
 		t.Fatalf("Bandwidth mismatch: %f vs %f", s1.Bandwidth, s2.Bandwidth)
 	}
@@ -322,6 +344,7 @@ func TestCentroidSingleBin(t *testing.T) {
 		n          = fftSize/2 + 1
 		bin        = 100
 	)
+
 	mag := makeSingleBinSpectrum(n, bin, 1.0)
 	expectedFreq := float64(bin) * sampleRate / float64(fftSize)
 
@@ -336,6 +359,7 @@ func TestCentroidEmpty(t *testing.T) {
 	if c != 0 {
 		t.Fatalf("Centroid of nil: got %f, want 0", c)
 	}
+
 	c = Centroid([]float64{0}, 48000)
 	if c != 0 {
 		t.Fatalf("Centroid of single zero: got %f, want 0", c)
@@ -345,6 +369,7 @@ func TestCentroidEmpty(t *testing.T) {
 func TestFlatnessPerfectlyFlat(t *testing.T) {
 	// All non-DC bins equal -> flatness = 1.
 	mag := makeFlatSpectrum(129, 1.0)
+
 	flat := Flatness(mag)
 	if !almostEqual(flat, 1.0, 1e-9) {
 		t.Fatalf("Flatness of flat spectrum: got %f, want 1.0", flat)
@@ -355,6 +380,7 @@ func TestFlatnessSingleTone(t *testing.T) {
 	// Only one non-DC bin is non-zero -> flatness ~ 0.
 	mag := make([]float64, 129)
 	mag[50] = 1.0
+
 	flat := Flatness(mag)
 	if flat > 0.01 {
 		t.Fatalf("Flatness of single tone: got %f, want ~0", flat)
@@ -363,6 +389,7 @@ func TestFlatnessSingleTone(t *testing.T) {
 
 func TestFlatnessAllZero(t *testing.T) {
 	mag := make([]float64, 129)
+
 	flat := Flatness(mag)
 	if flat != 0 {
 		t.Fatalf("Flatness of all-zero: got %f, want 0", flat)
@@ -386,6 +413,7 @@ func TestRolloffKnownDistribution(t *testing.T) {
 	mag := []float64{1, 1, 1, 1, 1}
 	sampleRate := 8.0 // Nyquist = 4 Hz, fftSize = 8, binFreq = i * 8 / 8 = i Hz
 	roll := Rolloff(mag, sampleRate, 0.85)
+
 	expectedFreq := binFreq(4, sampleRate, 5) // bin 4 frequency
 	if !almostEqual(roll, expectedFreq, tolerance) {
 		t.Fatalf("Rolloff: got %f, want %f", roll, expectedFreq)
@@ -396,6 +424,7 @@ func TestRolloffConcentratedEnergy(t *testing.T) {
 	// All energy in bin 0 (DC).
 	mag := make([]float64, 33) // FFTSize = 64
 	mag[0] = 10.0
+
 	roll := Rolloff(mag, 48000, 0.85)
 	if !almostEqual(roll, 0, tolerance) {
 		t.Fatalf("Rolloff DC-only: got %f, want 0", roll)
@@ -436,6 +465,7 @@ func TestBandwidthSinglePeak(t *testing.T) {
 	if math.Abs(bw-expectedBW) > 2*binWidth {
 		t.Fatalf("Bandwidth: got %f, expected ~%f (binWidth=%f)", bw, expectedBW, binWidth)
 	}
+
 	if bw <= 0 {
 		t.Fatalf("Bandwidth should be positive, got %f", bw)
 	}
@@ -447,6 +477,7 @@ func TestBandwidthFlat(t *testing.T) {
 	mag := makeFlatSpectrum(129, 1.0)
 	sampleRate := 44100.0
 	bw := Bandwidth(mag, sampleRate)
+
 	nyquist := sampleRate / 2
 	if !almostEqual(bw, nyquist, 1.0) {
 		t.Fatalf("Bandwidth flat: got %f, want ~%f", bw, nyquist)
@@ -455,6 +486,7 @@ func TestBandwidthFlat(t *testing.T) {
 
 func TestBandwidthZero(t *testing.T) {
 	mag := make([]float64, 129)
+
 	bw := Bandwidth(mag, 48000)
 	if bw != 0 {
 		t.Fatalf("Bandwidth zero: got %f, want 0", bw)
@@ -482,6 +514,7 @@ func TestCalculateTableDriven(t *testing.T) {
 			sampleRate: 48000,
 			checkFn: func(t *testing.T, s Stats) {
 				t.Helper()
+
 				if s.BinCount != 0 {
 					t.Fatalf("BinCount: got %d, want 0", s.BinCount)
 				}
@@ -493,9 +526,11 @@ func TestCalculateTableDriven(t *testing.T) {
 			sampleRate: 48000,
 			checkFn: func(t *testing.T, s Stats) {
 				t.Helper()
+
 				if s.BinCount != 1 {
 					t.Fatalf("BinCount: got %d, want 1", s.BinCount)
 				}
+
 				if !almostEqual(s.DC, 7.0, tolerance) {
 					t.Fatalf("DC: got %f, want 7.0", s.DC)
 				}
@@ -507,6 +542,7 @@ func TestCalculateTableDriven(t *testing.T) {
 			sampleRate: 44100,
 			checkFn: func(t *testing.T, s Stats) {
 				t.Helper()
+
 				if s.BinCount != 2 {
 					t.Fatalf("BinCount: got %d, want 2", s.BinCount)
 				}
@@ -522,9 +558,11 @@ func TestCalculateTableDriven(t *testing.T) {
 			sampleRate: 96000,
 			checkFn: func(t *testing.T, s Stats) {
 				t.Helper()
+
 				if s.Energy != 0 {
 					t.Fatalf("Energy: got %f, want 0", s.Energy)
 				}
+
 				if s.Centroid != 0 {
 					t.Fatalf("Centroid: got %f, want 0", s.Centroid)
 				}
@@ -537,20 +575,25 @@ func TestCalculateTableDriven(t *testing.T) {
 				for i := range mag {
 					mag[i] = float64(i)
 				}
+
 				return mag
 			}(),
 			sampleRate: 48000,
 			checkFn: func(t *testing.T, s Stats) {
 				t.Helper()
+
 				if s.MaxBin != 32 {
 					t.Fatalf("MaxBin: got %d, want 32", s.MaxBin)
 				}
+
 				if s.MinBin != 0 {
 					t.Fatalf("MinBin: got %d, want 0", s.MinBin)
 				}
+
 				if !almostEqual(s.Min, 0, tolerance) {
 					t.Fatalf("Min: got %f, want 0", s.Min)
 				}
+
 				if !almostEqual(s.Max, 32, tolerance) {
 					t.Fatalf("Max: got %f, want 32", s.Max)
 				}
@@ -595,7 +638,9 @@ func TestSpreadSingleBin(t *testing.T) {
 		sampleRate = 48000.0
 		n          = fftSize/2 + 1
 	)
+
 	mag := makeSingleBinSpectrum(n, 50, 1.0)
+
 	s := Calculate(mag, sampleRate)
 	if !almostEqual(s.Spread, 0, tolerance) {
 		t.Fatalf("Spread for single bin: got %f, want 0", s.Spread)
@@ -609,6 +654,7 @@ func TestSpreadTwoBinsSymmetric(t *testing.T) {
 		sampleRate = 48000.0
 		n          = fftSize/2 + 1
 	)
+
 	mag := make([]float64, n)
 	mag[100] = 1.0
 	mag[200] = 1.0

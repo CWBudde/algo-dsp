@@ -7,6 +7,7 @@ func ExampleFDNReverb() {
 	if err != nil {
 		panic(err)
 	}
+
 	_ = r.SetPreDelay(0.015)
 	_ = r.SetRT60(2.5)
 	_ = r.SetDamp(0.4)

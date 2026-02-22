@@ -43,6 +43,7 @@ func (a *Analyzer) Analyze(ir []float64) (Metrics, error) {
 	if len(ir) == 0 {
 		return Metrics{}, ErrEmptyIR
 	}
+
 	if a.SampleRate <= 0 {
 		return Metrics{}, ErrInvalidSampleRate
 	}
@@ -93,6 +94,7 @@ func (a *Analyzer) SchroederIntegral(ir []float64) ([]float64, error) {
 	if len(ir) == 0 {
 		return nil, ErrEmptyIR
 	}
+
 	return a.schroederIntegral(ir), nil
 }
 
@@ -145,6 +147,7 @@ func (a *Analyzer) reverbTime(schroeder []float64, startDB, endDB float64) float
 		if startIdx < 0 && v <= startDB {
 			startIdx = i
 		}
+
 		if startIdx >= 0 && v <= endDB {
 			endIdx = i
 			break
@@ -163,6 +166,7 @@ func (a *Analyzer) reverbTime(schroeder []float64, startDB, endDB float64) float
 	}
 
 	var sumX, sumY, sumXX, sumXY float64
+
 	for i := startIdx; i <= endIdx; i++ {
 		x := float64(i - startIdx)
 		y := schroeder[i]
@@ -173,6 +177,7 @@ func (a *Analyzer) reverbTime(schroeder []float64, startDB, endDB float64) float
 	}
 
 	nf := float64(n)
+
 	denom := nf*sumXX - sumX*sumX
 	if denom == 0 {
 		return 0
@@ -207,12 +212,15 @@ func (a *Analyzer) Definition(ir []float64, timeMs float64) (float64, error) {
 	if len(ir) == 0 {
 		return 0, ErrEmptyIR
 	}
+
 	if a.SampleRate <= 0 {
 		return 0, ErrInvalidSampleRate
 	}
+
 	if timeMs <= 0 {
 		return 0, ErrInvalidTime
 	}
+
 	return a.definition(ir, timeMs), nil
 }
 
@@ -222,13 +230,16 @@ func (a *Analyzer) definition(ir []float64, timeMs float64) float64 {
 	if boundarySample <= 0 {
 		return 0
 	}
+
 	if boundarySample >= len(ir) {
 		return 1
 	}
 
 	var earlyEnergy, totalEnergy float64
+
 	for i, v := range ir {
 		e := v * v
+
 		totalEnergy += e
 		if i < boundarySample {
 			earlyEnergy += e
@@ -251,12 +262,15 @@ func (a *Analyzer) Clarity(ir []float64, timeMs float64) (float64, error) {
 	if len(ir) == 0 {
 		return 0, ErrEmptyIR
 	}
+
 	if a.SampleRate <= 0 {
 		return 0, ErrInvalidSampleRate
 	}
+
 	if timeMs <= 0 {
 		return 0, ErrInvalidTime
 	}
+
 	return a.clarity(ir, timeMs), nil
 }
 
@@ -266,11 +280,13 @@ func (a *Analyzer) clarity(ir []float64, timeMs float64) float64 {
 	if boundarySample <= 0 {
 		return math.Inf(-1)
 	}
+
 	if boundarySample >= len(ir) {
 		return math.Inf(1)
 	}
 
 	var earlyEnergy, lateEnergy float64
+
 	for i, v := range ir {
 		e := v * v
 		if i < boundarySample {
@@ -283,6 +299,7 @@ func (a *Analyzer) clarity(ir []float64, timeMs float64) float64 {
 	if lateEnergy <= 0 {
 		return math.Inf(1)
 	}
+
 	if earlyEnergy <= 0 {
 		return math.Inf(-1)
 	}
@@ -299,15 +316,18 @@ func (a *Analyzer) CenterTime(ir []float64) (float64, error) {
 	if len(ir) == 0 {
 		return 0, ErrEmptyIR
 	}
+
 	if a.SampleRate <= 0 {
 		return 0, ErrInvalidSampleRate
 	}
+
 	return a.centerTime(ir), nil
 }
 
 // centerTime computes Ts (unchecked).
 func (a *Analyzer) centerTime(ir []float64) float64 {
 	var numerator, denominator float64
+
 	for i, v := range ir {
 		e := v * v
 		t := float64(i) / a.SampleRate
@@ -328,6 +348,7 @@ func (a *Analyzer) RT60(ir []float64) (float64, error) {
 	if len(ir) == 0 {
 		return 0, ErrEmptyIR
 	}
+
 	if a.SampleRate <= 0 {
 		return 0, ErrInvalidSampleRate
 	}
@@ -358,12 +379,14 @@ func (a *Analyzer) FindImpulseStart(ir []float64) (int, error) {
 	if len(ir) == 0 {
 		return 0, ErrEmptyIR
 	}
+
 	return a.findImpulseStart(ir, 0.1), nil
 }
 
 // findImpulseStart finds the first sample above threshold*peak.
 func (a *Analyzer) findImpulseStart(ir []float64, thresholdRatio float64) int {
 	peak := 0.0
+
 	for _, v := range ir {
 		av := math.Abs(v)
 		if av > peak {
@@ -385,6 +408,7 @@ func (a *Analyzer) findImpulseStart(ir []float64, thresholdRatio float64) int {
 func (a *Analyzer) findPeak(ir []float64) int {
 	peakIdx := 0
 	peakVal := 0.0
+
 	for i, v := range ir {
 		av := math.Abs(v)
 		if av > peakVal {
@@ -392,5 +416,6 @@ func (a *Analyzer) findPeak(ir []float64) int {
 			peakIdx = i
 		}
 	}
+
 	return peakIdx
 }

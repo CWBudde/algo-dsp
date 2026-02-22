@@ -121,6 +121,7 @@ func NewGate(sampleRate float64) (*Gate, error) {
 	}
 
 	g.updateCoefficients()
+
 	return g, nil
 }
 
@@ -130,8 +131,10 @@ func (g *Gate) SetThreshold(dB float64) error {
 	if math.IsNaN(dB) || math.IsInf(dB, 0) {
 		return fmt.Errorf("gate threshold must be finite: %f", dB)
 	}
+
 	g.thresholdDB = dB
 	g.updateCoefficients()
+
 	return nil
 }
 
@@ -147,8 +150,10 @@ func (g *Gate) SetRatio(ratio float64) error {
 		return fmt.Errorf("gate ratio must be in [%f, %f]: %f",
 			minGateRatio, maxGateRatio, ratio)
 	}
+
 	g.ratio = ratio
 	g.updateCoefficients()
+
 	return nil
 }
 
@@ -162,8 +167,10 @@ func (g *Gate) SetKnee(kneeDB float64) error {
 		return fmt.Errorf("gate knee must be in [%f, %f]: %f",
 			minGateKneeDB, maxGateKneeDB, kneeDB)
 	}
+
 	g.kneeDB = kneeDB
 	g.updateCoefficients()
+
 	return nil
 }
 
@@ -175,8 +182,10 @@ func (g *Gate) SetAttack(ms float64) error {
 		return fmt.Errorf("gate attack must be in [%f, %f]: %f",
 			minGateAttackMs, maxGateAttackMs, ms)
 	}
+
 	g.attackMs = ms
 	g.updateTimeConstants()
+
 	return nil
 }
 
@@ -189,8 +198,10 @@ func (g *Gate) SetHold(ms float64) error {
 		return fmt.Errorf("gate hold must be in [%f, %f]: %f",
 			minGateHoldMs, maxGateHoldMs, ms)
 	}
+
 	g.holdMs = ms
 	g.updateTimeConstants()
+
 	return nil
 }
 
@@ -202,8 +213,10 @@ func (g *Gate) SetRelease(ms float64) error {
 		return fmt.Errorf("gate release must be in [%f, %f]: %f",
 			minGateReleaseMs, maxGateReleaseMs, ms)
 	}
+
 	g.releaseMs = ms
 	g.updateTimeConstants()
+
 	return nil
 }
 
@@ -218,8 +231,10 @@ func (g *Gate) SetRange(dB float64) error {
 		return fmt.Errorf("gate range must be in [%f, %f]: %f",
 			minGateRangeDB, maxGateRangeDB, dB)
 	}
+
 	g.rangeDB = dB
 	g.updateCoefficients()
+
 	return nil
 }
 
@@ -228,8 +243,10 @@ func (g *Gate) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("gate sample rate must be positive and finite: %f", sampleRate)
 	}
+
 	g.sampleRate = sampleRate
 	g.updateTimeConstants()
+
 	return nil
 }
 
@@ -305,6 +322,7 @@ func (g *Gate) ProcessInPlace(buf []float64) {
 func (g *Gate) CalculateOutputLevel(inputMagnitude float64) float64 {
 	inputMagnitude = math.Abs(inputMagnitude)
 	gain := g.calculateGain(inputMagnitude)
+
 	return inputMagnitude * gain
 }
 
@@ -385,15 +403,18 @@ func (g *Gate) calculateGain(peakLevel float64) float64 {
 		}
 		// Below threshold: apply expansion
 		gainLog2 := -undershoot * (g.ratio - 1.0)
+
 		gain := mathPower2(gainLog2)
 		if gain < g.rangeLin {
 			return g.rangeLin
 		}
+
 		return gain
 	}
 
 	// Soft knee calculation
 	halfWidth := g.kneeWidthLog2 * 0.5
+
 	var effectiveUndershoot float64
 
 	if undershoot < -halfWidth {
@@ -421,6 +442,7 @@ func (g *Gate) calculateGain(peakLevel float64) float64 {
 	if gain < g.rangeLin {
 		return g.rangeLin
 	}
+
 	return gain
 }
 
@@ -429,9 +451,11 @@ func (g *Gate) updateMetrics(inputLevel, outputLevel, gain float64) {
 	if inputLevel > g.metrics.InputPeak {
 		g.metrics.InputPeak = inputLevel
 	}
+
 	if outputLevel > g.metrics.OutputPeak {
 		g.metrics.OutputPeak = outputLevel
 	}
+
 	if g.metrics.GainReduction == 1.0 || gain < g.metrics.GainReduction {
 		g.metrics.GainReduction = gain
 	}

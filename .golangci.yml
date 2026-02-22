@@ -9,7 +9,11 @@ linters:
     - staticcheck
     - errcheck
     - ineffassign
+    - thelper
+    - tparallel
     - unused
+    - varnamelen
+    - wsl_v5
 
 formatters:
   enable:

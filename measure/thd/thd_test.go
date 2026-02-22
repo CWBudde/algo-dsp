@@ -28,30 +28,39 @@ func TestCalculateFromMagnitudeKnownSpectrum(t *testing.T) {
 	if math.Abs(res.FundamentalFreq-1000) > 1e-9 {
 		t.Fatalf("fundamental freq mismatch: got %f", res.FundamentalFreq)
 	}
+
 	if math.Abs(res.FundamentalLevel-1.0) > 1e-9 {
 		t.Fatalf("fundamental level mismatch: got %f", res.FundamentalLevel)
 	}
+
 	if math.Abs(res.THD-0.15) > 1e-12 {
 		t.Fatalf("THD mismatch: got %.12f want %.12f", res.THD, 0.15)
 	}
+
 	if math.Abs(res.THDN-0.17) > 1e-12 {
 		t.Fatalf("THDN mismatch: got %.12f want %.12f", res.THDN, 0.17)
 	}
+
 	if math.Abs(res.Noise-0.02) > 1e-12 {
 		t.Fatalf("Noise mismatch: got %.12f want %.12f", res.Noise, 0.02)
 	}
+
 	if math.Abs(res.OddHD-0.05) > 1e-12 {
 		t.Fatalf("OddHD mismatch: got %.12f want %.12f", res.OddHD, 0.05)
 	}
+
 	if math.Abs(res.EvenHD-0.1) > 1e-12 {
 		t.Fatalf("EvenHD mismatch: got %.12f want %.12f", res.EvenHD, 0.1)
 	}
+
 	if math.Abs(res.RubNBuzz-0.05) > 1e-12 {
 		t.Fatalf("RubNBuzz mismatch: got %.12f want %.12f", res.RubNBuzz, 0.05)
 	}
+
 	if len(res.Harmonics) != 2 {
 		t.Fatalf("harmonic count mismatch: got %d want 2", len(res.Harmonics))
 	}
+
 	if math.Abs(res.Harmonics[0]-0.1) > 1e-12 || math.Abs(res.Harmonics[1]-0.05) > 1e-12 {
 		t.Fatalf("harmonics mismatch: got %+v", res.Harmonics)
 	}
@@ -79,6 +88,7 @@ func TestCalculateAutodetectFundamental(t *testing.T) {
 	if math.Abs(res.FundamentalFreq-1200) > 1e-9 {
 		t.Fatalf("auto fundamental mismatch: got %f", res.FundamentalFreq)
 	}
+
 	if len(res.Harmonics) == 0 {
 		t.Fatalf("expected harmonics to include H2")
 	}
@@ -107,6 +117,7 @@ func TestCalculateCaptureBins(t *testing.T) {
 	if math.Abs(res.FundamentalLevel-1.4) > 1e-12 {
 		t.Fatalf("fundamental capture mismatch: got %.12f", res.FundamentalLevel)
 	}
+
 	if math.Abs(res.THD-(0.15/1.4)) > 1e-12 {
 		t.Fatalf("THD capture mismatch: got %.12f want %.12f", res.THD, 0.15/1.4)
 	}
@@ -135,6 +146,7 @@ func TestAnalyzeSignalPureToneLowDistortion(t *testing.T) {
 	if res.FundamentalLevel <= 0 {
 		t.Fatalf("expected positive fundamental level")
 	}
+
 	if res.THD > 1e-3 {
 		t.Fatalf("expected near-zero THD, got %g", res.THD)
 	}
@@ -168,6 +180,7 @@ func TestCalculateFromMagnitudeMultiToneHarmonicSeparation(t *testing.T) {
 	if math.Abs(res.THD-0.15) > 1e-12 {
 		t.Fatalf("THD mismatch: got %.12f want %.12f", res.THD, 0.15)
 	}
+
 	if len(res.Harmonics) != 2 {
 		t.Fatalf("harmonic count mismatch: got %d want 2", len(res.Harmonics))
 	}

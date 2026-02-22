@@ -64,6 +64,7 @@ func (e *fftEngine[C]) Forward(dst, src []C) {
 		e.fast.Forward(dst, src)
 		return
 	}
+
 	_ = e.plan.Forward(dst, src)
 }
 
@@ -72,12 +73,14 @@ func (e *fftEngine[C]) Inverse(dst, src []C) {
 		e.fast.Inverse(dst, src)
 		return
 	}
+
 	_ = e.plan.Inverse(dst, src)
 }
 
 // newFFTEngine creates an fftEngine that prefers FastPlan over Plan.
 func newFFTEngine[C algofft.Complex](n int) (*fftEngine[C], error) {
 	e := &fftEngine[C]{}
+
 	fp, err := algofft.NewFastPlan[C](n)
 	if err == nil {
 		e.fast = fp
@@ -88,7 +91,9 @@ func newFFTEngine[C algofft.Complex](n int) (*fftEngine[C], error) {
 	if err != nil {
 		return nil, err
 	}
+
 	e.plan = plan
+
 	return e, nil
 }
 
@@ -98,12 +103,14 @@ func newFFTEngine[C algofft.Complex](n int) (*fftEngine[C], error) {
 func packReal[F algofft.Float, C algofft.Complex](dst []C, src []F) {
 	if unsafe.Sizeof(F(0)) == 4 {
 		d := unsafe.Slice((*complex64)(unsafe.Pointer(unsafe.SliceData(dst))), len(src))
+
 		s := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(src))), len(src))
 		for i, v := range s {
 			d[i] = complex(v, 0)
 		}
 	} else {
 		d := unsafe.Slice((*complex128)(unsafe.Pointer(unsafe.SliceData(dst))), len(src))
+
 		s := unsafe.Slice((*float64)(unsafe.Pointer(unsafe.SliceData(src))), len(src))
 		for i, v := range s {
 			d[i] = complex(v, 0)
@@ -116,12 +123,14 @@ func packReal[F algofft.Float, C algofft.Complex](dst []C, src []F) {
 func unpackReal[F algofft.Float, C algofft.Complex](dst []F, src []C) {
 	if unsafe.Sizeof(F(0)) == 4 {
 		d := unsafe.Slice((*float32)(unsafe.Pointer(unsafe.SliceData(dst))), len(dst))
+
 		s := unsafe.Slice((*complex64)(unsafe.Pointer(unsafe.SliceData(src))), len(dst))
 		for i, v := range s {
 			d[i] = real(v)
 		}
 	} else {
 		d := unsafe.Slice((*float64)(unsafe.Pointer(unsafe.SliceData(dst))), len(dst))
+
 		s := unsafe.Slice((*complex128)(unsafe.Pointer(unsafe.SliceData(src))), len(dst))
 		for i, v := range s {
 			d[i] = real(v)

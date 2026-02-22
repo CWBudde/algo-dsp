@@ -154,6 +154,7 @@ func TestOverlapSaveConvolve(t *testing.T) {
 
 	// Allow small numerical differences
 	maxDiff := 0.0
+
 	for i := range directResult {
 		diff := math.Abs(directResult[i] - osResult[i])
 		if diff > maxDiff {
@@ -203,6 +204,7 @@ func TestConvolveAutoSelection(t *testing.T) {
 	directResult2, _ := Direct(signal, longKernel)
 
 	maxDiff := 0.0
+
 	for i := range result2 {
 		diff := math.Abs(result2[i] - directResult2[i])
 		if diff > maxDiff {
@@ -241,6 +243,7 @@ func TestConvolveMode(t *testing.T) {
 func TestCorrelate(t *testing.T) {
 	// Auto-correlation of cosine should peak at zero lag
 	n := 256
+
 	signal := make([]float64, n)
 	for i := range signal {
 		signal[i] = math.Cos(2 * math.Pi * float64(i) / 32)
@@ -359,6 +362,7 @@ func TestHelperFunctions(t *testing.T) {
 
 	// Test l2Norm
 	v := []float64{3, 4}
+
 	norm := l2Norm(v)
 	if math.Abs(norm-5.0) > 1e-10 {
 		t.Errorf("l2Norm([3,4]) = %v, expected 5", norm)
@@ -371,6 +375,7 @@ func TestLagConversion(t *testing.T) {
 	// Test round-trip
 	for lag := -9; lag <= 9; lag++ {
 		idx := IndexFromLag(lag, lenB)
+
 		recoveredLag := LagFromIndex(idx, lenB)
 		if recoveredLag != lag {
 			t.Errorf("lag %d -> idx %d -> lag %d", lag, idx, recoveredLag)
@@ -380,6 +385,7 @@ func TestLagConversion(t *testing.T) {
 
 func TestOverlapAddProcessTo(t *testing.T) {
 	kernel := []float64{0.25, 0.5, 0.25}
+
 	signal := make([]float64, 100)
 	for i := range signal {
 		signal[i] = float64(i % 10)
@@ -415,6 +421,7 @@ func TestOverlapAddProcessTo(t *testing.T) {
 
 func TestOverlapSaveProcessTo(t *testing.T) {
 	kernel := []float64{0.25, 0.5, 0.25}
+
 	signal := make([]float64, 100)
 	for i := range signal {
 		signal[i] = float64(i % 10)
@@ -534,6 +541,7 @@ func TestCorrelateMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CorrelateMode failed: %v", err)
 	}
+
 	if len(full) != len(a)+len(b)-1 {
 		t.Errorf("full mode length: got %d, expected %d", len(full), len(a)+len(b)-1)
 	}
@@ -566,6 +574,7 @@ func TestDeconvolveNaive(t *testing.T) {
 
 	// Deconvolve with naive method
 	opts := DeconvOptions{Method: DeconvNaive}
+
 	_, err := Deconvolve(convolved, kernel, opts)
 	if err != nil {
 		t.Fatalf("naive deconvolution failed: %v", err)
@@ -591,6 +600,7 @@ func TestDeconvolveWiener(t *testing.T) {
 		NoiseVariance:  0.01,
 		SignalVariance: 1.0,
 	}
+
 	_, err := Deconvolve(convolved, kernel, opts)
 	if err != nil {
 		t.Fatalf("Wiener deconvolution failed: %v", err)
@@ -598,6 +608,7 @@ func TestDeconvolveWiener(t *testing.T) {
 
 	// Also test with auto-estimated variances
 	opts2 := DeconvOptions{Method: DeconvWiener}
+
 	_, err = Deconvolve(convolved, kernel, opts2)
 	if err != nil {
 		t.Fatalf("Wiener deconvolution with auto variance failed: %v", err)

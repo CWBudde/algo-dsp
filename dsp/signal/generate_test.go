@@ -9,10 +9,12 @@ import (
 
 func TestSineLength(t *testing.T) {
 	g := NewGenerator(core.WithSampleRate(48000))
+
 	s, err := g.Sine(1000, 1, 64)
 	if err != nil {
 		t.Fatalf("Sine() error = %v", err)
 	}
+
 	if len(s) != 64 {
 		t.Fatalf("len = %d, want 64", len(s))
 	}
@@ -26,6 +28,7 @@ func TestWhiteNoiseDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WhiteNoise() error = %v", err)
 	}
+
 	n2, err := g2.WhiteNoise(1, 16)
 	if err != nil {
 		t.Fatalf("WhiteNoise() error = %v", err)
@@ -41,6 +44,7 @@ func TestWhiteNoiseDeterministic(t *testing.T) {
 func TestSetSeed(t *testing.T) {
 	g := NewGenerator()
 	g.SetSeed(99)
+
 	if g.Seed() != 99 {
 		t.Fatalf("Seed()=%d, want 99", g.Seed())
 	}
@@ -49,19 +53,23 @@ func TestSetSeed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WhiteNoise() error = %v", err)
 	}
+
 	g.SetSeed(100)
+
 	b, err := g.WhiteNoise(1, 8)
 	if err != nil {
 		t.Fatalf("WhiteNoise() error = %v", err)
 	}
 
 	same := true
+
 	for i := range a {
 		if a[i] != b[i] {
 			same = false
 			break
 		}
 	}
+
 	if same {
 		t.Fatal("expected different seeds to produce different noise")
 	}
@@ -75,6 +83,7 @@ func TestPinkNoiseDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
 	}
+
 	n2, err := g2.PinkNoise(1, 128)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
@@ -89,10 +98,12 @@ func TestPinkNoiseDeterministic(t *testing.T) {
 
 func TestPinkNoiseLength(t *testing.T) {
 	g := NewGeneratorWithOptions(nil, WithSeed(1))
+
 	out, err := g.PinkNoise(1, 256)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
 	}
+
 	if len(out) != 256 {
 		t.Fatalf("len = %d, want 256", len(out))
 	}
@@ -101,6 +112,7 @@ func TestPinkNoiseLength(t *testing.T) {
 func TestPinkNoiseBounded(t *testing.T) {
 	g := NewGeneratorWithOptions(nil, WithSeed(7))
 	amp := 0.5
+
 	out, err := g.PinkNoise(amp, 10000)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
@@ -124,18 +136,21 @@ func TestPinkNoiseDifferentSeeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
 	}
+
 	n2, err := g2.PinkNoise(1, 64)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
 	}
 
 	same := true
+
 	for i := range n1 {
 		if n1[i] != n2[i] {
 			same = false
 			break
 		}
 	}
+
 	if same {
 		t.Fatal("expected different seeds to produce different pink noise")
 	}
@@ -148,6 +163,7 @@ func TestPinkNoiseSpectralSlope(t *testing.T) {
 		WithSeed(42),
 	)
 	n := 1 << 16 // 65536 samples
+
 	out, err := g.PinkNoise(1, n)
 	if err != nil {
 		t.Fatalf("PinkNoise() error = %v", err)
@@ -158,14 +174,17 @@ func TestPinkNoiseSpectralSlope(t *testing.T) {
 	sr := 48000.0
 	bands := []float64{500, 1000, 2000, 4000}
 	powers := make([]float64, len(bands))
+
 	const binsPerBand = 8
 
 	for bi, fc := range bands {
 		loK := int(fc / math.Sqrt2 * float64(n) / sr)
 		hiK := int(fc * math.Sqrt2 * float64(n) / sr)
+
 		if loK < 1 {
 			loK = 1
 		}
+
 		if hiK >= n/2 {
 			hiK = n/2 - 1
 		}
@@ -174,16 +193,20 @@ func TestPinkNoiseSpectralSlope(t *testing.T) {
 
 		power := 0.0
 		count := 0
+
 		for k := loK; k <= hiK; k += step {
 			re, im := 0.0, 0.0
+
 			freq := 2 * math.Pi * float64(k) / float64(n)
 			for i, v := range out {
 				re += v * math.Cos(freq*float64(i))
 				im -= v * math.Sin(freq*float64(i))
 			}
+
 			power += re*re + im*im
 			count++
 		}
+
 		if count > 0 {
 			powers[bi] = power / float64(count)
 		}
@@ -196,6 +219,7 @@ func TestPinkNoiseSpectralSlope(t *testing.T) {
 		if powers[i] == 0 || powers[i+1] == 0 {
 			continue
 		}
+
 		ratioDb := 10 * math.Log10(powers[i+1]/powers[i])
 		// Expect roughly -3 dB, allow ±5 dB tolerance for stochastic signal.
 		if ratioDb > 2 || ratioDb < -8 {
@@ -210,6 +234,7 @@ func TestNormalize(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Normalize() error = %v", err)
 	}
+
 	if out[1] != 0.5 {
 		t.Fatalf("peak = %v, want 0.5", out[1])
 	}
@@ -217,10 +242,12 @@ func TestNormalize(t *testing.T) {
 
 func TestMultisineLength(t *testing.T) {
 	g := NewGenerator(core.WithSampleRate(48000))
+
 	out, err := g.Multisine([]float64{1000, 2000}, 1, 64)
 	if err != nil {
 		t.Fatalf("Multisine() error = %v", err)
 	}
+
 	if len(out) != 64 {
 		t.Fatalf("len = %d, want 64", len(out))
 	}
@@ -228,15 +255,18 @@ func TestMultisineLength(t *testing.T) {
 
 func TestImpulse(t *testing.T) {
 	g := NewGenerator()
+
 	out, err := g.Impulse(0.75, 8, 3)
 	if err != nil {
 		t.Fatalf("Impulse() error = %v", err)
 	}
+
 	for i, v := range out {
 		want := 0.0
 		if i == 3 {
 			want = 0.75
 		}
+
 		if v != want {
 			t.Fatalf("out[%d]=%v, want %v", i, v, want)
 		}
@@ -245,10 +275,12 @@ func TestImpulse(t *testing.T) {
 
 func TestLinearSweepLength(t *testing.T) {
 	g := NewGenerator(core.WithSampleRate(48000))
+
 	out, err := g.LinearSweep(20, 20000, 1, 128)
 	if err != nil {
 		t.Fatalf("LinearSweep() error = %v", err)
 	}
+
 	if len(out) != 128 {
 		t.Fatalf("len = %d, want 128", len(out))
 	}
@@ -256,10 +288,12 @@ func TestLinearSweepLength(t *testing.T) {
 
 func TestLogSweepLength(t *testing.T) {
 	g := NewGenerator(core.WithSampleRate(48000))
+
 	out, err := g.LogSweep(20, 20000, 1, 128)
 	if err != nil {
 		t.Fatalf("LogSweep() error = %v", err)
 	}
+
 	if len(out) != 128 {
 		t.Fatalf("len = %d, want 128", len(out))
 	}
@@ -270,6 +304,7 @@ func TestClip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Clip() error = %v", err)
 	}
+
 	want := []float64{-1, -0.5, 0.25, 1}
 	for i := range want {
 		if out[i] != want[i] {
@@ -283,10 +318,12 @@ func TestRemoveDC(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RemoveDC() error = %v", err)
 	}
+
 	sum := 0.0
 	for _, v := range out {
 		sum += v
 	}
+
 	if math.Abs(sum) > 1e-12 {
 		t.Fatalf("sum=%v, want near 0", sum)
 	}
@@ -294,13 +331,16 @@ func TestRemoveDC(t *testing.T) {
 
 func TestEnvelopeFollower(t *testing.T) {
 	in := []float64{0, 1, 0, 1, 0}
+
 	out, err := EnvelopeFollower(in, 1.0, 0.5)
 	if err != nil {
 		t.Fatalf("EnvelopeFollower() error = %v", err)
 	}
+
 	if out[0] != 0 || out[1] != 1 {
 		t.Fatalf("unexpected attack behavior: %+v", out)
 	}
+
 	if !(out[2] < out[1] && out[2] > 0) {
 		t.Fatalf("unexpected release behavior: %+v", out)
 	}

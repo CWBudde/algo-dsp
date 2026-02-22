@@ -20,6 +20,7 @@ func ExampleAnalyzer_Analyze() {
 	}
 
 	analyzer := ir.NewAnalyzer(sampleRate)
+
 	metrics, err := analyzer.Analyze(irData)
 	if err != nil {
 		panic(err)
@@ -48,6 +49,7 @@ func ExampleAnalyzer_SchroederIntegral() {
 	}
 
 	analyzer := ir.NewAnalyzer(sampleRate)
+
 	schroeder, err := analyzer.SchroederIntegral(irData)
 	if err != nil {
 		panic(err)

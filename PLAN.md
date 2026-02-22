@@ -336,9 +336,9 @@ Exit criteria:
 
 Tasks:
 
-- [ ] De-esser
-  - [ ] Implement split-band detection and reduction.
-  - [ ] Add tests + example.
+- [x] De-esser
+  - [x] Implement split-band detection and reduction.
+  - [x] Add tests + example.
 - [ ] Expander
   - [ ] Implement downward expander (envelope + gain computer).
   - [ ] Add tests + example.

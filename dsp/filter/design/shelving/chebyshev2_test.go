@@ -46,10 +46,12 @@ func TestChebyshev2HighShelf_InvalidParams(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for zero sample rate")
 	}
+
 	_, err = Chebyshev2HighShelf(48000, 1000, 6, 0, 2)
 	if err == nil {
 		t.Error("expected error for zero stopband")
 	}
+
 	_, err = Chebyshev2HighShelf(48000, 1000, 1, 1.0, 4)
 	if err == nil {
 		t.Error("expected error for stopband >= gain magnitude")
@@ -65,9 +67,11 @@ func TestChebyshev2LowShelf_ZeroGain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(sections) != 1 {
 		t.Fatalf("expected 1 passthrough section, got %d", len(sections))
 	}
+
 	mag := cascadeMagnitudeDB(sections, 1000, testSR)
 	if !almostEqual(mag, 0, 1e-10) {
 		t.Errorf("zero gain: mag = %v dB, expected 0", mag)
@@ -85,6 +89,7 @@ func TestChebyshev2LowShelf_SectionCount(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			expected := (M + 1) / 2
 			if len(sections) != expected {
 				t.Errorf("order %d: got %d sections, expected %d", M, len(sections), expected)
@@ -101,11 +106,14 @@ func TestChebyshev2LowShelf_DCGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12, 20} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
 			stopbandDB := 0.5
+
 			sections, err := Chebyshev2LowShelf(testSR, 1000, gainDB, stopbandDB, 4)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
+
 			expected := gainDB - math.Copysign(stopbandDB, gainDB)
 			if !almostEqual(dcMag, expected, 0.2) {
 				t.Errorf("DC gain = %.4f dB, expected %.4f dB", dcMag, expected)
@@ -118,10 +126,12 @@ func TestChebyshev2LowShelf_NyquistGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
 			stopbandDB := 0.5
+
 			sections, err := Chebyshev2LowShelf(testSR, 1000, gainDB, stopbandDB, 4)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
 			if !almostEqual(nyqMag, 0, 0.2) {
 				t.Errorf("Nyquist gain = %.4f dB, expected ~0 dB", nyqMag)
@@ -134,11 +144,14 @@ func TestChebyshev2HighShelf_NyquistGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12, 20} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
 			stopbandDB := 0.5
+
 			sections, err := Chebyshev2HighShelf(testSR, 1000, gainDB, stopbandDB, 4)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
+
 			expected := gainDB - math.Copysign(stopbandDB, gainDB)
 			if !almostEqual(nyqMag, expected, 0.3) {
 				t.Errorf("Nyquist gain = %.4f dB, expected %.4f dB", nyqMag, expected)
@@ -151,10 +164,12 @@ func TestChebyshev2HighShelf_DCGain(t *testing.T) {
 	for _, gainDB := range []float64{-12, -6, 6, 12} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
 			stopbandDB := 0.5
+
 			sections, err := Chebyshev2HighShelf(testSR, 1000, gainDB, stopbandDB, 4)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
 			if !almostEqual(dcMag, 0, 0.2) {
 				t.Errorf("DC gain = %.4f dB, expected ~0 dB", dcMag)
@@ -213,9 +228,11 @@ func TestChebyshev2LowShelf_StopbandAnchorModel(t *testing.T) {
 			if !almostEqual(dcMag, expectedShelf, 0.25) {
 				t.Errorf("DC gain = %.4f dB, expected %.4f dB", dcMag, expectedShelf)
 			}
+
 			if !almostEqual(nyqMag, 0, tolStop) {
 				t.Errorf("Nyquist gain = %.4f dB, expected ~0 dB", nyqMag)
 			}
+
 			if !almostEqual(farStopband, 0, tolStop) {
 				t.Errorf("far stopband gain = %.4f dB, expected ~0 dB", farStopband)
 			}
@@ -259,9 +276,11 @@ func TestChebyshev2HighShelf_StopbandAnchorModel(t *testing.T) {
 			if !almostEqual(nyqMag, expectedShelf, 0.25) {
 				t.Errorf("Nyquist gain = %.4f dB, expected %.4f dB", nyqMag, expectedShelf)
 			}
+
 			if !almostEqual(dcMag, 0, tolStop) {
 				t.Errorf("DC gain = %.4f dB, expected ~0 dB", dcMag)
 			}
+
 			if !almostEqual(farStopband, 0, tolStop) {
 				t.Errorf("far stopband gain = %.4f dB, expected ~0 dB", farStopband)
 			}
@@ -280,6 +299,7 @@ func TestChebyshev2LowShelf_Stability(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
 		})
 	}
@@ -292,6 +312,7 @@ func TestChebyshev2HighShelf_Stability(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
 		})
 	}
@@ -304,15 +325,18 @@ func TestChebyshev2LowShelf_PoleZeroPairs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			pairs := biquad.PoleZeroPairs(sections)
 			if len(pairs) != len(sections) {
 				t.Fatalf("got %d pole/zero pairs, expected %d", len(pairs), len(sections))
 			}
+
 			for i, pair := range pairs {
 				for j, pole := range pair.Poles {
 					if math.IsNaN(real(pole)) || math.IsNaN(imag(pole)) {
 						t.Fatalf("section %d pole %d is NaN: %v", i, j, pole)
 					}
+
 					if cmplx.Abs(pole) >= 1.0+1e-9 {
 						t.Fatalf("section %d pole %d unstable: |p|=%.8f p=%v", i, j, cmplx.Abs(pole), pole)
 					}
@@ -329,15 +353,18 @@ func TestChebyshev2HighShelf_PoleZeroPairs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			pairs := biquad.PoleZeroPairs(sections)
 			if len(pairs) != len(sections) {
 				t.Fatalf("got %d pole/zero pairs, expected %d", len(pairs), len(sections))
 			}
+
 			for i, pair := range pairs {
 				for j, pole := range pair.Poles {
 					if math.IsNaN(real(pole)) || math.IsNaN(imag(pole)) {
 						t.Fatalf("section %d pole %d is NaN: %v", i, j, pole)
 					}
+
 					if cmplx.Abs(pole) >= 1.0+1e-9 {
 						t.Fatalf("section %d pole %d unstable: |p|=%.8f p=%v", i, j, cmplx.Abs(pole), pole)
 					}
@@ -355,16 +382,20 @@ func TestChebyshev2LowShelf_VariousOrders(t *testing.T) {
 	for _, M := range []int{1, 2, 3, 4, 5, 6, 8, 10, 12} {
 		t.Run(orderName(M), func(t *testing.T) {
 			stopbandDB := 0.5
+
 			sections, err := Chebyshev2LowShelf(testSR, 1000, 12, stopbandDB, M)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
+
 			expectedShelf := 12.0 - stopbandDB
 			if !almostEqual(dcMag, expectedShelf, 0.2) {
 				t.Errorf("M=%d: DC gain = %.4f dB, expected ~%.4f dB", M, dcMag, expectedShelf)
 			}
+
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
 			if !almostEqual(nyqMag, 0, 0.2) {
 				t.Errorf("M=%d: Nyquist gain = %.4f dB, expected ~0 dB", M, nyqMag)
@@ -381,6 +412,7 @@ func TestChebyshev2LowShelf_StopbandRipple(t *testing.T) {
 	// For a low-shelf boost, the "stopband" (flat region) is the high-frequency
 	// portion above the cutoff. The ripple there should be bounded by stopbandDB.
 	stopbandDB := 0.5
+
 	sections, err := Chebyshev2LowShelf(testSR, 1000, 12, stopbandDB, 6)
 	if err != nil {
 		t.Fatal(err)
@@ -388,6 +420,7 @@ func TestChebyshev2LowShelf_StopbandRipple(t *testing.T) {
 
 	// Sample the flat region (well above cutoff).
 	expected := 0.0
+
 	for f := 5000.0; f < testSR/2-100; f += 500 {
 		mag := cascadeMagnitudeDB(sections, f, testSR)
 		if math.Abs(mag-expected) > stopbandDB+0.2 {
@@ -399,12 +432,14 @@ func TestChebyshev2LowShelf_StopbandRipple(t *testing.T) {
 func TestChebyshev2HighShelf_StopbandRipple(t *testing.T) {
 	// For a high-shelf boost, the stopband is the low-frequency portion below cutoff.
 	stopbandDB := 0.5
+
 	sections, err := Chebyshev2HighShelf(testSR, 1000, 12, stopbandDB, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	expected := 0.0
+
 	for f := 10.0; f < 200; f += 10 {
 		mag := cascadeMagnitudeDB(sections, f, testSR)
 		if math.Abs(mag-expected) > stopbandDB+0.2 {
@@ -421,12 +456,15 @@ func TestChebyshev2LowShelf_ExtremeGains(t *testing.T) {
 	for _, gainDB := range []float64{-30, -20, -6, -1, 1, 6, 20, 30} {
 		t.Run(gainName(gainDB), func(t *testing.T) {
 			stopbandDB := 0.5
+
 			sections, err := Chebyshev2LowShelf(testSR, 1000, gainDB, stopbandDB, 4)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
+
 			expected := gainDB - math.Copysign(stopbandDB, gainDB)
 			if !almostEqual(dcMag, expected, 0.3) {
 				t.Errorf("DC gain = %.4f dB, expected %.4f dB", dcMag, expected)
@@ -448,12 +486,15 @@ func TestChebyshev2LowShelf_VariousStopband(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
+
 			expectedShelf := 12.0 - sb
 			if !almostEqual(dcMag, expectedShelf, 0.5) {
 				t.Errorf("stopband=%.1f: DC gain = %.4f dB, expected ~%.4f dB", sb, dcMag, expectedShelf)
 			}
+
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
 			if !almostEqual(nyqMag, 0, 0.2) {
 				t.Errorf("stopband=%.1f: Nyquist gain = %.4f dB, expected ~0 dB", sb, nyqMag)
@@ -470,12 +511,15 @@ func TestChebyshev2LowShelf_VariousFrequencies(t *testing.T) {
 	for _, freq := range []float64{100, 300, 500, 1000, 2000, 5000, 10000} {
 		t.Run(freqName(freq), func(t *testing.T) {
 			stopbandDB := 0.5
+
 			sections, err := Chebyshev2LowShelf(testSR, freq, 12, stopbandDB, 4)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
+
 			expectedShelf := 12.0 - stopbandDB
 			if !almostEqual(dcMag, expectedShelf, 0.2) {
 				t.Errorf("freq=%v: DC gain = %.4f dB, expected ~%.4f dB", freq, dcMag, expectedShelf)
@@ -488,12 +532,15 @@ func TestChebyshev2HighShelf_VariousFrequencies(t *testing.T) {
 	for _, freq := range []float64{100, 300, 500, 1000, 2000, 5000, 10000} {
 		t.Run(freqName(freq), func(t *testing.T) {
 			stopbandDB := 0.5
+
 			sections, err := Chebyshev2HighShelf(testSR, freq, 12, stopbandDB, 4)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			allPolesStable(t, sections)
 			nyqMag := cascadeMagnitudeDB(sections, testSR/2-1, testSR)
+
 			expectedShelf := 12.0 - stopbandDB
 			if !almostEqual(nyqMag, expectedShelf, 0.3) {
 				t.Errorf("freq=%v: Nyquist gain = %.4f dB, expected ~%.4f dB", freq, nyqMag, expectedShelf)
@@ -511,6 +558,7 @@ func TestChebyshev2LowShelf_BoostCutInversion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	cut, err := Chebyshev2LowShelf(testSR, 1000, -12, 0.5, 6)
 	if err != nil {
 		t.Fatal(err)
@@ -521,6 +569,7 @@ func TestChebyshev2LowShelf_BoostCutInversion(t *testing.T) {
 		hBoost := cascadeResponse(boost, freq, testSR)
 		hCut := cascadeResponse(cut, freq, testSR)
 		hCombined := hBoost * hCut
+
 		magDB := 20 * math.Log10(cmplx.Abs(hCombined))
 		if math.Abs(magDB) > 0.5 {
 			t.Errorf("freq=%v: boost*cut = %.4f dB, expected ~0 dB", freq, magDB)
@@ -532,6 +581,7 @@ func TestChebyshev2LowShelf_BoostCutInversion(t *testing.T) {
 		hBoost := cascadeResponse(boost, freq, testSR)
 		hCut := cascadeResponse(cut, freq, testSR)
 		hCombined := hBoost * hCut
+
 		magDB := 20 * math.Log10(cmplx.Abs(hCombined))
 		if math.Abs(magDB) > 1.0 {
 			t.Errorf("freq=%v: boost*cut = %.4f dB, expected ~0 dB", freq, magDB)
@@ -544,6 +594,7 @@ func TestChebyshev2HighShelf_BoostCutInversion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	cut, err := Chebyshev2HighShelf(testSR, 1000, -12, 0.5, 6)
 	if err != nil {
 		t.Fatal(err)
@@ -553,6 +604,7 @@ func TestChebyshev2HighShelf_BoostCutInversion(t *testing.T) {
 		hBoost := cascadeResponse(boost, freq, testSR)
 		hCut := cascadeResponse(cut, freq, testSR)
 		hCombined := hBoost * hCut
+
 		magDB := 20 * math.Log10(cmplx.Abs(hCombined))
 		if math.Abs(magDB) > 1.0 {
 			t.Errorf("freq=%v: boost*cut = %.4f dB, expected ~0 dB", freq, magDB)
@@ -581,6 +633,7 @@ func TestChebyshev2LowShelf_MonotonicShelfRegion(t *testing.T) {
 			t.Errorf("non-monotonic at %.0f Hz: %.4f dB > %.4f dB (prev)", f, mag, prevMag)
 			break
 		}
+
 		prevMag = mag
 	}
 }
@@ -605,13 +658,16 @@ func TestChebyshev2_FlatStopband(t *testing.T) {
 	// the implementation's stopband anchor (0 dB).
 	expected := 0.0
 	maxDev := 0.0
+
 	for f := 8000.0; f < testSR/2-100; f += 100 {
 		mag := cascadeMagnitudeDB(sections, f, testSR)
+
 		dev := math.Abs(mag - expected)
 		if dev > maxDev {
 			maxDev = dev
 		}
 	}
+
 	if maxDev > stopbandDB+0.2 {
 		t.Errorf("stopband max deviation = %.4f dB from %.4f dB, exceeds bound %.1f dB", maxDev, expected, stopbandDB)
 	}
@@ -638,10 +694,12 @@ func chebyshev2SectionsNoStopbandNormalization(K float64, gainDB, stopbandDB flo
 
 	L := order / 2
 	hasFirstOrder := order%2 == 1
+
 	n := L
 	if hasFirstOrder {
 		n++
 	}
+
 	sections := make([]biquad.Coefficients, 0, n)
 
 	for m := 1; m <= L; m++ {
@@ -671,6 +729,7 @@ func TestChebyshev2Math_StopbandNormalizationScalesAllFrequencies(t *testing.T) 
 	K := math.Tan(math.Pi * fc / sr)
 
 	raw := chebyshev2SectionsNoStopbandNormalization(K, gainDB, stopbandDB, order)
+
 	corrected, err := chebyshev2Sections(K, gainDB, stopbandDB, order)
 	if err != nil {
 		t.Fatal(err)
@@ -698,6 +757,7 @@ func TestChebyshev2Math_RawAndCorrectedEndpointAnchors(t *testing.T) {
 	K := math.Tan(math.Pi * fc / sr)
 
 	raw := chebyshev2SectionsNoStopbandNormalization(K, gainDB, stopbandDB, order)
+
 	corrected, err := chebyshev2Sections(K, gainDB, stopbandDB, order)
 	if err != nil {
 		t.Fatal(err)
@@ -716,12 +776,15 @@ func TestChebyshev2Math_RawAndCorrectedEndpointAnchors(t *testing.T) {
 	if !almostEqual(rawDC, expectedShelf, 0.2) {
 		t.Fatalf("raw DC = %.4f dB, expected near shelf %.4f dB", rawDC, expectedShelf)
 	}
+
 	if math.Abs(rawNyq) > 0.2 {
 		t.Fatalf("raw Nyquist = %.4f dB, expected near 0 dB", rawNyq)
 	}
+
 	if !almostEqual(corrDC, expectedShelf, 0.2) {
 		t.Fatalf("corrected DC = %.4f dB, expected near shelf %.4f dB", corrDC, expectedShelf)
 	}
+
 	if math.Abs(corrNyq) > 0.2 {
 		t.Fatalf("corrected Nyquist = %.4f dB, expected near 0 dB", corrNyq)
 	}
@@ -761,13 +824,16 @@ func TestChebyshev2LowShelf_EndpointAnchorsGrid(t *testing.T) {
 					if stopbandDB >= math.Abs(gainDB) {
 						continue
 					}
+
 					total++
 					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
 
 					sections, err := Chebyshev2LowShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
 					if err != nil {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: design error: %v", caseName, err))
+
 						continue
 					}
 
@@ -777,11 +843,15 @@ func TestChebyshev2LowShelf_EndpointAnchorsGrid(t *testing.T) {
 
 					if !almostEqual(dcMag, expectedDC, 0.35) {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: DC gain %.4f dB, expected %.4f dB", caseName, dcMag, expectedDC))
+
 						continue
 					}
+
 					if !almostEqual(nyqMag, 0, stopbandDB+0.25) {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: Nyquist gain %.4f dB, expected ~0 dB", caseName, nyqMag))
 					}
 				}
@@ -810,6 +880,7 @@ func TestChebyshev2LowShelf_MonotonicGrid_Boost(t *testing.T) {
 			if upperHz <= 20 {
 				continue
 			}
+
 			stepHz := math.Max(5, upperHz/80)
 
 			for _, stopbandDB := range stopbands {
@@ -817,13 +888,16 @@ func TestChebyshev2LowShelf_MonotonicGrid_Boost(t *testing.T) {
 					if stopbandDB >= math.Abs(gainDB) {
 						continue
 					}
+
 					total++
 					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
 
 					sections, err := Chebyshev2LowShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
 					if err != nil {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: design error: %v", caseName, err))
+
 						continue
 					}
 
@@ -832,9 +906,12 @@ func TestChebyshev2LowShelf_MonotonicGrid_Boost(t *testing.T) {
 						mag := cascadeMagnitudeDB(sections, f, testSR)
 						if mag > prevMag+0.12 {
 							failed++
+
 							cheby2AppendFailure(&examples, fmt.Sprintf("%s: non-monotonic at %.2f Hz: %.4f dB > %.4f dB", caseName, f, mag, prevMag))
+
 							break
 						}
+
 						prevMag = mag
 					}
 				}
@@ -864,19 +941,25 @@ func TestChebyshev2LowShelf_BoostCutInversionGrid(t *testing.T) {
 					if stopbandDB >= gainDB {
 						continue
 					}
+
 					total++
 					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
 
 					boost, err := Chebyshev2LowShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
 					if err != nil {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: boost design error: %v", caseName, err))
+
 						continue
 					}
+
 					cut, err := Chebyshev2LowShelf(testSR, cutoffHz, -gainDB, stopbandDB, order)
 					if err != nil {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: cut design error: %v", caseName, err))
+
 						continue
 					}
 
@@ -892,13 +975,17 @@ func TestChebyshev2LowShelf_BoostCutInversionGrid(t *testing.T) {
 						hBoost := cascadeResponse(boost, freq, testSR)
 						hCut := cascadeResponse(cut, freq, testSR)
 						errDB := math.Abs(20 * math.Log10(cmplx.Abs(hBoost*hCut)))
+
 						tolDB := 1.0
 						if freq <= 1.5 || math.Abs(freq-(testSR/2-1)) < 1e-9 {
 							tolDB = 0.6
 						}
+
 						if errDB > tolDB {
 							failed++
+
 							cheby2AppendFailure(&examples, fmt.Sprintf("%s: freq=%.2f Hz inversion error %.4f dB > %.2f dB", caseName, freq, errDB, tolDB))
+
 							break
 						}
 					}
@@ -933,13 +1020,16 @@ func TestChebyshev2HighShelf_EndpointAnchorsGrid(t *testing.T) {
 					if stopbandDB >= math.Abs(gainDB) {
 						continue
 					}
+
 					total++
 					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
 
 					sections, err := Chebyshev2HighShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
 					if err != nil {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: design error: %v", caseName, err))
+
 						continue
 					}
 
@@ -949,11 +1039,15 @@ func TestChebyshev2HighShelf_EndpointAnchorsGrid(t *testing.T) {
 
 					if !almostEqual(dcMag, 0, stopbandDB+0.25) {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: DC gain %.4f dB, expected ~0 dB", caseName, dcMag))
+
 						continue
 					}
+
 					if !almostEqual(nyqMag, expectedNyq, 0.35) {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: Nyquist gain %.4f dB, expected %.4f dB", caseName, nyqMag, expectedNyq))
 					}
 				}
@@ -982,6 +1076,7 @@ func TestChebyshev2HighShelf_MonotonicGrid_Boost(t *testing.T) {
 			if upperHz <= 20 {
 				continue
 			}
+
 			stepHz := math.Max(5, upperHz/80)
 
 			for _, stopbandDB := range stopbands {
@@ -989,13 +1084,16 @@ func TestChebyshev2HighShelf_MonotonicGrid_Boost(t *testing.T) {
 					if stopbandDB >= math.Abs(gainDB) {
 						continue
 					}
+
 					total++
 					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
 
 					sections, err := Chebyshev2HighShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
 					if err != nil {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: design error: %v", caseName, err))
+
 						continue
 					}
 
@@ -1004,9 +1102,12 @@ func TestChebyshev2HighShelf_MonotonicGrid_Boost(t *testing.T) {
 						mag := cascadeMagnitudeDB(sections, f, testSR)
 						if mag < prevMag-0.12 {
 							failed++
+
 							cheby2AppendFailure(&examples, fmt.Sprintf("%s: non-monotonic at %.2f Hz: %.4f dB < %.4f dB", caseName, f, mag, prevMag))
+
 							break
 						}
+
 						prevMag = mag
 					}
 				}
@@ -1036,19 +1137,25 @@ func TestChebyshev2HighShelf_BoostCutInversionGrid(t *testing.T) {
 					if stopbandDB >= gainDB {
 						continue
 					}
+
 					total++
 					caseName := cheby2GridCaseName(gainDB, stopbandDB, order, cutoffHz)
 
 					boost, err := Chebyshev2HighShelf(testSR, cutoffHz, gainDB, stopbandDB, order)
 					if err != nil {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: boost design error: %v", caseName, err))
+
 						continue
 					}
+
 					cut, err := Chebyshev2HighShelf(testSR, cutoffHz, -gainDB, stopbandDB, order)
 					if err != nil {
 						failed++
+
 						cheby2AppendFailure(&examples, fmt.Sprintf("%s: cut design error: %v", caseName, err))
+
 						continue
 					}
 
@@ -1064,13 +1171,17 @@ func TestChebyshev2HighShelf_BoostCutInversionGrid(t *testing.T) {
 						hBoost := cascadeResponse(boost, freq, testSR)
 						hCut := cascadeResponse(cut, freq, testSR)
 						errDB := math.Abs(20 * math.Log10(cmplx.Abs(hBoost*hCut)))
+
 						tolDB := 1.0
 						if freq <= 1.5 || math.Abs(freq-(testSR/2-1)) < 1e-9 {
 							tolDB = 0.6
 						}
+
 						if errDB > tolDB {
 							failed++
+
 							cheby2AppendFailure(&examples, fmt.Sprintf("%s: freq=%.2f Hz inversion error %.4f dB > %.2f dB", caseName, freq, errDB, tolDB))
+
 							break
 						}
 					}

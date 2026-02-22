@@ -17,6 +17,7 @@ func ExamplePitchProcessor() {
 	if err != nil {
 		panic(err)
 	}
+
 	fd, err := pitch.NewSpectralPitchShifter(48000)
 	if err != nil {
 		panic(err)
@@ -27,6 +28,7 @@ func ExamplePitchProcessor() {
 		if err := p.SetPitchSemitones(4); err != nil {
 			panic(err)
 		}
+
 		out := p.Process(in)
 		fmt.Printf("%.3f %d\n", p.PitchRatio(), len(out))
 	}

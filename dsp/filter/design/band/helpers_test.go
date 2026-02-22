@@ -14,6 +14,7 @@ func almostEqual(a, b, tol float64) bool {
 	if a == b {
 		return true
 	}
+
 	diff := math.Abs(a - b)
 	if tol > 0 && tol < 1 {
 		mag := math.Max(math.Abs(a), math.Abs(b))
@@ -21,6 +22,7 @@ func almostEqual(a, b, tol float64) bool {
 			return diff/mag < tol
 		}
 	}
+
 	return diff < tol
 }
 
@@ -30,6 +32,7 @@ func cascadeResponse(sections []biquad.Coefficients, freqHz, sampleRate float64)
 	for i := range sections {
 		h *= sections[i].Response(freqHz, sampleRate)
 	}
+
 	return h
 }
 
@@ -42,10 +45,12 @@ func cascadeMagnitudeDB(sections []biquad.Coefficients, freqHz, sampleRate float
 // allPolesStable checks that all biquad sections have poles inside the unit circle.
 func allPolesStable(t *testing.T, sections []biquad.Coefficients) {
 	t.Helper()
+
 	for i, s := range sections {
 		if math.Abs(s.A2) >= 1.0 {
 			t.Errorf("section %d: |A2|=%.6f >= 1, poles outside unit circle", i, math.Abs(s.A2))
 		}
+
 		if math.Abs(s.A1) >= 1.0+s.A2 {
 			t.Errorf("section %d: |A1|=%.6f >= 1+A2=%.6f, poles outside unit circle", i, math.Abs(s.A1), 1.0+s.A2)
 		}
@@ -60,6 +65,7 @@ func gainName(gain float64) string {
 	if gain >= 0 {
 		return "+" + ftoa(gain) + "dB"
 	}
+
 	return ftoa(gain) + "dB"
 }
 
@@ -77,12 +83,15 @@ func ftoa(f float64) string {
 		s = "-"
 		f = -f
 	}
+
 	whole := int(f)
 	frac := f - float64(whole)
+
 	result := s + intToStr(whole)
 	if frac > 0.001 {
 		result += "." + intToStr(int(frac*10))
 	}
+
 	return result
 }
 
@@ -90,10 +99,12 @@ func intToStr(n int) string {
 	if n == 0 {
 		return "0"
 	}
+
 	digits := ""
 	for n > 0 {
 		digits = string(rune('0'+n%10)) + digits
 		n /= 10
 	}
+
 	return digits
 }

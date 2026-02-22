@@ -10,6 +10,7 @@ func TestChorusProcessInPlaceMatchesSample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewChorus() error = %v", err)
 	}
+
 	c2, err := NewChorus()
 	if err != nil {
 		t.Fatalf("NewChorus() error = %v", err)
@@ -22,6 +23,7 @@ func TestChorusProcessInPlaceMatchesSample(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = c1.ProcessSample(want[i])
 	}
@@ -70,6 +72,7 @@ func TestChorusDelayIndependentOfRate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewChorus() error = %v", err)
 	}
+
 	if err := c.SetDepth(0.003); err != nil {
 		t.Fatalf("SetDepth() error = %v", err)
 	}
@@ -77,11 +80,13 @@ func TestChorusDelayIndependentOfRate(t *testing.T) {
 	if err := c.SetSpeedHz(0.25); err != nil {
 		t.Fatalf("SetSpeedHz() error = %v", err)
 	}
+
 	slowMax := c.maxDelay
 
 	if err := c.SetSpeedHz(2.5); err != nil {
 		t.Fatalf("SetSpeedHz() error = %v", err)
 	}
+
 	fastMax := c.maxDelay
 
 	if slowMax != fastMax {
@@ -94,6 +99,7 @@ func TestChorusBaseDelayIsNonZeroByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewChorus() error = %v", err)
 	}
+
 	if c.BaseDelay() <= 0 {
 		t.Fatalf("base delay must be > 0, got %f", c.BaseDelay())
 	}

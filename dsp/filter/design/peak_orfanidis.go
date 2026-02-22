@@ -28,12 +28,15 @@ func PeakRaw(G0, G1, G, GB, w0, dw float64) (biquad.Coefficients, error) {
 	if !(G0 > 0 && G1 > 0 && G > 0 && GB > 0) {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
 	}
+
 	if !(w0 > 0 && w0 < math.Pi) {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
 	}
+
 	if !(dw > 0 && dw < math.Pi) {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
 	}
+
 	if hasInvalidFloat(G0, G1, G, GB, w0, dw) {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
 	}
@@ -48,6 +51,7 @@ func PeakRaw(G0, G1, G, GB, w0, dw float64) (biquad.Coefficients, error) {
 	den1 := gb2 - g12
 	den2 := g2 - g02
 	num1 := gb2 - g02
+
 	num2 := g2 - g12
 	if den1 == 0 || den2 == 0 || num1 == 0 || num2 == 0 {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
@@ -57,6 +61,7 @@ func PeakRaw(G0, G1, G, GB, w0, dw float64) (biquad.Coefficients, error) {
 	if radicand <= 0 || math.IsNaN(radicand) || math.IsInf(radicand, 0) {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
 	}
+
 	DeltaOmega := (1 + math.Sqrt(radicand)) * math.Tan(dw/2)
 	if DeltaOmega <= 0 || math.IsNaN(DeltaOmega) || math.IsInf(DeltaOmega, 0) {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
@@ -82,6 +87,7 @@ func PeakRaw(G0, G1, G, GB, w0, dw float64) (biquad.Coefficients, error) {
 	}
 
 	A := math.Sqrt((C + D) / denAB)
+
 	B := math.Sqrt((g2*C + gb2*D) / denAB)
 	if math.IsNaN(A) || math.IsInf(A, 0) || math.IsNaN(B) || math.IsInf(B, 0) {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
@@ -115,9 +121,11 @@ func PeakCascade(sampleRate, f0Hz, Q, gainDB float64, sections int, opts ...Peak
 	if sections <= 0 {
 		return nil, ErrInvalidPeakParams
 	}
+
 	if sampleRate <= 0 || f0Hz <= 0 || f0Hz >= sampleRate/2 || Q <= 0 {
 		return nil, ErrInvalidPeakParams
 	}
+
 	if hasInvalidFloat(sampleRate, f0Hz, Q, gainDB) {
 		return nil, ErrInvalidPeakParams
 	}
@@ -132,8 +140,10 @@ func PeakCascade(sampleRate, f0Hz, Q, gainDB float64, sections int, opts ...Peak
 		if c == (biquad.Coefficients{}) {
 			return nil, ErrInvalidPeakParams
 		}
+
 		out[i] = c
 	}
+
 	return out, nil
 }
 
@@ -146,6 +156,7 @@ func peakOrfanidisFromAudio(freq, gainDB, q, sampleRate float64, cfg peakConfig)
 	if cfg.hasDCGain {
 		G0 = cfg.dcGain
 	}
+
 	G1 := 1.0
 	if cfg.hasNyqGain {
 		G1 = cfg.nyquistGain
@@ -153,6 +164,7 @@ func peakOrfanidisFromAudio(freq, gainDB, q, sampleRate float64, cfg peakConfig)
 
 	// Orfanidis uses inverted dB mapping for the peak gain.
 	G := math.Pow(10, -gainDB/20.0)
+
 	GB := math.Pow(10, -gainDB/40.0) // default: half-gain
 	if cfg.hasBEGain {
 		GB = cfg.bandEdgeGain
@@ -170,6 +182,7 @@ func peakOrfanidisFromAudio(freq, gainDB, q, sampleRate float64, cfg peakConfig)
 
 	// Validate that the designed filter hits the requested center gain.
 	want := math.Pow(10, gainDB/20.0)
+
 	gotSq := c.MagnitudeSquared(freq, sampleRate)
 	if gotSq > 0 && !math.IsNaN(gotSq) && !math.IsInf(gotSq, 0) {
 		got := math.Sqrt(gotSq)
@@ -177,6 +190,7 @@ func peakOrfanidisFromAudio(freq, gainDB, q, sampleRate float64, cfg peakConfig)
 			return c
 		}
 	}
+
 	return biquad.Coefficients{}
 }
 
@@ -194,6 +208,7 @@ func peakWithOpts(freq, gainDB, q, sampleRate float64, opts []PeakOption) biquad
 		}
 		// Fall back to RBJ.
 	}
+
 	return peakRBJ(freq, gainDB, q, sampleRate)
 }
 
@@ -201,7 +216,9 @@ func closeRel(got, want, rel float64) bool {
 	if want == 0 {
 		return got == 0
 	}
+
 	d := math.Abs(got - want)
+
 	return d <= rel*math.Abs(want)
 }
 
@@ -211,5 +228,6 @@ func hasInvalidFloat(vals ...float64) bool {
 			return true
 		}
 	}
+
 	return false
 }

@@ -10,10 +10,12 @@ import (
 
 func ExampleGenerator_Sine() {
 	g := signal.NewGenerator(core.WithSampleRate(1000))
+
 	x, err := g.Sine(250, 1, 5)
 	if err != nil {
 		panic(err)
 	}
+
 	if math.Abs(x[4]) < 1e-12 {
 		x[4] = 0
 	}
@@ -26,10 +28,12 @@ func ExampleGenerator_Sine() {
 
 func ExampleGenerator_PinkNoise() {
 	g := signal.NewGeneratorWithOptions(nil, signal.WithSeed(42))
+
 	x, err := g.PinkNoise(1, 5)
 	if err != nil {
 		panic(err)
 	}
+
 	for _, v := range x {
 		fmt.Printf("%.6f\n", v)
 	}
@@ -47,6 +51,7 @@ func ExampleNormalize() {
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Printf("%.2f %.2f %.2f\n", x[0], x[1], x[2])
 
 	// Output:

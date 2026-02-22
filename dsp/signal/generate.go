@@ -40,11 +40,13 @@ func NewGeneratorWithOptions(coreOpts []core.ProcessorOption, opts ...Option) *G
 		cfg:  core.ApplyProcessorOptions(coreOpts...),
 		seed: defaultSeed,
 	}
+
 	for _, opt := range opts {
 		if opt != nil {
 			opt(g)
 		}
 	}
+
 	return g
 }
 
@@ -68,14 +70,18 @@ func (g *Generator) Sine(freqHz, amplitude float64, samples int) ([]float64, err
 	if samples <= 0 {
 		return nil, fmt.Errorf("sine samples must be > 0: %d", samples)
 	}
+
 	if g.cfg.SampleRate <= 0 {
 		return nil, fmt.Errorf("sine sample rate must be > 0: %f", g.cfg.SampleRate)
 	}
+
 	out := make([]float64, samples)
+
 	step := 2 * math.Pi * freqHz / g.cfg.SampleRate
 	for i := range out {
 		out[i] = amplitude * math.Sin(step*float64(i))
 	}
+
 	return out, nil
 }
 
@@ -84,13 +90,17 @@ func (g *Generator) Multisine(freqsHz []float64, amplitude float64, samples int)
 	if samples <= 0 {
 		return nil, fmt.Errorf("multisine samples must be > 0: %d", samples)
 	}
+
 	if len(freqsHz) == 0 {
 		return nil, fmt.Errorf("multisine frequencies must not be empty")
 	}
+
 	if g.cfg.SampleRate <= 0 {
 		return nil, fmt.Errorf("multisine sample rate must be > 0: %f", g.cfg.SampleRate)
 	}
+
 	out := make([]float64, samples)
+
 	toneAmp := amplitude / float64(len(freqsHz))
 	for _, freqHz := range freqsHz {
 		step := 2 * math.Pi * freqHz / g.cfg.SampleRate
@@ -98,6 +108,7 @@ func (g *Generator) Multisine(freqsHz []float64, amplitude float64, samples int)
 			out[i] += toneAmp * math.Sin(step*float64(i))
 		}
 	}
+
 	return out, nil
 }
 
@@ -106,11 +117,14 @@ func (g *Generator) Impulse(amplitude float64, samples, pos int) ([]float64, err
 	if samples <= 0 {
 		return nil, fmt.Errorf("impulse samples must be > 0: %d", samples)
 	}
+
 	if pos < 0 || pos >= samples {
 		return nil, fmt.Errorf("impulse position out of range: pos=%d samples=%d", pos, samples)
 	}
+
 	out := make([]float64, samples)
 	out[pos] = amplitude
+
 	return out, nil
 }
 
@@ -119,9 +133,11 @@ func (g *Generator) LinearSweep(startHz, endHz, amplitude float64, samples int) 
 	if samples <= 0 {
 		return nil, fmt.Errorf("linear sweep samples must be > 0: %d", samples)
 	}
+
 	if g.cfg.SampleRate <= 0 {
 		return nil, fmt.Errorf("linear sweep sample rate must be > 0: %f", g.cfg.SampleRate)
 	}
+
 	duration := float64(samples) / g.cfg.SampleRate
 	k := (endHz - startHz) / duration
 
@@ -131,6 +147,7 @@ func (g *Generator) LinearSweep(startHz, endHz, amplitude float64, samples int) 
 		phase := 2 * math.Pi * (startHz*t + 0.5*k*t*t)
 		out[i] = amplitude * math.Sin(phase)
 	}
+
 	return out, nil
 }
 
@@ -139,9 +156,11 @@ func (g *Generator) LogSweep(startHz, endHz, amplitude float64, samples int) ([]
 	if samples <= 0 {
 		return nil, fmt.Errorf("log sweep samples must be > 0: %d", samples)
 	}
+
 	if g.cfg.SampleRate <= 0 {
 		return nil, fmt.Errorf("log sweep sample rate must be > 0: %f", g.cfg.SampleRate)
 	}
+
 	if startHz <= 0 || endHz <= 0 {
 		return nil, fmt.Errorf("log sweep frequencies must be > 0: start=%f end=%f", startHz, endHz)
 	}
@@ -153,11 +172,13 @@ func (g *Generator) LogSweep(startHz, endHz, amplitude float64, samples int) ([]
 	if k == 0 {
 		return g.Sine(startHz, amplitude, samples)
 	}
+
 	for i := range out {
 		t := float64(i) / g.cfg.SampleRate
 		phase := 2 * math.Pi * startHz * ((math.Exp(k*t) - 1) / k)
 		out[i] = amplitude * math.Sin(phase)
 	}
+
 	return out, nil
 }
 
@@ -166,14 +187,18 @@ func (g *Generator) WhiteNoise(amplitude float64, samples int) ([]float64, error
 	if samples <= 0 {
 		return nil, fmt.Errorf("noise samples must be > 0: %d", samples)
 	}
+
 	if amplitude < 0 {
 		return nil, fmt.Errorf("noise amplitude must be >= 0: %f", amplitude)
 	}
+
 	out := make([]float64, samples)
+
 	rng := rand.New(rand.NewSource(g.seed))
 	for i := range out {
 		out[i] = (rng.Float64()*2 - 1) * amplitude
 	}
+
 	return out, nil
 }
 
@@ -184,6 +209,7 @@ func (g *Generator) PinkNoise(amplitude float64, samples int) ([]float64, error)
 	if samples <= 0 {
 		return nil, fmt.Errorf("noise samples must be > 0: %d", samples)
 	}
+
 	if amplitude < 0 {
 		return nil, fmt.Errorf("noise amplitude must be >= 0: %f", amplitude)
 	}
@@ -193,7 +219,9 @@ func (g *Generator) PinkNoise(amplitude float64, samples int) ([]float64, error)
 	pSUM := [5]float64{0.00198, 0.01478, 0.06378, 0.23378, 0.91578}
 
 	rng := rand.New(rand.NewSource(g.seed))
+
 	var contributions [5]float64
+
 	out := make([]float64, samples)
 
 	for i := range out {
@@ -212,8 +240,10 @@ func (g *Generator) PinkNoise(amplitude float64, samples int) ([]float64, error)
 		for _, c := range contributions {
 			sum += c
 		}
+
 		out[i] = sum * amplitude
 	}
+
 	return out, nil
 }
 
@@ -222,11 +252,13 @@ func Normalize(data []float64, targetPeak float64) ([]float64, error) {
 	if targetPeak < 0 {
 		return nil, fmt.Errorf("normalize target peak must be >= 0: %f", targetPeak)
 	}
+
 	if len(data) == 0 {
 		return nil, fmt.Errorf("normalize input must not be empty")
 	}
 
 	maxAbs := 0.0
+
 	for _, v := range data {
 		av := math.Abs(v)
 		if av > maxAbs {
@@ -243,6 +275,7 @@ func Normalize(data []float64, targetPeak float64) ([]float64, error) {
 	for i, v := range data {
 		out[i] = v * scale
 	}
+
 	return out, nil
 }
 
@@ -251,6 +284,7 @@ func Clip(data []float64, minVal, maxVal float64) ([]float64, error) {
 	if minVal > maxVal {
 		return nil, fmt.Errorf("clip min must be <= max: min=%f max=%f", minVal, maxVal)
 	}
+
 	out := make([]float64, len(data))
 	for i, v := range data {
 		switch {
@@ -262,6 +296,7 @@ func Clip(data []float64, minVal, maxVal float64) ([]float64, error) {
 			out[i] = v
 		}
 	}
+
 	return out, nil
 }
 
@@ -270,16 +305,19 @@ func RemoveDC(data []float64) ([]float64, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("remove dc input must not be empty")
 	}
+
 	sum := 0.0
 	for _, v := range data {
 		sum += v
 	}
+
 	mean := sum / float64(len(data))
 
 	out := make([]float64, len(data))
 	for i, v := range data {
 		out[i] = v - mean
 	}
+
 	return out, nil
 }
 
@@ -289,19 +327,25 @@ func EnvelopeFollower(data []float64, attack, release float64) ([]float64, error
 	if attack < 0 || attack > 1 {
 		return nil, fmt.Errorf("attack must be in [0,1]: %f", attack)
 	}
+
 	if release < 0 || release > 1 {
 		return nil, fmt.Errorf("release must be in [0,1]: %f", release)
 	}
+
 	out := make([]float64, len(data))
 	env := 0.0
+
 	for i, v := range data {
 		target := math.Abs(v)
+
 		coeff := release
 		if target > env {
 			coeff = attack
 		}
+
 		env += coeff * (target - env)
 		out[i] = env
 	}
+
 	return out, nil
 }

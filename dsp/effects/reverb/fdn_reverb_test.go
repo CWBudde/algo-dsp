@@ -10,6 +10,7 @@ func TestFDNReverbProcessInPlaceMatchesSample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewFDNReverb: %v", err)
 	}
+
 	r2, err := NewFDNReverb(44100)
 	if err != nil {
 		t.Fatalf("NewFDNReverb: %v", err)
@@ -22,6 +23,7 @@ func TestFDNReverbProcessInPlaceMatchesSample(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = r1.ProcessSample(want[i])
 	}
@@ -70,23 +72,28 @@ func TestFDNReverbImpulseTailExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewFDNReverb: %v", err)
 	}
+
 	if err := r.SetDry(0); err != nil {
 		t.Fatalf("SetDry: %v", err)
 	}
 
 	const n = 4096
+
 	var nonZero bool
+
 	for i := 0; i < n; i++ {
 		x := 0.0
 		if i == 0 {
 			x = 1
 		}
+
 		y := r.ProcessSample(x)
 		if i > 0 && math.Abs(y) > 1e-10 {
 			nonZero = true
 			break
 		}
 	}
+
 	if !nonZero {
 		t.Fatalf("expected non-zero reverb tail")
 	}

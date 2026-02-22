@@ -11,6 +11,7 @@ func New(length int) *Buffer {
 	if length < 0 {
 		length = 0
 	}
+
 	return &Buffer{samples: make([]float64, length)}
 }
 
@@ -41,6 +42,7 @@ func (b *Buffer) Grow(n int) {
 	if n <= cap(b.samples) {
 		return
 	}
+
 	grown := make([]float64, len(b.samples), n)
 	copy(grown, b.samples)
 	b.samples = grown
@@ -52,6 +54,7 @@ func (b *Buffer) Resize(n int) {
 	if n < 0 {
 		n = 0
 	}
+
 	oldLen := len(b.samples)
 	if n <= cap(b.samples) {
 		b.samples = b.samples[:n]
@@ -82,9 +85,11 @@ func (b *Buffer) ZeroRange(start, end int) {
 	if start < 0 {
 		start = 0
 	}
+
 	if end > len(b.samples) {
 		end = len(b.samples)
 	}
+
 	for i := start; i < end; i++ {
 		b.samples[i] = 0
 	}
@@ -94,5 +99,6 @@ func (b *Buffer) ZeroRange(start, end int) {
 func (b *Buffer) Copy() *Buffer {
 	s := make([]float64, len(b.samples))
 	copy(s, b.samples)
+
 	return &Buffer{samples: s}
 }

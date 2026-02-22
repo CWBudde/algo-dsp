@@ -17,15 +17,19 @@ func NewLimiter(sampleRate float64) (*Limiter, error) {
 	if err := c.SetRatio(100.0); err != nil {
 		return nil, err
 	}
+
 	if err := c.SetAttack(0.1); err != nil { // 0.1 ms fast attack
 		return nil, err
 	}
+
 	if err := c.SetKnee(0.0); err != nil { // Hard knee
 		return nil, err
 	}
+
 	if err := c.SetAutoMakeup(false); err != nil {
 		return nil, err
 	}
+
 	if err := c.SetMakeupGain(0.0); err != nil {
 		return nil, err
 	}

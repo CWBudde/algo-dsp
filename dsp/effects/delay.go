@@ -30,6 +30,7 @@ func NewDelay(sampleRate float64) (*Delay, error) {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return nil, fmt.Errorf("delay sample rate must be > 0: %f", sampleRate)
 	}
+
 	d := &Delay{
 		sampleRate:   sampleRate,
 		delaySeconds: defaultDelayTimeSeconds,
@@ -39,6 +40,7 @@ func NewDelay(sampleRate float64) (*Delay, error) {
 	if err := d.reconfigureBuffer(); err != nil {
 		return nil, err
 	}
+
 	return d, nil
 }
 
@@ -47,7 +49,9 @@ func (d *Delay) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("delay sample rate must be > 0: %f", sampleRate)
 	}
+
 	d.sampleRate = sampleRate
+
 	return d.reconfigureBuffer()
 }
 
@@ -58,7 +62,9 @@ func (d *Delay) SetTime(seconds float64) error {
 		return fmt.Errorf("delay time must be in [%f, %f]: %f",
 			minDelayTimeSeconds, maxDelayTimeSeconds, seconds)
 	}
+
 	d.delaySeconds = seconds
+
 	return d.reconfigureBuffer()
 }
 
@@ -67,7 +73,9 @@ func (d *Delay) SetFeedback(feedback float64) error {
 	if feedback < 0 || feedback > 0.99 || math.IsNaN(feedback) || math.IsInf(feedback, 0) {
 		return fmt.Errorf("delay feedback must be in [0, 0.99]: %f", feedback)
 	}
+
 	d.feedback = feedback
+
 	return nil
 }
 
@@ -76,7 +84,9 @@ func (d *Delay) SetMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("delay mix must be in [0, 1]: %f", mix)
 	}
+
 	d.mix = mix
+
 	return nil
 }
 
@@ -85,6 +95,7 @@ func (d *Delay) Reset() {
 	for i := range d.buffer {
 		d.buffer[i] = 0
 	}
+
 	d.write = 0
 }
 
@@ -94,9 +105,11 @@ func (d *Delay) ProcessSample(input float64) float64 {
 	if read < 0 {
 		read += len(d.buffer)
 	}
+
 	delayed := d.buffer[read]
 
 	d.buffer[d.write] = input + delayed*d.feedback
+
 	d.write++
 	if d.write >= len(d.buffer) {
 		d.write = 0
@@ -128,6 +141,7 @@ func (d *Delay) reconfigureBuffer() error {
 	if d.sampleRate <= 0 {
 		return fmt.Errorf("delay sample rate must be > 0: %f", d.sampleRate)
 	}
+
 	if d.delaySeconds < minDelayTimeSeconds || d.delaySeconds > maxDelayTimeSeconds {
 		return fmt.Errorf("delay time must be in [%f, %f]: %f",
 			minDelayTimeSeconds, maxDelayTimeSeconds, d.delaySeconds)
@@ -137,10 +151,12 @@ func (d *Delay) reconfigureBuffer() error {
 	if d.delaySamples < 1 {
 		d.delaySamples = 1
 	}
+
 	maxSamples := int(math.Ceil(maxDelayTimeSeconds*d.sampleRate)) + 1
 	if maxSamples < d.delaySamples+1 {
 		maxSamples = d.delaySamples + 1
 	}
+
 	if maxSamples == len(d.buffer) {
 		return nil
 	}
@@ -156,17 +172,21 @@ func (d *Delay) reconfigureBuffer() error {
 		if copyCount > len(d.buffer) {
 			copyCount = len(d.buffer)
 		}
+
 		for i := 0; i < copyCount; i++ {
 			src := oldWrite - 1 - i
 			if src < 0 {
 				src += len(old)
 			}
+
 			dst := d.write - 1 - i
 			if dst < 0 {
 				dst += len(d.buffer)
 			}
+
 			d.buffer[dst] = old[src]
 		}
 	}
+
 	return nil
 }

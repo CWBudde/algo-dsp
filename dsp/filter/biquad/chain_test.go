@@ -16,13 +16,16 @@ func twoSectionCoeffs() []Coefficients {
 
 func TestNewChain(t *testing.T) {
 	coeffs := twoSectionCoeffs()
+
 	c := NewChain(coeffs)
 	if c.NumSections() != 2 {
 		t.Fatalf("NumSections: got %d, want 2", c.NumSections())
 	}
+
 	if c.Order() != 4 {
 		t.Fatalf("Order: got %d, want 4", c.Order())
 	}
+
 	if c.gain != 1 {
 		t.Fatalf("default gain: got %v, want 1", c.gain)
 	}
@@ -30,6 +33,7 @@ func TestNewChain(t *testing.T) {
 
 func TestNewChain_WithGain(t *testing.T) {
 	coeffs := twoSectionCoeffs()
+
 	c := NewChain(coeffs, WithGain(0.5))
 	if c.gain != 0.5 {
 		t.Fatalf("gain: got %v, want 0.5", c.gain)
@@ -48,6 +52,7 @@ func TestChain_ProcessSample_MatchesManualCascade(t *testing.T) {
 	input := []float64{1, 0.5, -0.3, 0.7, 0, -1, 0.2, 0.8}
 	for i, x := range input {
 		ref := s2.ProcessSample(s1.ProcessSample(x))
+
 		got := chain.ProcessSample(x)
 		if !almostEqual(got, ref, eps) {
 			t.Errorf("sample %d: chain=%.15f, ref=%.15f", i, got, ref)
@@ -68,6 +73,7 @@ func TestChain_ProcessSample_WithGain(t *testing.T) {
 	input := []float64{1, 0.5, -0.3, 0.7}
 	for i, x := range input {
 		ref := s2.ProcessSample(s1.ProcessSample(x * gain))
+
 		got := chain.ProcessSample(x)
 		if !almostEqual(got, ref, eps) {
 			t.Errorf("sample %d: chain=%.15f, ref=%.15f", i, got, ref)
@@ -81,6 +87,7 @@ func TestChain_ProcessBlock_MatchesSample(t *testing.T) {
 	// Reference via ProcessSample.
 	c1 := NewChain(coeffs)
 	input := []float64{1, 0.5, -0.3, 0.7, 0, -1, 0.2, 0.8}
+
 	ref := make([]float64, len(input))
 	for i, x := range input {
 		ref[i] = c1.ProcessSample(x)
@@ -105,6 +112,7 @@ func TestChain_ProcessBlock_WithGain(t *testing.T) {
 
 	c1 := NewChain(coeffs, WithGain(gain))
 	input := []float64{1, 0.5, -0.3, 0.7}
+
 	ref := make([]float64, len(input))
 	for i, x := range input {
 		ref[i] = c1.ProcessSample(x)
@@ -131,6 +139,7 @@ func TestChain_SingleSection(t *testing.T) {
 	input := []float64{1, 0.5, -0.3, 0.7, 0}
 	for i, x := range input {
 		ref := s.ProcessSample(x)
+
 		got := chain.ProcessSample(x)
 		if !almostEqual(got, ref, eps) {
 			t.Errorf("sample %d: chain=%.15f, section=%.15f", i, got, ref)
@@ -157,6 +166,7 @@ func TestChain_ThreeSections(t *testing.T) {
 	input := []float64{1, 0, 0, 0, 0, 0, 0, 0}
 	for i, x := range input {
 		ref := s3.ProcessSample(s2.ProcessSample(s1.ProcessSample(x)))
+
 		got := chain.ProcessSample(x)
 		if !almostEqual(got, ref, eps) {
 			t.Errorf("sample %d: chain=%.15f, ref=%.15f", i, got, ref)
@@ -170,6 +180,7 @@ func TestChain_Reset(t *testing.T) {
 	chain.ProcessSample(0.5)
 
 	chain.Reset()
+
 	for i := range chain.sections {
 		st := chain.sections[i].State()
 		if st != [2]float64{0, 0} {
@@ -194,6 +205,7 @@ func TestChain_State_SaveRestore(t *testing.T) {
 	if !almostEqual(y3, y3b, eps) {
 		t.Errorf("sample 3: got %v after restore, want %v", y3b, y3)
 	}
+
 	if !almostEqual(y4, y4b, eps) {
 		t.Errorf("sample 4: got %v after restore, want %v", y4b, y4)
 	}
@@ -201,6 +213,7 @@ func TestChain_State_SaveRestore(t *testing.T) {
 
 func TestChain_Section_Access(t *testing.T) {
 	coeffs := twoSectionCoeffs()
+
 	chain := NewChain(coeffs)
 	for i, c := range coeffs {
 		s := chain.Section(i)
@@ -224,6 +237,7 @@ func TestChain_OddOrder_FirstOrderSection(t *testing.T) {
 	input := []float64{1, 0, 0, 0, 0.5, -0.5, 0, 0}
 	for i, x := range input {
 		ref := s2.ProcessSample(s1.ProcessSample(x))
+
 		got := chain.ProcessSample(x)
 		if !almostEqual(got, ref, eps) {
 			t.Errorf("sample %d: chain=%.15f, ref=%.15f", i, got, ref)
@@ -256,11 +270,14 @@ func BenchmarkChain_ProcessSample(b *testing.B) {
 			for i := range coeffs {
 				coeffs[i] = benchCoeffs
 			}
+
 			c := NewChain(coeffs)
+
 			x := 1.0
 			for b.Loop() {
 				x = c.ProcessSample(x)
 			}
+
 			_ = x
 		})
 	}
@@ -273,13 +290,17 @@ func BenchmarkChain_ProcessBlock(b *testing.B) {
 			for i := range coeffs {
 				coeffs[i] = benchCoeffs
 			}
+
 			c := NewChain(coeffs)
+
 			buf := make([]float64, 1024)
 			for i := range buf {
 				buf[i] = float64(i) * 0.001
 			}
+
 			b.SetBytes(1024 * 8)
 			b.ResetTimer()
+
 			for range b.N {
 				c.ProcessBlock(buf)
 			}

@@ -25,10 +25,12 @@ func simpleLowpass() Coefficients {
 
 func TestNewSection(t *testing.T) {
 	c := Coefficients{B0: 1, B1: 2, B2: 3, A1: 4, A2: 5}
+
 	s := NewSection(c)
 	if s.Coefficients != c {
 		t.Fatalf("coefficients mismatch: got %v, want %v", s.Coefficients, c)
 	}
+
 	st := s.State()
 	if st != [2]float64{0, 0} {
 		t.Fatalf("initial state not zero: %v", st)
@@ -37,6 +39,7 @@ func TestNewSection(t *testing.T) {
 
 func TestProcessSample_Passthrough(t *testing.T) {
 	s := NewSection(passthrough())
+
 	input := []float64{1, 0, -1, 0.5, 0.25}
 	for i, x := range input {
 		y := s.ProcessSample(x)
@@ -67,7 +70,6 @@ func TestProcessSample_DFIIT(t *testing.T) {
 	// n=3: y=0.25*0+0.048 = 0.048
 	//      d0=0.5*0-(-0.2)*0.048+(-0.014) = 0.0096-0.014 = -0.0044
 	//      d1=0.25*0-0.04*0.048 = -0.00192
-
 	c := Coefficients{B0: 0.25, B1: 0.5, B2: 0.25, A1: -0.2, A2: 0.04}
 	s := NewSection(c)
 
@@ -77,6 +79,7 @@ func TestProcessSample_DFIIT(t *testing.T) {
 		if i == 0 {
 			x = 1
 		}
+
 		y := s.ProcessSample(x)
 		if !almostEqual(y, w, eps) {
 			t.Errorf("sample %d: got %.15f, want %.15f", i, y, w)
@@ -90,6 +93,7 @@ func TestProcessBlock_MatchesSample(t *testing.T) {
 	// ProcessSample reference
 	s1 := NewSection(c)
 	input := []float64{1, 0.5, -0.3, 0.7, 0, -1, 0.2, 0.8}
+
 	ref := make([]float64, len(input))
 	for i, x := range input {
 		ref[i] = s1.ProcessSample(x)
@@ -113,6 +117,7 @@ func TestProcessBlockTo_MatchesSample(t *testing.T) {
 
 	s1 := NewSection(c)
 	input := []float64{1, 0.5, -0.3, 0.7, 0, -1, 0.2, 0.8}
+
 	ref := make([]float64, len(input))
 	for i, x := range input {
 		ref[i] = s1.ProcessSample(x)
@@ -142,6 +147,7 @@ func TestProcessBlockUnrolled2_MatchesSample(t *testing.T) {
 
 	s1 := NewSection(c)
 	input := []float64{1, 0.5, -0.3, 0.7, 0, -1, 0.2, 0.8, -0.1}
+
 	ref := make([]float64, len(input))
 	for i, x := range input {
 		ref[i] = s1.ProcessSample(x)
@@ -175,6 +181,7 @@ func TestProcessSample_PureDelay(t *testing.T) {
 	s := NewSection(Coefficients{B1: 1})
 	input := []float64{1, 2, 3, 4, 5}
 	want := []float64{0, 1, 2, 3, 4}
+
 	for i, x := range input {
 		y := s.ProcessSample(x)
 		if !almostEqual(y, want[i], eps) {
@@ -197,6 +204,7 @@ func TestReset(t *testing.T) {
 	}
 
 	s.Reset()
+
 	st = s.State()
 	if st != [2]float64{0, 0} {
 		t.Fatalf("state not zero after reset: %v", st)
@@ -224,6 +232,7 @@ func TestState_SaveRestore(t *testing.T) {
 	if !almostEqual(y3, y3b, eps) {
 		t.Errorf("sample 3: got %v after restore, want %v", y3b, y3)
 	}
+
 	if !almostEqual(y4, y4b, eps) {
 		t.Errorf("sample 4: got %v after restore, want %v", y4b, y4)
 	}
@@ -237,6 +246,7 @@ func TestProcessSample_StabilityLongRun(t *testing.T) {
 	s.ProcessSample(1)
 
 	var maxAbs float64
+
 	for range 10000 {
 		y := s.ProcessSample(0)
 		if a := math.Abs(y); a > maxAbs {
@@ -255,6 +265,7 @@ func TestProcessSample_SimpleLowpass(t *testing.T) {
 	s := NewSection(simpleLowpass())
 	input := []float64{1, 1, 1, 1}
 	want := []float64{0.5, 1, 1, 1}
+
 	for i, x := range input {
 		y := s.ProcessSample(x)
 		if !almostEqual(y, want[i], eps) {

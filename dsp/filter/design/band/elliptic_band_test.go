@@ -25,7 +25,9 @@ func TestEllipticBand_VariousOrders(t *testing.T) {
 			if err != nil {
 				t.Fatalf("order %d: %v", order, err)
 			}
+
 			allPolesStable(t, sections)
+
 			centerMag := cascadeMagnitudeDB(sections, 1000, testSR)
 			if !almostEqual(centerMag, 12, 1.0) {
 				t.Errorf("order %d: center gain = %.4f dB, expected ~12 dB", order, centerMag)
@@ -63,6 +65,7 @@ func TestAllDesigners_ErrorOnInvalidParams(t *testing.T) {
 			if err != nil {
 				t.Fatalf("zero gain should not error: %v", err)
 			}
+
 			if len(sections) != 1 {
 				t.Errorf("zero gain: expected 1 passthrough section, got %d", len(sections))
 			}

@@ -24,6 +24,7 @@ func TestDeterministicSine(t *testing.T) {
 
 func TestDeterministicSineReproducible(t *testing.T) {
 	a := DeterministicSine(440, 44100, 0.5, 100)
+
 	b := DeterministicSine(440, 44100, 0.5, 100)
 	for i := range a {
 		if a[i] != b[i] {
@@ -35,9 +36,11 @@ func TestDeterministicSineReproducible(t *testing.T) {
 func TestDeterministicNoise(t *testing.T) {
 	a := DeterministicNoise(42, 1.0, 64)
 	b := DeterministicNoise(42, 1.0, 64)
+
 	if len(a) != 64 {
 		t.Fatalf("len = %d, want 64", len(a))
 	}
+
 	for i := range a {
 		if a[i] != b[i] {
 			t.Fatalf("noise not deterministic at index %d", i)
@@ -49,12 +52,14 @@ func TestDeterministicNoiseDifferentSeeds(t *testing.T) {
 	a := DeterministicNoise(1, 1.0, 16)
 	b := DeterministicNoise(2, 1.0, 16)
 	same := true
+
 	for i := range a {
 		if a[i] != b[i] {
 			same = false
 			break
 		}
 	}
+
 	if same {
 		t.Fatal("different seeds produced identical noise")
 	}
@@ -65,6 +70,7 @@ func TestImpulse(t *testing.T) {
 	if len(imp) != 8 {
 		t.Fatalf("len = %d, want 8", len(imp))
 	}
+
 	for i, v := range imp {
 		if i == 3 {
 			if v != 1 {
@@ -99,6 +105,7 @@ func TestOnes(t *testing.T) {
 	if len(o) != 3 {
 		t.Fatalf("len = %d, want 3", len(o))
 	}
+
 	for i, v := range o {
 		if v != 1 {
 			t.Fatalf("Ones[%d] = %v, want 1", i, v)

@@ -17,6 +17,7 @@ func TestSplitFOSection_KnownFactorization(t *testing.T) {
 	ma := [3]float64{1, 0.2, 0.05}
 
 	var B, A [5]float64
+
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
 			B[i+j] += nb[i] * mb[j]
@@ -28,6 +29,7 @@ func TestSplitFOSection_KnownFactorization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(sections) != 2 {
 		t.Fatalf("expected 2 sections, got %d", len(sections))
 	}
@@ -48,6 +50,7 @@ func TestSplitFOSection_KnownFactorization(t *testing.T) {
 		splitH := cascadeResponse(sections, freq, testSR)
 
 		origMag := cmplx.Abs(origH)
+
 		splitMag := cmplx.Abs(splitH)
 		if !almostEqual(origMag, splitMag, 1e-6) {
 			t.Errorf("freq=%v: orig mag=%.10f, split mag=%.10f", freq, origMag, splitMag)
@@ -115,15 +118,18 @@ func TestSplitFOSection_DiagnoseLowFreq(t *testing.T) {
 
 			// Compute condition: ratio of max to min |coefficient|
 			maxB, minB := 0.0, math.MaxFloat64
+
 			for _, v := range B {
 				av := math.Abs(v)
 				if av > maxB {
 					maxB = av
 				}
+
 				if av > 0 && av < minB {
 					minB = av
 				}
 			}
+
 			t.Logf("  B condition (max/min): %.2e", maxB/minB)
 
 			// Check palindromic symmetry (sign of ill-conditioning)
@@ -147,6 +153,7 @@ func TestSplitFOSection_DiagnoseLowFreq(t *testing.T) {
 				t.Logf("  NUM root-finding FAILED: %v", err)
 			} else {
 				t.Logf("  NUM roots found:")
+
 				for i, r := range numRoots {
 					res := polyroot.PolyEval(numCoeff, r)
 					t.Logf("    root[%d] = (%.10f, %.10f)  |r|=%.10f  residual=%.2e",
@@ -159,6 +166,7 @@ func TestSplitFOSection_DiagnoseLowFreq(t *testing.T) {
 				t.Logf("  DEN root-finding FAILED: %v", err)
 			} else {
 				t.Logf("  DEN roots found:")
+
 				for i, r := range denRoots {
 					res := polyroot.PolyEval(denCoeff, r)
 					t.Logf("    root[%d] = (%.10f, %.10f)  |r|=%.10f  residual=%.2e",
@@ -172,6 +180,7 @@ func TestSplitFOSection_DiagnoseLowFreq(t *testing.T) {
 				t.Logf("  splitFOSection FAILED: %v", err)
 			} else {
 				t.Logf("  splitFOSection SUCCESS: %d sections", len(sections))
+
 				for i, s := range sections {
 					t.Logf("    biquad[%d]: B0=%.10f B1=%.10f B2=%.10f A1=%.10f A2=%.10f",
 						i, s.B0, s.B1, s.B2, s.A1, s.A2)
@@ -222,10 +231,12 @@ func TestSplitFOSection_DiagnoseOrder12(t *testing.T) {
 		}
 
 		_, err := splitFOSection(B, A)
+
 		status := "OK"
 		if err != nil {
 			status = fmt.Sprintf("FAILED: %v", err)
 		}
+
 		t.Logf("  section %d (ui=%.4f si=%.6f): %s", i, ui, si, status)
 		t.Logf("    B = [%.6e, %.6e, %.6e, %.6e, %.6e]", B[0], B[1], B[2], B[3], B[4])
 		t.Logf("    A = [%.6e, %.6e, %.6e, %.6e, %.6e]", A[0], A[1], A[2], A[3], A[4])

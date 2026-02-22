@@ -23,9 +23,11 @@ func TestButterworthBand_ZeroGain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(sections) != 1 {
 		t.Fatalf("expected 1 passthrough section, got %d", len(sections))
 	}
+
 	mag := cascadeMagnitudeDB(sections, 1000, testSR)
 	if !almostEqual(mag, 0, 1e-10) {
 		t.Errorf("zero gain: center mag = %v dB, expected 0", mag)
@@ -37,6 +39,7 @@ func TestButterworthBand_BoostCutInversion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	cut, err := ButterworthBand(testSR, 1000, 500, -12, 4)
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +49,7 @@ func TestButterworthBand_BoostCutInversion(t *testing.T) {
 		hBoost := cascadeResponse(boost, freq, testSR)
 		hCut := cascadeResponse(cut, freq, testSR)
 		hCombined := hBoost * hCut
+
 		magDB := 20 * math.Log10(cmplx.Abs(hCombined))
 		if math.Abs(magDB) > 0.5 {
 			t.Errorf("freq=%v: boost*cut = %.4f dB, expected ~0 dB", freq, magDB)
@@ -64,7 +68,9 @@ func TestButterworthBand_VariousOrders(t *testing.T) {
 			if err != nil {
 				t.Fatalf("order %d: %v", order, err)
 			}
+
 			allPolesStable(t, sections)
+
 			centerMag := cascadeMagnitudeDB(sections, 1000, testSR)
 			if !almostEqual(centerMag, 12, 1.0) {
 				t.Errorf("order %d: center gain = %.4f dB, expected ~12 dB", order, centerMag)
@@ -80,7 +86,9 @@ func TestButterworthBand_ExtremeGains(t *testing.T) {
 			if err != nil {
 				t.Fatalf("gain %v dB: %v", gainDB, err)
 			}
+
 			allPolesStable(t, sections)
+
 			centerMag := cascadeMagnitudeDB(sections, 1000, testSR)
 			if !almostEqual(centerMag, gainDB, 1.0) {
 				t.Errorf("gain %v dB: center = %.4f dB", gainDB, centerMag)
@@ -95,12 +103,15 @@ func TestButterworthBand_VariousFrequencies(t *testing.T) {
 		if f0-bw/2 <= 0 || f0+bw/2 >= testSR/2 {
 			continue
 		}
+
 		t.Run(freqName(f0), func(t *testing.T) {
 			sections, err := ButterworthBand(testSR, f0, bw, 12, 4)
 			if err != nil {
 				t.Fatalf("f0=%v: %v", f0, err)
 			}
+
 			allPolesStable(t, sections)
+
 			centerMag := cascadeMagnitudeDB(sections, f0, testSR)
 			if !almostEqual(centerMag, 12, 1.0) {
 				t.Errorf("f0=%v: center gain = %.4f dB, expected ~12 dB", f0, centerMag)
@@ -114,7 +125,9 @@ func TestButterworthBand_SmallGain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	allPolesStable(t, sections)
+
 	for _, freq := range []float64{100, 500, 1000, 5000, 20000} {
 		mag := cascadeMagnitudeDB(sections, freq, testSR)
 		if math.Abs(mag) > 0.2 {
@@ -131,11 +144,14 @@ func TestButterworthBand_HighOrder_Stability(t *testing.T) {
 				t.Skipf("order %d failed: %v (known Durand-Kerner limitation)", order, err)
 				return
 			}
+
 			allPolesStable(t, sections)
+
 			centerMag := cascadeMagnitudeDB(sections, 1000, testSR)
 			if math.Abs(centerMag-12) > 2.0 {
 				t.Errorf("order %d: center gain = %.4f dB, expected ~12 dB", order, centerMag)
 			}
+
 			dcMag := cascadeMagnitudeDB(sections, 1, testSR)
 			if math.Abs(dcMag) > 1.0 {
 				t.Errorf("order %d: DC gain = %.4f dB, expected ~0 dB", order, dcMag)
@@ -149,11 +165,14 @@ func TestButterworthBand_NarrowBandwidth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	allPolesStable(t, sections)
+
 	centerMag := cascadeMagnitudeDB(sections, 1000, testSR)
 	if !almostEqual(centerMag, 12, 1.0) {
 		t.Errorf("narrow band: center = %.4f dB, expected ~12", centerMag)
 	}
+
 	offMag := cascadeMagnitudeDB(sections, 500, testSR)
 	if offMag > 1.0 {
 		t.Errorf("narrow band: 500 Hz = %.4f dB, expected < 1 dB", offMag)
@@ -165,7 +184,9 @@ func TestButterworthBand_WideBandwidth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	allPolesStable(t, sections)
+
 	centerMag := cascadeMagnitudeDB(sections, 5000, testSR)
 	if !almostEqual(centerMag, 6, 1.0) {
 		t.Errorf("wide band: center = %.4f dB, expected ~6", centerMag)

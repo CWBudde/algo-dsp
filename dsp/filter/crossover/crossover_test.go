@@ -27,12 +27,15 @@ func TestNew_ValidParameters(t *testing.T) {
 			t.Errorf("New(%.0f, %d, %.0f): unexpected error: %v", tt.freq, tt.order, tt.sr, err)
 			continue
 		}
+
 		if xo.Freq() != tt.freq {
 			t.Errorf("Freq() = %v, want %v", xo.Freq(), tt.freq)
 		}
+
 		if xo.Order() != tt.order {
 			t.Errorf("Order() = %v, want %v", xo.Order(), tt.order)
 		}
+
 		if xo.SampleRate() != tt.sr {
 			t.Errorf("SampleRate() = %v, want %v", xo.SampleRate(), tt.sr)
 		}
@@ -85,6 +88,7 @@ func TestCrossover_AllpassFrequencyResponse(t *testing.T) {
 			if f >= sr/2 {
 				continue
 			}
+
 			lpH := lpChain.Response(f, sr)
 			hpH := hpChain.Response(f, sr)
 			sumMag := 20 * math.Log10(cmplx.Abs(lpH+hpH))
@@ -109,6 +113,7 @@ func TestCrossover_ProcessSample(t *testing.T) {
 	if math.IsNaN(lo) || math.IsInf(lo, 0) {
 		t.Errorf("lo is not finite: %v", lo)
 	}
+
 	if math.IsNaN(hi) || math.IsInf(hi, 0) {
 		t.Errorf("hi is not finite: %v", hi)
 	}
@@ -117,9 +122,11 @@ func TestCrossover_ProcessSample(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		lo, hi = xo.ProcessSample(0.0)
 	}
+
 	if math.Abs(lo) > 1e-10 {
 		t.Errorf("lo should have decayed: %v", lo)
 	}
+
 	if math.Abs(hi) > 1e-10 {
 		t.Errorf("hi should have decayed: %v", hi)
 	}
@@ -134,11 +141,13 @@ func TestCrossover_AllpassImpulseSum(t *testing.T) {
 	// Compute the energy of the sum: should match input energy.
 	n := 4096
 	sumEnergy := 0.0
+
 	for i := 0; i < n; i++ {
 		x := 0.0
 		if i == 0 {
 			x = 1.0
 		}
+
 		lo, hi := xo.ProcessSample(x)
 		s := lo + hi
 		sumEnergy += s * s
@@ -172,6 +181,7 @@ func TestCrossover_ProcessBlock(t *testing.T) {
 
 	// Sample-by-sample.
 	loS := make([]float64, n)
+
 	hiS := make([]float64, n)
 	for i, x := range input {
 		loS[i], hiS[i] = xoSample.ProcessSample(x)
@@ -186,6 +196,7 @@ func TestCrossover_ProcessBlock(t *testing.T) {
 		if math.Abs(loS[i]-loB[i]) > 1e-12 {
 			t.Errorf("lo[%d]: sample=%.15e block=%.15e", i, loS[i], loB[i])
 		}
+
 		if math.Abs(hiS[i]-hiB[i]) > 1e-12 {
 			t.Errorf("hi[%d]: sample=%.15e block=%.15e", i, hiS[i], hiB[i])
 		}
@@ -216,13 +227,16 @@ func TestCrossover_Reset(t *testing.T) {
 // TestNewMultiBand_ThreeWay verifies a 3-way crossover (2 frequencies, 3 bands).
 func TestNewMultiBand_ThreeWay(t *testing.T) {
 	sr := 48000.0
+
 	mb, err := NewMultiBand([]float64{500, 5000}, 4, sr)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if mb.NumBands() != 3 {
 		t.Fatalf("expected 3 bands, got %d", mb.NumBands())
 	}
+
 	if len(mb.Stages()) != 2 {
 		t.Fatalf("expected 2 stages, got %d", len(mb.Stages()))
 	}
@@ -254,6 +268,7 @@ func TestNewMultiBand_Errors(t *testing.T) {
 // of all band outputs preserves impulse energy (allpass property).
 func TestMultiBand_ProcessSample_EnergyPreservation(t *testing.T) {
 	sr := 48000.0
+
 	mb, err := NewMultiBand([]float64{500, 5000}, 4, sr)
 	if err != nil {
 		t.Fatal(err)
@@ -261,16 +276,20 @@ func TestMultiBand_ProcessSample_EnergyPreservation(t *testing.T) {
 
 	n := 8192
 	sumEnergy := 0.0
+
 	for i := 0; i < n; i++ {
 		x := 0.0
 		if i == 0 {
 			x = 1.0
 		}
+
 		bands := mb.ProcessSample(x)
+
 		s := 0.0
 		for _, b := range bands {
 			s += b
 		}
+
 		sumEnergy += s * s
 	}
 
@@ -296,6 +315,7 @@ func TestMultiBand_ProcessBlock(t *testing.T) {
 	for i := range sampleBands {
 		sampleBands[i] = make([]float64, n)
 	}
+
 	for i, x := range input {
 		bands := mbSample.ProcessSample(x)
 		for b := range bands {
@@ -328,6 +348,7 @@ func TestMultiBand_Reset(t *testing.T) {
 	mbFresh, _ := NewMultiBand([]float64{500, 5000}, 4, 48000)
 
 	bands1 := mb.ProcessSample(1.0)
+
 	bands2 := mbFresh.ProcessSample(1.0)
 	for i := range bands1 {
 		if math.Abs(bands1[i]-bands2[i]) > 1e-15 {
@@ -339,10 +360,12 @@ func TestMultiBand_Reset(t *testing.T) {
 // TestMultiBand_FourWay verifies a 4-way crossover.
 func TestMultiBand_FourWay(t *testing.T) {
 	sr := 48000.0
+
 	mb, err := NewMultiBand([]float64{200, 2000, 10000}, 4, sr)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if mb.NumBands() != 4 {
 		t.Fatalf("expected 4 bands, got %d", mb.NumBands())
 	}

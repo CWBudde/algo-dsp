@@ -39,6 +39,7 @@ func ExampleCompressor_configuration() {
 	for i := range buf {
 		buf[i] = 0.3 * math.Sin(2*math.Pi*440*float64(i)/48000)
 	}
+
 	comp.ProcessInPlace(buf)
 
 	fmt.Println("Configured compressor parameters:")

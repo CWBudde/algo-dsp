@@ -46,7 +46,9 @@ func WithWidth(width float64) StereoWidenerOption {
 			return fmt.Errorf("stereo widener width must be in [%g, %g]: %f",
 				minWidenerWidth, maxWidenerWidth, width)
 		}
+
 		cfg.width = width
+
 		return nil
 	}
 }
@@ -60,12 +62,15 @@ func WithBassMonoFreq(freq float64) StereoWidenerOption {
 			cfg.bassMonoFreq = 0
 			return nil
 		}
+
 		if freq < minWidenerBassMonoFreq || freq > maxWidenerBassMonoFreq ||
 			math.IsNaN(freq) || math.IsInf(freq, 0) {
 			return fmt.Errorf("stereo widener bass mono freq must be 0 (disabled) or in [%g, %g]: %f",
 				minWidenerBassMonoFreq, maxWidenerBassMonoFreq, freq)
 		}
+
 		cfg.bassMonoFreq = freq
+
 		return nil
 	}
 }
@@ -103,10 +108,12 @@ func NewStereoWidener(sampleRate float64, opts ...StereoWidenerOption) (*StereoW
 	}
 
 	cfg := defaultStereoWidenerConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -133,6 +140,7 @@ func (w *StereoWidener) ProcessStereo(left, right float64) (float64, float64) {
 	if w.bassLPL != nil {
 		return w.processStereoWithBassMono(left, right)
 	}
+
 	return w.processStereoSimple(left, right)
 }
 
@@ -173,9 +181,11 @@ func (w *StereoWidener) ProcessStereoInPlace(left, right []float64) error {
 		return fmt.Errorf("stereo widener: left and right buffers must have equal length: %d != %d",
 			len(left), len(right))
 	}
+
 	for i := range left {
 		left[i], right[i] = w.ProcessStereo(left[i], right[i])
 	}
+
 	return nil
 }
 
@@ -185,9 +195,11 @@ func (w *StereoWidener) ProcessInterleavedInPlace(buf []float64) error {
 	if len(buf)%2 != 0 {
 		return fmt.Errorf("stereo widener: interleaved buffer length must be even: %d", len(buf))
 	}
+
 	for i := 0; i < len(buf); i += 2 {
 		buf[i], buf[i+1] = w.ProcessStereo(buf[i], buf[i+1])
 	}
+
 	return nil
 }
 
@@ -196,12 +208,15 @@ func (w *StereoWidener) Reset() {
 	if w.bassLPL != nil {
 		w.bassLPL.Reset()
 	}
+
 	if w.bassLPR != nil {
 		w.bassLPR.Reset()
 	}
+
 	if w.bassHPL != nil {
 		w.bassHPL.Reset()
 	}
+
 	if w.bassHPR != nil {
 		w.bassHPR.Reset()
 	}
@@ -221,10 +236,12 @@ func (w *StereoWidener) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("stereo widener sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	w.sampleRate = sampleRate
 	if w.bassMonoFreq > 0 {
 		return w.rebuildBassMonoFilters()
 	}
+
 	return nil
 }
 
@@ -236,7 +253,9 @@ func (w *StereoWidener) SetWidth(width float64) error {
 		return fmt.Errorf("stereo widener width must be in [%g, %g]: %f",
 			minWidenerWidth, maxWidenerWidth, width)
 	}
+
 	w.width = width
+
 	return nil
 }
 
@@ -248,14 +267,18 @@ func (w *StereoWidener) SetBassMonoFreq(freq float64) error {
 		w.bassLPR = nil
 		w.bassHPL = nil
 		w.bassHPR = nil
+
 		return nil
 	}
+
 	if freq < minWidenerBassMonoFreq || freq > maxWidenerBassMonoFreq ||
 		math.IsNaN(freq) || math.IsInf(freq, 0) {
 		return fmt.Errorf("stereo widener bass mono freq must be 0 (disabled) or in [%g, %g]: %f",
 			minWidenerBassMonoFreq, maxWidenerBassMonoFreq, freq)
 	}
+
 	w.bassMonoFreq = freq
+
 	return w.rebuildBassMonoFilters()
 }
 
@@ -264,12 +287,14 @@ func (w *StereoWidener) rebuildBassMonoFilters() error {
 	if freq <= 0 {
 		return nil
 	}
+
 	if freq >= w.sampleRate*0.5 {
 		return fmt.Errorf("stereo widener bass mono freq must be below Nyquist (%g): %f",
 			w.sampleRate*0.5, freq)
 	}
 
 	lpCoeffs := design.ButterworthLP(freq, bassMonoFilterOrder, w.sampleRate)
+
 	hpCoeffs := design.ButterworthHP(freq, bassMonoFilterOrder, w.sampleRate)
 	if len(lpCoeffs) == 0 || len(hpCoeffs) == 0 {
 		return fmt.Errorf("stereo widener bass mono filter design failed for freq=%g sr=%g",
@@ -280,5 +305,6 @@ func (w *StereoWidener) rebuildBassMonoFilters() error {
 	w.bassLPR = biquad.NewChain(lpCoeffs)
 	w.bassHPL = biquad.NewChain(hpCoeffs)
 	w.bassHPR = biquad.NewChain(hpCoeffs)
+
 	return nil
 }

@@ -69,6 +69,7 @@ func NewOverlapSave(kernel []float64, fftSize int) (*OverlapSave, error) {
 	if !isPowerOf2(fftSize) {
 		return nil, fmt.Errorf("%w: fftSize must be power of 2, got %d", ErrInvalidBlockSize, fftSize)
 	}
+
 	if fftSize < 2*kernelLen {
 		fftSize = nextPowerOf2(2 * kernelLen)
 	}
@@ -158,6 +159,7 @@ func (os *OverlapSave) Process(input []float64) ([]float64, error) {
 		if inputPos+newSamples > len(input) {
 			newSamples = len(input) - inputPos
 		}
+
 		for i := 0; i < newSamples; i++ {
 			os.inputBuffer[os.kernelLen-1+i] = complex(input[inputPos+i], 0)
 		}
@@ -191,6 +193,7 @@ func (os *OverlapSave) Process(input []float64) ([]float64, error) {
 		if historyStart < 0 {
 			historyStart = 0
 		}
+
 		for i := 0; i < os.kernelLen-1; i++ {
 			idx := historyStart + i
 			if idx < os.stepSize && inputPos+idx < len(input) {
@@ -227,6 +230,7 @@ func (os *OverlapSave) Process(input []float64) ([]float64, error) {
 		for i := range os.inputBuffer {
 			os.inputBuffer[i] = 0
 		}
+
 		for i := 0; i < os.kernelLen-1; i++ {
 			os.inputBuffer[i] = complex(os.history[i], 0)
 		}
@@ -268,6 +272,7 @@ func (os *OverlapSave) ProcessTo(output, input []float64) error {
 	}
 
 	copy(output, result)
+
 	return nil
 }
 
@@ -281,8 +286,11 @@ func (os *OverlapSave) Reset() {
 // getOverlapSavePool returns the pool for the given FFT size, creating it if needed.
 func getOverlapSavePool(fftSize int) *sync.Pool {
 	overlapSavePoolsMu.RLock()
+
 	pool, ok := overlapSavePools[fftSize]
+
 	overlapSavePoolsMu.RUnlock()
+
 	if ok {
 		return pool
 	}
@@ -301,6 +309,7 @@ func getOverlapSavePool(fftSize int) *sync.Pool {
 		},
 	}
 	overlapSavePools[fftSize] = pool
+
 	return pool
 }
 
@@ -321,6 +330,7 @@ func OverlapSaveConvolve(signal, kernel []float64) ([]float64, error) {
 
 	// Get a pooled instance
 	pool := getOverlapSavePool(fftSize)
+
 	os := pool.Get().(*OverlapSave)
 	defer pool.Put(os)
 
@@ -350,6 +360,7 @@ func initOverlapSave(os *OverlapSave, kernel []float64, fftSize int) error {
 		if err != nil {
 			return fmt.Errorf("conv: failed to create FFT plan: %w", err)
 		}
+
 		os.plan = plan
 	} else {
 		// Resize history if kernel length changed
@@ -367,6 +378,7 @@ func initOverlapSave(os *OverlapSave, kernel []float64, fftSize int) error {
 	for i := range kernelPadded {
 		kernelPadded[i] = 0
 	}
+
 	for i, v := range kernel {
 		kernelPadded[i] = complex(v, 0)
 	}

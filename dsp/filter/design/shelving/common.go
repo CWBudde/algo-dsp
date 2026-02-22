@@ -15,9 +15,11 @@ func validateParams(sampleRate, freqHz float64, order int) error {
 	if sampleRate <= 0 || freqHz <= 0 || order < 1 {
 		return ErrInvalidParams
 	}
+
 	if freqHz >= sampleRate*0.5 {
 		return ErrInvalidParams
 	}
+
 	return nil
 }
 
@@ -41,12 +43,15 @@ func invertSections(sections []biquad.Coefficients) ([]biquad.Coefficients, erro
 	if len(sections) == 0 {
 		return nil, ErrInvalidParams
 	}
+
 	out := make([]biquad.Coefficients, len(sections))
 	for i, s := range sections {
 		if s.B0 == 0 || math.IsNaN(s.B0) || math.IsInf(s.B0, 0) {
 			return nil, ErrInvalidParams
 		}
+
 		invB0 := 1.0 / s.B0
+
 		inv := biquad.Coefficients{
 			B0: invB0,
 			B1: s.A1 * invB0,
@@ -57,7 +62,9 @@ func invertSections(sections []biquad.Coefficients) ([]biquad.Coefficients, erro
 		if !coeffsAreFinite(inv) {
 			return nil, ErrInvalidParams
 		}
+
 		out[i] = inv
 	}
+
 	return out, nil
 }

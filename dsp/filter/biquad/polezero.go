@@ -37,6 +37,7 @@ func PoleZeroPairs(coeffs []Coefficients) []PoleZeroPair {
 	for i := range coeffs {
 		out[i] = coeffs[i].PoleZeroPair()
 	}
+
 	return out
 }
 
@@ -46,6 +47,7 @@ func (c *Chain) PoleZeroPairs() []PoleZeroPair {
 	for i := range c.sections {
 		out[i] = c.sections[i].PoleZeroPair()
 	}
+
 	return out
 }
 
@@ -54,12 +56,14 @@ func quadraticRoots(a, b, c float64) [2]complex128 {
 		if b == 0 {
 			return [2]complex128{}
 		}
+
 		return [2]complex128{complex(-c/b, 0), 0}
 	}
 
 	discriminant := complex(b*b-4*a*c, 0)
 	sqrtDiscriminant := cmplx.Sqrt(discriminant)
 	den := complex(2*a, 0)
+
 	return [2]complex128{
 		(-complex(b, 0) + sqrtDiscriminant) / den,
 		(-complex(b, 0) - sqrtDiscriminant) / den,

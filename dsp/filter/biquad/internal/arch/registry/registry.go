@@ -67,11 +67,13 @@ func (r *OpRegistry) Lookup(features cpu.Features) *OpEntry {
 func (r *OpRegistry) sortByPriority() {
 	for i := 1; i < len(r.entries); i++ {
 		key := r.entries[i]
+
 		j := i - 1
 		for j >= 0 && r.entries[j].Priority < key.Priority {
 			r.entries[j+1] = r.entries[j]
 			j--
 		}
+
 		r.entries[j+1] = key
 	}
 }
@@ -83,6 +85,7 @@ func (r *OpRegistry) ListEntries() []OpEntry {
 
 	entries := make([]OpEntry, len(r.entries))
 	copy(entries, r.entries)
+
 	return entries
 }
 

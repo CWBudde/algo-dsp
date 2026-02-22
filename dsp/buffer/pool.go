@@ -25,6 +25,7 @@ func (p *Pool) Get(length int) *Buffer {
 	b := p.pool.Get().(*Buffer)
 	b.Resize(length)
 	b.Zero()
+
 	return b
 }
 
@@ -34,5 +35,6 @@ func (p *Pool) Put(b *Buffer) {
 	if b == nil {
 		return
 	}
+
 	p.pool.Put(b)
 }

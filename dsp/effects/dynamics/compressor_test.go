@@ -29,6 +29,7 @@ func TestNewCompressor(t *testing.T) {
 				t.Errorf("NewCompressor() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !tt.wantErr && c == nil {
 				t.Error("NewCompressor() returned nil without error")
 			}
@@ -93,6 +94,7 @@ func TestSetThreshold(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetThreshold(%f) error = %v, wantErr %v", tt.value, err, tt.wantErr)
 			}
+
 			if !tt.wantErr && c.Threshold() != tt.value {
 				t.Errorf("Threshold() = %f, want %f", c.Threshold(), tt.value)
 			}
@@ -124,6 +126,7 @@ func TestSetRatio(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetRatio(%f) error = %v, wantErr %v", tt.value, err, tt.wantErr)
 			}
+
 			if !tt.wantErr && c.Ratio() != tt.value {
 				t.Errorf("Ratio() = %f, want %f", c.Ratio(), tt.value)
 			}
@@ -154,6 +157,7 @@ func TestSetKnee(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetKnee(%f) error = %v, wantErr %v", tt.value, err, tt.wantErr)
 			}
+
 			if !tt.wantErr && c.Knee() != tt.value {
 				t.Errorf("Knee() = %f, want %f", c.Knee(), tt.value)
 			}
@@ -184,6 +188,7 @@ func TestSetAttack(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetAttack(%f) error = %v, wantErr %v", tt.value, err, tt.wantErr)
 			}
+
 			if !tt.wantErr && c.Attack() != tt.value {
 				t.Errorf("Attack() = %f, want %f", c.Attack(), tt.value)
 			}
@@ -214,6 +219,7 @@ func TestSetRelease(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetRelease(%f) error = %v, wantErr %v", tt.value, err, tt.wantErr)
 			}
+
 			if !tt.wantErr && c.Release() != tt.value {
 				t.Errorf("Release() = %f, want %f", c.Release(), tt.value)
 			}
@@ -243,10 +249,12 @@ func TestSetMakeupGain(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SetMakeupGain(%f) error = %v, wantErr %v", tt.value, err, tt.wantErr)
 			}
+
 			if !tt.wantErr {
 				if c.MakeupGain() != tt.value {
 					t.Errorf("MakeupGain() = %f, want %f", c.MakeupGain(), tt.value)
 				}
+
 				if c.AutoMakeup() {
 					t.Error("SetMakeupGain should disable AutoMakeup")
 				}
@@ -263,6 +271,7 @@ func TestSetAutoMakeup(t *testing.T) {
 	if err := c.SetAutoMakeup(false); err != nil {
 		t.Fatalf("SetAutoMakeup(false) error = %v", err)
 	}
+
 	if c.AutoMakeup() {
 		t.Error("AutoMakeup() should be false")
 	}
@@ -271,6 +280,7 @@ func TestSetAutoMakeup(t *testing.T) {
 	if err := c.SetAutoMakeup(true); err != nil {
 		t.Fatalf("SetAutoMakeup(true) error = %v", err)
 	}
+
 	if !c.AutoMakeup() {
 		t.Error("AutoMakeup() should be true")
 	}
@@ -284,6 +294,7 @@ func TestCoefficientCalculations(t *testing.T) {
 	if err := c.SetThreshold(-20); err != nil {
 		t.Fatal(err)
 	}
+
 	expectedThresholdLog2 := -20 * log2Of10Div20
 	if math.Abs(c.thresholdLog2-expectedThresholdLog2) > 1e-10 {
 		t.Errorf("thresholdLog2 = %f, want %f", c.thresholdLog2, expectedThresholdLog2)
@@ -293,6 +304,7 @@ func TestCoefficientCalculations(t *testing.T) {
 	if err := c.SetKnee(6); err != nil {
 		t.Fatal(err)
 	}
+
 	expectedKneeWidthLog2 := 6.0 * log2Of10Div20
 	if math.Abs(c.kneeWidthLog2-expectedKneeWidthLog2) > 1e-10 {
 		t.Errorf("kneeWidthLog2 = %f, want %f", c.kneeWidthLog2, expectedKneeWidthLog2)
@@ -317,9 +329,11 @@ func TestAutoMakeupGainCalculation(t *testing.T) {
 	if err := c.SetThreshold(-20); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := c.SetRatio(4); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := c.SetAutoMakeup(true); err != nil {
 		t.Fatal(err)
 	}
@@ -354,9 +368,11 @@ func TestGainCalculationAboveThreshold(t *testing.T) {
 	if err := c.SetThreshold(-20); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := c.SetRatio(4); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := c.SetKnee(0); err != nil { // Hard knee for predictable testing
 		t.Fatal(err)
 	}
@@ -368,6 +384,7 @@ func TestGainCalculationAboveThreshold(t *testing.T) {
 	if gain >= 1.0 {
 		t.Errorf("calculateGain(%f) = %f, want < 1.0 (should compress)", level, gain)
 	}
+
 	if gain <= 0 {
 		t.Errorf("calculateGain(%f) = %f, want > 0", level, gain)
 	}
@@ -388,14 +405,17 @@ func TestGainCalculationRatios(t *testing.T) {
 	}
 
 	var prevGain float64
+
 	for i, tt := range tests {
 		c, _ := NewCompressor(48000)
 		if err := c.SetThreshold(-20); err != nil {
 			t.Fatal(err)
 		}
+
 		if err := c.SetRatio(tt.ratio); err != nil {
 			t.Fatal(err)
 		}
+
 		if err := c.SetKnee(0); err != nil {
 			t.Fatal(err)
 		}
@@ -454,11 +474,13 @@ func TestProcessInPlaceMatchesSample(t *testing.T) {
 
 	// Compare results
 	const tolerance = 1e-12
+
 	for i := range got {
 		diff := math.Abs(got[i] - want[i])
 		if diff > tolerance {
 			t.Errorf("sample %d: ProcessInPlace() = %f, ProcessSample() = %f, diff = %g",
 				i, got[i], want[i], diff)
+
 			break
 		}
 	}
@@ -499,9 +521,11 @@ func TestMetricsTracking(t *testing.T) {
 	if err := c.SetThreshold(-20); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := c.SetAttack(1); err != nil { // Very fast attack
 		t.Fatal(err)
 	}
+
 	c.ResetMetrics()
 
 	// Process many loud samples to build up envelope and trigger compression
@@ -520,6 +544,7 @@ func TestMetricsTracking(t *testing.T) {
 	if metrics.OutputPeak == 0 {
 		t.Error("OutputPeak should be non-zero")
 	}
+
 	if metrics.GainReduction >= 1.0 {
 		t.Errorf("GainReduction = %f, should be less than 1.0 for loud signals with low threshold", metrics.GainReduction)
 	}
@@ -531,10 +556,12 @@ func TestEnvelopeFollowerAttack(t *testing.T) {
 	if err := c.SetAttack(1); err != nil { // Very fast 1ms attack
 		t.Fatal(err)
 	}
+
 	c.Reset()
 
 	// Apply step input
 	const level = 0.5
+
 	prevPeak := 0.0
 
 	// Process enough samples - envelope followers approach asymptotically
@@ -546,6 +573,7 @@ func TestEnvelopeFollowerAttack(t *testing.T) {
 			t.Errorf("Peak decreased during attack at sample %d: %f -> %f", i, prevPeak, c.peakLevel)
 			break
 		}
+
 		prevPeak = c.peakLevel
 	}
 
@@ -562,15 +590,18 @@ func TestEnvelopeFollowerRelease(t *testing.T) {
 	if err := c.SetAttack(1); err != nil { // Fast attack to build up quickly
 		t.Fatal(err)
 	}
+
 	if err := c.SetRelease(50); err != nil { // 50ms release
 		t.Fatal(err)
 	}
+
 	c.Reset()
 
 	// Build up peak - process for longer to ensure peak is settled
 	for i := 0; i < 2000; i++ {
 		c.ProcessSample(0.5)
 	}
+
 	peakAfterAttack := c.peakLevel
 
 	// Verify peak was built up (envelope followers approach asymptotically)
@@ -580,6 +611,7 @@ func TestEnvelopeFollowerRelease(t *testing.T) {
 
 	// Process silence for release (50ms * 48kHz = 2400 samples, so 5000 is more than sufficient)
 	prevPeak := peakAfterAttack
+
 	for i := 0; i < 5000; i++ {
 		c.ProcessSample(0)
 		// Peak should decrease monotonically during release (or stay at zero when settled)
@@ -587,6 +619,7 @@ func TestEnvelopeFollowerRelease(t *testing.T) {
 			t.Errorf("Peak increased during release at sample %d: %f -> %f", i, prevPeak, c.peakLevel)
 			break
 		}
+
 		prevPeak = c.peakLevel
 	}
 

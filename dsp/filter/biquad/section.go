@@ -46,6 +46,7 @@ func (s *Section) ProcessSample(x float64) float64 {
 	y := s.B0*x + s.d0
 	s.d0 = s.B1*x - s.A1*y + s.d1
 	s.d1 = s.B2*x - s.A2*y
+
 	return y
 }
 
@@ -69,9 +70,11 @@ func initProcessBlockKernel() {
 	if entry == nil {
 		panic("biquad: no ProcessBlock kernel registered (missing generic fallback?)")
 	}
+
 	if entry.ProcessBlock == nil {
 		panic("biquad: selected kernel missing ProcessBlock")
 	}
+
 	processBlockImpl = entry.ProcessBlock
 }
 
@@ -92,6 +95,7 @@ func (s *Section) processBlockUnrolled2(buf []float64) {
 	d0, d1 := s.d0, s.d1
 
 	i := 0
+
 	n := len(buf)
 	for ; i+1 < n; i += 2 {
 		x0 := buf[i]

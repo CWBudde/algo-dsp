@@ -45,6 +45,7 @@ func ExampleLogSweep_Deconvolve() {
 
 	// Simulate a simple system: direct path + delayed reflection
 	responseLen := len(excitation) + 200
+
 	response := make([]float64, responseLen)
 	for i, v := range excitation {
 		response[i] += v // direct path
@@ -61,6 +62,7 @@ func ExampleLogSweep_Deconvolve() {
 
 	// Find the main peak
 	peakIdx := 0
+
 	peakVal := 0.0
 	for i, v := range ir {
 		if math.Abs(v) > peakVal {

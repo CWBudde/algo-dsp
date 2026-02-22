@@ -135,19 +135,23 @@ func NewOctaveAnalyzer(fraction int, sampleRate float64, opts ...AnalyzerOption)
 	if fraction <= 0 {
 		fraction = 1
 	}
+
 	if sampleRate <= 0 || math.IsNaN(sampleRate) {
 		return nil, fmt.Errorf("bank: invalid sample rate %.3f", sampleRate)
 	}
 
 	cfg := defaultAnalyzerConfig()
+
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&cfg)
 		}
 	}
+
 	if cfg.order <= 0 || cfg.order%2 != 0 {
 		return nil, fmt.Errorf("bank: analyzer order must be positive even, got %d", cfg.order)
 	}
+
 	if cfg.envelopeOrder <= 0 || cfg.envelopeOrder%2 != 0 {
 		return nil, fmt.Errorf("bank: envelope order must be positive even, got %d", cfg.envelopeOrder)
 	}
@@ -166,10 +170,12 @@ func NewOctaveAnalyzer(fraction int, sampleRate float64, opts ...AnalyzerOption)
 
 	for i, spec := range specs {
 		downsample := 1
+
 		downPow := 0
 		if cfg.resample {
 			downsample, downPow = chooseDownsample(sampleRate, spec.high, cfg.maxDownsample)
 		}
+
 		bandRate := sampleRate / float64(downsample)
 
 		lp := biquad.NewChain(design.ButterworthLP(spec.high, cfg.order, bandRate))
@@ -181,12 +187,15 @@ func NewOctaveAnalyzer(fraction int, sampleRate float64, opts ...AnalyzerOption)
 			// where DownsampleAmount is the exponent (not the factor).
 			envRate = sampleRate / float64(downPow)
 		}
+
 		envHz := clampEnvelopeHz(cfg.envelopeHz, envRate)
 		env := biquad.NewChain(design.ButterworthLP(envHz, cfg.envelopeOrder, envRate))
 
 		var rs *resample.Resampler
+
 		if downsample > 1 && cfg.resample {
 			var err error
+
 			rs, err = resample.NewRational(1, downsample, resample.WithQuality(cfg.resampleQual))
 			if err != nil {
 				return nil, fmt.Errorf("bank: resampler init (down=%d): %w", downsample, err)
@@ -223,6 +232,7 @@ func (a *Analyzer) Bands() []BandInfo {
 	if a == nil {
 		return nil
 	}
+
 	out := make([]BandInfo, len(a.bands))
 	for i := range a.bands {
 		b := a.bands[i]
@@ -234,6 +244,7 @@ func (a *Analyzer) Bands() []BandInfo {
 			Downsample: b.downsample,
 		}
 	}
+
 	return out
 }
 
@@ -244,6 +255,7 @@ func (a *Analyzer) Peaks() []float64 {
 	if a == nil {
 		return nil
 	}
+
 	return a.peaks
 }
 
@@ -252,6 +264,7 @@ func (a *Analyzer) SampleRate() float64 {
 	if a == nil {
 		return 0
 	}
+
 	return a.sampleRate
 }
 
@@ -260,6 +273,7 @@ func (a *Analyzer) Fraction() int {
 	if a == nil {
 		return 0
 	}
+
 	return a.fraction
 }
 
@@ -268,15 +282,18 @@ func (a *Analyzer) Reset() {
 	if a == nil {
 		return
 	}
+
 	for i := range a.bands {
 		b := &a.bands[i]
 		b.lp.Reset()
 		b.hp.Reset()
 		b.env.Reset()
+
 		if b.resampler != nil {
 			b.resampler.Reset()
 		}
 	}
+
 	for i := range a.peaks {
 		a.peaks[i] = 0
 	}
@@ -288,12 +305,14 @@ func (a *Analyzer) ProcessBlock(input []float64) []float64 {
 	if a == nil {
 		return nil
 	}
+
 	if len(input) == 0 {
 		return a.peaks
 	}
 
 	for i := range a.bands {
 		b := &a.bands[i]
+
 		var data []float64
 		if b.resampler != nil {
 			data = b.resampler.Process(input)
@@ -303,6 +322,7 @@ func (a *Analyzer) ProcessBlock(input []float64) []float64 {
 			} else {
 				b.scratch = b.scratch[:len(input)]
 			}
+
 			copy(b.scratch, input)
 			data = b.scratch
 		}
@@ -311,10 +331,12 @@ func (a *Analyzer) ProcessBlock(input []float64) []float64 {
 		b.hp.ProcessBlock(data)
 
 		var last float64
+
 		for _, v := range data {
 			x := math.Abs(v)
 			last = b.env.ProcessSample(x)
 		}
+
 		a.peaks[i] = last
 	}
 
@@ -325,13 +347,16 @@ func chooseDownsample(sampleRate, highHz float64, maxDownsample int) (int, int) 
 	if maxDownsample < 1 || highHz <= 0 || sampleRate <= 0 {
 		return 1, 0
 	}
+
 	ds := 1
 	pow := 0
+
 	limit := sampleRate / 8
 	for ds*2 <= maxDownsample && float64(ds)*highHz < limit {
 		ds *= 2
 		pow++
 	}
+
 	return ds, pow
 }
 
@@ -339,13 +364,16 @@ func clampEnvelopeHz(freqHz, sampleRate float64) float64 {
 	if sampleRate <= 0 {
 		return 1
 	}
+
 	nyquist := sampleRate / 2
 	if freqHz <= 0 {
 		return math.Min(1, nyquist*0.1)
 	}
+
 	maxHz := nyquist * 0.45
 	if freqHz > maxHz {
 		return maxHz
 	}
+
 	return freqHz
 }

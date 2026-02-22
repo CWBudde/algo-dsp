@@ -111,18 +111,23 @@ func (c config) finalized() config {
 	if c.tapsPerPhase <= 0 {
 		c.tapsPerPhase = p.TapsPerPhase
 	}
+
 	if c.cutoffScale <= 0 || c.cutoffScale > 1 {
 		c.cutoffScale = p.CutoffScale
 	}
+
 	if c.kaiserBeta < 0 {
 		c.kaiserBeta = p.KaiserBeta
 	}
+
 	if c.kaiserBeta == 0 {
 		c.kaiserBeta = p.KaiserBeta
 	}
+
 	if c.maxDen <= 0 {
 		c.maxDen = 4096
 	}
+
 	return c
 }
 
@@ -149,16 +154,19 @@ func NewRational(up, down int, opts ...Option) (*Resampler, error) {
 	if up <= 0 || down <= 0 {
 		return nil, ErrInvalidRatio
 	}
+
 	g := gcd(up, down)
 	up /= g
 	down /= g
 
 	cfg := defaultConfig()
+
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&cfg)
 		}
 	}
+
 	cfg = cfg.finalized()
 
 	taps, phases, maxPhaseLn, err := designPolyphaseFIR(up, down, cfg)
@@ -183,15 +191,19 @@ func NewForRates(inRate, outRate float64, opts ...Option) (*Resampler, error) {
 	if inRate <= 0 || outRate <= 0 || math.IsNaN(inRate) || math.IsNaN(outRate) {
 		return nil, ErrInvalidRate
 	}
+
 	cfg := defaultConfig()
+
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&cfg)
 		}
 	}
+
 	cfg = cfg.finalized()
 
 	up, down := approximateRatio(outRate/inRate, cfg.maxDen)
+
 	return NewRational(up, down, opts...)
 }
 
@@ -201,6 +213,7 @@ func Upsample2x(input []float64, opts ...Option) ([]float64, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return r.Process(input), nil
 }
 
@@ -210,6 +223,7 @@ func Downsample2x(input []float64, opts ...Option) ([]float64, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return r.Process(input), nil
 }
 
@@ -219,6 +233,7 @@ func Resample(input []float64, up, down int, opts ...Option) ([]float64, error) 
 	if err != nil {
 		return nil, err
 	}
+
 	return r.Process(input), nil
 }
 
@@ -248,14 +263,18 @@ func (r *Resampler) Process(input []float64) []float64 {
 
 	for r.inputIndex <= lastAvail {
 		taps := r.phases[r.phase]
+
 		var y float64
+
 		for k, c := range taps {
 			idx := r.inputIndex - k
 			if idx < baseIndex || idx > lastAvail {
 				continue
 			}
+
 			y += c * work[idx-baseIndex]
 		}
+
 		out = append(out, y)
 
 		r.phase += r.down
@@ -264,10 +283,12 @@ func (r *Resampler) Process(input []float64) []float64 {
 	}
 
 	r.totalIn += len(input)
+
 	keep := max(0, r.maxPhaseLn-1)
 	if keep > len(work) {
 		keep = len(work)
 	}
+
 	r.history = append(r.history[:0], work[len(work)-keep:]...)
 
 	return out
@@ -278,9 +299,11 @@ func (r *Resampler) PredictOutputLen(inputLen int) int {
 	if inputLen <= 0 {
 		return 0
 	}
+
 	lastAvail := r.totalIn + inputLen - 1
 	i := r.inputIndex
 	phase := r.phase
+
 	count := 0
 	for i <= lastAvail {
 		count++
@@ -288,6 +311,7 @@ func (r *Resampler) PredictOutputLen(inputLen int) int {
 		i += phase / r.up
 		phase %= r.up
 	}
+
 	return count
 }
 
@@ -306,6 +330,7 @@ func (r *Resampler) TapsPerPhase() int {
 	if len(r.phases) == 0 {
 		return 0
 	}
+
 	return len(r.phases[0])
 }
 
@@ -313,5 +338,6 @@ func (r *Resampler) TapsPerPhase() int {
 func (r *Resampler) Prototype() []float64 {
 	out := make([]float64, len(r.taps))
 	copy(out, r.taps)
+
 	return out
 }
