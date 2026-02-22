@@ -4,15 +4,18 @@ import "testing"
 
 func TestPoolGetReturnsZeroed(t *testing.T) {
 	p := NewPool()
+
 	b := p.Get(8)
 	if b.Len() != 8 {
 		t.Fatalf("Len() = %d, want 8", b.Len())
 	}
+
 	for i, v := range b.Samples() {
 		if v != 0 {
 			t.Fatalf("Samples()[%d] = %v, want 0", i, v)
 		}
 	}
+
 	p.Put(b)
 }
 
@@ -32,6 +35,7 @@ func TestPoolReuseIsZeroed(t *testing.T) {
 			t.Fatalf("reused Samples()[%d] = %v, want 0", i, v)
 		}
 	}
+
 	p.Put(b2)
 }
 

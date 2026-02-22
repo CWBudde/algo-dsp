@@ -91,11 +91,14 @@ func Octave(fraction int, sampleRate float64, opts ...Option) *Bank {
 	if fraction <= 0 {
 		fraction = 1
 	}
+
 	cfg := defaultBankConfig()
 	for _, o := range opts {
 		o(&cfg)
 	}
+
 	specs := octaveBandSpecs(fraction, sampleRate, cfg.lowerHz, cfg.upperHz)
+
 	bands := make([]Band, 0, len(specs))
 	for _, spec := range specs {
 		lp := biquad.NewChain(design.ButterworthLP(spec.high, cfg.order, sampleRate))
@@ -126,6 +129,7 @@ func Custom(centers []float64, bandwidth float64, sampleRate float64, opts ...Op
 	if bandwidth <= 0 {
 		bandwidth = 1
 	}
+
 	cfg := defaultBankConfig()
 	for _, o := range opts {
 		o(&cfg)
@@ -135,12 +139,15 @@ func Custom(centers []float64, bandwidth float64, sampleRate float64, opts ...Op
 	nyquist := sampleRate / 2
 
 	var bands []Band
+
 	for _, fc := range centers {
 		fLo := fc / halfBW
+
 		fHi := fc * halfBW
 		if fHi >= nyquist || fLo <= 0 || fc <= 0 {
 			continue
 		}
+
 		lp := biquad.NewChain(design.ButterworthLP(fHi, cfg.order, sampleRate))
 		hp := biquad.NewChain(design.ButterworthHP(fLo, cfg.order, sampleRate))
 		bands = append(bands, Band{
@@ -183,6 +190,7 @@ func (b *Bank) ProcessSample(x float64) []float64 {
 		lp := b.bands[i].LP.ProcessSample(x)
 		out[i] = b.bands[i].HP.ProcessSample(lp)
 	}
+
 	return out
 }
 
@@ -190,6 +198,7 @@ func (b *Bank) ProcessSample(x float64) []float64 {
 // Returns a slice of per-band output blocks: result[band][sample].
 func (b *Bank) ProcessBlock(input []float64) [][]float64 {
 	n := len(input)
+
 	result := make([][]float64, len(b.bands))
 	for i := range b.bands {
 		buf := make([]float64, n)
@@ -198,6 +207,7 @@ func (b *Bank) ProcessBlock(input []float64) [][]float64 {
 		b.bands[i].HP.ProcessBlock(buf)
 		result[i] = buf
 	}
+
 	return result
 }
 
@@ -227,6 +237,7 @@ func octaveBandSpecs(fraction int, sampleRate, lowerHz, upperHz float64) []bandS
 	// Determine the range of band indices k such that
 	// 1000 * G^(k/N) falls within [lowerHz, upperHz].
 	kMin := int(math.Ceil(n * math.Log(lowerHz/1000) / math.Log(octaveRatio)))
+
 	kMax := int(math.Floor(n * math.Log(upperHz/1000) / math.Log(octaveRatio)))
 	if kMax < kMin {
 		return nil
@@ -242,7 +253,9 @@ func octaveBandSpecs(fraction int, sampleRate, lowerHz, upperHz float64) []bandS
 		if fHi >= nyquist || fLo <= 0 {
 			continue
 		}
+
 		specs = append(specs, bandSpec{center: fc, low: fLo, high: fHi})
 	}
+
 	return specs
 }

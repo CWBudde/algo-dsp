@@ -34,6 +34,7 @@ func ampTodB(value float64) float64 {
 	if a == 0 {
 		return math.Inf(-1)
 	}
+
 	return 20 * math.Log10(a)
 }
 
@@ -43,6 +44,7 @@ func ratioTodB(value float64) float64 {
 	if value == 0 {
 		return math.Inf(-1)
 	}
+
 	return 20 * math.Log10(value)
 }
 
@@ -105,6 +107,7 @@ func Calculate(signal []float64) Stats {
 			maxVal = x
 			maxPos = i
 		}
+
 		if x < minVal {
 			minVal = x
 			minPos = i
@@ -131,6 +134,7 @@ func Calculate(signal []float64) Stats {
 	}
 
 	variance := m2 / nf
+
 	var skewness, kurtosis float64
 	if variance > 0 {
 		skewness = (m3 / nf) / (variance * math.Sqrt(variance))
@@ -167,10 +171,12 @@ func RMS(signal []float64) float64 {
 	if len(signal) == 0 {
 		return 0
 	}
+
 	var sumSq float64
 	for _, x := range signal {
 		sumSq += x * x
 	}
+
 	return math.Sqrt(sumSq / float64(len(signal)))
 }
 
@@ -187,6 +193,7 @@ func DC(signal []float64) float64 {
 		c = (t - sum) - y
 		sum = t
 	}
+
 	return sum / float64(len(signal))
 }
 
@@ -195,6 +202,7 @@ func Peak(signal []float64) float64 {
 	if len(signal) == 0 {
 		return 0
 	}
+
 	peak := math.Abs(signal[0])
 	for _, x := range signal[1:] {
 		a := math.Abs(x)
@@ -202,6 +210,7 @@ func Peak(signal []float64) float64 {
 			peak = a
 		}
 	}
+
 	return peak
 }
 
@@ -212,6 +221,7 @@ func CrestFactor(signal []float64) float64 {
 	if r == 0 {
 		return 0
 	}
+
 	return Peak(signal) / r
 }
 
@@ -221,12 +231,15 @@ func ZeroCrossings(signal []float64) int {
 	if len(signal) < 2 {
 		return 0
 	}
+
 	var count int
+
 	for i := 1; i < len(signal); i++ {
 		if signal[i-1]*signal[i] < 0 {
 			count++
 		}
 	}
+
 	return count
 }
 
@@ -254,11 +267,13 @@ func Moments(signal []float64) (mean, variance, skewness, kurtosis float64) {
 	}
 
 	nf := float64(n)
+
 	variance = m2 / nf
 	if variance > 0 {
 		skewness = (m3 / nf) / (variance * math.Sqrt(variance))
 		kurtosis = (m4/nf)/(variance*variance) - 3
 	}
+
 	return mean, variance, skewness, kurtosis
 }
 
@@ -318,6 +333,7 @@ func (s *StreamingStats) Update(samples []float64) {
 				s.maxVal = x
 				s.maxPos = s.n - 1
 			}
+
 			if x < s.minVal {
 				s.minVal = x
 				s.minPos = s.n - 1
@@ -328,6 +344,7 @@ func (s *StreamingStats) Update(samples []float64) {
 		if s.n > 1 && s.lastSample*x < 0 {
 			s.zeroCrossings++
 		}
+
 		s.lastSample = x
 	}
 }
@@ -353,6 +370,7 @@ func (s *StreamingStats) Result() Stats {
 	}
 
 	variance := s.m2 / nf
+
 	var skewness, kurtosis float64
 	if variance > 0 {
 		skewness = (s.m3 / nf) / (variance * math.Sqrt(variance))

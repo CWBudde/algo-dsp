@@ -35,11 +35,13 @@ func ExampleSmoothFractionalOctave() {
 func ExampleGroupDelayFromPhase() {
 	fftSize := 8
 	delay := 1.0
+
 	phase := make([]float64, 4)
 	for k := range phase {
 		w := 2 * math.Pi * float64(k) / float64(fftSize)
 		phase[k] = -w * delay
 	}
+
 	gd, _ := spectrum.GroupDelayFromPhase(phase, fftSize)
 	fmt.Printf("%.1f %.1f %.1f\n", gd[0], gd[1], gd[2])
 	// Output:

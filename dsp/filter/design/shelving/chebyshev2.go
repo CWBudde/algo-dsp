@@ -22,12 +22,15 @@ func Chebyshev2LowShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order in
 	if err := validateParams(sampleRate, freqHz, order); err != nil {
 		return nil, err
 	}
+
 	if stopbandDB <= 0 {
 		return nil, ErrInvalidParams
 	}
+
 	if gainDB == 0 {
 		return passthroughSections(), nil
 	}
+
 	if math.Abs(stopbandDB) >= math.Abs(gainDB) {
 		return nil, ErrInvalidParams
 	}
@@ -40,6 +43,7 @@ func Chebyshev2LowShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order in
 	if err != nil {
 		return nil, err
 	}
+
 	return invertSections(boost)
 }
 
@@ -54,12 +58,15 @@ func Chebyshev2HighShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order i
 	if err := validateParams(sampleRate, freqHz, order); err != nil {
 		return nil, err
 	}
+
 	if stopbandDB <= 0 {
 		return nil, ErrInvalidParams
 	}
+
 	if gainDB == 0 {
 		return passthroughSections(), nil
 	}
+
 	if math.Abs(stopbandDB) >= math.Abs(gainDB) {
 		return nil, ErrInvalidParams
 	}
@@ -72,5 +79,6 @@ func Chebyshev2HighShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order i
 	if err != nil {
 		return nil, err
 	}
+
 	return invertSections(boost)
 }

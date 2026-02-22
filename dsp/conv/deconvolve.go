@@ -73,6 +73,7 @@ func Deconvolve(signal, kernel []float64, opts DeconvOptions) ([]float64, error)
 	if len(signal) == 0 {
 		return nil, ErrEmptyInput
 	}
+
 	if len(kernel) == 0 {
 		return nil, ErrEmptyKernel
 	}
@@ -84,6 +85,7 @@ func Deconvolve(signal, kernel []float64, opts DeconvOptions) ([]float64, error)
 		if opts.Epsilon <= 0 {
 			opts.Epsilon = 1e-6
 		}
+
 		return deconvolveRegularized(signal, kernel, opts.Epsilon)
 	case DeconvWiener:
 		return deconvolveWiener(signal, kernel, opts)
@@ -114,9 +116,11 @@ func deconvolveNaive(signal, kernel []float64) ([]float64, error) {
 	// Zero-pad inputs
 	signalPadded := make([]complex128, fftSize)
 	kernelPadded := make([]complex128, fftSize)
+
 	for i := 0; i < n; i++ {
 		signalPadded[i] = complex(signal[i], 0)
 	}
+
 	for i := 0; i < m; i++ {
 		kernelPadded[i] = complex(kernel[i], 0)
 	}
@@ -142,11 +146,13 @@ func deconvolveNaive(signal, kernel []float64) ([]float64, error) {
 		if mag < 1e-15 {
 			return nil, fmt.Errorf("%w: at frequency bin %d", ErrDivisionByZero, i)
 		}
+
 		resultFreq[i] = signalFreq[i] / kernelFreq[i]
 	}
 
 	// Inverse FFT
 	resultTime := make([]complex128, fftSize)
+
 	err = plan.Inverse(resultTime, resultFreq)
 	if err != nil {
 		return nil, err
@@ -182,9 +188,11 @@ func deconvolveRegularized(signal, kernel []float64, epsilon float64) ([]float64
 	// Zero-pad inputs
 	signalPadded := make([]complex128, fftSize)
 	kernelPadded := make([]complex128, fftSize)
+
 	for i := 0; i < n; i++ {
 		signalPadded[i] = complex(signal[i], 0)
 	}
+
 	for i := 0; i < m; i++ {
 		kernelPadded[i] = complex(kernel[i], 0)
 	}
@@ -213,6 +221,7 @@ func deconvolveRegularized(signal, kernel []float64, epsilon float64) ([]float64
 
 	// Inverse FFT
 	resultTime := make([]complex128, fftSize)
+
 	err = plan.Inverse(resultTime, resultFreq)
 	if err != nil {
 		return nil, err
@@ -246,6 +255,7 @@ func deconvolveWiener(signal, kernel []float64, opts DeconvOptions) ([]float64, 
 	if signalVar <= 0 {
 		signalVar = variance(signal)
 	}
+
 	if noiseVar <= 0 {
 		// Estimate noise as a fraction of signal variance
 		// This is a rough heuristic; in practice, noise should be measured
@@ -268,9 +278,11 @@ func deconvolveWiener(signal, kernel []float64, opts DeconvOptions) ([]float64, 
 	// Zero-pad inputs
 	signalPadded := make([]complex128, fftSize)
 	kernelPadded := make([]complex128, fftSize)
+
 	for i := 0; i < n; i++ {
 		signalPadded[i] = complex(signal[i], 0)
 	}
+
 	for i := 0; i < m; i++ {
 		kernelPadded[i] = complex(kernel[i], 0)
 	}
@@ -299,6 +311,7 @@ func deconvolveWiener(signal, kernel []float64, opts DeconvOptions) ([]float64, 
 
 	// Inverse FFT
 	resultTime := make([]complex128, fftSize)
+
 	err = plan.Inverse(resultTime, resultFreq)
 	if err != nil {
 		return nil, err
@@ -324,10 +337,12 @@ func variance(x []float64) float64 {
 	for _, v := range x {
 		mean += v
 	}
+
 	mean /= float64(len(x))
 
 	// Compute variance
 	var sum float64
+
 	for _, v := range x {
 		d := v - mean
 		sum += d * d
@@ -343,6 +358,7 @@ func InverseFilter(kernel []float64, length int, epsilon float64) ([]float64, er
 	if len(kernel) == 0 {
 		return nil, ErrEmptyKernel
 	}
+
 	if epsilon <= 0 {
 		epsilon = 1e-6
 	}
@@ -362,6 +378,7 @@ func InverseFilter(kernel []float64, length int, epsilon float64) ([]float64, er
 
 	// Forward FFT of kernel
 	kernelFreq := make([]complex128, fftSize)
+
 	err = plan.Forward(kernelFreq, kernelPadded)
 	if err != nil {
 		return nil, err
@@ -377,6 +394,7 @@ func InverseFilter(kernel []float64, length int, epsilon float64) ([]float64, er
 
 	// Inverse FFT
 	invTime := make([]complex128, fftSize)
+
 	err = plan.Inverse(invTime, invFreq)
 	if err != nil {
 		return nil, err

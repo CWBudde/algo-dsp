@@ -85,11 +85,13 @@ func (c *Calculator) Calculate(spectrum []complex128) Result {
 	if cfg.FFTSize <= 0 {
 		cfg.FFTSize = len(spectrum)
 	}
+
 	if cfg.SampleRate <= 0 {
 		cfg.SampleRate = float64(cfg.FFTSize)
 	}
 
 	calc := Calculator{cfg: cfg}
+
 	return calc.CalculateFromMagnitude(magSquared)
 }
 
@@ -100,10 +102,12 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 	}
 
 	cfg := c.cfg
+
 	fftSize := cfg.FFTSize
 	if fftSize <= 0 {
 		fftSize = nextPowerOf2(len(signal))
 	}
+
 	if fftSize <= 1 {
 		return Result{}
 	}
@@ -112,14 +116,17 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 	if winType == 0 {
 		winType = window.TypeHann
 	}
+
 	coeffs := window.Generate(winType, len(signal))
 
 	in := make([]complex128, fftSize)
+
 	for i := range signal {
 		w := 1.0
 		if len(coeffs) == len(signal) {
 			w = coeffs[i]
 		}
+
 		in[i] = complex(signal[i]*w, 0)
 	}
 
@@ -127,6 +134,7 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 	if err != nil {
 		return Result{}
 	}
+
 	out := make([]complex128, fftSize)
 	if err := plan.Forward(out, in); err != nil {
 		return Result{}
@@ -138,6 +146,7 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 	}
 
 	calc := NewCalculator(cfg)
+
 	return calc.Calculate(out)
 }
 
@@ -152,15 +161,18 @@ func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result {
 	if cfg.FFTSize <= 0 {
 		cfg.FFTSize = 2 * (len(magSquared) - 1)
 	}
+
 	if cfg.FFTSize <= 1 {
 		return Result{}
 	}
+
 	if cfg.SampleRate <= 0 {
 		cfg.SampleRate = float64(cfg.FFTSize)
 	}
 
 	binCount := len(magSquared)
 	maxBin := binCount - 1
+
 	binHz := cfg.SampleRate / float64(cfg.FFTSize)
 	if binHz <= 0 {
 		return Result{}
@@ -178,6 +190,7 @@ func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result {
 	if captureBins <= 0 {
 		captureBins = c.autoCaptureBins()
 	}
+
 	if captureBins*2 > fundamentalBin {
 		captureBins = fundamentalBin / 2
 	}
@@ -200,27 +213,33 @@ func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result {
 		if cfg.MaxHarmonics > 0 && harmonicCount >= cfg.MaxHarmonics {
 			break
 		}
+
 		bin := k * fundamentalBin
 		if bin > upperBin || bin > maxBin {
 			break
 		}
+
 		if bin < lowerBin {
 			continue
 		}
 
 		value := getBinValue(magSquared, bin, captureBins)
+
 		thdAbs += value
 		if k%2 == 0 {
 			evenAbs += value
 		} else {
 			oddAbs += value
 		}
+
 		if k >= cfg.RubNBuzzStart {
 			rubAbs += value
 		}
+
 		if value > 0 {
 			harmonics = append(harmonics, value/fundamentalLevel)
 		}
+
 		harmonicCount++
 	}
 
@@ -228,6 +247,7 @@ func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result {
 	for i := lowerBin; i <= upperBin; i++ {
 		totalAbs += sqrtPositive(magSquared[i])
 	}
+
 	thdnAbs := totalAbs - fundamentalLevel
 	if thdnAbs < 0 {
 		thdnAbs = 0
@@ -274,6 +294,7 @@ func (c *Calculator) findFundamentalBin(magSquared []float64, lowerBin, upperBin
 
 	bestBin := lowerBin
 	bestVal := -1.0
+
 	for i := lowerBin; i <= upperBin; i++ {
 		v := magSquared[i]
 		if v > bestVal {
@@ -281,6 +302,7 @@ func (c *Calculator) findFundamentalBin(magSquared []float64, lowerBin, upperBin
 			bestBin = i
 		}
 	}
+
 	return bestBin
 }
 
@@ -295,15 +317,18 @@ func (c *Calculator) autoCaptureBins() int {
 	if n <= 0 {
 		return 0
 	}
+
 	if n > 4096 {
 		n = 4096
 	}
 
 	coeffs := window.Generate(c.cfg.WindowType, n)
+
 	analysis := window.Analyze(coeffs)
 	if analysis.FirstMinimumBins <= 0 || math.IsNaN(analysis.FirstMinimumBins) {
 		return 0
 	}
+
 	return int(math.Round(analysis.FirstMinimumBins))
 }
 
@@ -330,24 +355,31 @@ func normalizeConfig(cfg Config) Config {
 	if cfg.RangeLowerFreq <= 0 {
 		cfg.RangeLowerFreq = defaultRangeLowerHz
 	}
+
 	if cfg.RangeUpperFreq <= 0 {
 		cfg.RangeUpperFreq = defaultRangeUpperHz
 	}
+
 	if cfg.RangeUpperFreq < cfg.RangeLowerFreq {
 		cfg.RangeUpperFreq = cfg.RangeLowerFreq
 	}
+
 	if cfg.RubNBuzzStart < 1 {
 		cfg.RubNBuzzStart = defaultRubNBuzz
 	}
+
 	if cfg.WindowType == 0 {
 		cfg.WindowType = window.TypeHann
 	}
+
 	if cfg.CaptureBins < 0 {
 		cfg.CaptureBins = 0
 	}
+
 	if cfg.MaxHarmonics < 0 {
 		cfg.MaxHarmonics = 0
 	}
+
 	return cfg
 }
 
@@ -355,6 +387,7 @@ func getBinValue(magSquared []float64, bin, captureBins int) float64 {
 	if bin < 0 || bin >= len(magSquared) {
 		return 0
 	}
+
 	if captureBins <= 0 {
 		return sqrtPositive(magSquared[bin])
 	}
@@ -363,6 +396,7 @@ func getBinValue(magSquared []float64, bin, captureBins int) float64 {
 	if lo < 0 {
 		lo = 0
 	}
+
 	hi := bin + captureBins
 	if hi >= len(magSquared) {
 		hi = len(magSquared) - 1
@@ -372,6 +406,7 @@ func getBinValue(magSquared []float64, bin, captureBins int) float64 {
 	for i := lo; i <= hi; i++ {
 		sum += sqrtPositive(magSquared[i])
 	}
+
 	return sum
 }
 
@@ -379,6 +414,7 @@ func sqrtPositive(v float64) float64 {
 	if v <= 0 {
 		return 0
 	}
+
 	return math.Sqrt(v)
 }
 
@@ -386,6 +422,7 @@ func ratioToDB(v float64) float64 {
 	if v <= 0 {
 		return math.Inf(-1)
 	}
+
 	return 20 * math.Log10(v)
 }
 
@@ -393,9 +430,11 @@ func clampInt(v, lo, hi int) int {
 	if v < lo {
 		return lo
 	}
+
 	if v > hi {
 		return hi
 	}
+
 	return v
 }
 
@@ -403,9 +442,11 @@ func nextPowerOf2(n int) int {
 	if n <= 1 {
 		return 1
 	}
+
 	p := 1
 	for p < n {
 		p <<= 1
 	}
+
 	return p
 }

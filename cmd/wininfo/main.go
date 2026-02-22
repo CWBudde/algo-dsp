@@ -87,6 +87,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  wininfo -all\n")
 		fmt.Fprintf(os.Stderr, "  wininfo -list\n")
 	}
+
 	flag.Parse()
 
 	if *list {
@@ -121,7 +122,9 @@ func printList() {
 	for i, e := range registry {
 		names[i] = e.name
 	}
+
 	sort.Strings(names)
+
 	for _, n := range names {
 		fmt.Println(n)
 	}
@@ -139,19 +142,24 @@ func resolveEntries(names []string, alphaFlag float64) []resolvedEntry {
 	}
 
 	var result []resolvedEntry
+
 	for _, name := range names {
 		name = strings.ToLower(strings.TrimSpace(name))
+
 		e, ok := byName[name]
 		if !ok {
 			fmt.Fprintf(os.Stderr, "warning: unknown window %q (use -list to see available)\n", name)
 			continue
 		}
+
 		a := e.defAlpha
 		if e.hasAlpha && !math.IsNaN(alphaFlag) {
 			a = alphaFlag
 		}
+
 		result = append(result, resolvedEntry{e, a})
 	}
+
 	return result
 }
 
@@ -161,6 +169,7 @@ func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) 
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output header: %v\n", err)
 		return
 	}
+
 	if _, err := fmt.Fprintf(tw, "------\t----\t-------------\t----------\t-------------\t-------------\t--------------\t-----------\n"); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output header: %v\n", err)
 		return
@@ -194,6 +203,7 @@ func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) 
 			return
 		}
 	}
+
 	if err := tw.Flush(); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to flush output: %v\n", err)
 	}

@@ -19,6 +19,7 @@ func processBlock(c registry.Coefficients, d0, d1 float64, buf []float64) (newD0
 	a1, a2 := c.A1, c.A2
 
 	i := 0
+
 	n := len(buf)
 	for ; i+1 < n; i += 2 {
 		x0 := buf[i]

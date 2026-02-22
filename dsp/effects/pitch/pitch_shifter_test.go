@@ -28,6 +28,7 @@ func TestNewPitchShifter(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("NewPitchShifter() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			if !tt.wantErr && p == nil {
 				t.Fatalf("NewPitchShifter() returned nil without error")
 			}
@@ -62,6 +63,7 @@ func TestPitchShifterSetPitchRatio(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("SetPitchRatio(%f) error = %v, wantErr %v", tt.ratio, err, tt.wantErr)
 			}
+
 			if !tt.wantErr && p.PitchRatio() != tt.ratio {
 				t.Fatalf("PitchRatio() = %f, want %f", p.PitchRatio(), tt.ratio)
 			}
@@ -74,13 +76,16 @@ func TestPitchShifterSetOverlapRejectsOverlapAboveSequence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
+
 	if err := p.SetSequence(20); err != nil {
 		t.Fatalf("SetSequence() error = %v", err)
 	}
+
 	old := p.Overlap()
 	if err := p.SetOverlap(30); err == nil {
 		t.Fatalf("SetOverlap(30) should fail when sequence is 20 ms")
 	}
+
 	if p.Overlap() != old {
 		t.Fatalf("overlap should remain unchanged on error: got=%f want=%f", p.Overlap(), old)
 	}
@@ -88,16 +93,19 @@ func TestPitchShifterSetOverlapRejectsOverlapAboveSequence(t *testing.T) {
 
 func TestPitchShifterIdentityIsExactCopy(t *testing.T) {
 	const sr = 48000.0
+
 	p, err := NewPitchShifter(sr)
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
 
 	input := testutil.DeterministicSine(440, sr, 0.8, 4096)
+
 	out := p.Process(input)
 	if len(out) != len(input) {
 		t.Fatalf("length mismatch: got=%d want=%d", len(out), len(input))
 	}
+
 	for i := range input {
 		if out[i] != input[i] {
 			t.Fatalf("identity mismatch at sample %d: got=%g want=%g", i, out[i], input[i])
@@ -105,6 +113,7 @@ func TestPitchShifterIdentityIsExactCopy(t *testing.T) {
 	}
 
 	out[0] = 123
+
 	if input[0] == 123 {
 		t.Fatalf("Process should return a copy for identity ratio")
 	}
@@ -112,10 +121,12 @@ func TestPitchShifterIdentityIsExactCopy(t *testing.T) {
 
 func TestPitchShifterProcessInPlaceMatchesProcess(t *testing.T) {
 	const sr = 48000.0
+
 	p1, err := NewPitchShifter(sr)
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
+
 	p2, err := NewPitchShifter(sr)
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
@@ -124,6 +135,7 @@ func TestPitchShifterProcessInPlaceMatchesProcess(t *testing.T) {
 	if err := p1.SetPitchSemitones(7); err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
+
 	if err := p2.SetPitchSemitones(7); err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
@@ -157,17 +169,21 @@ func TestPitchShifterPitchAccuracy(t *testing.T) {
 		maxDnHz  = 180.0
 		shiftSem = 12.0
 	)
+
 	input := testutil.DeterministicSine(f0, sr, 0.8, length)
 
 	up, err := NewPitchShifter(sr)
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
+
 	if err := up.SetPitchSemitones(shiftSem); err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
+
 	upOut := up.Process(input)
 	upFreq := estimateFrequencyAutoCorrelation(upOut[start:stop], sr, minUpHz, maxUpHz)
+
 	upWant := f0 * 2.0
 	if diff := math.Abs(upFreq - upWant); diff > tolUpHz {
 		t.Fatalf("pitch-up frequency mismatch: got=%gHz want=%gHz diff=%gHz", upFreq, upWant, diff)
@@ -177,11 +193,14 @@ func TestPitchShifterPitchAccuracy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
+
 	if err := down.SetPitchSemitones(-shiftSem); err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
+
 	downOut := down.Process(input)
 	downFreq := estimateFrequencyAutoCorrelation(downOut[start:stop], sr, minDnHz, maxDnHz)
+
 	downWant := f0 * 0.5
 	if diff := math.Abs(downFreq - downWant); diff > tolDnHz {
 		t.Fatalf("pitch-down frequency mismatch: got=%gHz want=%gHz diff=%gHz", downFreq, downWant, diff)
@@ -193,15 +212,18 @@ func TestPitchShifterShortBufferProducesFiniteValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
+
 	if err := p.SetPitchRatio(1.7); err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
 
 	input := []float64{1, -0.25, 0.1, 0, -0.1, 0.2, -0.3, 0.4}
+
 	out := p.Process(input)
 	if len(out) != len(input) {
 		t.Fatalf("length mismatch: got=%d want=%d", len(out), len(input))
 	}
+
 	for i, v := range out {
 		if math.IsNaN(v) || math.IsInf(v, 0) {
 			t.Fatalf("sample %d is not finite: %v", i, v)
@@ -214,6 +236,7 @@ func TestPitchShifterResetDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
+
 	if err := p.SetPitchRatio(0.75); err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
@@ -238,12 +261,15 @@ func estimateFrequencyAutoCorrelation(x []float64, sampleRate, minHz, maxHz floa
 
 	lagMin := int(math.Floor(sampleRate / maxHz))
 	lagMax := int(math.Ceil(sampleRate / minHz))
+
 	if lagMin < 1 {
 		lagMin = 1
 	}
+
 	if lagMax >= len(x)-2 {
 		lagMax = len(x) - 2
 	}
+
 	if lagMax <= lagMin {
 		return 0
 	}
@@ -252,6 +278,7 @@ func estimateFrequencyAutoCorrelation(x []float64, sampleRate, minHz, maxHz floa
 	for _, v := range x {
 		mean += v
 	}
+
 	mean /= float64(len(x))
 
 	centered := make([]float64, len(x))
@@ -261,6 +288,7 @@ func estimateFrequencyAutoCorrelation(x []float64, sampleRate, minHz, maxHz floa
 
 	bestLag := lagMin
 	bestScore := math.Inf(-1)
+
 	for lag := lagMin; lag <= lagMax; lag++ {
 		score := normalizedAutocorrelation(centered, lag)
 		if score > bestScore {
@@ -274,6 +302,7 @@ func estimateFrequencyAutoCorrelation(x []float64, sampleRate, minHz, maxHz floa
 		s0 := normalizedAutocorrelation(centered, bestLag-1)
 		s1 := normalizedAutocorrelation(centered, bestLag)
 		s2 := normalizedAutocorrelation(centered, bestLag+1)
+
 		den := s0 - 2*s1 + s2
 		if math.Abs(den) > 1e-12 {
 			lag += 0.5 * (s0 - s2) / den
@@ -283,6 +312,7 @@ func estimateFrequencyAutoCorrelation(x []float64, sampleRate, minHz, maxHz floa
 	if lag <= 0 {
 		return 0
 	}
+
 	return sampleRate / lag
 }
 
@@ -310,6 +340,7 @@ func TestPitchShifterSignalQuality(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewPitchShifter() error = %v", err)
 			}
+
 			if err := p.SetPitchRatio(tc.ratio); err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
@@ -374,12 +405,15 @@ func TestPitchShifterSignalQualityWSSOLAParams(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewPitchShifter() error = %v", err)
 			}
+
 			if err := p.SetSequence(tc.sequenceMs); err != nil {
 				t.Fatalf("SetSequence() error = %v", err)
 			}
+
 			if err := p.SetOverlap(tc.overlapMs); err != nil {
 				t.Fatalf("SetOverlap() error = %v", err)
 			}
+
 			if err := p.SetPitchRatio(ratio); err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
@@ -430,6 +464,7 @@ func TestPitchShifterTwoToneWellSeparated(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewPitchShifter() error = %v", err)
 			}
+
 			if err := p.SetPitchRatio(tc.ratio); err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
@@ -485,6 +520,7 @@ func TestPitchShifterTwoToneCloselySpaced(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewPitchShifter() error = %v", err)
 			}
+
 			if err := p.SetPitchRatio(tc.ratio); err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
@@ -518,26 +554,33 @@ func measureTimeDomainTwoToneSNR(t *testing.T, out []float64, freq1, freq2, samp
 	if mid < 0 {
 		mid = 0
 	}
+
 	chunk := out[mid : mid+fftLen]
 
 	plan, err := algofft.NewPlan64(fftLen)
 	if err != nil {
 		t.Fatalf("NewPlan64 error: %v", err)
 	}
+
 	fftIn := make([]complex128, fftLen)
 	fftOut := make([]complex128, fftLen)
+
 	for i, v := range chunk {
 		fftIn[i] = complex(v, 0)
 	}
+
 	if err := plan.Forward(fftOut, fftIn); err != nil {
 		t.Fatalf("Forward FFT error: %v", err)
 	}
 
 	tb1 := int(math.Round(freq1 * float64(fftLen) / sampleRate))
 	tb2 := int(math.Round(freq2 * float64(fftLen) / sampleRate))
+
 	const sigBW = 10
+
 	sigPower := 0.0
 	noisePower := 0.0
+
 	for k := 1; k <= fftLen/2; k++ {
 		mag2 := real(fftOut[k])*real(fftOut[k]) + imag(fftOut[k])*imag(fftOut[k])
 		if (k >= tb1-sigBW && k <= tb1+sigBW) || (k >= tb2-sigBW && k <= tb2+sigBW) {
@@ -550,6 +593,7 @@ func measureTimeDomainTwoToneSNR(t *testing.T, out []float64, freq1, freq2, samp
 	if noisePower <= 1e-30 {
 		return 100.0
 	}
+
 	return 10 * math.Log10(sigPower/noisePower)
 }
 
@@ -562,25 +606,32 @@ func measureTimeDomainSNR(t *testing.T, out []float64, targetFreq, sampleRate fl
 	if mid < 0 {
 		mid = 0
 	}
+
 	chunk := out[mid : mid+fftLen]
 
 	plan, err := algofft.NewPlan64(fftLen)
 	if err != nil {
 		t.Fatalf("NewPlan64 error: %v", err)
 	}
+
 	fftIn := make([]complex128, fftLen)
 	fftOut := make([]complex128, fftLen)
+
 	for i, v := range chunk {
 		fftIn[i] = complex(v, 0)
 	}
+
 	if err := plan.Forward(fftOut, fftIn); err != nil {
 		t.Fatalf("Forward FFT error: %v", err)
 	}
 
 	targetBin := int(math.Round(targetFreq * float64(fftLen) / sampleRate))
+
 	const sigBW = 10
+
 	sigPower := 0.0
 	noisePower := 0.0
+
 	for k := 1; k <= fftLen/2; k++ {
 		mag2 := real(fftOut[k])*real(fftOut[k]) + imag(fftOut[k])*imag(fftOut[k])
 		if k >= targetBin-sigBW && k <= targetBin+sigBW {
@@ -593,6 +644,7 @@ func measureTimeDomainSNR(t *testing.T, out []float64, targetFreq, sampleRate fl
 	if noisePower <= 1e-30 {
 		return 100.0
 	}
+
 	return 10 * math.Log10(sigPower/noisePower)
 }
 
@@ -601,9 +653,11 @@ func normalizedAutocorrelation(x []float64, lag int) float64 {
 	if n <= 0 {
 		return -1
 	}
+
 	dot := 0.0
 	e0 := 0.0
 	e1 := 0.0
+
 	for i := 0; i < n; i++ {
 		a := x[i]
 		b := x[i+lag]
@@ -611,8 +665,10 @@ func normalizedAutocorrelation(x []float64, lag int) float64 {
 		e0 += a * a
 		e1 += b * b
 	}
+
 	if e0 <= 1e-12 || e1 <= 1e-12 {
 		return -1
 	}
+
 	return dot / math.Sqrt(e0*e1)
 }

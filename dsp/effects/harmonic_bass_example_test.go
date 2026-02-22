@@ -11,11 +11,13 @@ func ExampleHarmonicBass() {
 	if err != nil {
 		panic(err)
 	}
+
 	_ = bass.SetFrequency(90)
 	_ = bass.SetHarmonicBassLevel(0.6)
 
 	sample := 0.2
 	_ = bass.ProcessSample(sample)
+
 	fmt.Println("processed")
 
 	// Output:

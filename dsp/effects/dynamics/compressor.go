@@ -102,6 +102,7 @@ func NewCompressor(sampleRate float64) (*Compressor, error) {
 	}
 
 	c.updateCoefficients()
+
 	return c, nil
 }
 
@@ -111,8 +112,10 @@ func (c *Compressor) SetThreshold(dB float64) error {
 	if math.IsNaN(dB) || math.IsInf(dB, 0) {
 		return fmt.Errorf("compressor threshold must be finite: %f", dB)
 	}
+
 	c.thresholdDB = dB
 	c.updateCoefficients()
+
 	return nil
 }
 
@@ -127,8 +130,10 @@ func (c *Compressor) SetRatio(ratio float64) error {
 		return fmt.Errorf("compressor ratio must be in [%f, %f]: %f",
 			minCompressorRatio, maxCompressorRatio, ratio)
 	}
+
 	c.ratio = ratio
 	c.updateCoefficients()
+
 	return nil
 }
 
@@ -142,8 +147,10 @@ func (c *Compressor) SetKnee(kneeDB float64) error {
 		return fmt.Errorf("compressor knee must be in [%f, %f]: %f",
 			minCompressorKneeDB, maxCompressorKneeDB, kneeDB)
 	}
+
 	c.kneeDB = kneeDB
 	c.updateCoefficients()
+
 	return nil
 }
 
@@ -155,8 +162,10 @@ func (c *Compressor) SetAttack(ms float64) error {
 		return fmt.Errorf("compressor attack must be in [%f, %f]: %f",
 			minCompressorAttackMs, maxCompressorAttackMs, ms)
 	}
+
 	c.attackMs = ms
 	c.updateTimeConstants()
+
 	return nil
 }
 
@@ -168,8 +177,10 @@ func (c *Compressor) SetRelease(ms float64) error {
 		return fmt.Errorf("compressor release must be in [%f, %f]: %f",
 			minCompressorReleaseMs, maxCompressorReleaseMs, ms)
 	}
+
 	c.releaseMs = ms
 	c.updateTimeConstants()
+
 	return nil
 }
 
@@ -178,9 +189,11 @@ func (c *Compressor) SetMakeupGain(dB float64) error {
 	if math.IsNaN(dB) || math.IsInf(dB, 0) {
 		return fmt.Errorf("compressor makeup gain must be finite: %f", dB)
 	}
+
 	c.makeupGainDB = dB
 	c.autoMakeup = false
 	c.updateCoefficients()
+
 	return nil
 }
 
@@ -189,6 +202,7 @@ func (c *Compressor) SetMakeupGain(dB float64) error {
 func (c *Compressor) SetAutoMakeup(enable bool) error {
 	c.autoMakeup = enable
 	c.updateCoefficients()
+
 	return nil
 }
 
@@ -197,8 +211,10 @@ func (c *Compressor) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("compressor sample rate must be positive and finite: %f", sampleRate)
 	}
+
 	c.sampleRate = sampleRate
 	c.updateTimeConstants()
+
 	return nil
 }
 
@@ -263,6 +279,7 @@ func (c *Compressor) ProcessInPlace(buf []float64) {
 func (c *Compressor) CalculateOutputLevel(inputMagnitude float64) float64 {
 	inputMagnitude = math.Abs(inputMagnitude)
 	gain := c.calculateGain(inputMagnitude)
+
 	return inputMagnitude * gain * c.makeupGainLin
 }
 
@@ -348,11 +365,13 @@ func (c *Compressor) calculateGain(peakLevel float64) float64 {
 		}
 		// Hard knee: full ratio above threshold
 		gainLog2 := -overshoot * (1.0 - 1.0/c.ratio)
+
 		return mathPower2(gainLog2)
 	}
 
 	// Soft knee calculation
 	halfWidth := c.kneeWidthLog2 * 0.5
+
 	var effectiveOvershoot float64
 
 	if overshoot < -halfWidth {
@@ -384,6 +403,7 @@ func (c *Compressor) updateMetrics(inputLevel, outputLevel, gain float64) {
 	if inputLevel > c.metrics.InputPeak {
 		c.metrics.InputPeak = inputLevel
 	}
+
 	if outputLevel > c.metrics.OutputPeak {
 		c.metrics.OutputPeak = outputLevel
 	}

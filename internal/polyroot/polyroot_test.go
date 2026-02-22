@@ -10,6 +10,7 @@ func almostEqual(a, b, tol float64) bool {
 	if a == b {
 		return true
 	}
+
 	diff := math.Abs(a - b)
 	if tol > 0 && tol < 1 {
 		mag := math.Max(math.Abs(a), math.Abs(b))
@@ -17,23 +18,28 @@ func almostEqual(a, b, tol float64) bool {
 			return diff/mag < tol
 		}
 	}
+
 	return diff < tol
 }
 
 func TestDurandKerner_Quadratic(t *testing.T) {
 	// z^2 - 3z + 2 = (z-1)(z-2), roots at 1 and 2
 	coeff := []complex128{1, -3, 2}
+
 	roots, err := DurandKerner(coeff)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(roots) != 2 {
 		t.Fatalf("expected 2 roots, got %d", len(roots))
 	}
+
 	r := [2]float64{real(roots[0]), real(roots[1])}
 	if r[0] > r[1] {
 		r[0], r[1] = r[1], r[0]
 	}
+
 	if !almostEqual(r[0], 1.0, 1e-10) || !almostEqual(r[1], 2.0, 1e-10) {
 		t.Errorf("expected roots {1,2}, got {%v, %v}", r[0], r[1])
 	}
@@ -42,13 +48,16 @@ func TestDurandKerner_Quadratic(t *testing.T) {
 func TestDurandKerner_Quartic(t *testing.T) {
 	// (z^2 - 1)(z^2 - 4) = z^4 - 5z^2 + 4, roots: -2, -1, 1, 2
 	coeff := []complex128{1, 0, -5, 0, 4}
+
 	roots, err := DurandKerner(coeff)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(roots) != 4 {
 		t.Fatalf("expected 4 roots, got %d", len(roots))
 	}
+
 	for i, r := range roots {
 		val := PolyEval(coeff, r)
 		if cmplx.Abs(val) > 1e-8 {
@@ -60,13 +69,16 @@ func TestDurandKerner_Quartic(t *testing.T) {
 func TestDurandKerner_ConjugatePairRoots(t *testing.T) {
 	// z^4 + 1 has roots at e^{i*pi/4 * (2k+1)}, k=0..3
 	coeff := []complex128{1, 0, 0, 0, 1}
+
 	roots, err := DurandKerner(coeff)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(roots) != 4 {
 		t.Fatalf("expected 4 roots, got %d", len(roots))
 	}
+
 	for i, r := range roots {
 		if !almostEqual(cmplx.Abs(r), 1.0, 1e-9) {
 			t.Errorf("root %d: |r|=%v, expected 1.0", i, cmplx.Abs(r))
@@ -88,6 +100,7 @@ func TestDurandKerner_ClusteredRoots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for i, r := range roots {
 		val := PolyEval(coeff, r)
 		if cmplx.Abs(val) > 1e-6 {
@@ -99,6 +112,7 @@ func TestDurandKerner_ClusteredRoots(t *testing.T) {
 func TestPolyEval(t *testing.T) {
 	// p(z) = 2z^3 - 3z + 5, p(2) = 16 - 6 + 5 = 15
 	coeff := []complex128{2, 0, -3, 5}
+
 	val := PolyEval(coeff, 2)
 	if !almostEqual(real(val), 15, 1e-12) || !almostEqual(imag(val), 0, 1e-12) {
 		t.Errorf("PolyEval: expected 15, got %v", val)
@@ -112,13 +126,16 @@ func TestPairConjugates_TwoPairs(t *testing.T) {
 		complex(-0.2, 0.7),
 		complex(-0.2, -0.7),
 	}
+
 	pairs, err := PairConjugates(roots)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(pairs) != 2 {
 		t.Fatalf("expected 2 pairs, got %d", len(pairs))
 	}
+
 	for i, p := range pairs {
 		if !IsConjugate(p[0], p[1], ConjugateTol) {
 			t.Errorf("pair %d is not conjugate: %v, %v", i, p[0], p[1])
@@ -133,10 +150,12 @@ func TestPairConjugates_RealRoots(t *testing.T) {
 		complex(0.8, 1e-15),
 		complex(0.8, -1e-15),
 	}
+
 	pairs, err := PairConjugates(roots)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(pairs) != 2 {
 		t.Fatalf("expected 2 pairs, got %d", len(pairs))
 	}
@@ -149,6 +168,7 @@ func TestPairConjugates_UnpairedReturnsError(t *testing.T) {
 		complex(0.1, 0.9),
 		complex(0.9, 0.1),
 	}
+
 	_, err := PairConjugates(roots)
 	if err == nil {
 		t.Error("expected error for unpaired roots, got nil")
@@ -157,16 +177,20 @@ func TestPairConjugates_UnpairedReturnsError(t *testing.T) {
 
 func TestQuadFromRoots_ConjugatePair(t *testing.T) {
 	pair := [2]complex128{complex(0.5, 0.3), complex(0.5, -0.3)}
+
 	b0, b1, b2, err := QuadFromRoots(pair)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if !almostEqual(b0, 1.0, 1e-12) {
 		t.Errorf("b0: expected 1.0, got %v", b0)
 	}
+
 	if !almostEqual(b1, -1.0, 1e-12) {
 		t.Errorf("b1: expected -1.0, got %v", b1)
 	}
+
 	expectedB2 := 0.5*0.5 + 0.3*0.3 // 0.34
 	if !almostEqual(b2, expectedB2, 1e-12) {
 		t.Errorf("b2: expected %v, got %v", expectedB2, b2)
@@ -175,6 +199,7 @@ func TestQuadFromRoots_ConjugatePair(t *testing.T) {
 
 func TestQuadFromRoots_NotConjugate_ReturnsError(t *testing.T) {
 	pair := [2]complex128{complex(0.5, 0.3), complex(0.6, -0.3)}
+
 	_, _, _, err := QuadFromRoots(pair)
 	if err == nil {
 		t.Error("expected error for non-conjugate pair")
@@ -210,14 +235,17 @@ func TestIsConjugate(t *testing.T) {
 func TestDurandKerner_UnitCircleRoots(t *testing.T) {
 	// z^4 - 1, roots: 1, -1, i, -i
 	coeff := []complex128{1, 0, 0, 0, -1}
+
 	roots, err := DurandKerner(coeff)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for i, r := range roots {
 		if !almostEqual(cmplx.Abs(r), 1.0, 1e-8) {
 			t.Errorf("root %d: |r|=%v, expected 1.0", i, cmplx.Abs(r))
 		}
+
 		val := PolyEval(coeff, r)
 		if cmplx.Abs(val) > 1e-7 {
 			t.Errorf("root %d: p(r) = %v, expected ~0", i, val)
@@ -228,13 +256,16 @@ func TestDurandKerner_UnitCircleRoots(t *testing.T) {
 func TestDurandKerner_LargeCoeffRange(t *testing.T) {
 	// Polynomial with very different coefficient magnitudes
 	coeff := []complex128{1e6, 0, 1e-3, 0, 1e6}
+
 	roots, err := DurandKerner(coeff)
 	if err != nil {
 		t.Skipf("large coefficient range: %v (known limitation)", err)
 		return
 	}
+
 	for i, r := range roots {
 		val := PolyEval(coeff, r)
+
 		residual := cmplx.Abs(val) / 1e6
 		if residual > 1e-4 {
 			t.Errorf("root %d: relative residual = %e", i, residual)

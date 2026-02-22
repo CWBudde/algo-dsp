@@ -10,6 +10,7 @@ func TestRingModulatorProcessInPlaceMatchesProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRingModulator() error = %v", err)
 	}
+
 	r2, err := NewRingModulator(48000)
 	if err != nil {
 		t.Fatalf("NewRingModulator() error = %v", err)
@@ -22,6 +23,7 @@ func TestRingModulatorProcessInPlaceMatchesProcess(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = r1.Process(want[i])
 	}
@@ -78,6 +80,7 @@ func TestRingModulatorMixZeroIsTransparent(t *testing.T) {
 
 	for i := 0; i < 512; i++ {
 		in := 0.5 * math.Sin(2*math.Pi*440*float64(i)/48000)
+
 		out := rm.Process(in)
 		if diff := math.Abs(out - in); diff > 1e-12 {
 			t.Fatalf("sample %d: mix=0 should be transparent, got=%g want=%g", i, out, in)
@@ -105,6 +108,7 @@ func TestRingModulatorDCInputProducesSine(t *testing.T) {
 	for i := 0; i < nSamples; i++ {
 		got := rm.Process(1.0)
 		phase := 2 * math.Pi * carrierHz * float64(i) / sampleRate
+
 		want := math.Sin(phase)
 		if diff := math.Abs(got - want); diff > 1e-9 {
 			t.Fatalf("sample %d: got=%g want=%g diff=%g", i, got, want, diff)
@@ -157,11 +161,13 @@ func TestRingModulatorSumDifferenceFrequencies(t *testing.T) {
 	// Goertzel-style magnitude at specific frequencies.
 	mag := func(freq float64) float64 {
 		var sinSum, cosSum float64
+
 		for i, v := range output {
 			angle := 2 * math.Pi * freq * float64(i) / sampleRate
 			cosSum += v * math.Cos(angle)
 			sinSum += v * math.Sin(angle)
 		}
+
 		return math.Sqrt(cosSum*cosSum+sinSum*sinSum) / float64(nSamples)
 	}
 
@@ -173,12 +179,15 @@ func TestRingModulatorSumDifferenceFrequencies(t *testing.T) {
 	if sumMag < 0.2 {
 		t.Errorf("expected strong sum frequency (500 Hz), got magnitude=%g", sumMag)
 	}
+
 	if diffMag < 0.2 {
 		t.Errorf("expected strong difference frequency (300 Hz), got magnitude=%g", diffMag)
 	}
+
 	if inputMag > 0.01 {
 		t.Errorf("expected suppressed input frequency (400 Hz), got magnitude=%g", inputMag)
 	}
+
 	if carrierMag > 0.01 {
 		t.Errorf("expected absent carrier frequency (100 Hz), got magnitude=%g", carrierMag)
 	}
@@ -249,18 +258,23 @@ func TestRingModulatorSetterValidation(t *testing.T) {
 	if err := rm.SetSampleRate(0); err == nil {
 		t.Error("SetSampleRate(0) expected error")
 	}
+
 	if err := rm.SetSampleRate(math.NaN()); err == nil {
 		t.Error("SetSampleRate(NaN) expected error")
 	}
+
 	if err := rm.SetCarrierHz(0); err == nil {
 		t.Error("SetCarrierHz(0) expected error")
 	}
+
 	if err := rm.SetCarrierHz(-1); err == nil {
 		t.Error("SetCarrierHz(-1) expected error")
 	}
+
 	if err := rm.SetMix(-0.1); err == nil {
 		t.Error("SetMix(-0.1) expected error")
 	}
+
 	if err := rm.SetMix(1.1); err == nil {
 		t.Error("SetMix(1.1) expected error")
 	}
@@ -278,9 +292,11 @@ func TestRingModulatorGetters(t *testing.T) {
 	if rm.SampleRate() != 48000 {
 		t.Errorf("SampleRate() = %g, want 48000", rm.SampleRate())
 	}
+
 	if rm.CarrierHz() != 300 {
 		t.Errorf("CarrierHz() = %g, want 300", rm.CarrierHz())
 	}
+
 	if rm.Mix() != 0.7 {
 		t.Errorf("Mix() = %g, want 0.7", rm.Mix())
 	}
@@ -295,6 +311,7 @@ func TestRingModulatorSettersUpdateState(t *testing.T) {
 	if err := rm.SetSampleRate(96000); err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
+
 	if rm.SampleRate() != 96000 {
 		t.Errorf("SampleRate() = %g, want 96000", rm.SampleRate())
 	}
@@ -302,6 +319,7 @@ func TestRingModulatorSettersUpdateState(t *testing.T) {
 	if err := rm.SetCarrierHz(1000); err != nil {
 		t.Fatalf("SetCarrierHz() error = %v", err)
 	}
+
 	if rm.CarrierHz() != 1000 {
 		t.Errorf("CarrierHz() = %g, want 1000", rm.CarrierHz())
 	}
@@ -309,6 +327,7 @@ func TestRingModulatorSettersUpdateState(t *testing.T) {
 	if err := rm.SetMix(0.5); err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
+
 	if rm.Mix() != 0.5 {
 		t.Errorf("Mix() = %g, want 0.5", rm.Mix())
 	}
@@ -319,6 +338,7 @@ func TestRingModulatorNilOption(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRingModulator() with nil option should not fail: %v", err)
 	}
+
 	if rm.CarrierHz() != defaultRingModCarrierHz {
 		t.Errorf("CarrierHz() = %g, want default %g", rm.CarrierHz(), defaultRingModCarrierHz)
 	}
@@ -335,6 +355,7 @@ func BenchmarkRingModulatorProcessSample(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
+
 	for i := 0; i < b.N; i++ {
 		rm.Process(0.5)
 	}
@@ -356,6 +377,7 @@ func BenchmarkRingModulatorProcessInPlace(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
+
 	for i := 0; i < b.N; i++ {
 		rm.ProcessInPlace(buf)
 	}

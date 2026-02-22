@@ -41,6 +41,7 @@ func New(size int, opts ...Option) (*Line, error) {
 	if size <= 0 {
 		return nil, fmt.Errorf("delay size must be > 0: %d", size)
 	}
+
 	l := &Line{
 		buffer:    make([]float64, size),
 		mode:      interp.Hermite,
@@ -49,6 +50,7 @@ func New(size int, opts ...Option) (*Line, error) {
 	for _, o := range opts {
 		o(l)
 	}
+
 	return l, nil
 }
 
@@ -60,6 +62,7 @@ func (d *Line) Len() int {
 // Write writes one sample and advances the write pointer.
 func (d *Line) Write(sample float64) {
 	d.buffer[d.writePos] = sample
+
 	d.writePos++
 	if d.writePos >= len(d.buffer) {
 		d.writePos = 0
@@ -74,7 +77,9 @@ func (d *Line) Read(delay int) float64 {
 	if size == 0 {
 		return 0
 	}
+
 	readPos := (d.writePos - delay + size) % size
+
 	return d.buffer[readPos]
 }
 
@@ -85,6 +90,7 @@ func (d *Line) ReadFractional(delay float64) float64 {
 	if size == 0 {
 		return 0
 	}
+
 	if delay < 0 {
 		delay = 0
 	}
@@ -112,6 +118,7 @@ func (d *Line) Reset() {
 	for i := range d.buffer {
 		d.buffer[i] = 0
 	}
+
 	d.writePos = 0
 	d.allpassState = 0
 }
@@ -123,10 +130,12 @@ func (d *Line) readLinear(delay float64, size int) float64 {
 	if delay > maxDelay {
 		delay = maxDelay
 	}
+
 	p := int(math.Floor(delay))
 	t := delay - float64(p)
 	x0 := d.Read(p)
 	x1 := d.Read(minInt(p+1, size-1))
+
 	return interp.Linear2(t, x0, x1)
 }
 
@@ -135,15 +144,18 @@ func (d *Line) readHermite(delay float64, size int) float64 {
 	if maxDelay < 0 {
 		maxDelay = 0
 	}
+
 	if delay > maxDelay {
 		delay = maxDelay
 	}
+
 	p := int(math.Floor(delay))
 	t := delay - float64(p)
 	xm1 := d.Read(maxInt(0, p-1))
 	x0 := d.Read(p)
 	x1 := d.Read(p + 1)
 	x2 := d.Read(p + 2)
+
 	return interp.Hermite4(t, xm1, x0, x1, x2)
 }
 
@@ -152,60 +164,75 @@ func (d *Line) readLagrange(delay float64, size int) float64 {
 	if maxDelay < 0 {
 		maxDelay = 0
 	}
+
 	if delay > maxDelay {
 		delay = maxDelay
 	}
+
 	p := int(math.Floor(delay))
 	t := delay - float64(p)
 	xm1 := d.Read(maxInt(0, p-1))
 	x0 := d.Read(p)
 	x1 := d.Read(p + 1)
 	x2 := d.Read(p + 2)
+
 	return interp.Lagrange4(t, xm1, x0, x1, x2)
 }
 
 func (d *Line) readLanczos(delay float64, size int) float64 {
 	const a = 3
+
 	maxDelay := float64(size - 1 - a)
 	if maxDelay < 0 {
 		maxDelay = 0
 	}
+
 	if delay > maxDelay {
 		delay = maxDelay
 	}
+
 	p := int(math.Floor(delay))
 	t := delay - float64(p)
+
 	var samples [2 * a]float64
 	for i := 0; i < 2*a; i++ {
 		idx := p - (a - 1) + i
 		if idx < 0 {
 			idx = 0
 		}
+
 		samples[i] = d.Read(idx)
 	}
+
 	return interp.Lanczos6(t, samples[:])
 }
 
 func (d *Line) readSinc(delay float64, size int) float64 {
 	n := d.sincHalfN
 	taps := 2 * n
+
 	maxDelay := float64(size - 1 - n)
 	if maxDelay < 0 {
 		maxDelay = 0
 	}
+
 	if delay > maxDelay {
 		delay = maxDelay
 	}
+
 	p := int(math.Floor(delay))
 	t := delay - float64(p)
+
 	samples := make([]float64, taps)
 	for i := 0; i < taps; i++ {
 		idx := p - (n - 1) + i
 		if idx < 0 {
 			idx = 0
 		}
+
 		samples[i] = d.Read(idx)
 	}
+
 	return interp.SincInterp(t, samples, n)
 }
 
@@ -214,10 +241,12 @@ func (d *Line) readAllpass(delay float64, size int) float64 {
 	if delay > maxDelay {
 		delay = maxDelay
 	}
+
 	p := int(math.Floor(delay))
 	t := delay - float64(p)
 	x0 := d.Read(p)
 	x1 := d.Read(minInt(p+1, size-1))
+
 	return interp.AllpassTick(t, x0, x1, &d.allpassState)
 }
 
@@ -225,6 +254,7 @@ func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}
+
 	return b
 }
 
@@ -232,5 +262,6 @@ func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
+
 	return b
 }

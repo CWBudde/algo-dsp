@@ -29,6 +29,7 @@ func TestNewDeEsser(t *testing.T) {
 				t.Errorf("NewDeEsser() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !tt.wantErr && d == nil {
 				t.Error("NewDeEsser() returned nil without error")
 			}
@@ -70,12 +71,15 @@ func TestDeEsserDefaults(t *testing.T) {
 	if d.Mode() != defaultDeEsserMode {
 		t.Errorf("Mode() = %d, want %d", d.Mode(), defaultDeEsserMode)
 	}
+
 	if d.Detector() != defaultDeEsserDetector {
 		t.Errorf("Detector() = %d, want %d", d.Detector(), defaultDeEsserDetector)
 	}
+
 	if d.Listen() != defaultDeEsserListen {
 		t.Errorf("Listen() = %v, want %v", d.Listen(), defaultDeEsserListen)
 	}
+
 	if d.FilterOrder() != defaultDeEsserFilterOrder {
 		t.Errorf("FilterOrder() = %d, want %d", d.FilterOrder(), defaultDeEsserFilterOrder)
 	}
@@ -171,6 +175,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetFrequency(8000); err != nil {
 		t.Fatalf("SetFrequency() error = %v", err)
 	}
+
 	if d.Frequency() != 8000 {
 		t.Errorf("Frequency() = %g, want 8000", d.Frequency())
 	}
@@ -178,6 +183,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetQ(2.0); err != nil {
 		t.Fatalf("SetQ() error = %v", err)
 	}
+
 	if d.Q() != 2.0 {
 		t.Errorf("Q() = %g, want 2", d.Q())
 	}
@@ -185,6 +191,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetThreshold(-30); err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
+
 	if d.Threshold() != -30 {
 		t.Errorf("Threshold() = %g, want -30", d.Threshold())
 	}
@@ -192,6 +199,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetRatio(8); err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
+
 	if d.Ratio() != 8 {
 		t.Errorf("Ratio() = %g, want 8", d.Ratio())
 	}
@@ -199,6 +207,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetKnee(6); err != nil {
 		t.Fatalf("SetKnee() error = %v", err)
 	}
+
 	if d.Knee() != 6 {
 		t.Errorf("Knee() = %g, want 6", d.Knee())
 	}
@@ -206,6 +215,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetAttack(1); err != nil {
 		t.Fatalf("SetAttack() error = %v", err)
 	}
+
 	if d.Attack() != 1 {
 		t.Errorf("Attack() = %g, want 1", d.Attack())
 	}
@@ -213,6 +223,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetRelease(50); err != nil {
 		t.Fatalf("SetRelease() error = %v", err)
 	}
+
 	if d.Release() != 50 {
 		t.Errorf("Release() = %g, want 50", d.Release())
 	}
@@ -220,6 +231,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetRange(-40); err != nil {
 		t.Fatalf("SetRange() error = %v", err)
 	}
+
 	if d.Range() != -40 {
 		t.Errorf("Range() = %g, want -40", d.Range())
 	}
@@ -227,6 +239,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetMode(DeEsserWideband); err != nil {
 		t.Fatalf("SetMode() error = %v", err)
 	}
+
 	if d.Mode() != DeEsserWideband {
 		t.Errorf("Mode() = %d, want %d", d.Mode(), DeEsserWideband)
 	}
@@ -234,11 +247,13 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetDetector(DeEsserDetectHighpass); err != nil {
 		t.Fatalf("SetDetector() error = %v", err)
 	}
+
 	if d.Detector() != DeEsserDetectHighpass {
 		t.Errorf("Detector() = %d, want %d", d.Detector(), DeEsserDetectHighpass)
 	}
 
 	d.SetListen(true)
+
 	if !d.Listen() {
 		t.Error("Listen() = false, want true")
 	}
@@ -246,6 +261,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetFilterOrder(3); err != nil {
 		t.Fatalf("SetFilterOrder() error = %v", err)
 	}
+
 	if d.FilterOrder() != 3 {
 		t.Errorf("FilterOrder() = %d, want 3", d.FilterOrder())
 	}
@@ -253,6 +269,7 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 	if err := d.SetSampleRate(96000); err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
+
 	if d.SampleRate() != 96000 {
 		t.Errorf("SampleRate() = %g, want 96000", d.SampleRate())
 	}
@@ -288,11 +305,14 @@ func TestDeEsserLowFrequencyTransparent(t *testing.T) {
 	}
 
 	// Generate a 200 Hz signal (well below 6kHz detection).
-	const freq = 200.0
-	const sr = 48000.0
-	const n = 4096
+	const (
+		freq = 200.0
+		sr   = 48000.0
+		n    = 4096
+	)
 
 	// Let the filter settle.
+
 	for i := 0; i < n; i++ {
 		sample := 0.5 * math.Sin(2*math.Pi*freq*float64(i)/sr)
 		d.ProcessSample(sample)
@@ -300,9 +320,11 @@ func TestDeEsserLowFrequencyTransparent(t *testing.T) {
 
 	// Now measure — output should be close to input.
 	maxDiff := 0.0
+
 	for i := 0; i < n; i++ {
 		sample := 0.5 * math.Sin(2*math.Pi*freq*float64(n+i)/sr)
 		out := d.ProcessSample(sample)
+
 		diff := math.Abs(out - sample)
 		if diff > maxDiff {
 			maxDiff = diff
@@ -326,17 +348,21 @@ func TestDeEsserReducesSibilance(t *testing.T) {
 	if err := d.SetThreshold(-40); err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
+
 	if err := d.SetRatio(20); err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
 	// Generate a 6000 Hz sine (right at detection center).
-	const freq = 6000.0
-	const sr = 48000.0
-	const n = 2048
-	const amplitude = 0.5
+	const (
+		freq      = 6000.0
+		sr        = 48000.0
+		n         = 2048
+		amplitude = 0.5
+	)
 
 	// Let the detector envelope settle.
+
 	for i := 0; i < n; i++ {
 		sample := amplitude * math.Sin(2*math.Pi*freq*float64(i)/sr)
 		d.ProcessSample(sample)
@@ -344,8 +370,10 @@ func TestDeEsserReducesSibilance(t *testing.T) {
 
 	// Measure output level.
 	peakOut := 0.0
+
 	for i := 0; i < n; i++ {
 		sample := amplitude * math.Sin(2*math.Pi*freq*float64(n+i)/sr)
+
 		out := d.ProcessSample(sample)
 		if math.Abs(out) > peakOut {
 			peakOut = math.Abs(out)
@@ -365,21 +393,26 @@ func TestDeEsserWidebandMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
+
 	if err := d.SetMode(DeEsserWideband); err != nil {
 		t.Fatalf("SetMode() error = %v", err)
 	}
+
 	if err := d.SetThreshold(-40); err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
+
 	if err := d.SetRatio(20); err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
 	// Feed sibilant signal to trigger detection.
-	const freq = 6000.0
-	const sr = 48000.0
-	const n = 2048
-	const amp = 0.5
+	const (
+		freq = 6000.0
+		sr   = 48000.0
+		n    = 2048
+		amp  = 0.5
+	)
 
 	for i := 0; i < n; i++ {
 		sample := amp * math.Sin(2*math.Pi*freq*float64(i)/sr)
@@ -388,10 +421,12 @@ func TestDeEsserWidebandMode(t *testing.T) {
 
 	// Now feed a lower frequency and check it's also reduced (wideband effect).
 	peakOut := 0.0
+
 	for i := 0; i < n; i++ {
 		// Mix of low and high frequency — wideband should reduce both.
 		t := float64(n + i)
 		sample := amp*math.Sin(2*math.Pi*freq*t/sr) + 0.3*math.Sin(2*math.Pi*300*t/sr)
+
 		out := d.ProcessSample(sample)
 		if math.Abs(out) > peakOut {
 			peakOut = math.Abs(out)
@@ -412,18 +447,22 @@ func TestDeEsserListenMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
+
 	d.SetListen(true)
 
 	// Feed a low-frequency signal — listen output should be near zero
 	// since bandpass at 6kHz rejects 200Hz.
-	const sr = 48000.0
-	const n = 2048
+	const (
+		sr = 48000.0
+		n  = 2048
+	)
 
 	for i := 0; i < n; i++ {
 		d.ProcessSample(0.5 * math.Sin(2*math.Pi*200*float64(i)/sr))
 	}
 
 	peakLow := 0.0
+
 	for i := 0; i < n; i++ {
 		out := d.ProcessSample(0.5 * math.Sin(2*math.Pi*200*float64(n+i)/sr))
 		if math.Abs(out) > peakLow {
@@ -433,11 +472,13 @@ func TestDeEsserListenMode(t *testing.T) {
 
 	// Feed a signal at the detection frequency — listen output should be significant.
 	d.Reset()
+
 	for i := 0; i < n; i++ {
 		d.ProcessSample(0.5 * math.Sin(2*math.Pi*6000*float64(i)/sr))
 	}
 
 	peakHigh := 0.0
+
 	for i := 0; i < n; i++ {
 		out := d.ProcessSample(0.5 * math.Sin(2*math.Pi*6000*float64(n+i)/sr))
 		if math.Abs(out) > peakHigh {
@@ -461,27 +502,33 @@ func TestDeEsserHighpassDetector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
+
 	if err := d.SetDetector(DeEsserDetectHighpass); err != nil {
 		t.Fatalf("SetDetector() error = %v", err)
 	}
+
 	if err := d.SetThreshold(-40); err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
+
 	if err := d.SetRatio(10); err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
 	// A signal above the detection frequency should trigger reduction.
-	const freq = 8000.0
-	const sr = 48000.0
-	const n = 2048
-	const amp = 0.5
+	const (
+		freq = 8000.0
+		sr   = 48000.0
+		n    = 2048
+		amp  = 0.5
+	)
 
 	for i := 0; i < n; i++ {
 		d.ProcessSample(amp * math.Sin(2*math.Pi*freq*float64(i)/sr))
 	}
 
 	peakOut := 0.0
+
 	for i := 0; i < n; i++ {
 		out := d.ProcessSample(amp * math.Sin(2*math.Pi*freq*float64(n+i)/sr))
 		if math.Abs(out) > peakOut {
@@ -500,6 +547,7 @@ func TestDeEsserProcessInPlaceMatchesSample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
+
 	d2, err := NewDeEsser(48000)
 	if err != nil {
 		t.Fatalf("NewDeEsser() error = %v", err)
@@ -512,6 +560,7 @@ func TestDeEsserProcessInPlaceMatchesSample(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = d1.ProcessSample(want[i])
 	}
@@ -565,6 +614,7 @@ func TestDeEsserMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
+
 	if err := d.SetThreshold(-30); err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
@@ -578,15 +628,18 @@ func TestDeEsserMetrics(t *testing.T) {
 	if m.DetectionLevel <= 0 {
 		t.Error("DetectionLevel should be > 0 after processing sibilance")
 	}
+
 	if m.GainReduction >= 1.0 {
 		t.Error("GainReduction should be < 1.0 after processing sibilance above threshold")
 	}
 
 	d.ResetMetrics()
+
 	m2 := d.GetMetrics()
 	if m2.DetectionLevel != 0 {
 		t.Error("DetectionLevel should be 0 after ResetMetrics")
 	}
+
 	if m2.GainReduction != 1.0 {
 		t.Errorf("GainReduction should be 1.0 after ResetMetrics, got %g", m2.GainReduction)
 	}
@@ -598,9 +651,11 @@ func TestDeEsserHardKnee(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
+
 	if err := d.SetKnee(0); err != nil {
 		t.Fatalf("SetKnee() error = %v", err)
 	}
+
 	if err := d.SetThreshold(-30); err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
@@ -621,8 +676,11 @@ func TestDeEsserHardKnee(t *testing.T) {
 func TestDeEsserFilterOrderEffect(t *testing.T) {
 	// With order 1, a signal somewhat off-center should still have some
 	// detection energy. With order 4, it should have much less.
-	const sr = 48000.0
-	const n = 4096
+	const (
+		sr = 48000.0
+		n  = 4096
+	)
+
 	const offFreq = 3000.0 // Significantly below 6kHz center
 
 	measureDetection := func(order int) float64 {
@@ -630,9 +688,11 @@ func TestDeEsserFilterOrderEffect(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewDeEsser() error = %v", err)
 		}
+
 		if err := d.SetFilterOrder(order); err != nil {
 			t.Fatalf("SetFilterOrder() error = %v", err)
 		}
+
 		d.SetListen(true)
 
 		// Let filter settle.
@@ -641,12 +701,14 @@ func TestDeEsserFilterOrderEffect(t *testing.T) {
 		}
 
 		peak := 0.0
+
 		for i := 0; i < n; i++ {
 			out := d.ProcessSample(0.5 * math.Sin(2*math.Pi*offFreq*float64(n+i)/sr))
 			if math.Abs(out) > peak {
 				peak = math.Abs(out)
 			}
 		}
+
 		return peak
 	}
 
@@ -670,23 +732,29 @@ func TestDeEsserRangeLimit(t *testing.T) {
 	if err := d.SetThreshold(-60); err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
+
 	if err := d.SetRatio(100); err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
+
 	if err := d.SetRange(-12); err != nil {
 		t.Fatalf("SetRange() error = %v", err)
 	}
+
 	if err := d.SetMode(DeEsserWideband); err != nil {
 		t.Fatalf("SetMode() error = %v", err)
 	}
+
 	if err := d.SetKnee(0); err != nil {
 		t.Fatalf("SetKnee() error = %v", err)
 	}
 
 	// Process a loud sibilant signal until envelope settles.
-	const freq = 6000.0
-	const sr = 48000.0
-	const amp = 0.9
+	const (
+		freq = 6000.0
+		sr   = 48000.0
+		amp  = 0.9
+	)
 
 	for i := 0; i < 8192; i++ {
 		d.ProcessSample(amp * math.Sin(2*math.Pi*freq*float64(i)/sr))
@@ -706,9 +774,11 @@ func TestDeEsserRatioOneIsTransparent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
+
 	if err := d.SetRatio(1); err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
+
 	if err := d.SetMode(DeEsserWideband); err != nil {
 		t.Fatalf("SetMode() error = %v", err)
 	}
@@ -735,6 +805,7 @@ func BenchmarkDeEsserProcessSample(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
+
 	for i := 0; i < b.N; i++ {
 		d.ProcessSample(0.5 * math.Sin(2*math.Pi*6000*float64(i)/48000))
 	}
@@ -754,6 +825,7 @@ func BenchmarkDeEsserProcessInPlace(b *testing.B) {
 
 	b.ResetTimer()
 	b.ReportAllocs()
+
 	for i := 0; i < b.N; i++ {
 		d.ProcessInPlace(buf)
 	}

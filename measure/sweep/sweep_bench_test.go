@@ -13,6 +13,7 @@ func BenchmarkLogSweepGenerate(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		if _, err := s.Generate(); err != nil {
 			b.Fatal(err)
@@ -29,6 +30,7 @@ func BenchmarkLogSweepInverseFilter(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		if _, err := s.InverseFilter(); err != nil {
 			b.Fatal(err)
@@ -46,6 +48,7 @@ func BenchmarkLogSweepDeconvolve(b *testing.B) {
 	sweep, _ := s.Generate()
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		if _, err := s.Deconvolve(sweep); err != nil {
 			b.Fatal(err)
@@ -63,6 +66,7 @@ func BenchmarkLogSweepDeconvolve48k(b *testing.B) {
 	sweep, _ := s.Generate()
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		if _, err := s.Deconvolve(sweep); err != nil {
 			b.Fatal(err)
@@ -79,6 +83,7 @@ func BenchmarkLinearSweepGenerate(b *testing.B) {
 	}
 
 	b.ResetTimer()
+
 	for b.Loop() {
 		if _, err := s.Generate(); err != nil {
 			b.Fatal(err)

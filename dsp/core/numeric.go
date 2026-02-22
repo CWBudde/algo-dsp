@@ -9,12 +9,15 @@ func Clamp(value, min, max float64) float64 {
 	if min > max {
 		min, max = max, min
 	}
+
 	if value < min {
 		return min
 	}
+
 	if value > max {
 		return max
 	}
+
 	return value
 }
 
@@ -23,14 +26,17 @@ func NearlyEqual(a, b, eps float64) bool {
 	if eps <= 0 {
 		eps = defaultEpsilon
 	}
+
 	diff := math.Abs(a - b)
 	if diff <= eps {
 		return true
 	}
+
 	largest := math.Max(math.Abs(a), math.Abs(b))
 	if largest == 0 {
 		return diff <= eps
 	}
+
 	return diff/largest <= eps
 }
 
@@ -41,6 +47,7 @@ func FlushDenormals(x float64) float64 {
 	if x > -epsilon && x < epsilon {
 		return 0
 	}
+
 	return x
 }
 
@@ -55,9 +62,11 @@ func LinearToDB(linear float64) float64 {
 	if linear < 0 {
 		return math.NaN()
 	}
+
 	if linear == 0 {
 		return math.Inf(-1)
 	}
+
 	return 20 * math.Log10(linear)
 }
 
@@ -72,8 +81,10 @@ func LinearPowerToDB(power float64) float64 {
 	if power < 0 {
 		return math.NaN()
 	}
+
 	if power == 0 {
 		return math.Inf(-1)
 	}
+
 	return 10 * math.Log10(power)
 }

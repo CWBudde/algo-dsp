@@ -28,6 +28,7 @@ func SplitFourthOrder(b, a [5]float64) ([]biquad.Coefficients, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	denRoots, err := rootsFromPolyAsc(a)
 	if err != nil {
 		return nil, err
@@ -37,6 +38,7 @@ func SplitFourthOrder(b, a [5]float64) ([]biquad.Coefficients, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	denPairs, err := PairConjugates(denRoots)
 	if err != nil {
 		return nil, err
@@ -44,23 +46,28 @@ func SplitFourthOrder(b, a [5]float64) ([]biquad.Coefficients, error) {
 
 	sections := make([]biquad.Coefficients, 2)
 	scale := b[0]
+
 	for i := 0; i < 2; i++ {
 		b0, b1, b2, err := QuadFromRoots(numPairs[i])
 		if err != nil {
 			return nil, err
 		}
+
 		a0, a1, a2, err := QuadFromRoots(denPairs[i])
 		if err != nil {
 			return nil, err
 		}
+
 		if i == 0 {
 			b0 *= scale
 			b1 *= scale
 			b2 *= scale
 		}
+
 		if a0 == 0 {
 			return nil, ErrDegeneratePolynomial
 		}
+
 		sections[i] = biquad.Coefficients{
 			B0: b0 / a0,
 			B1: b1 / a0,
@@ -69,6 +76,7 @@ func SplitFourthOrder(b, a [5]float64) ([]biquad.Coefficients, error) {
 			A2: a2 / a0,
 		}
 	}
+
 	return sections, nil
 }
 
@@ -84,6 +92,7 @@ func rootsFromPolyAsc(c [5]float64) ([]complex128, error) {
 		complex(c[1], 0),
 		complex(c[0], 0),
 	}
+
 	roots, err := DurandKerner(coeff)
 	if err != nil {
 		return nil, err
@@ -94,8 +103,10 @@ func rootsFromPolyAsc(c [5]float64) ([]complex128, error) {
 		if x == 0 {
 			return nil, ErrDegeneratePolynomial
 		}
+
 		out[i] = 1 / x
 	}
+
 	return out, nil
 }
 
@@ -104,6 +115,7 @@ func rootsFromPolyAsc(c [5]float64) ([]complex128, error) {
 // coefficients of z^2 - 2a*z + (a^2 + b^2) as (1, -2a, a^2+b^2).
 func QuadFromRoots(pair [2]complex128) (float64, float64, float64, error) {
 	r1 := pair[0]
+
 	r2 := pair[1]
 	if !IsConjugate(r1, r2, ConjugateTol) {
 		return 0, 0, 0, ErrDegeneratePolynomial
@@ -126,27 +138,33 @@ func PairConjugates(roots []complex128) ([][2]complex128, error) {
 		if used[i] {
 			continue
 		}
+
 		r := roots[i]
 		conj := complex(real(r), -imag(r))
 		best := -1
 		bestDist := math.MaxFloat64
+
 		for j := range roots {
 			if i == j || used[j] {
 				continue
 			}
+
 			d := cmplx.Abs(roots[j] - conj)
 			if d < bestDist {
 				bestDist = d
 				best = j
 			}
 		}
+
 		if best == -1 || !IsConjugate(r, roots[best], ConjugateTol) {
 			return nil, ErrDegeneratePolynomial
 		}
+
 		used[i] = true
 		used[best] = true
 		pairs = append(pairs, [2]complex128{r, roots[best]})
 	}
+
 	return pairs, nil
 }
 
@@ -157,12 +175,14 @@ func DurandKerner(coeff []complex128) ([]complex128, error) {
 	if len(coeff) < 2 {
 		return nil, ErrDegeneratePolynomial
 	}
+
 	lead := coeff[0]
 	if lead == 0 {
 		return nil, ErrDegeneratePolynomial
 	}
 
 	n := len(coeff) - 1
+
 	norm := make([]complex128, len(coeff))
 	for i := range coeff {
 		norm[i] = coeff[i] / lead
@@ -174,6 +194,7 @@ func DurandKerner(coeff []complex128) ([]complex128, error) {
 			radius = r
 		}
 	}
+
 	if radius < 1 {
 		radius = 1
 	}
@@ -185,44 +206,57 @@ func DurandKerner(coeff []complex128) ([]complex128, error) {
 		roots[i] = complex(r*math.Cos(angle), r*math.Sin(angle))
 	}
 
-	const maxIter = 500
-	const tol = 1e-12
+	const (
+		maxIter = 500
+		tol     = 1e-12
+	)
+
 	for iter := 0; iter < maxIter; iter++ {
 		maxDelta := 0.0
+
 		for i := 0; i < n; i++ {
 			den := complex(1, 0)
+
 			for j := 0; j < n; j++ {
 				if i == j {
 					continue
 				}
+
 				den *= roots[i] - roots[j]
 			}
+
 			if cmplx.Abs(den) == 0 {
 				roots[i] += complex(1e-10, 1e-10)
 				continue
 			}
+
 			f := PolyEval(norm, roots[i])
 			delta := f / den
+
 			roots[i] -= delta
 			if d := cmplx.Abs(delta); d > maxDelta {
 				maxDelta = d
 			}
 		}
+
 		if maxDelta < tol {
 			return roots, nil
 		}
 	}
 
 	maxResidual := 0.0
+
 	for _, r := range roots {
 		res := cmplx.Abs(PolyEval(norm, r))
 		if res > maxResidual {
 			maxResidual = res
 		}
 	}
+
 	if maxResidual < 1e-6 {
 		return roots, nil
 	}
+
 	return nil, ErrDegeneratePolynomial
 }
 
@@ -233,6 +267,7 @@ func PolyEval(coeff []complex128, x complex128) complex128 {
 	for i := 1; i < len(coeff); i++ {
 		v = v*x + coeff[i]
 	}
+
 	return v
 }
 
@@ -244,8 +279,10 @@ func IsConjugate(a, b complex128, tol float64) bool {
 	if math.Abs(real(a)-real(b)) > tol*math.Max(1, math.Abs(real(a))) {
 		return false
 	}
+
 	if math.Abs(imag(a)+imag(b)) > tol*math.Max(1, math.Abs(imag(a))) {
 		return false
 	}
+
 	return true
 }

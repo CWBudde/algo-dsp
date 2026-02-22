@@ -166,8 +166,10 @@ func TestAWeighting_IEC61672(t *testing.T) {
 			if ref.freq >= sr/2 {
 				continue
 			}
+
 			got := chain.MagnitudeDB(ref.freq, sr)
 			diff := math.Abs(got - ref.dB)
+
 			tol := bltTolerance(ref.freq, sr)
 			if diff > tol {
 				t.Errorf("A-weighting @ %g Hz (sr=%g): got %.2f dB, want %.1f dB (diff %.2f, tol %.1f)",
@@ -184,8 +186,10 @@ func TestBWeighting_IEC61672(t *testing.T) {
 			if ref.freq >= sr/2 {
 				continue
 			}
+
 			got := chain.MagnitudeDB(ref.freq, sr)
 			diff := math.Abs(got - ref.dB)
+
 			tol := bltTolerance(ref.freq, sr)
 			if diff > tol {
 				t.Errorf("B-weighting @ %g Hz (sr=%g): got %.2f dB, want %.1f dB (diff %.2f, tol %.1f)",
@@ -202,8 +206,10 @@ func TestCWeighting_IEC61672(t *testing.T) {
 			if ref.freq >= sr/2 {
 				continue
 			}
+
 			got := chain.MagnitudeDB(ref.freq, sr)
 			diff := math.Abs(got - ref.dB)
+
 			tol := bltTolerance(ref.freq, sr)
 			if diff > tol {
 				t.Errorf("C-weighting @ %g Hz (sr=%g): got %.2f dB, want %.1f dB (diff %.2f, tol %.1f)",
@@ -226,6 +232,7 @@ func TestZWeighting_Unity(t *testing.T) {
 func TestWeighting_1kHzNormalization(t *testing.T) {
 	for _, typ := range []Type{TypeA, TypeB, TypeC, TypeZ} {
 		chain := New(typ, 48000)
+
 		got := chain.MagnitudeDB(1000, 48000)
 		if math.Abs(got) > 0.01 {
 			t.Errorf("%s-weighting: 1 kHz magnitude = %.4f dB, want 0 dB", typ, got)
@@ -237,13 +244,16 @@ func TestWeighting_ProcessSample(t *testing.T) {
 	chain := New(TypeA, 48000)
 	// Feed a 1 kHz sine and verify non-zero output.
 	var maxOut float64
+
 	for i := range 4800 {
 		x := math.Sin(2 * math.Pi * 1000 * float64(i) / 48000)
+
 		y := chain.ProcessSample(x)
 		if a := math.Abs(y); a > maxOut {
 			maxOut = a
 		}
 	}
+
 	if maxOut < 0.5 {
 		t.Errorf("A-weighting 1 kHz sine: max output %.4f, expected near 1.0", maxOut)
 	}
@@ -251,16 +261,19 @@ func TestWeighting_ProcessSample(t *testing.T) {
 
 func TestWeighting_ProcessBlock(t *testing.T) {
 	chain := New(TypeC, 48000)
+
 	buf := make([]float64, 1024)
 	for i := range buf {
 		buf[i] = math.Sin(2 * math.Pi * 1000 * float64(i) / 48000)
 	}
+
 	chain.ProcessBlock(buf)
 	// After processing, the block should not be all zeros.
 	var sum float64
 	for _, v := range buf {
 		sum += v * v
 	}
+
 	if sum < 1e-10 {
 		t.Error("ProcessBlock output is all zeros")
 	}
@@ -272,6 +285,7 @@ func TestWeighting_Reset(t *testing.T) {
 	for range 100 {
 		chain.ProcessSample(1.0)
 	}
+
 	chain.Reset()
 	// After reset, processing zero should yield zero.
 	y := chain.ProcessSample(0)
@@ -304,6 +318,7 @@ func TestWeighting_PanicOnInvalidSampleRate(t *testing.T) {
 			t.Error("expected panic for non-positive sample rate")
 		}
 	}()
+
 	New(TypeA, 0)
 }
 
@@ -313,6 +328,7 @@ func TestWeighting_PanicOnUnknownType(t *testing.T) {
 			t.Error("expected panic for unknown type")
 		}
 	}()
+
 	New(Type(99), 48000)
 }
 
@@ -332,6 +348,7 @@ func TestWeighting_OrderAndSections(t *testing.T) {
 		if got := chain.NumSections(); got != tt.sections {
 			t.Errorf("%s-weighting: NumSections() = %d, want %d", tt.typ, got, tt.sections)
 		}
+
 		if got := chain.Order(); got != tt.order {
 			t.Errorf("%s-weighting: Order() = %d, want %d", tt.typ, got, tt.order)
 		}

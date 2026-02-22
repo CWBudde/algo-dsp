@@ -38,10 +38,12 @@ func WithBlockSize(blockSize int) ProcessorOption {
 // ApplyProcessorOptions applies zero or more options to the default config.
 func ApplyProcessorOptions(opts ...ProcessorOption) ProcessorConfig {
 	cfg := DefaultProcessorConfig()
+
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&cfg)
 		}
 	}
+
 	return cfg
 }

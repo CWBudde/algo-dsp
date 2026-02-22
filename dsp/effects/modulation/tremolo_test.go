@@ -10,6 +10,7 @@ func TestTremoloProcessInPlaceMatchesProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTremolo() error = %v", err)
 	}
+
 	t2, err := NewTremolo(48000)
 	if err != nil {
 		t.Fatalf("NewTremolo() error = %v", err)
@@ -22,12 +23,14 @@ func TestTremoloProcessInPlaceMatchesProcess(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = t1.Process(want[i])
 	}
 
 	got := make([]float64, len(input))
 	copy(got, input)
+
 	if err := t2.ProcessInPlace(got); err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
@@ -78,6 +81,7 @@ func TestTremoloDepthZeroIsTransparent(t *testing.T) {
 
 	for i := 0; i < 512; i++ {
 		in := 0.5 * math.Sin(2*math.Pi*440*float64(i)/48000)
+
 		out := tm.Process(in)
 		if diff := math.Abs(out - in); diff > 1e-12 {
 			t.Fatalf("sample %d mismatch: got=%g want=%g", i, out, in)

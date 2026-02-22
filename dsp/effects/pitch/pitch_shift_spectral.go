@@ -66,6 +66,7 @@ func NewSpectralPitchShifter(sampleRate float64) (*SpectralPitchShifter, error) 
 	if !isFinitePositive(sampleRate) {
 		return nil, fmt.Errorf("spectral pitch shifter sample rate must be positive and finite: %f", sampleRate)
 	}
+
 	s := &SpectralPitchShifter{
 		sampleRate:      sampleRate,
 		pitchRatio:      defaultSpectralPitchRatio,
@@ -75,9 +76,11 @@ func NewSpectralPitchShifter(sampleRate float64) (*SpectralPitchShifter, error) 
 		resampleQuality: resample.QualityBalanced,
 	}
 	s.updateSynthesisHop()
+
 	if err := s.rebuildState(); err != nil {
 		return nil, err
 	}
+
 	return s, nil
 }
 
@@ -104,6 +107,7 @@ func (s *SpectralPitchShifter) EffectivePitchRatio() float64 {
 	if s.useBinShifting() {
 		return s.pitchRatio
 	}
+
 	return float64(s.synthesisHop) / float64(s.analysisHop)
 }
 
@@ -118,6 +122,7 @@ func (s *SpectralPitchShifter) SynthesisHop() int {
 	if s.useBinShifting() {
 		return s.analysisHop
 	}
+
 	return s.synthesisHop
 }
 
@@ -134,7 +139,9 @@ func (s *SpectralPitchShifter) SetSampleRate(sampleRate float64) error {
 	if !isFinitePositive(sampleRate) {
 		return fmt.Errorf("spectral pitch shifter sample rate must be positive and finite: %f", sampleRate)
 	}
+
 	s.sampleRate = sampleRate
+
 	return nil
 }
 
@@ -144,8 +151,10 @@ func (s *SpectralPitchShifter) SetPitchRatio(ratio float64) error {
 		return fmt.Errorf("spectral pitch ratio must be in [%f, %f]: %f",
 			minPitchShifterRatio, maxPitchShifterRatio, ratio)
 	}
+
 	s.pitchRatio = ratio
 	s.updateSynthesisHop()
+
 	return nil
 }
 
@@ -154,10 +163,12 @@ func (s *SpectralPitchShifter) SetPitchSemitones(semitones float64) error {
 	if math.IsNaN(semitones) || math.IsInf(semitones, 0) {
 		return fmt.Errorf("spectral pitch shifter semitones must be finite: %f", semitones)
 	}
+
 	ratio := math.Pow(2, semitones/12.0)
 	if err := s.SetPitchRatio(ratio); err != nil {
 		return fmt.Errorf("spectral pitch shifter semitones out of range: %w", err)
 	}
+
 	return nil
 }
 
@@ -166,6 +177,7 @@ func (s *SpectralPitchShifter) SetFrameSize(size int) error {
 	if size < minSpectralFrameSize || !isPowerOf2Pitch(size) {
 		return fmt.Errorf("spectral frame size must be power-of-two and >= %d: %d", minSpectralFrameSize, size)
 	}
+
 	s.frameSize = size
 	if s.analysisHop >= s.frameSize {
 		s.analysisHop = s.frameSize / 4
@@ -173,7 +185,9 @@ func (s *SpectralPitchShifter) SetFrameSize(size int) error {
 			s.analysisHop = 1
 		}
 	}
+
 	s.updateSynthesisHop()
+
 	return s.rebuildState()
 }
 
@@ -182,8 +196,10 @@ func (s *SpectralPitchShifter) SetAnalysisHop(hop int) error {
 	if hop <= 0 || hop >= s.frameSize {
 		return fmt.Errorf("spectral analysis hop must be in [1, %d): %d", s.frameSize, hop)
 	}
+
 	s.analysisHop = hop
 	s.updateSynthesisHop()
+
 	return nil
 }
 
@@ -219,9 +235,11 @@ func (s *SpectralPitchShifter) Process(input []float64) []float64 {
 	if len(input) == 0 {
 		return nil
 	}
+
 	if math.Abs(s.pitchRatio-1) <= pitchShifterIdentityEps {
 		out := make([]float64, len(input))
 		copy(out, input)
+
 		return out
 	}
 
@@ -229,8 +247,10 @@ func (s *SpectralPitchShifter) Process(input []float64) []float64 {
 	if err != nil {
 		fallback := make([]float64, len(input))
 		copy(fallback, input)
+
 		return fallback
 	}
+
 	return out
 }
 
@@ -244,6 +264,7 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 	if len(input) == 0 {
 		return nil, nil
 	}
+
 	if err := s.validate(); err != nil {
 		return nil, err
 	}
@@ -251,6 +272,7 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 	if s.useBinShifting() {
 		return s.processBinShift(input)
 	}
+
 	return s.processTimeStretch(input)
 }
 
@@ -273,10 +295,12 @@ func (s *SpectralPitchShifter) processBinShift(input []float64) ([]float64, erro
 
 		for i := range s.frameSize {
 			x := 0.0
+
 			idx := pos + i
 			if idx < len(input) {
 				x = input[idx]
 			}
+
 			s.analysisSpectrum[i] = complex(x*s.windowCoeffs[i], 0)
 		}
 
@@ -304,8 +328,10 @@ func (s *SpectralPitchShifter) processBinShift(input []float64) ([]float64, erro
 			if srcK >= float64(half) {
 				s.shiftedMag[k] = 0
 				s.shiftedFreq[k] = s.omega[k]
+
 				continue
 			}
+
 			lo := int(srcK)
 			frac := srcK - float64(lo)
 			hi := min(lo+1, half)
@@ -326,6 +352,7 @@ func (s *SpectralPitchShifter) processBinShift(input []float64) ([]float64, erro
 
 		// Mirror for real-valued IFFT.
 		s.synthesisSpectrum[0] = complex(real(s.synthesisSpectrum[0]), 0)
+
 		s.synthesisSpectrum[half] = complex(real(s.synthesisSpectrum[half]), 0)
 		for k := 1; k < half; k++ {
 			v := s.synthesisSpectrum[k]
@@ -372,10 +399,12 @@ func (s *SpectralPitchShifter) processTimeStretch(input []float64) ([]float64, e
 
 		for i := range s.frameSize {
 			x := 0.0
+
 			idx := inPos + i
 			if idx < len(input) {
 				x = input[idx]
 			}
+
 			s.analysisSpectrum[i] = complex(x*s.windowCoeffs[i], 0)
 		}
 
@@ -422,6 +451,7 @@ func (s *SpectralPitchShifter) processTimeStretch(input []float64) ([]float64, e
 			for k := 0; k <= half; k++ {
 				for peakIdx+1 < len(s.peakBins) {
 					curr := s.peakBins[peakIdx]
+
 					next := s.peakBins[peakIdx+1]
 					if absInt(next-k) < absInt(curr-k) {
 						peakIdx++
@@ -443,6 +473,7 @@ func (s *SpectralPitchShifter) processTimeStretch(input []float64) ([]float64, e
 		}
 
 		s.synthesisSpectrum[0] = complex(real(s.synthesisSpectrum[0]), 0)
+
 		s.synthesisSpectrum[half] = complex(real(s.synthesisSpectrum[half]), 0)
 		for k := 1; k < half; k++ {
 			v := s.synthesisSpectrum[k]
@@ -480,6 +511,7 @@ func (s *SpectralPitchShifter) processTimeStretch(input []float64) ([]float64, e
 	if err != nil {
 		return nil, fmt.Errorf("spectral pitch shifter: resampling failed: %w", err)
 	}
+
 	return fitLength(shifted, len(input)), nil
 }
 
@@ -495,7 +527,9 @@ func (s *SpectralPitchShifter) ProcessInPlaceWithError(buf []float64) error {
 	if err != nil {
 		return err
 	}
+
 	copy(buf, out)
+
 	return nil
 }
 
@@ -503,19 +537,24 @@ func (s *SpectralPitchShifter) validate() error {
 	if !isFinitePositive(s.sampleRate) {
 		return fmt.Errorf("spectral pitch shifter sample rate must be positive and finite: %f", s.sampleRate)
 	}
+
 	if !isFinitePositive(s.pitchRatio) || s.pitchRatio < minPitchShifterRatio || s.pitchRatio > maxPitchShifterRatio {
 		return fmt.Errorf("spectral pitch ratio must be in [%f, %f]: %f",
 			minPitchShifterRatio, maxPitchShifterRatio, s.pitchRatio)
 	}
+
 	if s.frameSize < minSpectralFrameSize || !isPowerOf2Pitch(s.frameSize) {
 		return fmt.Errorf("spectral frame size must be power-of-two and >= %d: %d", minSpectralFrameSize, s.frameSize)
 	}
+
 	if s.analysisHop <= 0 || s.analysisHop >= s.frameSize {
 		return fmt.Errorf("spectral analysis hop must be in [1, %d): %d", s.frameSize, s.analysisHop)
 	}
+
 	if s.synthesisHop <= 0 {
 		return fmt.Errorf("spectral synthesis hop must be > 0: %d", s.synthesisHop)
 	}
+
 	return nil
 }
 
@@ -528,15 +567,18 @@ func (s *SpectralPitchShifter) rebuildState() error {
 	if err != nil {
 		return fmt.Errorf("spectral pitch shifter: failed to create FFT plan: %w", err)
 	}
+
 	s.plan = plan
 
 	coeffs := window.Generate(s.windowType, s.frameSize, window.WithPeriodic())
 	if len(coeffs) != s.frameSize {
 		return fmt.Errorf("spectral pitch shifter: window generation failed for size %d", s.frameSize)
 	}
+
 	s.windowCoeffs = coeffs
 
 	bins := s.frameSize/2 + 1
+
 	s.omega = make([]float64, bins)
 	for k := range bins {
 		s.omega[k] = 2 * math.Pi * float64(k) / float64(s.frameSize)
@@ -562,12 +604,14 @@ func (s *SpectralPitchShifter) updateSynthesisHop() {
 	if h < 1 {
 		h = 1
 	}
+
 	s.synthesisHop = h
 }
 
 func fitLength(in []float64, n int) []float64 {
 	out := make([]float64, n)
 	copy(out, in)
+
 	return out
 }
 
@@ -576,6 +620,7 @@ func wrapPhase(x float64) float64 {
 	if x < 0 {
 		x += 2 * math.Pi
 	}
+
 	return x - math.Pi
 }
 
@@ -587,5 +632,6 @@ func absInt(x int) int {
 	if x < 0 {
 		return -x
 	}
+
 	return x
 }

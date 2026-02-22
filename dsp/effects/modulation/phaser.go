@@ -45,7 +45,9 @@ func WithPhaserRateHz(rateHz float64) PhaserOption {
 		if rateHz <= 0 || math.IsNaN(rateHz) || math.IsInf(rateHz, 0) {
 			return fmt.Errorf("phaser rate must be > 0 and finite: %f", rateHz)
 		}
+
 		cfg.rateHz = rateHz
+
 		return nil
 	}
 }
@@ -56,11 +58,14 @@ func WithPhaserFrequencyRangeHz(minFreqHz, maxFreqHz float64) PhaserOption {
 		if minFreqHz <= 0 || math.IsNaN(minFreqHz) || math.IsInf(minFreqHz, 0) {
 			return fmt.Errorf("phaser min frequency must be > 0 and finite: %f", minFreqHz)
 		}
+
 		if maxFreqHz <= minFreqHz || math.IsNaN(maxFreqHz) || math.IsInf(maxFreqHz, 0) {
 			return fmt.Errorf("phaser max frequency must be > min frequency and finite: min=%f max=%f", minFreqHz, maxFreqHz)
 		}
+
 		cfg.minFreqHz = minFreqHz
 		cfg.maxFreqHz = maxFreqHz
+
 		return nil
 	}
 }
@@ -71,7 +76,9 @@ func WithPhaserStages(stages int) PhaserOption {
 		if stages < 1 || stages > maxPhaserStages {
 			return fmt.Errorf("phaser stages must be in [1, %d]: %d", maxPhaserStages, stages)
 		}
+
 		cfg.stages = stages
+
 		return nil
 	}
 }
@@ -82,7 +89,9 @@ func WithPhaserFeedback(feedback float64) PhaserOption {
 		if feedback < -0.99 || feedback > 0.99 || math.IsNaN(feedback) || math.IsInf(feedback, 0) {
 			return fmt.Errorf("phaser feedback must be in [-0.99, 0.99]: %f", feedback)
 		}
+
 		cfg.feedback = feedback
+
 		return nil
 	}
 }
@@ -93,7 +102,9 @@ func WithPhaserMix(mix float64) PhaserOption {
 		if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 			return fmt.Errorf("phaser mix must be in [0, 1]: %f", mix)
 		}
+
 		cfg.mix = mix
+
 		return nil
 	}
 }
@@ -112,6 +123,7 @@ func (s *phaserAllpassStage) process(x, a float64) float64 {
 	y := a*x + s.x1 - a*s.y1
 	s.x1 = x
 	s.y1 = y
+
 	return y
 }
 
@@ -137,10 +149,12 @@ func NewPhaser(sampleRate float64, opts ...PhaserOption) (*Phaser, error) {
 	}
 
 	cfg := defaultPhaserConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -158,6 +172,7 @@ func NewPhaser(sampleRate float64, opts ...PhaserOption) (*Phaser, error) {
 	if err := p.validateParams(); err != nil {
 		return nil, err
 	}
+
 	return p, nil
 }
 
@@ -166,7 +181,9 @@ func (p *Phaser) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("phaser sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	p.sampleRate = sampleRate
+
 	return p.validateParams()
 }
 
@@ -175,7 +192,9 @@ func (p *Phaser) SetRateHz(rateHz float64) error {
 	if rateHz <= 0 || math.IsNaN(rateHz) || math.IsInf(rateHz, 0) {
 		return fmt.Errorf("phaser rate must be > 0 and finite: %f", rateHz)
 	}
+
 	p.rateHz = rateHz
+
 	return nil
 }
 
@@ -184,11 +203,14 @@ func (p *Phaser) SetFrequencyRangeHz(minFreqHz, maxFreqHz float64) error {
 	if minFreqHz <= 0 || math.IsNaN(minFreqHz) || math.IsInf(minFreqHz, 0) {
 		return fmt.Errorf("phaser min frequency must be > 0 and finite: %f", minFreqHz)
 	}
+
 	if maxFreqHz <= minFreqHz || math.IsNaN(maxFreqHz) || math.IsInf(maxFreqHz, 0) {
 		return fmt.Errorf("phaser max frequency must be > min frequency and finite: min=%f max=%f", minFreqHz, maxFreqHz)
 	}
+
 	p.minFreqHz = minFreqHz
 	p.maxFreqHz = maxFreqHz
+
 	return p.validateParams()
 }
 
@@ -197,10 +219,13 @@ func (p *Phaser) SetStages(stages int) error {
 	if stages < 1 || stages > maxPhaserStages {
 		return fmt.Errorf("phaser stages must be in [1, %d]: %d", maxPhaserStages, stages)
 	}
+
 	if stages == len(p.stages) {
 		return nil
 	}
+
 	p.stages = make([]phaserAllpassStage, stages)
+
 	return nil
 }
 
@@ -209,7 +234,9 @@ func (p *Phaser) SetFeedback(feedback float64) error {
 	if feedback < -0.99 || feedback > 0.99 || math.IsNaN(feedback) || math.IsInf(feedback, 0) {
 		return fmt.Errorf("phaser feedback must be in [-0.99, 0.99]: %f", feedback)
 	}
+
 	p.feedback = feedback
+
 	return nil
 }
 
@@ -218,7 +245,9 @@ func (p *Phaser) SetMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("phaser mix must be in [0, 1]: %f", mix)
 	}
+
 	p.mix = mix
+
 	return nil
 }
 
@@ -227,6 +256,7 @@ func (p *Phaser) Reset() {
 	for i := range p.stages {
 		p.stages[i].reset()
 	}
+
 	p.feedbackSample = 0
 	p.lfoPhase = 0
 }
@@ -240,6 +270,7 @@ func (p *Phaser) Process(sample float64) float64 {
 	for i := range p.stages {
 		y = p.stages[i].process(y, coef)
 	}
+
 	p.feedbackSample = y
 
 	p.lfoPhase += 2 * math.Pi * p.rateHz / p.sampleRate
@@ -260,6 +291,7 @@ func (p *Phaser) ProcessInPlace(buf []float64) error {
 	for i := range buf {
 		buf[i] = p.Process(buf[i])
 	}
+
 	return nil
 }
 
@@ -288,28 +320,36 @@ func (p *Phaser) validateParams() error {
 	if p.sampleRate <= 0 || math.IsNaN(p.sampleRate) || math.IsInf(p.sampleRate, 0) {
 		return fmt.Errorf("phaser sample rate must be > 0 and finite: %f", p.sampleRate)
 	}
+
 	if p.rateHz <= 0 || math.IsNaN(p.rateHz) || math.IsInf(p.rateHz, 0) {
 		return fmt.Errorf("phaser rate must be > 0 and finite: %f", p.rateHz)
 	}
+
 	if p.minFreqHz <= 0 || math.IsNaN(p.minFreqHz) || math.IsInf(p.minFreqHz, 0) {
 		return fmt.Errorf("phaser min frequency must be > 0 and finite: %f", p.minFreqHz)
 	}
+
 	if p.maxFreqHz <= p.minFreqHz || math.IsNaN(p.maxFreqHz) || math.IsInf(p.maxFreqHz, 0) {
 		return fmt.Errorf("phaser max frequency must be > min frequency and finite: min=%f max=%f", p.minFreqHz, p.maxFreqHz)
 	}
+
 	maxAllowed := phaserNyquistSafetyRatio * p.sampleRate
 	if p.maxFreqHz >= maxAllowed {
 		return fmt.Errorf("phaser max frequency must be < %.2f Hz for sample rate %.2f", maxAllowed, p.sampleRate)
 	}
+
 	if len(p.stages) < 1 || len(p.stages) > maxPhaserStages {
 		return fmt.Errorf("phaser stages must be in [1, %d]: %d", maxPhaserStages, len(p.stages))
 	}
+
 	if p.feedback < -0.99 || p.feedback > 0.99 || math.IsNaN(p.feedback) || math.IsInf(p.feedback, 0) {
 		return fmt.Errorf("phaser feedback must be in [-0.99, 0.99]: %f", p.feedback)
 	}
+
 	if p.mix < 0 || p.mix > 1 || math.IsNaN(p.mix) || math.IsInf(p.mix, 0) {
 		return fmt.Errorf("phaser mix must be in [0, 1]: %f", p.mix)
 	}
+
 	return nil
 }
 
@@ -330,5 +370,6 @@ func phaserAllpassCoefficient(freqHz, sampleRate float64) float64 {
 	if math.IsInf(g, 0) || math.IsNaN(g) {
 		return 0
 	}
+
 	return (1 - g) / (1 + g)
 }

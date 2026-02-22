@@ -20,6 +20,7 @@ func ExampleDeEsser() {
 	for i := range buf {
 		buf[i] = 0.5 * math.Sin(2*math.Pi*6000*float64(i)/48000)
 	}
+
 	de.ProcessInPlace(buf)
 
 	fmt.Println("De-esser processed 256 samples")
@@ -35,13 +36,13 @@ func ExampleDeEsser_configuration() {
 	}
 
 	// Target female vocal sibilance.
-	_ = de.SetFrequency(7500)   // Higher center for female voices
-	_ = de.SetQ(2.0)            // Narrower band
-	_ = de.SetThreshold(-25)    // Moderate threshold
-	_ = de.SetRatio(6)          // Moderate ratio
-	_ = de.SetAttack(0.3)       // Fast attack to catch transients
-	_ = de.SetRelease(30)       // Smooth release
-	_ = de.SetRange(-18)        // Limit max reduction to -18 dB
+	_ = de.SetFrequency(7500)                 // Higher center for female voices
+	_ = de.SetQ(2.0)                          // Narrower band
+	_ = de.SetThreshold(-25)                  // Moderate threshold
+	_ = de.SetRatio(6)                        // Moderate ratio
+	_ = de.SetAttack(0.3)                     // Fast attack to catch transients
+	_ = de.SetRelease(30)                     // Smooth release
+	_ = de.SetRange(-18)                      // Limit max reduction to -18 dB
 	_ = de.SetMode(dynamics.DeEsserSplitBand) // Only reduce the sibilant band
 
 	fmt.Printf("Frequency: %.0f Hz\n", de.Frequency())

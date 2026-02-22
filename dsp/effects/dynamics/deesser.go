@@ -39,34 +39,34 @@ const (
 
 const (
 	// Default de-esser parameters.
-	defaultDeEsserFreqHz     = 6000.0
-	defaultDeEsserQ          = 1.5
-	defaultDeEsserThreshDB   = -20.0
-	defaultDeEsserRatio      = 4.0
-	defaultDeEsserKneeDB     = 3.0
-	defaultDeEsserAttackMs   = 0.5
-	defaultDeEsserReleaseMs  = 20.0
-	defaultDeEsserRangeDB    = -24.0
-	defaultDeEsserMode       = DeEsserSplitBand
-	defaultDeEsserDetector   = DeEsserDetectBandpass
-	defaultDeEsserListen     = false
+	defaultDeEsserFreqHz      = 6000.0
+	defaultDeEsserQ           = 1.5
+	defaultDeEsserThreshDB    = -20.0
+	defaultDeEsserRatio       = 4.0
+	defaultDeEsserKneeDB      = 3.0
+	defaultDeEsserAttackMs    = 0.5
+	defaultDeEsserReleaseMs   = 20.0
+	defaultDeEsserRangeDB     = -24.0
+	defaultDeEsserMode        = DeEsserSplitBand
+	defaultDeEsserDetector    = DeEsserDetectBandpass
+	defaultDeEsserListen      = false
 	defaultDeEsserFilterOrder = 2
 
 	// Validation ranges.
-	minDeEsserFreqHz    = 1000.0
-	maxDeEsserFreqHz    = 20000.0
-	minDeEsserQ         = 0.1
-	maxDeEsserQ         = 10.0
-	minDeEsserRatio     = 1.0
-	maxDeEsserRatio     = 100.0
-	minDeEsserKneeDB    = 0.0
-	maxDeEsserKneeDB    = 12.0
-	minDeEsserAttackMs  = 0.01
-	maxDeEsserAttackMs  = 50.0
-	minDeEsserReleaseMs = 1.0
-	maxDeEsserReleaseMs = 500.0
-	minDeEsserRangeDB   = -60.0
-	maxDeEsserRangeDB   = 0.0
+	minDeEsserFreqHz      = 1000.0
+	maxDeEsserFreqHz      = 20000.0
+	minDeEsserQ           = 0.1
+	maxDeEsserQ           = 10.0
+	minDeEsserRatio       = 1.0
+	maxDeEsserRatio       = 100.0
+	minDeEsserKneeDB      = 0.0
+	maxDeEsserKneeDB      = 12.0
+	minDeEsserAttackMs    = 0.01
+	maxDeEsserAttackMs    = 50.0
+	minDeEsserReleaseMs   = 1.0
+	maxDeEsserReleaseMs   = 500.0
+	minDeEsserRangeDB     = -60.0
+	maxDeEsserRangeDB     = 0.0
 	minDeEsserFilterOrder = 1
 	maxDeEsserFilterOrder = 4
 )
@@ -118,6 +118,9 @@ type DeEsser struct {
 
 	// Split-band reduction filters — matched to detection for band extraction.
 	bandFilters []*biquad.Section
+	// bandNorm is the reciprocal of the band filters' passband gain so that
+	// the extracted band is normalised to unity before recombination.
+	bandNorm float64
 
 	// Envelope follower state.
 	envLevel float64
@@ -172,6 +175,7 @@ func NewDeEsser(sampleRate float64) (*DeEsser, error) {
 
 	d.updateCoefficients()
 	d.rebuildFilters()
+
 	return d, nil
 }
 
@@ -226,12 +230,15 @@ func (d *DeEsser) SetFrequency(hz float64) error {
 		return fmt.Errorf("de-esser frequency must be in [%g, %g]: %f",
 			minDeEsserFreqHz, maxDeEsserFreqHz, hz)
 	}
+
 	if hz >= d.sampleRate/2 {
 		return fmt.Errorf("de-esser frequency must be < Nyquist (%g): %f",
 			d.sampleRate/2, hz)
 	}
+
 	d.freqHz = hz
 	d.rebuildFilters()
+
 	return nil
 }
 
@@ -243,8 +250,10 @@ func (d *DeEsser) SetQ(q float64) error {
 		return fmt.Errorf("de-esser Q must be in [%g, %g]: %f",
 			minDeEsserQ, maxDeEsserQ, q)
 	}
+
 	d.q = q
 	d.rebuildFilters()
+
 	return nil
 }
 
@@ -254,8 +263,10 @@ func (d *DeEsser) SetThreshold(dB float64) error {
 	if math.IsNaN(dB) || math.IsInf(dB, 0) {
 		return fmt.Errorf("de-esser threshold must be finite: %f", dB)
 	}
+
 	d.thresholdDB = dB
 	d.updateCoefficients()
+
 	return nil
 }
 
@@ -267,8 +278,10 @@ func (d *DeEsser) SetRatio(ratio float64) error {
 		return fmt.Errorf("de-esser ratio must be in [%g, %g]: %f",
 			minDeEsserRatio, maxDeEsserRatio, ratio)
 	}
+
 	d.ratio = ratio
 	d.updateCoefficients()
+
 	return nil
 }
 
@@ -280,8 +293,10 @@ func (d *DeEsser) SetKnee(kneeDB float64) error {
 		return fmt.Errorf("de-esser knee must be in [%g, %g]: %f",
 			minDeEsserKneeDB, maxDeEsserKneeDB, kneeDB)
 	}
+
 	d.kneeDB = kneeDB
 	d.updateCoefficients()
+
 	return nil
 }
 
@@ -293,8 +308,10 @@ func (d *DeEsser) SetAttack(ms float64) error {
 		return fmt.Errorf("de-esser attack must be in [%g, %g]: %f",
 			minDeEsserAttackMs, maxDeEsserAttackMs, ms)
 	}
+
 	d.attackMs = ms
 	d.updateTimeConstants()
+
 	return nil
 }
 
@@ -306,8 +323,10 @@ func (d *DeEsser) SetRelease(ms float64) error {
 		return fmt.Errorf("de-esser release must be in [%g, %g]: %f",
 			minDeEsserReleaseMs, maxDeEsserReleaseMs, ms)
 	}
+
 	d.releaseMs = ms
 	d.updateTimeConstants()
+
 	return nil
 }
 
@@ -319,8 +338,10 @@ func (d *DeEsser) SetRange(dB float64) error {
 		return fmt.Errorf("de-esser range must be in [%g, %g]: %f",
 			minDeEsserRangeDB, maxDeEsserRangeDB, dB)
 	}
+
 	d.rangeDB = dB
 	d.updateCoefficients()
+
 	return nil
 }
 
@@ -329,7 +350,9 @@ func (d *DeEsser) SetMode(mode DeEsserMode) error {
 	if mode < DeEsserSplitBand || mode > DeEsserWideband {
 		return fmt.Errorf("de-esser mode invalid: %d", mode)
 	}
+
 	d.mode = mode
+
 	return nil
 }
 
@@ -338,8 +361,10 @@ func (d *DeEsser) SetDetector(det DeEsserDetector) error {
 	if det < DeEsserDetectBandpass || det > DeEsserDetectHighpass {
 		return fmt.Errorf("de-esser detector invalid: %d", det)
 	}
+
 	d.detector = det
 	d.rebuildFilters()
+
 	return nil
 }
 
@@ -357,8 +382,10 @@ func (d *DeEsser) SetFilterOrder(order int) error {
 		return fmt.Errorf("de-esser filter order must be in [%d, %d]: %d",
 			minDeEsserFilterOrder, maxDeEsserFilterOrder, order)
 	}
+
 	d.filterOrder = order
 	d.rebuildFilters()
+
 	return nil
 }
 
@@ -367,9 +394,16 @@ func (d *DeEsser) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("de-esser sample rate must be positive and finite: %f", sampleRate)
 	}
+
+	if d.freqHz >= sampleRate/2 {
+		return fmt.Errorf("de-esser frequency %g Hz exceeds Nyquist for sample rate %g Hz; lower frequency before changing sample rate",
+			d.freqHz, sampleRate)
+	}
+
 	d.sampleRate = sampleRate
 	d.updateCoefficients()
 	d.rebuildFilters()
+
 	return nil
 }
 
@@ -403,6 +437,7 @@ func (d *DeEsser) ProcessSample(input float64) float64 {
 	if detLevel > d.metrics.DetectionLevel {
 		d.metrics.DetectionLevel = detLevel
 	}
+
 	if d.metrics.GainReduction == 1.0 || gain < d.metrics.GainReduction {
 		d.metrics.GainReduction = gain
 	}
@@ -417,6 +452,9 @@ func (d *DeEsser) ProcessSample(input float64) float64 {
 		for _, f := range d.bandFilters {
 			band = f.ProcessSample(band)
 		}
+		// Normalise the extracted band to unity peak gain so the filter's
+		// native passband gain doesn't skew the recombination arithmetic.
+		band *= d.bandNorm
 		// Reduce only the band, then recombine.
 		// output = (input - band) + band * gain
 		//        = input + band * (gain - 1)
@@ -439,9 +477,11 @@ func (d *DeEsser) Reset() {
 	for _, f := range d.detectFilters {
 		f.Reset()
 	}
+
 	for _, f := range d.bandFilters {
 		f.Reset()
 	}
+
 	d.metrics = DeEsserMetrics{GainReduction: 1.0}
 }
 
@@ -472,15 +512,19 @@ func (d *DeEsser) calculateGain(envLevel float64) float64 {
 		if overshoot <= 0 {
 			return 1.0
 		}
+
 		gainLog2 := -overshoot * (1.0 - 1.0/d.ratio)
+
 		gain := mathPower2(gainLog2)
 		if gain < d.rangeLin {
 			return d.rangeLin
 		}
+
 		return gain
 	}
 
 	halfWidth := d.kneeWidthLog2 * 0.5
+
 	var effectiveOvershoot float64
 
 	if overshoot < -halfWidth {
@@ -493,21 +537,25 @@ func (d *DeEsser) calculateGain(envLevel float64) float64 {
 	}
 
 	gainLog2 := -effectiveOvershoot * (1.0 - 1.0/d.ratio)
+
 	gain := mathPower2(gainLog2)
 	if gain < d.rangeLin {
 		return d.rangeLin
 	}
+
 	return gain
 }
 
 func (d *DeEsser) updateCoefficients() {
 	d.thresholdLog2 = d.thresholdDB * log2Of10Div20
+
 	d.kneeWidthLog2 = d.kneeDB * log2Of10Div20
 	if d.kneeDB > 0 {
 		d.invKneeWidthLog2 = 1.0 / d.kneeWidthLog2
 	} else {
 		d.invKneeWidthLog2 = 0
 	}
+
 	d.rangeLin = mathPower10(d.rangeDB / 20.0)
 	d.updateTimeConstants()
 }
@@ -519,15 +567,12 @@ func (d *DeEsser) updateTimeConstants() {
 
 func (d *DeEsser) rebuildFilters() {
 	freq := d.freqHz
-	nyquist := d.sampleRate / 2
-	if freq >= nyquist {
-		freq = nyquist - 1
-	}
 
 	// Build detection filter cascade.
 	d.detectFilters = make([]*biquad.Section, d.filterOrder)
 	for i := range d.detectFilters {
 		var coeffs biquad.Coefficients
+
 		switch d.detector {
 		case DeEsserDetectBandpass:
 			coeffs = design.Bandpass(freq, d.q, d.sampleRate)
@@ -536,6 +581,7 @@ func (d *DeEsser) rebuildFilters() {
 		default:
 			coeffs = design.Bandpass(freq, d.q, d.sampleRate)
 		}
+
 		d.detectFilters[i] = biquad.NewSection(coeffs)
 	}
 
@@ -544,6 +590,7 @@ func (d *DeEsser) rebuildFilters() {
 	d.bandFilters = make([]*biquad.Section, d.filterOrder)
 	for i := range d.bandFilters {
 		var coeffs biquad.Coefficients
+
 		switch d.detector {
 		case DeEsserDetectBandpass:
 			coeffs = design.Bandpass(freq, d.q, d.sampleRate)
@@ -552,6 +599,19 @@ func (d *DeEsser) rebuildFilters() {
 		default:
 			coeffs = design.Bandpass(freq, d.q, d.sampleRate)
 		}
+
 		d.bandFilters[i] = biquad.NewSection(coeffs)
+	}
+
+	// Compute the normalisation factor for the extracted band so that it has
+	// unity peak gain before recombination in split-band mode.
+	// design.Bandpass uses a constant-skirt design whose passband peak equals Q
+	// per section; highpass (and fallback) sections have unity passband gain.
+	switch d.detector {
+	case DeEsserDetectBandpass:
+		// Peak gain per section = Q; N cascaded sections → Q^N.
+		d.bandNorm = 1.0 / math.Pow(d.q, float64(d.filterOrder))
+	default:
+		d.bandNorm = 1.0
 	}
 }
