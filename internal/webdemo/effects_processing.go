@@ -100,9 +100,11 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 	if e.chainOutBuf == nil {
 		e.chainOutBuf = make(map[string][]float64, len(g.Nodes))
 	}
+
 	if e.chainSplitLowBuf == nil {
 		e.chainSplitLowBuf = make(map[string][]float64, len(g.Nodes))
 	}
+
 	if e.chainSplitHighBuf == nil {
 		e.chainSplitHighBuf = make(map[string][]float64, len(g.Nodes))
 	}
@@ -129,12 +131,14 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 		if cap(low) < len(block) {
 			low = make([]float64, len(block))
 		}
+
 		splitLow[id] = low[:len(block)]
 
 		high := splitHigh[id]
 		if cap(high) < len(block) {
 			high = make([]float64, len(block))
 		}
+
 		splitHigh[id] = high[:len(block)]
 	}
 
@@ -159,8 +163,10 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 				if edge.FromPortIndex == 1 {
 					return splitHigh[edge.From]
 				}
+
 				return splitLow[edge.From]
 			}
+
 			return buffers[edge.From]
 		}
 
@@ -191,11 +197,14 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 		if node.Type == "split-freq" {
 			low := splitLow[id]
 			high := splitHigh[id]
+
 			freq := getNodeNum(node, "freqHz", 1200)
 			if freq < 20 {
 				freq = 20
 			}
+
 			nyquist := e.sampleRate * 0.5
+
 			maxFreq := math.Max(20, nyquist*0.95)
 			if freq > maxFreq {
 				freq = maxFreq
@@ -208,6 +217,7 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 					if e.chainCrossover == nil {
 						e.chainCrossover = map[string]*crossover.Crossover{}
 					}
+
 					e.chainCrossover[id] = newXO
 					xo = newXO
 				}
@@ -219,6 +229,7 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 				copy(low, dst)
 				copy(high, dst)
 			}
+
 			continue
 		}
 

@@ -322,6 +322,7 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 		if c.FromPortIndex >= 0 {
 			edge.FromPortIndex = c.FromPortIndex
 		}
+
 		if c.ToPortIndex >= 0 {
 			edge.ToPortIndex = c.ToPortIndex
 		}
@@ -405,6 +406,7 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 	if graph == nil {
 		e.chainNodes = nil
 		e.chainCrossover = nil
+
 		return nil
 	}
 
@@ -420,6 +422,7 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 			if node.Type == "split-freq" {
 				seenCrossover[node.ID] = struct{}{}
 			}
+
 			continue
 		}
 
@@ -450,6 +453,7 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 			delete(e.chainNodes, id)
 		}
 	}
+
 	for id := range e.chainCrossover {
 		if _, ok := seenCrossover[id]; !ok {
 			delete(e.chainCrossover, id)

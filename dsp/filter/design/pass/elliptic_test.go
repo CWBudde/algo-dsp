@@ -12,23 +12,23 @@ func bandMaxMin(sections []biquad.Coefficients, fStart, fEnd, step, sr float64) 
 	minDB := math.MaxFloat64
 
 	for f := fStart; f <= fEnd; f += step {
-		d := cascadeMagDB(sections, f, sr)
-		if d > maxDB {
-			maxDB = d
+		valDB := cascadeMagDB(sections, f, sr)
+		if valDB > maxDB {
+			maxDB = valDB
 		}
 
-		if d < minDB {
-			minDB = d
+		if valDB < minDB {
+			minDB = valDB
 		}
 	}
 
 	return maxDB, minDB
 }
 
-func interiorExtremaCount(sections []biquad.Coefficients, fStart, fEnd, step, sr float64) int {
+func interiorExtremaCount(sections []biquad.Coefficients, fStart, fEnd, step, sampleRate float64) int {
 	var vals []float64
-	for f := fStart; f <= fEnd; f += step {
-		vals = append(vals, cascadeMagDB(sections, f, sr))
+	for freq := fStart; freq <= fEnd; freq += step {
+		vals = append(vals, cascadeMagDB(sections, freq, sampleRate))
 	}
 
 	if len(vals) < 3 {
@@ -48,8 +48,8 @@ func interiorExtremaCount(sections []biquad.Coefficients, fStart, fEnd, step, sr
 
 // TestEllipticLP_ValidOrders tests that elliptic lowpass produces correct section counts.
 func TestEllipticLP_ValidOrders(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	ripple := 0.5
 	stopband := 40.0
 
@@ -66,7 +66,7 @@ func TestEllipticLP_ValidOrders(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		sections := EllipticLP(fc, tt.order, ripple, stopband, sr)
+		sections := EllipticLP(cutoffFrequency, tt.order, ripple, stopband, sampleRate)
 		if len(sections) != tt.sections {
 			t.Errorf("order %d: got %d sections, want %d", tt.order, len(sections), tt.sections)
 		}
@@ -80,8 +80,8 @@ func TestEllipticLP_ValidOrders(t *testing.T) {
 
 // TestEllipticHP_ValidOrders tests that elliptic highpass produces correct section counts.
 func TestEllipticHP_ValidOrders(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	ripple := 0.5
 	stopband := 40.0
 
@@ -98,7 +98,7 @@ func TestEllipticHP_ValidOrders(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		sections := EllipticHP(fc, tt.order, ripple, stopband, sr)
+		sections := EllipticHP(cutoffFrequency, tt.order, ripple, stopband, sampleRate)
 		if len(sections) != tt.sections {
 			t.Errorf("order %d: got %d sections, want %d", tt.order, len(sections), tt.sections)
 		}
@@ -112,12 +112,12 @@ func TestEllipticHP_ValidOrders(t *testing.T) {
 
 // TestEllipticLP_PassbandRipple tests that lowpass passband ripple is within spec.
 func TestEllipticLP_PassbandRipple(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	rippleDB := 0.5
 	stopbandDB := 40.0
 
-	sections := EllipticLP(fc, 4, rippleDB, stopbandDB, sr)
+	sections := EllipticLP(cutoffFrequency, 4, rippleDB, stopbandDB, sampleRate)
 
 	// Test passband up to 80% of cutoff frequency.
 	maxRipple := 0.0
@@ -125,8 +125,8 @@ func TestEllipticLP_PassbandRipple(t *testing.T) {
 	maxRippleFreq := 0.0
 	minGainFreq := 0.0
 
-	for freq := 10.0; freq < fc*0.8; freq += 10 {
-		magDB := cascadeMagDB(sections, freq, sr)
+	for freq := 10.0; freq < cutoffFrequency*0.8; freq += 10 {
+		magDB := cascadeMagDB(sections, freq, sampleRate)
 		if absDB := math.Abs(magDB); absDB > maxRipple {
 			maxRipple = absDB
 			maxRippleFreq = freq
@@ -150,19 +150,19 @@ func TestEllipticLP_PassbandRipple(t *testing.T) {
 
 // TestEllipticLP_StopbandAttenuation tests that stopband meets minimum attenuation.
 func TestEllipticLP_StopbandAttenuation(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	rippleDB := 0.5
 	stopbandDB := 40.0
 
-	sections := EllipticLP(fc, 4, rippleDB, stopbandDB, sr)
+	sections := EllipticLP(cutoffFrequency, 4, rippleDB, stopbandDB, sampleRate)
 
 	// Test stopband from 2x cutoff to Nyquist.
 	maxStopband := -200.0
 	maxStopbandFreq := 0.0
 
-	for freq := fc * 2; freq < sr*0.45; freq += 100 {
-		magDB := cascadeMagDB(sections, freq, sr)
+	for freq := cutoffFrequency * 2; freq < sampleRate*0.45; freq += 100 {
+		magDB := cascadeMagDB(sections, freq, sampleRate)
 		if magDB > maxStopband {
 			maxStopband = magDB
 			maxStopbandFreq = freq
@@ -177,12 +177,12 @@ func TestEllipticLP_StopbandAttenuation(t *testing.T) {
 
 // TestEllipticHP_PassbandRipple tests highpass passband ripple.
 func TestEllipticHP_PassbandRipple(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	rippleDB := 0.5
 	stopbandDB := 40.0
 
-	sections := EllipticHP(fc, 4, rippleDB, stopbandDB, sr)
+	sections := EllipticHP(cutoffFrequency, 4, rippleDB, stopbandDB, sampleRate)
 
 	// Test passband from 1.2x cutoff to 80% Nyquist.
 	maxRipple := 0.0
@@ -190,8 +190,8 @@ func TestEllipticHP_PassbandRipple(t *testing.T) {
 	maxRippleFreq := 0.0
 	minGainFreq := 0.0
 
-	for freq := fc * 1.2; freq < sr*0.4; freq += 100 {
-		magDB := cascadeMagDB(sections, freq, sr)
+	for freq := cutoffFrequency * 1.2; freq < sampleRate*0.4; freq += 100 {
+		magDB := cascadeMagDB(sections, freq, sampleRate)
 		if absDB := math.Abs(magDB); absDB > maxRipple {
 			maxRipple = absDB
 			maxRippleFreq = freq
@@ -215,19 +215,19 @@ func TestEllipticHP_PassbandRipple(t *testing.T) {
 
 // TestEllipticHP_StopbandAttenuation tests highpass stopband.
 func TestEllipticHP_StopbandAttenuation(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	rippleDB := 0.5
 	stopbandDB := 40.0
 
-	sections := EllipticHP(fc, 4, rippleDB, stopbandDB, sr)
+	sections := EllipticHP(cutoffFrequency, 4, rippleDB, stopbandDB, sampleRate)
 
 	// Test stopband from 10 Hz to 0.5x cutoff.
 	maxStopband := -200.0
 	maxStopbandFreq := 0.0
 
-	for freq := 10.0; freq < fc*0.5; freq += 10 {
-		magDB := cascadeMagDB(sections, freq, sr)
+	for freq := 10.0; freq < cutoffFrequency*0.5; freq += 10 {
+		magDB := cascadeMagDB(sections, freq, sampleRate)
 		if magDB > maxStopband {
 			maxStopband = magDB
 			maxStopbandFreq = freq
@@ -242,17 +242,17 @@ func TestEllipticHP_StopbandAttenuation(t *testing.T) {
 
 // TestEllipticLP_SharperTransition tests that elliptic has sharper transition than Butterworth.
 func TestEllipticLP_SharperTransition(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	order := 4
 
-	elliptic := EllipticLP(fc, order, 0.5, 40, sr)
-	butterworth := ButterworthLP(fc, order, sr)
+	elliptic := EllipticLP(cutoffFrequency, order, 0.5, 40, sampleRate)
+	butterworth := ButterworthLP(cutoffFrequency, order, sampleRate)
 
 	// At 1.5x cutoff, elliptic should have more attenuation than Butterworth.
-	freqTest := fc * 1.5
-	ellipticDB := cascadeMagDB(elliptic, freqTest, sr)
-	butterworthDB := cascadeMagDB(butterworth, freqTest, sr)
+	freqTest := cutoffFrequency * 1.5
+	ellipticDB := cascadeMagDB(elliptic, freqTest, sampleRate)
+	butterworthDB := cascadeMagDB(butterworth, freqTest, sampleRate)
 
 	if ellipticDB >= butterworthDB {
 		t.Errorf("elliptic transition not sharper: elliptic %.1f dB, butterworth %.1f dB at %.0f Hz",
@@ -262,18 +262,18 @@ func TestEllipticLP_SharperTransition(t *testing.T) {
 
 // TestEllipticLP_HigherStopbandGivesMoreAttenuation tests stopband parameter effect.
 func TestEllipticLP_HigherStopbandGivesMoreAttenuation(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	order := 4
 	ripple := 0.5
 
-	low := EllipticLP(fc, order, ripple, 40, sr)
-	high := EllipticLP(fc, order, ripple, 60, sr)
+	low := EllipticLP(cutoffFrequency, order, ripple, 40, sampleRate)
+	high := EllipticLP(cutoffFrequency, order, ripple, 60, sampleRate)
 
 	// At 3x cutoff, higher stopband spec should give more attenuation.
-	freqTest := fc * 3
-	lowDB := cascadeMagDB(low, freqTest, sr)
-	highDB := cascadeMagDB(high, freqTest, sr)
+	freqTest := cutoffFrequency * 3
+	lowDB := cascadeMagDB(low, freqTest, sampleRate)
+	highDB := cascadeMagDB(high, freqTest, sampleRate)
 
 	if highDB >= lowDB {
 		t.Errorf("higher stopband didn't increase attenuation: 40dB=%.1f, 60dB=%.1f at %.0f Hz",
@@ -284,9 +284,9 @@ func TestEllipticLP_HigherStopbandGivesMoreAttenuation(t *testing.T) {
 // TestEllipticLP_InvalidParams tests parameter validation.
 func TestEllipticLP_InvalidParams(t *testing.T) {
 	tests := []struct {
-		name string
-		freq float64
-		sr   float64
+		name       string
+		freq       float64
+		sampleRate float64
 	}{
 		{"negative freq", -100, 48000},
 		{"zero freq", 0, 48000},
@@ -296,7 +296,7 @@ func TestEllipticLP_InvalidParams(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		sections := EllipticLP(tt.freq, 4, 0.5, 40, tt.sr)
+		sections := EllipticLP(tt.freq, 4, 0.5, 40, tt.sampleRate)
 		if sections != nil {
 			t.Errorf("%s: expected nil, got %d sections", tt.name, len(sections))
 		}
@@ -416,16 +416,16 @@ func TestEllipticHP_FiniteResponses(t *testing.T) {
 // TestEllipticLP_RippleParameterAffectsPassband enforces a core elliptic property:
 // increasing rippleDB must increase passband ripple extent for fixed order/stopband.
 func TestEllipticLP_RippleParameterAffectsPassband(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	order := 4
 	stopbandDB := 40.0
 
-	lowRipple := EllipticLP(fc, order, 0.1, stopbandDB, sr)
-	highRipple := EllipticLP(fc, order, 1.0, stopbandDB, sr)
+	lowRipple := EllipticLP(cutoffFrequency, order, 0.1, stopbandDB, sampleRate)
+	highRipple := EllipticLP(cutoffFrequency, order, 1.0, stopbandDB, sampleRate)
 
-	lowMax, lowMin := bandMaxMin(lowRipple, 10, 0.9*fc, 10, sr)
-	highMax, highMin := bandMaxMin(highRipple, 10, 0.9*fc, 10, sr)
+	lowMax, lowMin := bandMaxMin(lowRipple, 10, 0.9*cutoffFrequency, 10, sampleRate)
+	highMax, highMin := bandMaxMin(highRipple, 10, 0.9*cutoffFrequency, 10, sampleRate)
 
 	lowSpan := lowMax - lowMin
 	highSpan := highMax - highMin
@@ -437,16 +437,16 @@ func TestEllipticLP_RippleParameterAffectsPassband(t *testing.T) {
 
 // TestEllipticHP_RippleParameterAffectsPassband enforces the same for highpass.
 func TestEllipticHP_RippleParameterAffectsPassband(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	order := 4
 	stopbandDB := 40.0
 
-	lowRipple := EllipticHP(fc, order, 0.1, stopbandDB, sr)
-	highRipple := EllipticHP(fc, order, 1.0, stopbandDB, sr)
+	lowRipple := EllipticHP(cutoffFrequency, order, 0.1, stopbandDB, sampleRate)
+	highRipple := EllipticHP(cutoffFrequency, order, 1.0, stopbandDB, sampleRate)
 
-	lowMax, lowMin := bandMaxMin(lowRipple, 1.2*fc, 0.4*sr, 100, sr)
-	highMax, highMin := bandMaxMin(highRipple, 1.2*fc, 0.4*sr, 100, sr)
+	lowMax, lowMin := bandMaxMin(lowRipple, 1.2*cutoffFrequency, 0.4*sampleRate, 100, sampleRate)
+	highMax, highMin := bandMaxMin(highRipple, 1.2*cutoffFrequency, 0.4*sampleRate, 100, sampleRate)
 
 	lowSpan := lowMax - lowMin
 	highSpan := highMax - highMin
@@ -459,11 +459,11 @@ func TestEllipticHP_RippleParameterAffectsPassband(t *testing.T) {
 // TestEllipticLP_PassbandHasInteriorRippleExtrema checks the passband shape is not
 // a purely monotonic roll-off for order>=4; elliptic passbands should be equiripple.
 func TestEllipticLP_PassbandHasInteriorRippleExtrema(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
-	sections := EllipticLP(fc, 4, 0.5, 40, sr)
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
+	sections := EllipticLP(cutoffFrequency, 4, 0.5, 40, sampleRate)
 
-	extrema := interiorExtremaCount(sections, 50, 0.95*fc, 10, sr)
+	extrema := interiorExtremaCount(sections, 50, 0.95*cutoffFrequency, 10, sampleRate)
 	if extrema < 1 {
 		t.Fatalf("LP passband appears monotonic (no interior extrema), expected equiripple behavior")
 	}
@@ -472,7 +472,7 @@ func TestEllipticLP_PassbandHasInteriorRippleExtrema(t *testing.T) {
 // TestEllipticLPHP_EdgeCasesNearLimits validates stable, finite behavior near
 // frequency and ripple extremes without relying on diagnostic logging tests.
 func TestEllipticLPHP_EdgeCasesNearLimits(t *testing.T) {
-	const sr = 48000.0
+	const sampleRate = 48000.0
 
 	cases := []struct {
 		name       string
@@ -483,25 +483,25 @@ func TestEllipticLPHP_EdgeCasesNearLimits(t *testing.T) {
 	}{
 		{name: "tiny cutoff", fc: 5.0, order: 4, rippleDB: 0.1, stopbandDB: 40},
 		{name: "low cutoff", fc: 20.0, order: 6, rippleDB: 0.5, stopbandDB: 60},
-		{name: "near nyquist", fc: sr * 0.499, order: 4, rippleDB: 0.5, stopbandDB: 40},
+		{name: "near nyquist", fc: sampleRate * 0.499, order: 4, rippleDB: 0.5, stopbandDB: 40},
 		{name: "very small ripple", fc: 1000.0, order: 4, rippleDB: 0.01, stopbandDB: 40},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			lp := EllipticLP(tc.fc, tc.order, tc.rippleDB, tc.stopbandDB, sr)
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			lowPass := EllipticLP(testCase.fc, testCase.order, testCase.rippleDB, testCase.stopbandDB, sampleRate)
+			highPass := EllipticHP(testCase.fc, testCase.order, testCase.rippleDB, testCase.stopbandDB, sampleRate)
 
-			hp := EllipticHP(tc.fc, tc.order, tc.rippleDB, tc.stopbandDB, sr)
-			if len(lp) == 0 || len(hp) == 0 {
-				t.Fatalf("expected non-empty sections for %+v", tc)
+			if len(lowPass) == 0 || len(highPass) == 0 {
+				t.Fatalf("expected non-empty sections for %+v", testCase)
 			}
 
-			for _, s := range lp {
+			for _, s := range lowPass {
 				assertFiniteCoefficients(t, s)
 				assertStableSection(t, s)
 			}
 
-			for _, s := range hp {
+			for _, s := range highPass {
 				assertFiniteCoefficients(t, s)
 				assertStableSection(t, s)
 			}
