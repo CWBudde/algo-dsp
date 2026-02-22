@@ -154,6 +154,9 @@ const state = {
     spectralPitchFrameSize: 1024,
     spectralPitchHopRatio: 0.25,
     spectralPitchHop: 256,
+    expanderEnabled: false,
+    deesserEnabled: false,
+    multibandEnabled: false,
     harmonicBassEnabled: false,
     harmonicBassFrequency: 80,
     harmonicBassInputGain: 1,
@@ -327,6 +330,71 @@ const el = {
   fxGateReleaseValue: document.getElementById("fx-gate-release-value"),
   fxGateRange: document.getElementById("fx-gate-range"),
   fxGateRangeValue: document.getElementById("fx-gate-range-value"),
+  fxExpTopology: document.getElementById("fx-exp-topology"),
+  fxExpDetector: document.getElementById("fx-exp-detector"),
+  fxExpRMS: document.getElementById("fx-exp-rms"),
+  fxExpRMSValue: document.getElementById("fx-exp-rms-value"),
+  fxExpThresh: document.getElementById("fx-exp-thresh"),
+  fxExpThreshValue: document.getElementById("fx-exp-thresh-value"),
+  fxExpRatio: document.getElementById("fx-exp-ratio"),
+  fxExpRatioValue: document.getElementById("fx-exp-ratio-value"),
+  fxExpKnee: document.getElementById("fx-exp-knee"),
+  fxExpKneeValue: document.getElementById("fx-exp-knee-value"),
+  fxExpAttack: document.getElementById("fx-exp-attack"),
+  fxExpAttackValue: document.getElementById("fx-exp-attack-value"),
+  fxExpRelease: document.getElementById("fx-exp-release"),
+  fxExpReleaseValue: document.getElementById("fx-exp-release-value"),
+  fxExpRange: document.getElementById("fx-exp-range"),
+  fxExpRangeValue: document.getElementById("fx-exp-range-value"),
+  fxDeessMode: document.getElementById("fx-deess-mode"),
+  fxDeessDetector: document.getElementById("fx-deess-detector"),
+  fxDeessListen: document.getElementById("fx-deess-listen"),
+  fxDeessFreq: document.getElementById("fx-deess-freq"),
+  fxDeessFreqValue: document.getElementById("fx-deess-freq-value"),
+  fxDeessQ: document.getElementById("fx-deess-q"),
+  fxDeessQValue: document.getElementById("fx-deess-q-value"),
+  fxDeessOrder: document.getElementById("fx-deess-order"),
+  fxDeessOrderValue: document.getElementById("fx-deess-order-value"),
+  fxDeessThresh: document.getElementById("fx-deess-thresh"),
+  fxDeessThreshValue: document.getElementById("fx-deess-thresh-value"),
+  fxDeessRatio: document.getElementById("fx-deess-ratio"),
+  fxDeessRatioValue: document.getElementById("fx-deess-ratio-value"),
+  fxDeessKnee: document.getElementById("fx-deess-knee"),
+  fxDeessKneeValue: document.getElementById("fx-deess-knee-value"),
+  fxDeessAttack: document.getElementById("fx-deess-attack"),
+  fxDeessAttackValue: document.getElementById("fx-deess-attack-value"),
+  fxDeessRelease: document.getElementById("fx-deess-release"),
+  fxDeessReleaseValue: document.getElementById("fx-deess-release-value"),
+  fxDeessRange: document.getElementById("fx-deess-range"),
+  fxDeessRangeValue: document.getElementById("fx-deess-range-value"),
+  fxMBBands: document.getElementById("fx-mb-bands"),
+  fxMBCross1: document.getElementById("fx-mb-cross1"),
+  fxMBCross1Value: document.getElementById("fx-mb-cross1-value"),
+  fxMBCross2: document.getElementById("fx-mb-cross2"),
+  fxMBCross2Value: document.getElementById("fx-mb-cross2-value"),
+  fxMBOrder: document.getElementById("fx-mb-order"),
+  fxMBOrderValue: document.getElementById("fx-mb-order-value"),
+  fxMBAttack: document.getElementById("fx-mb-attack"),
+  fxMBAttackValue: document.getElementById("fx-mb-attack-value"),
+  fxMBRelease: document.getElementById("fx-mb-release"),
+  fxMBReleaseValue: document.getElementById("fx-mb-release-value"),
+  fxMBKnee: document.getElementById("fx-mb-knee"),
+  fxMBKneeValue: document.getElementById("fx-mb-knee-value"),
+  fxMBAutoMakeup: document.getElementById("fx-mb-auto-makeup"),
+  fxMBMakeup: document.getElementById("fx-mb-makeup"),
+  fxMBMakeupValue: document.getElementById("fx-mb-makeup-value"),
+  fxMBLowThresh: document.getElementById("fx-mb-low-thresh"),
+  fxMBLowThreshValue: document.getElementById("fx-mb-low-thresh-value"),
+  fxMBLowRatio: document.getElementById("fx-mb-low-ratio"),
+  fxMBLowRatioValue: document.getElementById("fx-mb-low-ratio-value"),
+  fxMBMidThresh: document.getElementById("fx-mb-mid-thresh"),
+  fxMBMidThreshValue: document.getElementById("fx-mb-mid-thresh-value"),
+  fxMBMidRatio: document.getElementById("fx-mb-mid-ratio"),
+  fxMBMidRatioValue: document.getElementById("fx-mb-mid-ratio-value"),
+  fxMBHighThresh: document.getElementById("fx-mb-high-thresh"),
+  fxMBHighThreshValue: document.getElementById("fx-mb-high-thresh-value"),
+  fxMBHighRatio: document.getElementById("fx-mb-high-ratio"),
+  fxMBHighRatioValue: document.getElementById("fx-mb-high-ratio-value"),
   widenerWidth: document.getElementById("widener-width"),
   widenerWidthValue: document.getElementById("widener-width-value"),
   widenerMix: document.getElementById("widener-mix"),
@@ -484,7 +552,7 @@ const EFFECT_NODE_DEFAULTS = {
     releaseMs: 100,
     makeupGainDB: 0,
   },
-  "dyn-limiter": { thresholdDB: -0.1, releaseMs: 100 },
+    "dyn-limiter": { thresholdDB: -0.1, releaseMs: 100 },
   "dyn-gate": {
     mode: "gate",
     thresholdDB: -40,
@@ -494,6 +562,48 @@ const EFFECT_NODE_DEFAULTS = {
     holdMs: 50,
     releaseMs: 100,
     rangeDB: -80,
+  },
+  "dyn-expander": {
+    topology: "feedforward",
+    detector: "peak",
+    rmsWindowMs: 30,
+    thresholdDB: -35,
+    ratio: 2.0,
+    kneeDB: 6,
+    attackMs: 1,
+    releaseMs: 100,
+    rangeDB: -60,
+  },
+  "dyn-deesser": {
+    mode: "splitband",
+    detector: "bandpass",
+    listen: 0,
+    freqHz: 6000,
+    q: 1.5,
+    filterOrder: 2,
+    thresholdDB: -20,
+    ratio: 4,
+    kneeDB: 3,
+    attackMs: 0.5,
+    releaseMs: 20,
+    rangeDB: -24,
+  },
+  "dyn-multiband": {
+    bands: 3,
+    cross1Hz: 250,
+    cross2Hz: 3000,
+    order: 4,
+    attackMs: 8,
+    releaseMs: 120,
+    kneeDB: 6,
+    autoMakeup: 0,
+    makeupGainDB: 0,
+    lowThresholdDB: -20,
+    lowRatio: 2.5,
+    midThresholdDB: -18,
+    midRatio: 3.0,
+    highThresholdDB: -14,
+    highRatio: 4.0,
   },
   widener: { width: 1.0, mix: 0.5 },
   phaser: {
@@ -622,6 +732,48 @@ function applyNodeParamsToUI(node) {
       el.fxGateHold.value = p.holdMs;
       el.fxGateRelease.value = p.releaseMs;
       el.fxGateRange.value = p.rangeDB;
+      break;
+    case "dyn-expander":
+      el.fxExpTopology.value = p.topology || "feedforward";
+      el.fxExpDetector.value = p.detector || "peak";
+      el.fxExpRMS.value = p.rmsWindowMs;
+      el.fxExpThresh.value = p.thresholdDB;
+      el.fxExpRatio.value = p.ratio;
+      el.fxExpKnee.value = p.kneeDB;
+      el.fxExpAttack.value = p.attackMs;
+      el.fxExpRelease.value = p.releaseMs;
+      el.fxExpRange.value = p.rangeDB;
+      break;
+    case "dyn-deesser":
+      el.fxDeessMode.value = p.mode || "splitband";
+      el.fxDeessDetector.value = p.detector || "bandpass";
+      el.fxDeessListen.value = String(Number(p.listen || 0));
+      el.fxDeessFreq.value = p.freqHz;
+      el.fxDeessQ.value = p.q;
+      el.fxDeessOrder.value = p.filterOrder;
+      el.fxDeessThresh.value = p.thresholdDB;
+      el.fxDeessRatio.value = p.ratio;
+      el.fxDeessKnee.value = p.kneeDB;
+      el.fxDeessAttack.value = p.attackMs;
+      el.fxDeessRelease.value = p.releaseMs;
+      el.fxDeessRange.value = p.rangeDB;
+      break;
+    case "dyn-multiband":
+      el.fxMBBands.value = String(p.bands ?? 3);
+      el.fxMBCross1.value = p.cross1Hz;
+      el.fxMBCross2.value = p.cross2Hz;
+      el.fxMBOrder.value = p.order;
+      el.fxMBAttack.value = p.attackMs;
+      el.fxMBRelease.value = p.releaseMs;
+      el.fxMBKnee.value = p.kneeDB;
+      el.fxMBAutoMakeup.value = String(Number(p.autoMakeup || 0));
+      el.fxMBMakeup.value = p.makeupGainDB;
+      el.fxMBLowThresh.value = p.lowThresholdDB;
+      el.fxMBLowRatio.value = p.lowRatio;
+      el.fxMBMidThresh.value = p.midThresholdDB;
+      el.fxMBMidRatio.value = p.midRatio;
+      el.fxMBHighThresh.value = p.highThresholdDB;
+      el.fxMBHighRatio.value = p.highRatio;
       break;
     case "widener":
       el.widenerWidth.value = p.width;
@@ -784,6 +936,51 @@ function collectNodeParamsFromUI(nodeType) {
         holdMs: Number(el.fxGateHold.value),
         releaseMs: Number(el.fxGateRelease.value),
         rangeDB: Number(el.fxGateRange.value),
+      };
+    case "dyn-expander":
+      return {
+        topology: String(el.fxExpTopology.value || "feedforward"),
+        detector: String(el.fxExpDetector.value || "peak"),
+        rmsWindowMs: Number(el.fxExpRMS.value),
+        thresholdDB: Number(el.fxExpThresh.value),
+        ratio: Number(el.fxExpRatio.value),
+        kneeDB: Number(el.fxExpKnee.value),
+        attackMs: Number(el.fxExpAttack.value),
+        releaseMs: Number(el.fxExpRelease.value),
+        rangeDB: Number(el.fxExpRange.value),
+      };
+    case "dyn-deesser":
+      return {
+        mode: String(el.fxDeessMode.value || "splitband"),
+        detector: String(el.fxDeessDetector.value || "bandpass"),
+        listen: Number(el.fxDeessListen.value),
+        freqHz: Number(el.fxDeessFreq.value),
+        q: Number(el.fxDeessQ.value),
+        filterOrder: Number(el.fxDeessOrder.value),
+        thresholdDB: Number(el.fxDeessThresh.value),
+        ratio: Number(el.fxDeessRatio.value),
+        kneeDB: Number(el.fxDeessKnee.value),
+        attackMs: Number(el.fxDeessAttack.value),
+        releaseMs: Number(el.fxDeessRelease.value),
+        rangeDB: Number(el.fxDeessRange.value),
+      };
+    case "dyn-multiband":
+      return {
+        bands: Number(el.fxMBBands.value),
+        cross1Hz: Number(el.fxMBCross1.value),
+        cross2Hz: Number(el.fxMBCross2.value),
+        order: Number(el.fxMBOrder.value),
+        attackMs: Number(el.fxMBAttack.value),
+        releaseMs: Number(el.fxMBRelease.value),
+        kneeDB: Number(el.fxMBKnee.value),
+        autoMakeup: Number(el.fxMBAutoMakeup.value),
+        makeupGainDB: Number(el.fxMBMakeup.value),
+        lowThresholdDB: Number(el.fxMBLowThresh.value),
+        lowRatio: Number(el.fxMBLowRatio.value),
+        midThresholdDB: Number(el.fxMBMidThresh.value),
+        midRatio: Number(el.fxMBMidRatio.value),
+        highThresholdDB: Number(el.fxMBHighThresh.value),
+        highRatio: Number(el.fxMBHighRatio.value),
       };
     case "widener":
       return {
@@ -1384,6 +1581,9 @@ function readEffectsFromChain() {
     delayEnabled: enabled.has("delay"),
     timePitchEnabled: enabled.has("pitch-time"),
     spectralPitchEnabled: enabled.has("pitch-spectral"),
+    expanderEnabled: enabled.has("dyn-expander"),
+    deesserEnabled: enabled.has("dyn-deesser"),
+    multibandEnabled: enabled.has("dyn-multiband"),
     harmonicBassEnabled: enabled.has("bass"),
     reverbEnabled: enabled.has("reverb"),
     chainGraphJSON: chainState ? JSON.stringify(chainState) : "",
@@ -1503,6 +1703,93 @@ function updateEffectsText() {
   }
   if (el.fxGateRangeValue) {
     el.fxGateRangeValue.textContent = `${Number(el.fxGateRange.value).toFixed(0)} dB`;
+  }
+  if (el.fxExpRMSValue) {
+    el.fxExpRMSValue.textContent = `${Number(el.fxExpRMS.value).toFixed(0)} ms`;
+  }
+  if (el.fxExpThreshValue) {
+    el.fxExpThreshValue.textContent = `${Number(el.fxExpThresh.value).toFixed(1)} dB`;
+  }
+  if (el.fxExpRatioValue) {
+    el.fxExpRatioValue.textContent = `${Number(el.fxExpRatio.value).toFixed(1)}:1`;
+  }
+  if (el.fxExpKneeValue) {
+    el.fxExpKneeValue.textContent = `${Number(el.fxExpKnee.value).toFixed(1)} dB`;
+  }
+  if (el.fxExpAttackValue) {
+    el.fxExpAttackValue.textContent = `${Number(el.fxExpAttack.value).toFixed(1)} ms`;
+  }
+  if (el.fxExpReleaseValue) {
+    el.fxExpReleaseValue.textContent = `${Number(el.fxExpRelease.value).toFixed(0)} ms`;
+  }
+  if (el.fxExpRangeValue) {
+    el.fxExpRangeValue.textContent = `${Number(el.fxExpRange.value).toFixed(0)} dB`;
+  }
+  if (el.fxDeessFreqValue) {
+    el.fxDeessFreqValue.textContent = `${Number(el.fxDeessFreq.value).toFixed(0)} Hz`;
+  }
+  if (el.fxDeessQValue) {
+    el.fxDeessQValue.textContent = Number(el.fxDeessQ.value).toFixed(2);
+  }
+  if (el.fxDeessOrderValue) {
+    el.fxDeessOrderValue.textContent = `${Number(el.fxDeessOrder.value).toFixed(0)}`;
+  }
+  if (el.fxDeessThreshValue) {
+    el.fxDeessThreshValue.textContent = `${Number(el.fxDeessThresh.value).toFixed(1)} dB`;
+  }
+  if (el.fxDeessRatioValue) {
+    el.fxDeessRatioValue.textContent = `${Number(el.fxDeessRatio.value).toFixed(1)}:1`;
+  }
+  if (el.fxDeessKneeValue) {
+    el.fxDeessKneeValue.textContent = `${Number(el.fxDeessKnee.value).toFixed(1)} dB`;
+  }
+  if (el.fxDeessAttackValue) {
+    el.fxDeessAttackValue.textContent = `${Number(el.fxDeessAttack.value).toFixed(2)} ms`;
+  }
+  if (el.fxDeessReleaseValue) {
+    el.fxDeessReleaseValue.textContent = `${Number(el.fxDeessRelease.value).toFixed(0)} ms`;
+  }
+  if (el.fxDeessRangeValue) {
+    el.fxDeessRangeValue.textContent = `${Number(el.fxDeessRange.value).toFixed(0)} dB`;
+  }
+  if (el.fxMBCross1Value) {
+    el.fxMBCross1Value.textContent = `${Number(el.fxMBCross1.value).toFixed(0)} Hz`;
+  }
+  if (el.fxMBCross2Value) {
+    el.fxMBCross2Value.textContent = `${Number(el.fxMBCross2.value).toFixed(0)} Hz`;
+  }
+  if (el.fxMBOrderValue) {
+    el.fxMBOrderValue.textContent = `${Number(el.fxMBOrder.value).toFixed(0)}`;
+  }
+  if (el.fxMBAttackValue) {
+    el.fxMBAttackValue.textContent = `${Number(el.fxMBAttack.value).toFixed(1)} ms`;
+  }
+  if (el.fxMBReleaseValue) {
+    el.fxMBReleaseValue.textContent = `${Number(el.fxMBRelease.value).toFixed(0)} ms`;
+  }
+  if (el.fxMBKneeValue) {
+    el.fxMBKneeValue.textContent = `${Number(el.fxMBKnee.value).toFixed(1)} dB`;
+  }
+  if (el.fxMBMakeupValue) {
+    el.fxMBMakeupValue.textContent = `${Number(el.fxMBMakeup.value).toFixed(1)} dB`;
+  }
+  if (el.fxMBLowThreshValue) {
+    el.fxMBLowThreshValue.textContent = `${Number(el.fxMBLowThresh.value).toFixed(1)} dB`;
+  }
+  if (el.fxMBLowRatioValue) {
+    el.fxMBLowRatioValue.textContent = `${Number(el.fxMBLowRatio.value).toFixed(1)}:1`;
+  }
+  if (el.fxMBMidThreshValue) {
+    el.fxMBMidThreshValue.textContent = `${Number(el.fxMBMidThresh.value).toFixed(1)} dB`;
+  }
+  if (el.fxMBMidRatioValue) {
+    el.fxMBMidRatioValue.textContent = `${Number(el.fxMBMidRatio.value).toFixed(1)}:1`;
+  }
+  if (el.fxMBHighThreshValue) {
+    el.fxMBHighThreshValue.textContent = `${Number(el.fxMBHighThresh.value).toFixed(1)} dB`;
+  }
+  if (el.fxMBHighRatioValue) {
+    el.fxMBHighRatioValue.textContent = `${Number(el.fxMBHighRatio.value).toFixed(1)}:1`;
   }
   el.widenerWidthValue.textContent = `${Number(el.widenerWidth.value).toFixed(2)}x`;
   el.widenerMixValue.textContent = `${Math.round(Number(el.widenerMix.value) * 100)}%`;
@@ -1865,6 +2152,42 @@ function bindEvents() {
     el.fxGateHold,
     el.fxGateRelease,
     el.fxGateRange,
+    el.fxExpTopology,
+    el.fxExpDetector,
+    el.fxExpRMS,
+    el.fxExpThresh,
+    el.fxExpRatio,
+    el.fxExpKnee,
+    el.fxExpAttack,
+    el.fxExpRelease,
+    el.fxExpRange,
+    el.fxDeessMode,
+    el.fxDeessDetector,
+    el.fxDeessListen,
+    el.fxDeessFreq,
+    el.fxDeessQ,
+    el.fxDeessOrder,
+    el.fxDeessThresh,
+    el.fxDeessRatio,
+    el.fxDeessKnee,
+    el.fxDeessAttack,
+    el.fxDeessRelease,
+    el.fxDeessRange,
+    el.fxMBBands,
+    el.fxMBCross1,
+    el.fxMBCross2,
+    el.fxMBOrder,
+    el.fxMBAttack,
+    el.fxMBRelease,
+    el.fxMBKnee,
+    el.fxMBAutoMakeup,
+    el.fxMBMakeup,
+    el.fxMBLowThresh,
+    el.fxMBLowRatio,
+    el.fxMBMidThresh,
+    el.fxMBMidRatio,
+    el.fxMBHighThresh,
+    el.fxMBHighRatio,
     el.widenerWidth,
     el.widenerMix,
     el.phaserRate,

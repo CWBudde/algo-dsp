@@ -226,6 +226,25 @@ func init() {
 
 		return &gateChainRuntime{fx: fx}, nil
 	})
+	registerChainEffectFactory("dyn-expander", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := dynamics.NewExpander(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &expanderChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("dyn-deesser", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := dynamics.NewDeEsser(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &deesserChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("dyn-multiband", func(e *Engine) (chainEffectRuntime, error) {
+		return &multibandChainRuntime{}, nil
+	})
 }
 
 // parseChainGraph parses the JSON chain graph and performs a topological sort
@@ -1334,6 +1353,246 @@ func (r *gateChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float
 	r.fx.ProcessInPlace(block)
 }
 
+type expanderChainRuntime struct {
+	fx *dynamics.Expander
+}
+
+func (r *expanderChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -35), -80, 0)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetRatio(clamp(getNodeNum(node, "ratio", 2), 1, 100)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetKnee(clamp(getNodeNum(node, "kneeDB", 6), 0, 24)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetAttack(clamp(getNodeNum(node, "attackMs", 1), 0.1, 1000)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 100), 1, 5000)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetRange(clamp(getNodeNum(node, "rangeDB", -60), -120, 0)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetTopology(normalizeDynamicsTopology(node.Str["topology"])); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetDetectorMode(normalizeDynamicsDetectorMode(node.Str["detector"])); err != nil {
+		return err
+	}
+
+	return r.fx.SetRMSWindow(clamp(getNodeNum(node, "rmsWindowMs", 30), 1, 1000))
+}
+
+func (r *expanderChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type deesserChainRuntime struct {
+	fx *dynamics.DeEsser
+}
+
+func (r *deesserChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetFrequency(clamp(getNodeNum(node, "freqHz", 6000), 1000, e.sampleRate*0.49)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetQ(clamp(getNodeNum(node, "q", 1.5), 0.1, 10)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetThreshold(clamp(getNodeNum(node, "thresholdDB", -20), -80, 0)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetRatio(clamp(getNodeNum(node, "ratio", 4), 1, 100)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetKnee(clamp(getNodeNum(node, "kneeDB", 3), 0, 12)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetAttack(clamp(getNodeNum(node, "attackMs", 0.5), 0.01, 50)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 20), 1, 500)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetRange(clamp(getNodeNum(node, "rangeDB", -24), -60, 0)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetMode(normalizeDeesserMode(node.Str["mode"])); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetDetector(normalizeDeesserDetector(node.Str["detector"])); err != nil {
+		return err
+	}
+
+	order := int(math.Round(getNodeNum(node, "filterOrder", 2)))
+	if order < 1 {
+		order = 1
+	}
+
+	if order > 4 {
+		order = 4
+	}
+
+	if err := r.fx.SetFilterOrder(order); err != nil {
+		return err
+	}
+
+	r.fx.SetListen(getNodeNum(node, "listen", 0) >= 0.5)
+
+	return nil
+}
+
+func (r *deesserChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type multibandChainRuntime struct {
+	fx        *dynamics.MultibandCompressor
+	lastBands int
+	lastOrder int
+	lastC1    float64
+	lastC2    float64
+	lastSR    float64
+}
+
+func (r *multibandChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	bands := int(math.Round(getNodeNum(node, "bands", 3)))
+	if bands < 2 {
+		bands = 2
+	}
+
+	if bands > 3 {
+		bands = 3
+	}
+
+	order := int(math.Round(getNodeNum(node, "order", 4)))
+	if order < 2 {
+		order = 2
+	}
+	if order > 24 {
+		order = 24
+	}
+	if order%2 != 0 {
+		order++
+	}
+
+	c1 := clamp(getNodeNum(node, "cross1Hz", 250), 40, e.sampleRate*0.2)
+	c2 := clamp(getNodeNum(node, "cross2Hz", 3000), c1+100, e.sampleRate*0.45)
+
+	rebuild := r.fx == nil ||
+		r.lastBands != bands ||
+		r.lastOrder != order ||
+		math.Abs(r.lastC1-c1) > 1e-9 ||
+		math.Abs(r.lastC2-c2) > 1e-9 ||
+		math.Abs(r.lastSR-e.sampleRate) > 1e-9
+
+	if rebuild {
+		freqs := []float64{c1}
+		if bands == 3 {
+			freqs = append(freqs, c2)
+		}
+
+		fx, err := dynamics.NewMultibandCompressor(freqs, order, e.sampleRate)
+		if err != nil {
+			return err
+		}
+
+		r.fx = fx
+		r.lastBands = bands
+		r.lastOrder = order
+		r.lastC1 = c1
+		r.lastC2 = c2
+		r.lastSR = e.sampleRate
+	}
+
+	// Band 1 (low)
+	if err := r.fx.SetBandThreshold(0, clamp(getNodeNum(node, "lowThresholdDB", -20), -80, 0)); err != nil {
+		return err
+	}
+	if err := r.fx.SetBandRatio(0, clamp(getNodeNum(node, "lowRatio", 2.5), 1, 20)); err != nil {
+		return err
+	}
+
+	// Band 2 (mid / high for 2-band)
+	if err := r.fx.SetBandThreshold(1, clamp(getNodeNum(node, "midThresholdDB", -18), -80, 0)); err != nil {
+		return err
+	}
+	if err := r.fx.SetBandRatio(1, clamp(getNodeNum(node, "midRatio", 3.0), 1, 20)); err != nil {
+		return err
+	}
+
+	// Optional band 3 (high)
+	if bands == 3 {
+		if err := r.fx.SetBandThreshold(2, clamp(getNodeNum(node, "highThresholdDB", -14), -80, 0)); err != nil {
+			return err
+		}
+		if err := r.fx.SetBandRatio(2, clamp(getNodeNum(node, "highRatio", 4.0), 1, 20)); err != nil {
+			return err
+		}
+	}
+
+	attack := clamp(getNodeNum(node, "attackMs", 8), 0.1, 1000)
+	release := clamp(getNodeNum(node, "releaseMs", 120), 1, 5000)
+	knee := clamp(getNodeNum(node, "kneeDB", 6), 0, 24)
+	makeup := clamp(getNodeNum(node, "makeupGainDB", 0), 0, 24)
+	autoMakeup := getNodeNum(node, "autoMakeup", 0) >= 0.5
+
+	for b := 0; b < r.fx.NumBands(); b++ {
+		if err := r.fx.SetBandAttack(b, attack); err != nil {
+			return err
+		}
+		if err := r.fx.SetBandRelease(b, release); err != nil {
+			return err
+		}
+		if err := r.fx.SetBandKnee(b, knee); err != nil {
+			return err
+		}
+		if err := r.fx.SetBandAutoMakeup(b, autoMakeup); err != nil {
+			return err
+		}
+		if !autoMakeup {
+			if err := r.fx.SetBandMakeupGain(b, makeup); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *multibandChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	if r.fx == nil {
+		return
+	}
+	r.fx.ProcessInPlace(block)
+}
+
 func normalizeDistortionMode(raw string) effects.DistortionMode {
 	switch raw {
 	case "hardclip":
@@ -1403,5 +1662,49 @@ func normalizeTransformerQuality(raw string) effects.TransformerQuality {
 		fallthrough
 	default:
 		return effects.TransformerQualityHigh
+	}
+}
+
+func normalizeDynamicsTopology(raw string) dynamics.DynamicsTopology {
+	switch raw {
+	case "feedback":
+		return dynamics.DynamicsTopologyFeedback
+	case "feedforward":
+		fallthrough
+	default:
+		return dynamics.DynamicsTopologyFeedforward
+	}
+}
+
+func normalizeDynamicsDetectorMode(raw string) dynamics.DetectorMode {
+	switch raw {
+	case "rms":
+		return dynamics.DetectorModeRMS
+	case "peak":
+		fallthrough
+	default:
+		return dynamics.DetectorModePeak
+	}
+}
+
+func normalizeDeesserMode(raw string) dynamics.DeEsserMode {
+	switch raw {
+	case "wideband":
+		return dynamics.DeEsserWideband
+	case "splitband":
+		fallthrough
+	default:
+		return dynamics.DeEsserSplitBand
+	}
+}
+
+func normalizeDeesserDetector(raw string) dynamics.DeEsserDetector {
+	switch raw {
+	case "highpass":
+		return dynamics.DeEsserDetectHighpass
+	case "bandpass":
+		fallthrough
+	default:
+		return dynamics.DeEsserDetectBandpass
 	}
 }

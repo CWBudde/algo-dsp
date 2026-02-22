@@ -25,6 +25,9 @@
     "dyn-compressor": { label: "Compressor",        hue: 120, category: "Dynamics" },
     "dyn-limiter":    { label: "Limiter",           hue: 98,  category: "Dynamics" },
     "dyn-gate":       { label: "Gate/Expander",     hue: 82,  category: "Dynamics" },
+    "dyn-expander":   { label: "Expander",          hue: 66,  category: "Dynamics" },
+    "dyn-deesser":    { label: "De-Esser",          hue: 58,  category: "Dynamics" },
+    "dyn-multiband":  { label: "Multiband Comp",    hue: 108, category: "Dynamics" },
     split:            { label: "Split",             hue: 210, category: "Routing", utility: true },
     sum:              { label: "Sum",               hue: 35,  category: "Routing", utility: true },
   };
