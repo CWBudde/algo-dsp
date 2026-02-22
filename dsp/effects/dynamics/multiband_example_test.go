@@ -35,9 +35,9 @@ func ExampleNewMultibandCompressor() {
 func ExampleNewMultibandCompressorWithConfig() {
 	autoTrue := true
 	configs := []dynamics.BandConfig{
-		{ThresholdDB: -24, Ratio: 3.0, KneeDB: 8.0, AttackMs: 20, ReleaseMs: 200, AutoMakeup: &autoTrue},
-		{ThresholdDB: -18, Ratio: 4.0, KneeDB: 6.0, AttackMs: 10, ReleaseMs: 100, AutoMakeup: &autoTrue},
-		{ThresholdDB: -12, Ratio: 2.0, KneeDB: 4.0, AttackMs: 5, ReleaseMs: 80, AutoMakeup: &autoTrue},
+		{ThresholdDB: dynamics.Float64Ptr(-24), Ratio: 3.0, KneeDB: dynamics.Float64Ptr(8.0), AttackMs: 20, ReleaseMs: 200, AutoMakeup: &autoTrue},
+		{ThresholdDB: dynamics.Float64Ptr(-18), Ratio: 4.0, KneeDB: dynamics.Float64Ptr(6.0), AttackMs: 10, ReleaseMs: 100, AutoMakeup: &autoTrue},
+		{ThresholdDB: dynamics.Float64Ptr(-12), Ratio: 2.0, KneeDB: dynamics.Float64Ptr(4.0), AttackMs: 5, ReleaseMs: 80, AutoMakeup: &autoTrue},
 	}
 
 	mc, err := dynamics.NewMultibandCompressorWithConfig(

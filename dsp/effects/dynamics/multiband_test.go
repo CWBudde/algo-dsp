@@ -96,6 +96,11 @@ func TestNewMultibandCompressorWithConfig(t *testing.T) {
 		if mc.Band(2).Attack() != 5.0 {
 			t.Errorf("band 2 attack = %f, want 5.0", mc.Band(2).Attack())
 		}
+
+		// Verify KneeDB: 0 (hard knee) was actually applied, not skipped.
+		if mc.Band(2).Knee() != 0.0 {
+			t.Errorf("band 2 knee = %f, want 0.0 (hard knee)", mc.Band(2).Knee())
+		}
 	})
 
 	t.Run("wrong config count", func(t *testing.T) {
