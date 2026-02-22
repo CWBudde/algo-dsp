@@ -217,10 +217,10 @@ type Engine struct {
 	limParams LimiterParams
 	limiter   *dynamics.Limiter
 
-	renderBlock []float64
-	chainBuf    []float64
-	chainMixBuf []float64
-	chainOutBuf map[string][]float64
+	renderBlock       []float64
+	chainBuf          []float64
+	chainMixBuf       []float64
+	chainOutBuf       map[string][]float64
 	chainSplitLowBuf  map[string][]float64
 	chainSplitHighBuf map[string][]float64
 	chainCrossover    map[string]*crossover.Crossover
