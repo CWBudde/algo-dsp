@@ -6,11 +6,12 @@ import (
 )
 
 func TestIIRShelfShaperCreation(t *testing.T) {
-	s, err := NewIIRShelfShaper(10000, 44100)
+	shaper, err := NewIIRShelfShaper(10000, 44100)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var _ NoiseShaper = s // verify interface
+
+	var _ NoiseShaper = shaper // verify interface
 }
 
 func TestIIRShelfShaperValidation(t *testing.T) {
@@ -39,35 +40,41 @@ func TestIIRShelfShaperValidation(t *testing.T) {
 }
 
 func TestIIRShelfShaperPassthrough(t *testing.T) {
-	s, _ := NewIIRShelfShaper(10000, 44100)
+	shaper, _ := NewIIRShelfShaper(10000, 44100)
+
 	// With no previous error, Shape should return input unchanged.
-	got := s.Shape(1.0)
+	got := shaper.Shape(1.0)
 	if got != 1.0 {
 		t.Errorf("first sample: got %v, want 1.0", got)
 	}
 }
 
 func TestIIRShelfShaperReset(t *testing.T) {
-	s, _ := NewIIRShelfShaper(10000, 44100)
-	for i := 0; i < 100; i++ {
-		s.Shape(0.5)
-		s.RecordError(0.01)
+	shaper, _ := NewIIRShelfShaper(10000, 44100)
+
+	for range 100 {
+		shaper.Shape(0.5)
+		shaper.RecordError(0.01)
 	}
-	s.Reset()
+
+	shaper.Reset()
+
 	// After reset with zero error, Shape(0) should return 0.
-	got := s.Shape(0)
+	got := shaper.Shape(0)
 	if got != 0 {
 		t.Errorf("after reset: Shape(0) = %v, want 0", got)
 	}
 }
 
 func TestIIRShelfShaperStability(t *testing.T) {
-	s, _ := NewIIRShelfShaper(10000, 44100)
-	for i := 0; i < 10000; i++ {
-		v := s.Shape(0.5)
-		s.RecordError(0.01 * float64(i%10))
-		if math.IsNaN(v) || math.IsInf(v, 0) {
-			t.Fatalf("sample %d: got %v", i, v)
+	shaper, _ := NewIIRShelfShaper(10000, 44100)
+
+	for idx := range 10000 {
+		val := shaper.Shape(0.5)
+		shaper.RecordError(0.01 * float64(idx%10))
+
+		if math.IsNaN(val) || math.IsInf(val, 0) {
+			t.Fatalf("sample %d: got %v", idx, val)
 		}
 	}
 }
@@ -75,11 +82,12 @@ func TestIIRShelfShaperStability(t *testing.T) {
 func TestIIRShelfShaperShapesNoise(t *testing.T) {
 	// Verify that the IIR shaper actually modifies the signal when
 	// there is non-zero error feedback.
-	s, _ := NewIIRShelfShaper(10000, 44100)
+	shaper, _ := NewIIRShelfShaper(10000, 44100)
 
 	// Feed a constant error and verify output differs from input.
-	s.RecordError(0.5)
-	got := s.Shape(1.0)
+	shaper.RecordError(0.5)
+
+	got := shaper.Shape(1.0)
 	if got == 1.0 {
 		t.Error("IIR shaper should modify input when error is non-zero")
 	}

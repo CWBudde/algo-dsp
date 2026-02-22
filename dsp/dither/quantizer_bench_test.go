@@ -10,10 +10,9 @@ func BenchmarkQuantizerProcessSample(b *testing.B) {
 		WithRNG(rand.New(rand.NewPCG(42, 0))),
 	)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		quant.ProcessSample(0.3)
 	}
 }
@@ -30,10 +29,9 @@ func BenchmarkQuantizerProcessInPlace(b *testing.B) {
 		buf[idx] = rng.Float64()*2 - 1
 	}
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		quant.ProcessInPlace(buf)
 	}
 }
@@ -44,10 +42,9 @@ func BenchmarkQuantizerNoDither(b *testing.B) {
 		WithFIRPreset(PresetNone),
 	)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		quant.ProcessSample(0.3)
 	}
 }
@@ -58,10 +55,9 @@ func BenchmarkQuantizerIIRShelf(b *testing.B) {
 		WithRNG(rand.New(rand.NewPCG(42, 0))),
 	)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for range b.N {
+	for b.Loop() {
 		quant.ProcessSample(0.3)
 	}
 }
@@ -85,10 +81,9 @@ func BenchmarkQuantizerAllDitherTypes(b *testing.B) {
 				WithRNG(rand.New(rand.NewPCG(42, 0))),
 			)
 
-			b.ResetTimer()
 			b.ReportAllocs()
 
-			for range b.N {
+			for b.Loop() {
 				quant.ProcessSample(0.3)
 			}
 		})
