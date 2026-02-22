@@ -183,7 +183,7 @@ Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progre
 Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
 Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
 Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  📋 Planned
-Phase 27: Goertzel Tone Analysis                      [2 weeks]  📋 Planned
+Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
 Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  📋 Planned
 Phase 29: Dither and Noise Shaping                    [3 weeks]  📋 Planned
 Phase 30: Polyphase Hilbert / Analytic Signal         [2 weeks]  📋 Planned
@@ -480,9 +480,9 @@ Tasks:
 - [x] Spectral freeze
   - [x] Implement STFT magnitude hold + phase strategy.
   - [x] Add tests + example.
-- [ ] Granular
-  - [ ] Implement grain scheduling + overlap-add.
-  - [ ] Add tests + example.
+- [x] Granular
+  - [x] Implement grain scheduling + overlap-add.
+  - [x] Add tests + example.
 - [ ] Dynamic EQ
   - [ ] Implement band filter + detector + gain mapping.
   - [ ] Add tests + example.

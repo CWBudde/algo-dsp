@@ -12,6 +12,7 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
 	"github.com/cwbudde/algo-dsp/dsp/effects/spatial"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+	"github.com/cwbudde/algo-dsp/dsp/window"
 )
 
 // chainGraphNode is a JSON-serializable node in the effect chain graph.
@@ -205,6 +206,22 @@ func init() {
 		}
 
 		return &spectralPitchChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("spectral-freeze", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := effects.NewSpectralFreeze(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &spectralFreezeChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("granular", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := effects.NewGranular(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &granularChainRuntime{fx: fx}, nil
 	})
 	registerChainEffectFactory("reverb", func(e *Engine) (chainEffectRuntime, error) {
 		fdn, err := reverb.NewFDNReverb(e.sampleRate)
@@ -819,6 +836,79 @@ func configureSpectralPitch(fx *pitch.SpectralPitchShifter, sampleRate, semitone
 	return fx.SetAnalysisHop(analysisHop)
 }
 
+func configureSpectralFreeze(
+	fx *effects.SpectralFreeze,
+	sampleRate float64,
+	frameSize, hopSize int,
+	mix float64,
+	phaseMode effects.SpectralFreezePhaseMode,
+	frozen bool,
+	windowType window.Type,
+) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+
+	if err := fx.SetFrameSize(frameSize); err != nil {
+		return err
+	}
+
+	if err := fx.SetHopSize(hopSize); err != nil {
+		return err
+	}
+
+	if err := fx.SetWindowType(windowType); err != nil {
+		return err
+	}
+
+	if err := fx.SetMix(mix); err != nil {
+		return err
+	}
+
+	if err := fx.SetPhaseMode(phaseMode); err != nil {
+		return err
+	}
+
+	fx.SetFrozen(frozen)
+
+	return nil
+}
+
+func configureGranular(
+	fx *effects.Granular,
+	sampleRate, grainSeconds, overlap, pitchRatio, spray, baseDelay, mix float64,
+) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+
+	if err := fx.SetGrainSeconds(grainSeconds); err != nil {
+		return err
+	}
+
+	if err := fx.SetOverlap(overlap); err != nil {
+		return err
+	}
+
+	if err := fx.SetPitch(pitchRatio); err != nil {
+		return err
+	}
+
+	if err := fx.SetSpray(spray); err != nil {
+		return err
+	}
+
+	if err := fx.SetBaseDelay(baseDelay); err != nil {
+		return err
+	}
+
+	if err := fx.SetMix(mix); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func configureFDNReverb(fx *reverb.FDNReverb, sampleRate, wet, dry, rt60, preDelay, damp, modDepth, modRate float64) error {
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
@@ -1303,6 +1393,61 @@ func (r *spectralPitchChainRuntime) Configure(e *Engine, node compiledChainNode)
 }
 
 func (r *spectralPitchChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type spectralFreezeChainRuntime struct {
+	fx *effects.SpectralFreeze
+}
+
+func (r *spectralFreezeChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	frame := sanitizeSpectralPitchFrameSize(int(math.Round(getNodeNum(node, "frameSize", 1024))))
+
+	hop := int(math.Round(float64(frame) * clamp(getNodeNum(node, "hopRatio", 0.25), 0.01, 0.99)))
+	if hop < 1 {
+		hop = 1
+	}
+
+	if hop >= frame {
+		hop = frame - 1
+	}
+
+	frozen := getNodeNum(node, "frozen", 1) >= 0.5
+
+	return configureSpectralFreeze(
+		r.fx,
+		e.sampleRate,
+		frame,
+		hop,
+		clamp(getNodeNum(node, "mix", 1), 0, 1),
+		normalizeSpectralFreezePhaseMode(node.Str["phaseMode"]),
+		frozen,
+		window.TypeHann,
+	)
+}
+
+func (r *spectralFreezeChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type granularChainRuntime struct {
+	fx *effects.Granular
+}
+
+func (r *granularChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	return configureGranular(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "grainSeconds", 0.08), 0.005, 0.5),
+		clamp(getNodeNum(node, "overlap", 0.5), 0, 0.95),
+		clamp(getNodeNum(node, "pitch", 1), 0.25, 4),
+		clamp(getNodeNum(node, "spray", 0.1), 0, 1),
+		clamp(getNodeNum(node, "baseDelay", 0.08), 0, 2),
+		clamp(getNodeNum(node, "mix", 1), 0, 1),
+	)
+}
+
+func (r *granularChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
 	r.fx.ProcessInPlace(block)
 }
 
@@ -1827,6 +1972,17 @@ func normalizeTransformerQuality(raw string) effects.TransformerQuality {
 		fallthrough
 	default:
 		return effects.TransformerQualityHigh
+	}
+}
+
+func normalizeSpectralFreezePhaseMode(raw string) effects.SpectralFreezePhaseMode {
+	switch raw {
+	case "hold":
+		return effects.SpectralFreezePhaseHold
+	case "advance":
+		fallthrough
+	default:
+		return effects.SpectralFreezePhaseAdvance
 	}
 }
 

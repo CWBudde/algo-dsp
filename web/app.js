@@ -457,6 +457,26 @@ const el = {
   spectralPitchFrameValue: document.getElementById("spectral-pitch-frame-value"),
   spectralPitchHopRatio: document.getElementById("spectral-pitch-hop-ratio"),
   spectralPitchHopRatioValue: document.getElementById("spectral-pitch-hop-ratio-value"),
+  spectralFreezeMix: document.getElementById("spectral-freeze-mix"),
+  spectralFreezeMixValue: document.getElementById("spectral-freeze-mix-value"),
+  spectralFreezeFrame: document.getElementById("spectral-freeze-frame"),
+  spectralFreezeFrameValue: document.getElementById("spectral-freeze-frame-value"),
+  spectralFreezeHopRatio: document.getElementById("spectral-freeze-hop-ratio"),
+  spectralFreezeHopRatioValue: document.getElementById("spectral-freeze-hop-ratio-value"),
+  spectralFreezePhaseMode: document.getElementById("spectral-freeze-phase-mode"),
+  spectralFreezeFrozen: document.getElementById("spectral-freeze-frozen"),
+  granularGrain: document.getElementById("granular-grain"),
+  granularGrainValue: document.getElementById("granular-grain-value"),
+  granularOverlap: document.getElementById("granular-overlap"),
+  granularOverlapValue: document.getElementById("granular-overlap-value"),
+  granularPitch: document.getElementById("granular-pitch"),
+  granularPitchValue: document.getElementById("granular-pitch-value"),
+  granularSpray: document.getElementById("granular-spray"),
+  granularSprayValue: document.getElementById("granular-spray-value"),
+  granularBaseDelay: document.getElementById("granular-base-delay"),
+  granularBaseDelayValue: document.getElementById("granular-base-delay-value"),
+  granularMix: document.getElementById("granular-mix"),
+  granularMixValue: document.getElementById("granular-mix-value"),
   harmonicFrequency: document.getElementById("harmonic-frequency"),
   harmonicFrequencyValue: document.getElementById("harmonic-frequency-value"),
   harmonicInput: document.getElementById("harmonic-input"),
@@ -655,6 +675,21 @@ const EFFECT_NODE_DEFAULTS = {
   },
   "pitch-time": { semitones: 0, sequence: 40, overlap: 10, search: 15 },
   "pitch-spectral": { semitones: 0, frameSize: 1024, hopRatio: 0.25 },
+  "spectral-freeze": {
+    mix: 1.0,
+    frameSize: 1024,
+    hopRatio: 0.25,
+    phaseMode: "advance",
+    frozen: 1,
+  },
+  granular: {
+    grainSeconds: 0.08,
+    overlap: 0.5,
+    pitch: 1.0,
+    spray: 0.1,
+    baseDelay: 0.08,
+    mix: 1.0,
+  },
   reverb: {
     model: "freeverb",
     wet: 0.22,
@@ -862,6 +897,21 @@ function applyNodeParamsToUI(node) {
       el.spectralPitchSemitones.value = p.semitones;
       el.spectralPitchFrame.value = p.frameSize;
       el.spectralPitchHopRatio.value = String(p.hopRatio);
+      break;
+    case "spectral-freeze":
+      el.spectralFreezeMix.value = p.mix;
+      el.spectralFreezeFrame.value = p.frameSize;
+      el.spectralFreezeHopRatio.value = String(p.hopRatio);
+      el.spectralFreezePhaseMode.value = p.phaseMode || "advance";
+      el.spectralFreezeFrozen.value = String(p.frozen ?? 1);
+      break;
+    case "granular":
+      el.granularGrain.value = p.grainSeconds;
+      el.granularOverlap.value = p.overlap;
+      el.granularPitch.value = p.pitch;
+      el.granularSpray.value = p.spray;
+      el.granularBaseDelay.value = p.baseDelay;
+      el.granularMix.value = p.mix;
       break;
     case "reverb":
       el.reverbModel.value = p.model || "freeverb";
@@ -1102,6 +1152,23 @@ function collectNodeParamsFromUI(nodeType) {
         semitones: Number(el.spectralPitchSemitones.value),
         frameSize: Number(el.spectralPitchFrame.value),
         hopRatio: Number(el.spectralPitchHopRatio.value),
+      };
+    case "spectral-freeze":
+      return {
+        mix: Number(el.spectralFreezeMix.value),
+        frameSize: Number(el.spectralFreezeFrame.value),
+        hopRatio: Number(el.spectralFreezeHopRatio.value),
+        phaseMode: String(el.spectralFreezePhaseMode.value || "advance"),
+        frozen: Number(el.spectralFreezeFrozen.value),
+      };
+    case "granular":
+      return {
+        grainSeconds: Number(el.granularGrain.value),
+        overlap: Number(el.granularOverlap.value),
+        pitch: Number(el.granularPitch.value),
+        spray: Number(el.granularSpray.value),
+        baseDelay: Number(el.granularBaseDelay.value),
+        mix: Number(el.granularMix.value),
       };
     case "reverb":
       return {
@@ -1912,6 +1979,19 @@ function updateEffectsText() {
   el.spectralPitchFrameValue.textContent = `${spectralFrame} samples`;
   el.spectralPitchHopRatioValue.textContent =
     `${spectralHop} samples (${Math.round(spectralRatio * 100)}%)`;
+  const freezeFrame = Number(el.spectralFreezeFrame.value);
+  const freezeRatio = Number(el.spectralFreezeHopRatio.value);
+  const freezeHop = Math.max(1, Math.round(freezeFrame * freezeRatio));
+  el.spectralFreezeMixValue.textContent = `${Math.round(Number(el.spectralFreezeMix.value) * 100)}%`;
+  el.spectralFreezeFrameValue.textContent = `${freezeFrame} samples`;
+  el.spectralFreezeHopRatioValue.textContent =
+    `${freezeHop} samples (${Math.round(freezeRatio * 100)}%)`;
+  el.granularGrainValue.textContent = `${(Number(el.granularGrain.value) * 1000).toFixed(1)} ms`;
+  el.granularOverlapValue.textContent = `${Math.round(Number(el.granularOverlap.value) * 100)}%`;
+  el.granularPitchValue.textContent = `${Number(el.granularPitch.value).toFixed(2)}x`;
+  el.granularSprayValue.textContent = `${Math.round(Number(el.granularSpray.value) * 100)}%`;
+  el.granularBaseDelayValue.textContent = `${(Number(el.granularBaseDelay.value) * 1000).toFixed(1)} ms`;
+  el.granularMixValue.textContent = `${Math.round(Number(el.granularMix.value) * 100)}%`;
   el.harmonicFrequencyValue.textContent = `${Number(el.harmonicFrequency.value).toFixed(0)} Hz`;
   el.harmonicInputValue.textContent = Number(el.harmonicInput.value).toFixed(2);
   el.harmonicHighValue.textContent = Number(el.harmonicHigh.value).toFixed(2);
@@ -2311,6 +2391,17 @@ function bindEvents() {
     el.spectralPitchSemitones,
     el.spectralPitchFrame,
     el.spectralPitchHopRatio,
+    el.spectralFreezeMix,
+    el.spectralFreezeFrame,
+    el.spectralFreezeHopRatio,
+    el.spectralFreezePhaseMode,
+    el.spectralFreezeFrozen,
+    el.granularGrain,
+    el.granularOverlap,
+    el.granularPitch,
+    el.granularSpray,
+    el.granularBaseDelay,
+    el.granularMix,
     el.harmonicFrequency,
     el.harmonicInput,
     el.harmonicHigh,
@@ -2560,6 +2651,13 @@ const PIN_MAP = {
   "time-pitch-overlap": { type: "pitch-time", param: "overlap" },
   "time-pitch-search": { type: "pitch-time", param: "search" },
   "spectral-pitch-semitones": { type: "pitch-spectral", param: "semitones" },
+  "spectral-freeze-mix": { type: "spectral-freeze", param: "mix" },
+  "granular-grain": { type: "granular", param: "grainSeconds" },
+  "granular-overlap": { type: "granular", param: "overlap" },
+  "granular-pitch": { type: "granular", param: "pitch" },
+  "granular-spray": { type: "granular", param: "spray" },
+  "granular-base-delay": { type: "granular", param: "baseDelay" },
+  "granular-mix": { type: "granular", param: "mix" },
   "reverb-wet": { type: "reverb", param: "wet" },
   "reverb-dry": { type: "reverb", param: "dry" },
   "reverb-room": { type: "reverb", param: "roomSize" },

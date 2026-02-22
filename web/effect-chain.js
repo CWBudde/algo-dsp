@@ -23,6 +23,8 @@
     bass:             { label: "Bass Enhancer",     hue: 10,  category: "Spatial" },
     "pitch-time":     { label: "Pitch (Time)",      hue: 190, category: "Pitch" },
     "pitch-spectral": { label: "Pitch (Spectral)",  hue: 170, category: "Pitch" },
+    "spectral-freeze":{ label: "Spectral Freeze",   hue: 176, category: "Pitch" },
+    granular:         { label: "Granular",          hue: 156, category: "Pitch" },
     "dyn-compressor": { label: "Compressor",        hue: 120, category: "Dynamics" },
     "dyn-limiter":    { label: "Limiter",           hue: 98,  category: "Dynamics" },
     "dyn-lookahead":  { label: "Lookahead Limiter", hue: 92,  category: "Dynamics" },
@@ -56,6 +58,12 @@
   const SLIDER_RIGHT = 8;    // right inset from block edge
   const SLIDER_TRACK_LEFT = 40; // track starts after short label
   const SLIDER_VAL_W     = 38; // reserved width for value text at right
+
+  // ---- default pinned params per effect type --------------------------------
+  const DEFAULT_PINNED = {
+    "split-freq": ["freqHz"],
+    filter: ["freq"],
+  };
 
   // ---- parameter registry (min/max/unit metadata for canvas sliders) --------
   const PARAM_REGISTRY = {
@@ -214,6 +222,20 @@
     "pitch-spectral": {
       semitones: { label: "Semi", min: -24, max: 24, step: 0.1, unit: "st" },
     },
+    "spectral-freeze": {
+      mix:      { label: "Mix",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      frameSize:{ label: "Frame",min: 256, max: 4096, step: 256, unit: "" },
+      hopRatio: { label: "Hop",  min: 0.125, max: 0.5, step: 0.125, unit: "" },
+      frozen:   { label: "Frz",  min: 0, max: 1, step: 1, unit: "" },
+    },
+    granular: {
+      grainSeconds: { label: "Grn",   min: 0.005, max: 0.5, step: 0.001, unit: "s" },
+      overlap:      { label: "Ovl",   min: 0, max: 0.95, step: 0.01, unit: "" },
+      pitch:        { label: "Pitch", min: 0.25, max: 4, step: 0.01, unit: "x" },
+      spray:        { label: "Spry",  min: 0, max: 1, step: 0.01, unit: "" },
+      baseDelay:    { label: "Base",  min: 0, max: 2, step: 0.01, unit: "s" },
+      mix:          { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+    },
     reverb: {
       wet:      { label: "Wet",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
       dry:      { label: "Dry",  min: 0, max: 1.5, step: 0.01, unit: "" },
@@ -344,11 +366,12 @@
       const instances = this.nodes.filter((n) => n.type === type).length;
       const label = instances > 0 ? `${def.label} ${instances + 1}` : def.label;
       const params = this.opts.createParams?.(type) || {};
+      const defaultPins = DEFAULT_PINNED[type] || [];
       this.nodes.push({
         id, type, label,
         x: wx - NODE_W / 2, y: wy - NODE_H / 2,
         bypassed: false, fixed: false, params,
-        pinnedParams: [],
+        pinnedParams: [...defaultPins],
       });
       this._autoInsert(id);
       this._emitChange();

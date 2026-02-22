@@ -1058,6 +1058,85 @@
                 <span id="spectral-pitch-hop-ratio-value">256 samples (25%)</span>
               </label>
             </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="spectral-freeze" hidden>
+              <div class="fx-option-head">
+                <span>Spectral Freeze</span>
+              </div>
+              <label>
+                Mix
+                <input id="spectral-freeze-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <span id="spectral-freeze-mix-value">100%</span>
+              </label>
+              <label>
+                Frame
+                <select id="spectral-freeze-frame">
+                  <option value="256">256</option>
+                  <option value="512">512</option>
+                  <option value="1024" selected>1024</option>
+                  <option value="2048">2048</option>
+                  <option value="4096">4096</option>
+                </select>
+                <span id="spectral-freeze-frame-value">1024 samples</span>
+              </label>
+              <label>
+                Hop
+                <select id="spectral-freeze-hop-ratio">
+                  <option value="0.125">12.5%</option>
+                  <option value="0.25" selected>25%</option>
+                  <option value="0.5">50%</option>
+                </select>
+                <span id="spectral-freeze-hop-ratio-value">256 samples (25%)</span>
+              </label>
+              <label>
+                Phase
+                <select id="spectral-freeze-phase-mode">
+                  <option value="advance" selected>Advance</option>
+                  <option value="hold">Hold</option>
+                </select>
+              </label>
+              <label>
+                Frozen
+                <select id="spectral-freeze-frozen">
+                  <option value="1" selected>On</option>
+                  <option value="0">Off</option>
+                </select>
+              </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="granular" hidden>
+              <div class="fx-option-head">
+                <span>Granular</span>
+              </div>
+              <label>
+                Grain
+                <input id="granular-grain" type="range" min="0.005" max="0.5" step="0.001" value="0.08" />
+                <span id="granular-grain-value">80.0 ms</span>
+              </label>
+              <label>
+                Overlap
+                <input id="granular-overlap" type="range" min="0" max="0.95" step="0.01" value="0.5" />
+                <span id="granular-overlap-value">50%</span>
+              </label>
+              <label>
+                Pitch
+                <input id="granular-pitch" type="range" min="0.25" max="4" step="0.01" value="1" />
+                <span id="granular-pitch-value">1.00x</span>
+              </label>
+              <label>
+                Spray
+                <input id="granular-spray" type="range" min="0" max="1" step="0.01" value="0.1" />
+                <span id="granular-spray-value">10%</span>
+              </label>
+              <label>
+                Base Delay
+                <input id="granular-base-delay" type="range" min="0" max="2" step="0.01" value="0.08" />
+                <span id="granular-base-delay-value">80.0 ms</span>
+              </label>
+              <label>
+                Mix
+                <input id="granular-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <span id="granular-mix-value">100%</span>
+              </label>
+            </div>
             <div class="fx-card chain-detail-card" data-chain-detail="reverb" hidden>
               <div class="fx-option-head">
                 <span>Reverb</span>

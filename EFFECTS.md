@@ -60,6 +60,7 @@ Both pitch shifters implement the `PitchProcessor` interface
 | ---------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **HarmonicBass** | `harmonic_bass.go` | Psychoacoustic bass enhancer. Crossover filtering with non-linear harmonic generation, configurable frequency/ratio/response/decay, and built-in limiter. |
 | **SpectralFreeze** | `spectral_freeze.go` | STFT spectral freezer that captures a frame and sustains frozen magnitudes with selectable phase-hold/phase-advance strategy and wet/dry mix. |
+| **Granular** | `granular.go` | Mono granular texture processor with grain scheduling, Hann overlap-add envelopes, pitch/spray controls, and wet/dry mix. |
 
 ### Spatial
 

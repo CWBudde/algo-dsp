@@ -47,3 +47,65 @@ func ExampleGroupDelayFromPhase() {
 	// Output:
 	// 1.0 1.0 1.0
 }
+
+func ExampleGoertzel() {
+	fs := 48000.0
+	f0 := 1000.0
+	g, _ := spectrum.NewGoertzel(f0, fs)
+
+	// Pure sine at 1000 Hz, length 480 (exactly 10 cycles)
+	n := 480
+	sig := make([]float64, n)
+	for i := range sig {
+		sig[i] = math.Sin(2 * math.Pi * f0 / fs * float64(i))
+	}
+
+	g.ProcessBlock(sig)
+	mag := g.Magnitude()
+
+	// Normalize by N/2
+	fmt.Printf("Magnitude at 1000Hz: %.1f\n", mag/float64(n/2))
+
+	// Pure sine at 2000 Hz
+	g.Reset()
+	for i := range sig {
+		sig[i] = math.Sin(2 * math.Pi * 2000.0 / fs * float64(i))
+	}
+	g.ProcessBlock(sig)
+	mag2 := g.Magnitude()
+	fmt.Printf("Magnitude at 2000Hz: %.1f\n", mag2/float64(n/2))
+
+	// Output:
+	// Magnitude at 1000Hz: 1.0
+	// Magnitude at 2000Hz: 0.0
+}
+
+func ExampleMultiGoertzel() {
+	fs := 48000.0
+	freqs := []float64{697, 770, 852, 941, 1209, 1336, 1477, 1633} // DTMF frequencies
+	mg, _ := spectrum.NewMultiGoertzel(freqs, fs)
+
+	// Generate 697 Hz + 1209 Hz (Digit '1')
+	n := 480
+	sig := make([]float64, n)
+	for i := range sig {
+		sig[i] = 0.5*math.Sin(2*math.Pi*697/fs*float64(i)) +
+			0.5*math.Sin(2*math.Pi*1209/fs*float64(i))
+	}
+
+	mg.ProcessBlock(sig)
+	powers := mg.Powers()
+
+	fmt.Println("Detected frequencies:")
+	for i, f := range freqs {
+		// Thresholding on magnitude (normalized)
+		mag := math.Sqrt(powers[i]) / (float64(n) / 2.0)
+		if mag > 0.4 {
+			fmt.Printf("%.0f Hz (mag: %.1f)\n", f, mag)
+		}
+	}
+	// Output:
+	// Detected frequencies:
+	// 697 Hz (mag: 0.5)
+	// 1209 Hz (mag: 0.5)
+}
