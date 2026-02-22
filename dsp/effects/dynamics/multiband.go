@@ -15,17 +15,21 @@ const (
 	minCrossoverFrequency = 20.0
 )
 
+// Float64Ptr returns a pointer to the given float64 value, for use in [BandConfig].
+func Float64Ptr(v float64) *float64 { return &v }
+
 // BandConfig holds the compressor configuration for a single frequency band.
-// All fields are optional; zero values cause the corresponding parameter
-// to retain its default.
+// Pointer fields (ThresholdDB, KneeDB, MakeupGainDB, AutoMakeup) use nil to
+// indicate "keep default". Non-pointer fields use zero to indicate "keep default";
+// this is safe because zero is not a valid value for Ratio, AttackMs, or ReleaseMs.
 type BandConfig struct {
-	ThresholdDB  float64 // Compression threshold in dB
-	Ratio        float64 // Compression ratio (1.0 = no compression)
-	KneeDB       float64 // Soft-knee width in dB (0 = hard knee)
-	AttackMs     float64 // Attack time in milliseconds
-	ReleaseMs    float64 // Release time in milliseconds
-	MakeupGainDB float64 // Manual makeup gain in dB (disables auto makeup when set via SetBandMakeupGain)
-	AutoMakeup   *bool   // Auto makeup gain toggle (nil = use default)
+	ThresholdDB  *float64 // Compression threshold in dB (nil = keep default)
+	Ratio        float64  // Compression ratio (1.0 = no compression, 0 = keep default)
+	KneeDB       *float64 // Soft-knee width in dB (nil = keep default, ptr to 0 = hard knee)
+	AttackMs     float64  // Attack time in milliseconds (0 = keep default)
+	ReleaseMs    float64  // Release time in milliseconds (0 = keep default)
+	MakeupGainDB *float64 // Manual makeup gain in dB (nil = keep default; disables auto makeup when set)
+	AutoMakeup   *bool    // Auto makeup gain toggle (nil = keep default)
 }
 
 // MultibandMetrics holds per-band metering information.
@@ -88,12 +92,14 @@ func NewMultibandCompressor(freqs []float64, order int, sampleRate float64) (*Mu
 	}
 
 	numBands := xo.NumBands()
+
 	compressors := make([]*Compressor, numBands)
 	for i := range compressors {
 		c, err := NewCompressor(sampleRate)
 		if err != nil {
 			return nil, fmt.Errorf("multiband compressor: band %d: %w", i, err)
 		}
+
 		compressors[i] = c
 	}
 
@@ -142,6 +148,7 @@ func (mc *MultibandCompressor) NumBands() int {
 func (mc *MultibandCompressor) CrossoverFreqs() []float64 {
 	out := make([]float64, len(mc.crossoverFreqs))
 	copy(out, mc.crossoverFreqs)
+
 	return out
 }
 
@@ -175,6 +182,7 @@ func (mc *MultibandCompressor) SetBandThreshold(band int, dB float64) error {
 	if err := mc.checkBand(band); err != nil {
 		return err
 	}
+
 	return mc.compressors[band].SetThreshold(dB)
 }
 
@@ -183,6 +191,7 @@ func (mc *MultibandCompressor) SetBandRatio(band int, ratio float64) error {
 	if err := mc.checkBand(band); err != nil {
 		return err
 	}
+
 	return mc.compressors[band].SetRatio(ratio)
 }
 
@@ -191,6 +200,7 @@ func (mc *MultibandCompressor) SetBandKnee(band int, kneeDB float64) error {
 	if err := mc.checkBand(band); err != nil {
 		return err
 	}
+
 	return mc.compressors[band].SetKnee(kneeDB)
 }
 
@@ -199,6 +209,7 @@ func (mc *MultibandCompressor) SetBandAttack(band int, ms float64) error {
 	if err := mc.checkBand(band); err != nil {
 		return err
 	}
+
 	return mc.compressors[band].SetAttack(ms)
 }
 
@@ -207,6 +218,7 @@ func (mc *MultibandCompressor) SetBandRelease(band int, ms float64) error {
 	if err := mc.checkBand(band); err != nil {
 		return err
 	}
+
 	return mc.compressors[band].SetRelease(ms)
 }
 
@@ -216,6 +228,7 @@ func (mc *MultibandCompressor) SetBandMakeupGain(band int, dB float64) error {
 	if err := mc.checkBand(band); err != nil {
 		return err
 	}
+
 	return mc.compressors[band].SetMakeupGain(dB)
 }
 
@@ -224,6 +237,7 @@ func (mc *MultibandCompressor) SetBandAutoMakeup(band int, enable bool) error {
 	if err := mc.checkBand(band); err != nil {
 		return err
 	}
+
 	return mc.compressors[band].SetAutoMakeup(enable)
 }
 
@@ -232,6 +246,7 @@ func (mc *MultibandCompressor) SetBandConfig(band int, cfg BandConfig) error {
 	if err := mc.checkBand(band); err != nil {
 		return err
 	}
+
 	return mc.applyBandConfig(band, cfg)
 }
 
@@ -242,6 +257,7 @@ func (mc *MultibandCompressor) SetAllBandsThreshold(dB float64) error {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
+
 	return nil
 }
 
@@ -252,6 +268,7 @@ func (mc *MultibandCompressor) SetAllBandsRatio(ratio float64) error {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
+
 	return nil
 }
 
@@ -262,6 +279,7 @@ func (mc *MultibandCompressor) SetAllBandsKnee(kneeDB float64) error {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
+
 	return nil
 }
 
@@ -272,6 +290,7 @@ func (mc *MultibandCompressor) SetAllBandsAttack(ms float64) error {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
+
 	return nil
 }
 
@@ -282,6 +301,7 @@ func (mc *MultibandCompressor) SetAllBandsRelease(ms float64) error {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
+
 	return nil
 }
 
@@ -291,10 +311,12 @@ func (mc *MultibandCompressor) SetAllBandsRelease(ms float64) error {
 // each band independently, and returns the summed output.
 func (mc *MultibandCompressor) ProcessSample(input float64) float64 {
 	bands := mc.xover.ProcessSample(input)
+
 	sum := 0.0
 	for i, b := range bands {
 		sum += mc.compressors[i].ProcessSample(b)
 	}
+
 	return sum
 }
 
@@ -306,6 +328,7 @@ func (mc *MultibandCompressor) ProcessSampleMulti(input float64) []float64 {
 	for i, b := range bands {
 		bands[i] = mc.compressors[i].ProcessSample(b)
 	}
+
 	return bands
 }
 
@@ -326,6 +349,7 @@ func (mc *MultibandCompressor) ProcessInPlace(buf []float64) {
 
 	// Sum all bands back into buf
 	copy(buf, bandBlocks[0])
+
 	for i := 1; i < len(bandBlocks); i++ {
 		for j, v := range bandBlocks[i] {
 			buf[j] += v
@@ -342,6 +366,7 @@ func (mc *MultibandCompressor) ProcessInPlaceMulti(input []float64) [][]float64 
 		for i := range out {
 			out[i] = []float64{}
 		}
+
 		return out
 	}
 
@@ -349,6 +374,7 @@ func (mc *MultibandCompressor) ProcessInPlaceMulti(input []float64) [][]float64 
 	for i, block := range bandBlocks {
 		mc.compressors[i].ProcessInPlace(block)
 	}
+
 	return bandBlocks
 }
 
@@ -357,6 +383,7 @@ func (mc *MultibandCompressor) ProcessInPlaceMulti(input []float64) [][]float64 
 // Reset clears all internal state (crossover filters and compressor envelopes).
 func (mc *MultibandCompressor) Reset() {
 	mc.xover.Reset()
+
 	for _, c := range mc.compressors {
 		c.Reset()
 	}
@@ -368,6 +395,7 @@ func (mc *MultibandCompressor) GetMetrics() MultibandMetrics {
 	for i, c := range mc.compressors {
 		bands[i] = c.GetMetrics()
 	}
+
 	return MultibandMetrics{Bands: bands}
 }
 
@@ -384,47 +412,55 @@ func (mc *MultibandCompressor) checkBand(band int) error {
 	if band < 0 || band >= len(mc.compressors) {
 		return fmt.Errorf("multiband compressor: band index %d out of range [0, %d)", band, len(mc.compressors))
 	}
+
 	return nil
 }
 
 func (mc *MultibandCompressor) applyBandConfig(band int, cfg BandConfig) error {
 	c := mc.compressors[band]
 
-	if cfg.ThresholdDB != 0 {
-		if err := c.SetThreshold(cfg.ThresholdDB); err != nil {
+	if cfg.ThresholdDB != nil {
+		if err := c.SetThreshold(*cfg.ThresholdDB); err != nil {
 			return err
 		}
 	}
+
 	if cfg.Ratio != 0 {
 		if err := c.SetRatio(cfg.Ratio); err != nil {
 			return err
 		}
 	}
-	if cfg.KneeDB != 0 {
-		if err := c.SetKnee(cfg.KneeDB); err != nil {
+
+	if cfg.KneeDB != nil {
+		if err := c.SetKnee(*cfg.KneeDB); err != nil {
 			return err
 		}
 	}
+
 	if cfg.AttackMs != 0 {
 		if err := c.SetAttack(cfg.AttackMs); err != nil {
 			return err
 		}
 	}
+
 	if cfg.ReleaseMs != 0 {
 		if err := c.SetRelease(cfg.ReleaseMs); err != nil {
 			return err
 		}
 	}
-	if cfg.MakeupGainDB != 0 {
-		if err := c.SetMakeupGain(cfg.MakeupGainDB); err != nil {
+
+	if cfg.MakeupGainDB != nil {
+		if err := c.SetMakeupGain(*cfg.MakeupGainDB); err != nil {
 			return err
 		}
 	}
+
 	if cfg.AutoMakeup != nil {
 		if err := c.SetAutoMakeup(*cfg.AutoMakeup); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -432,35 +468,43 @@ func validateMultibandParams(freqs []float64, order int, sampleRate float64) err
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("multiband compressor: sample rate must be positive and finite: %v", sampleRate)
 	}
+
 	if len(freqs) < 1 {
 		return fmt.Errorf("multiband compressor: at least one crossover frequency is required (got 0)")
 	}
+
 	numBands := len(freqs) + 1
 	if numBands > maxMultibandBands {
 		return fmt.Errorf("multiband compressor: maximum %d bands (%d crossover frequencies), got %d bands",
 			maxMultibandBands, maxMultibandBands-1, numBands)
 	}
+
 	if order < minMultibandOrder || order > maxMultibandOrder {
 		return fmt.Errorf("multiband compressor: order must be in [%d, %d], got %d",
 			minMultibandOrder, maxMultibandOrder, order)
 	}
+
 	if order%2 != 0 {
 		return fmt.Errorf("multiband compressor: order must be even (Linkwitz-Riley), got %d", order)
 	}
 
 	nyquist := sampleRate / 2
+
 	for i, f := range freqs {
 		if math.IsNaN(f) || math.IsInf(f, 0) {
 			return fmt.Errorf("multiband compressor: crossover frequency %d must be finite: %v", i, f)
 		}
+
 		if f < minCrossoverFrequency {
 			return fmt.Errorf("multiband compressor: crossover frequency %d must be >= %.0f Hz, got %.1f Hz",
 				i, minCrossoverFrequency, f)
 		}
+
 		if f >= nyquist {
 			return fmt.Errorf("multiband compressor: crossover frequency %d must be < Nyquist (%.0f Hz), got %.1f Hz",
 				i, nyquist, f)
 		}
+
 		if i > 0 && f <= freqs[i-1] {
 			return fmt.Errorf("multiband compressor: crossover frequencies must be strictly ascending, got %.1f after %.1f",
 				f, freqs[i-1])

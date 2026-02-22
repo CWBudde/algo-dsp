@@ -19,8 +19,8 @@ func BenchmarkPitchShifterProcessInPlace1024(b *testing.B) {
 }
 
 func BenchmarkPitchShifterProcessInPlace4096(b *testing.B) {
-	p, _ := NewPitchShifter(48000)
-	_ = p.SetPitchSemitones(-7)
+	pitchShifter, _ := NewPitchShifter(48000)
+	_ = pitchShifter.SetPitchSemitones(-7)
 
 	buf := make([]float64, 4096)
 	for i := range buf {
@@ -30,6 +30,6 @@ func BenchmarkPitchShifterProcessInPlace4096(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		p.ProcessInPlace(buf)
+		pitchShifter.ProcessInPlace(buf)
 	}
 }

@@ -88,14 +88,14 @@ func NewRingModulator(sampleRate float64, opts ...RingModulatorOption) (*RingMod
 		}
 	}
 
-	r := &RingModulator{
+	ringMod := &RingModulator{
 		sampleRate: sampleRate,
 		carrierHz:  cfg.carrierHz,
 		mix:        cfg.mix,
 	}
-	r.updatePhaseIncrement()
+	ringMod.updatePhaseIncrement()
 
-	return r, nil
+	return ringMod, nil
 }
 
 // SetSampleRate updates the sample rate and recalculates internal coefficients.

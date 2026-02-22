@@ -7,7 +7,7 @@ import (
 )
 
 func ExampleRingModulator_ProcessInPlace() {
-	rm, err := modulation.NewRingModulator(48000,
+	ringModulator, err := modulation.NewRingModulator(48000,
 		modulation.WithRingModCarrierHz(440),
 		modulation.WithRingModMix(1),
 	)
@@ -17,7 +17,7 @@ func ExampleRingModulator_ProcessInPlace() {
 	}
 
 	buf := []float64{1, 0, 0, 0}
-	rm.ProcessInPlace(buf)
+	ringModulator.ProcessInPlace(buf)
 
 	fmt.Printf("len=%d\n", len(buf))
 	// Output:

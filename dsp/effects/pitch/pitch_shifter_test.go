@@ -92,14 +92,14 @@ func TestPitchShifterSetOverlapRejectsOverlapAboveSequence(t *testing.T) {
 }
 
 func TestPitchShifterIdentityIsExactCopy(t *testing.T) {
-	const sr = 48000.0
+	const sampleRate = 48000.0
 
-	p, err := NewPitchShifter(sr)
+	p, err := NewPitchShifter(sampleRate)
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
 
-	input := testutil.DeterministicSine(440, sr, 0.8, 4096)
+	input := testutil.DeterministicSine(440, sampleRate, 0.8, 4096)
 
 	out := p.Process(input)
 	if len(out) != len(input) {
@@ -120,14 +120,14 @@ func TestPitchShifterIdentityIsExactCopy(t *testing.T) {
 }
 
 func TestPitchShifterProcessInPlaceMatchesProcess(t *testing.T) {
-	const sr = 48000.0
+	const sampleRate = 48000.0
 
-	p1, err := NewPitchShifter(sr)
+	p1, err := NewPitchShifter(sampleRate)
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
 
-	p2, err := NewPitchShifter(sr)
+	p2, err := NewPitchShifter(sampleRate)
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
@@ -140,7 +140,7 @@ func TestPitchShifterProcessInPlaceMatchesProcess(t *testing.T) {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
 
-	input := testutil.DeterministicSine(330, sr, 0.7, 4096)
+	input := testutil.DeterministicSine(330, sampleRate, 0.7, 4096)
 
 	want := p1.Process(input)
 	got := make([]float64, len(input))
@@ -156,23 +156,23 @@ func TestPitchShifterProcessInPlaceMatchesProcess(t *testing.T) {
 
 func TestPitchShifterPitchAccuracy(t *testing.T) {
 	const (
-		sr       = 48000.0
-		f0       = 220.0
-		length   = 60000
-		start    = 8000
-		stop     = 52000
-		tolUpHz  = 10.0
-		tolDnHz  = 6.0
-		minUpHz  = 300.0
-		maxUpHz  = 600.0
-		minDnHz  = 80.0
-		maxDnHz  = 180.0
-		shiftSem = 12.0
+		sampleRate = 48000.0
+		f0         = 220.0
+		length     = 60000
+		start      = 8000
+		stop       = 52000
+		tolUpHz    = 10.0
+		tolDnHz    = 6.0
+		minUpHz    = 300.0
+		maxUpHz    = 600.0
+		minDnHz    = 80.0
+		maxDnHz    = 180.0
+		shiftSem   = 12.0
 	)
 
-	input := testutil.DeterministicSine(f0, sr, 0.8, length)
+	input := testutil.DeterministicSine(f0, sampleRate, 0.8, length)
 
-	up, err := NewPitchShifter(sr)
+	up, err := NewPitchShifter(sampleRate)
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
@@ -182,14 +182,14 @@ func TestPitchShifterPitchAccuracy(t *testing.T) {
 	}
 
 	upOut := up.Process(input)
-	upFreq := estimateFrequencyAutoCorrelation(upOut[start:stop], sr, minUpHz, maxUpHz)
+	upFreq := estimateFrequencyAutoCorrelation(upOut[start:stop], sampleRate, minUpHz, maxUpHz)
 
 	upWant := f0 * 2.0
 	if diff := math.Abs(upFreq - upWant); diff > tolUpHz {
 		t.Fatalf("pitch-up frequency mismatch: got=%gHz want=%gHz diff=%gHz", upFreq, upWant, diff)
 	}
 
-	down, err := NewPitchShifter(sr)
+	down, err := NewPitchShifter(sampleRate)
 	if err != nil {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
@@ -199,7 +199,7 @@ func TestPitchShifterPitchAccuracy(t *testing.T) {
 	}
 
 	downOut := down.Process(input)
-	downFreq := estimateFrequencyAutoCorrelation(downOut[start:stop], sr, minDnHz, maxDnHz)
+	downFreq := estimateFrequencyAutoCorrelation(downOut[start:stop], sampleRate, minDnHz, maxDnHz)
 
 	downWant := f0 * 0.5
 	if diff := math.Abs(downFreq - downWant); diff > tolDnHz {
@@ -399,18 +399,18 @@ func TestPitchShifterSignalQualityWSSOLAParams(t *testing.T) {
 		input[i] = 0.8 * math.Sin(2*math.Pi*inFreq*float64(i)/sampleRate)
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
 			p, err := NewPitchShifter(sampleRate)
 			if err != nil {
 				t.Fatalf("NewPitchShifter() error = %v", err)
 			}
 
-			if err := p.SetSequence(tc.sequenceMs); err != nil {
+			if err := p.SetSequence(testCase.sequenceMs); err != nil {
 				t.Fatalf("SetSequence() error = %v", err)
 			}
 
-			if err := p.SetOverlap(tc.overlapMs); err != nil {
+			if err := p.SetOverlap(testCase.overlapMs); err != nil {
 				t.Fatalf("SetOverlap() error = %v", err)
 			}
 
@@ -422,7 +422,7 @@ func TestPitchShifterSignalQualityWSSOLAParams(t *testing.T) {
 
 			snr := measureTimeDomainSNR(t, out, outFreq, sampleRate, fftLen)
 			t.Logf("seq=%.0fms ovl=%.0fms  inFreq=%.1f Hz  outFreq=%.1f Hz  SNR=%.1f dB",
-				tc.sequenceMs, tc.overlapMs, inFreq, outFreq, snr)
+				testCase.sequenceMs, testCase.overlapMs, inFreq, outFreq, snr)
 
 			if snr < 45 {
 				t.Errorf("signal quality too low: SNR = %.1f dB, want >= 45 dB", snr)

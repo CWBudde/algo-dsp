@@ -101,6 +101,7 @@ func ExampleMultibandCompressor_metering() {
 
 	metrics := mc.GetMetrics()
 	fmt.Printf("Number of band metrics: %d\n", len(metrics.Bands))
+
 	for i, bm := range metrics.Bands {
 		if bm.InputPeak > 0 {
 			fmt.Printf("Band %d has activity (input peak: %.3f)\n", i, bm.InputPeak)
