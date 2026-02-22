@@ -12,6 +12,7 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
 	"github.com/cwbudde/algo-dsp/dsp/effects/spatial"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+	"github.com/cwbudde/algo-dsp/dsp/filter/crossover"
 	algofft "github.com/cwbudde/algo-fft"
 )
 
@@ -220,6 +221,9 @@ type Engine struct {
 	chainBuf    []float64
 	chainMixBuf []float64
 	chainOutBuf map[string][]float64
+	chainSplitLowBuf  map[string][]float64
+	chainSplitHighBuf map[string][]float64
+	chainCrossover    map[string]*crossover.Crossover
 
 	chainGraph *compiledChainGraph
 	chainNodes map[string]*chainNodeRuntime

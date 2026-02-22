@@ -25,8 +25,10 @@ type chainGraphNode struct {
 
 // chainGraphConnection is a JSON-serializable connection between two graph nodes.
 type chainGraphConnection struct {
-	From string `json:"from"`
-	To   string `json:"to"`
+	From          string `json:"from"`
+	To            string `json:"to"`
+	FromPortIndex int    `json:"fromPortIndex,omitempty"`
+	ToPortIndex   int    `json:"toPortIndex,omitempty"`
 }
 
 // chainGraphState is the root JSON structure for the effect chain graph.
@@ -48,9 +50,16 @@ type compiledChainNode struct {
 // and a topologically sorted traversal order.
 type compiledChainGraph struct {
 	Nodes    map[string]compiledChainNode
-	Incoming map[string][]string
-	Outgoing map[string][]string
+	Incoming map[string][]compiledChainEdge
+	Outgoing map[string][]compiledChainEdge
 	Order    []string
+}
+
+type compiledChainEdge struct {
+	From          string
+	To            string
+	FromPortIndex int
+	ToPortIndex   int
 }
 
 // chainEffectRuntime is the per-node processing/configuration contract.
@@ -283,8 +292,8 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 		return nil, nil
 	}
 
-	incoming := make(map[string][]string, len(nodes))
-	outgoing := make(map[string][]string, len(nodes))
+	incoming := make(map[string][]compiledChainEdge, len(nodes))
+	outgoing := make(map[string][]compiledChainEdge, len(nodes))
 
 	indegree := make(map[string]int, len(nodes))
 	for id := range nodes {
@@ -306,8 +315,19 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 			continue
 		}
 
-		outgoing[c.From] = append(outgoing[c.From], c.To)
-		incoming[c.To] = append(incoming[c.To], c.From)
+		edge := compiledChainEdge{
+			From: c.From,
+			To:   c.To,
+		}
+		if c.FromPortIndex >= 0 {
+			edge.FromPortIndex = c.FromPortIndex
+		}
+		if c.ToPortIndex >= 0 {
+			edge.ToPortIndex = c.ToPortIndex
+		}
+
+		outgoing[c.From] = append(outgoing[c.From], edge)
+		incoming[c.To] = append(incoming[c.To], edge)
 		indegree[c.To]++
 	}
 
@@ -325,10 +345,10 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 		queue = queue[1:]
 
 		order = append(order, id)
-		for _, to := range outgoing[id] {
-			indegree[to]--
-			if indegree[to] == 0 {
-				queue = append(queue, to)
+		for _, edge := range outgoing[id] {
+			indegree[edge.To]--
+			if indegree[edge.To] == 0 {
+				queue = append(queue, edge.To)
 			}
 		}
 	}
@@ -384,6 +404,7 @@ func parseNodeParams(raw any) (map[string]float64, map[string]string) {
 func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 	if graph == nil {
 		e.chainNodes = nil
+		e.chainCrossover = nil
 		return nil
 	}
 
@@ -392,9 +413,13 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 	}
 
 	seen := map[string]struct{}{}
+	seenCrossover := map[string]struct{}{}
 
 	for _, node := range graph.Nodes {
-		if node.Type == "_input" || node.Type == "_output" || node.Type == "split" || node.Type == "sum" {
+		if node.Type == "_input" || node.Type == "_output" || node.Type == "split" || node.Type == "sum" || node.Type == "split-freq" {
+			if node.Type == "split-freq" {
+				seenCrossover[node.ID] = struct{}{}
+			}
 			continue
 		}
 
@@ -423,6 +448,11 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 	for id := range e.chainNodes {
 		if _, ok := seen[id]; !ok {
 			delete(e.chainNodes, id)
+		}
+	}
+	for id := range e.chainCrossover {
+		if _, ok := seenCrossover[id]; !ok {
+			delete(e.chainCrossover, id)
 		}
 	}
 
@@ -1495,9 +1525,11 @@ func (r *multibandChainRuntime) Configure(e *Engine, node compiledChainNode) err
 	if order < 2 {
 		order = 2
 	}
+
 	if order > 24 {
 		order = 24
 	}
+
 	if order%2 != 0 {
 		order++
 	}
@@ -1535,6 +1567,7 @@ func (r *multibandChainRuntime) Configure(e *Engine, node compiledChainNode) err
 	if err := r.fx.SetBandThreshold(0, clamp(getNodeNum(node, "lowThresholdDB", -20), -80, 0)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetBandRatio(0, clamp(getNodeNum(node, "lowRatio", 2.5), 1, 20)); err != nil {
 		return err
 	}
@@ -1543,6 +1576,7 @@ func (r *multibandChainRuntime) Configure(e *Engine, node compiledChainNode) err
 	if err := r.fx.SetBandThreshold(1, clamp(getNodeNum(node, "midThresholdDB", -18), -80, 0)); err != nil {
 		return err
 	}
+
 	if err := r.fx.SetBandRatio(1, clamp(getNodeNum(node, "midRatio", 3.0), 1, 20)); err != nil {
 		return err
 	}
@@ -1552,6 +1586,7 @@ func (r *multibandChainRuntime) Configure(e *Engine, node compiledChainNode) err
 		if err := r.fx.SetBandThreshold(2, clamp(getNodeNum(node, "highThresholdDB", -14), -80, 0)); err != nil {
 			return err
 		}
+
 		if err := r.fx.SetBandRatio(2, clamp(getNodeNum(node, "highRatio", 4.0), 1, 20)); err != nil {
 			return err
 		}
@@ -1567,15 +1602,19 @@ func (r *multibandChainRuntime) Configure(e *Engine, node compiledChainNode) err
 		if err := r.fx.SetBandAttack(b, attack); err != nil {
 			return err
 		}
+
 		if err := r.fx.SetBandRelease(b, release); err != nil {
 			return err
 		}
+
 		if err := r.fx.SetBandKnee(b, knee); err != nil {
 			return err
 		}
+
 		if err := r.fx.SetBandAutoMakeup(b, autoMakeup); err != nil {
 			return err
 		}
+
 		if !autoMakeup {
 			if err := r.fx.SetBandMakeupGain(b, makeup); err != nil {
 				return err
@@ -1590,6 +1629,7 @@ func (r *multibandChainRuntime) Process(_ *Engine, _ compiledChainNode, block []
 	if r.fx == nil {
 		return
 	}
+
 	r.fx.ProcessInPlace(block)
 }
 

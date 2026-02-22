@@ -64,14 +64,14 @@ func TestLogSweepGenerate(t *testing.T) {
 }
 
 func TestLogSweepGenerateShort(t *testing.T) {
-	s := &LogSweep{
+	logSweep := &LogSweep{
 		StartFreq:  100,
 		EndFreq:    1000,
 		Duration:   0.1,
 		SampleRate: 8000,
 	}
 
-	sweep, err := s.Generate()
+	sweep, err := logSweep.Generate()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestLogSweepDeconvolveIdentity(t *testing.T) {
 	}
 
 	// The "response" IS the sweep itself (identity system)
-	ir, err := s.Deconvolve(sweep)
+	impulseResponse, err := s.Deconvolve(sweep)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestLogSweepDeconvolveIdentity(t *testing.T) {
 	peakIdx := 0
 
 	peakVal := 0.0
-	for i, v := range ir {
+	for i, v := range impulseResponse {
 		if math.Abs(v) > peakVal {
 			peakVal = math.Abs(v)
 			peakIdx = i
@@ -154,11 +154,11 @@ func TestLogSweepDeconvolveIdentity(t *testing.T) {
 	// The peak should be well-defined (much larger than surrounding samples)
 	// Check that the peak is at least 20 dB above average energy
 	var totalEnergy float64
-	for _, v := range ir {
+	for _, v := range impulseResponse {
 		totalEnergy += v * v
 	}
 
-	avgEnergy := totalEnergy / float64(len(ir))
+	avgEnergy := totalEnergy / float64(len(impulseResponse))
 	peakEnergy := peakVal * peakVal
 
 	peakToAvgDB := 10 * math.Log10(peakEnergy/avgEnergy)
@@ -332,14 +332,14 @@ func TestLinearSweepValidation(t *testing.T) {
 }
 
 func TestLinearSweepGenerate(t *testing.T) {
-	s := &LinearSweep{
+	linearSweep := &LinearSweep{
 		StartFreq:  100,
 		EndFreq:    4000,
 		Duration:   0.5,
 		SampleRate: 16000,
 	}
 
-	sweep, err := s.Generate()
+	sweep, err := linearSweep.Generate()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,27 +359,27 @@ func TestLinearSweepGenerate(t *testing.T) {
 }
 
 func TestLinearSweepDeconvolve(t *testing.T) {
-	s := &LinearSweep{
+	linearSweep := &LinearSweep{
 		StartFreq:  100,
 		EndFreq:    4000,
 		Duration:   0.5,
 		SampleRate: 16000,
 	}
 
-	sweep, err := s.Generate()
+	sweep, err := linearSweep.Generate()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Identity system test
-	ir, err := s.Deconvolve(sweep)
+	impulseResponse, err := linearSweep.Deconvolve(sweep)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Find peak
 	peakVal := 0.0
-	for _, v := range ir {
+	for _, v := range impulseResponse {
 		if math.Abs(v) > peakVal {
 			peakVal = math.Abs(v)
 		}

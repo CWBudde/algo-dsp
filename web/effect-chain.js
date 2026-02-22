@@ -28,13 +28,16 @@
     "dyn-expander":   { label: "Expander",          hue: 66,  category: "Dynamics" },
     "dyn-deesser":    { label: "De-Esser",          hue: 58,  category: "Dynamics" },
     "dyn-multiband":  { label: "Multiband Comp",    hue: 108, category: "Dynamics" },
-    split:            { label: "Split",             hue: 210, category: "Routing", utility: true },
+    "split-freq":     { label: "Split Freq",        hue: 210, category: "Routing", utility: true },
+    split:            { label: "Split",             hue: 210, category: "Routing", utility: true, hidden: true },
     sum:              { label: "Sum",               hue: 35,  category: "Routing", utility: true },
   };
 
   // ---- geometry constants ---------------------------------------------------
   const NODE_W   = 152;
   const NODE_H   = 52;
+  const SUM_PORT_SPACING = 18;
+  const SUM_PORT_PAD = 12;
   const PORT_R   = 7;
   const BYPASS_S = 14; // bypass-button square size
   const BYPASS_PAD = 6;
@@ -120,6 +123,7 @@
       this._connectFrom  = null; // node id when connecting
       this._connectEnd   = null; // {x,y} temp wire end (world coords)
       this._connectPort  = null; // 'output' | 'input'
+      this._connectPortIndex = null;
       this._hoveredNode  = null;
       this._hoveredPort  = null; // { nodeId, port: 'input'|'output' }
       this._hoveredWire  = null; // { from, to }
@@ -211,6 +215,7 @@
           node.type !== "_input" &&
           node.type !== "_output" &&
           node.type !== "split" &&
+          node.type !== "split-freq" &&
           node.type !== "sum" &&
           !node.bypassed
         ) {
@@ -243,7 +248,12 @@
           id: n.id, type: n.type, label: n.label,
           x: n.x, y: n.y, bypassed: n.bypassed, fixed: n.fixed, params: n.params || {},
         })),
-        connections: this.connections.map((c) => ({ from: c.from, to: c.to })),
+        connections: this.connections.map((c) => {
+          const out = { from: c.from, to: c.to };
+          if (Number.isInteger(c.fromPortIndex)) out.fromPortIndex = c.fromPortIndex;
+          if (Number.isInteger(c.toPortIndex)) out.toPortIndex = c.toPortIndex;
+          return out;
+        }),
         panX: this.panX, panY: this.panY,
       };
     }
@@ -270,7 +280,16 @@
       if (Array.isArray(data.connections)) {
         const nodeIds = new Set(this.nodes.map((n) => n.id));
         this.connections = data.connections
-          .map((c) => ({ ...c }))
+          .map((c) => {
+            const out = { from: c.from, to: c.to };
+            if (Number.isInteger(c.fromPortIndex) && c.fromPortIndex >= 0) {
+              out.fromPortIndex = c.fromPortIndex;
+            }
+            if (Number.isInteger(c.toPortIndex) && c.toPortIndex >= 0) {
+              out.toPortIndex = c.toPortIndex;
+            }
+            return out;
+          })
           .filter((c) => nodeIds.has(c.from) && nodeIds.has(c.to) && c.from !== c.to);
       }
       if (typeof data.panX === "number") this.panX = data.panX;
@@ -280,6 +299,7 @@
         const m = n.id.match(/^n(\d+)$/);
         if (m) _nextId = Math.max(_nextId, Number(m[1]) + 1);
       }
+      this._normalizeSumPortIndexes();
       this.selectedId = null;
       this.draw();
     }
@@ -354,9 +374,9 @@
       if (!fromNode || !toNode) return;
 
       const x1 = fromNode.x + NODE_W;
-      const y1 = fromNode.y + NODE_H / 2;
+      const y1 = this._outputPortY(fromNode, conn.fromPortIndex);
       const x2 = toNode.x;
-      const y2 = toNode.y + NODE_H / 2;
+      const y2 = this._inputPortY(toNode, conn.toPortIndex);
 
       const ctx = this.ctx;
       const dx = Math.max(Math.abs(x2 - x1) * 0.45, 40);
@@ -382,10 +402,10 @@
       let x1, y1;
       if (this._connectPort === "output") {
         x1 = node.x + NODE_W;
-        y1 = node.y + NODE_H / 2;
+        y1 = this._outputPortY(node, this._connectPortIndex);
       } else {
         x1 = node.x;
-        y1 = node.y + NODE_H / 2;
+        y1 = this._inputPortY(node, this._connectPortIndex);
       }
       const x2 = this._connectEnd.x;
       const y2 = this._connectEnd.y;
@@ -412,6 +432,7 @@
       const ctx = this.ctx;
       const x = node.x;
       const y = node.y;
+      const h = this._nodeH(node);
       const selected = node.id === this.selectedId;
       const hovered  = node.id === this._hoveredNode;
       const bypassed = node.bypassed;
@@ -426,7 +447,7 @@
       // body
       const r = 10;
       ctx.beginPath();
-      ctx.roundRect(x, y, NODE_W, NODE_H, r);
+      ctx.roundRect(x, y, NODE_W, h, r);
       ctx.fillStyle = nodeFill(node);
       ctx.globalAlpha = alpha;
       ctx.fill();
@@ -435,7 +456,7 @@
       // border
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.roundRect(x, y, NODE_W, NODE_H, r);
+      ctx.roundRect(x, y, NODE_W, h, r);
       if (selected) {
         ctx.strokeStyle = cssVar("--accent") || "#c24d2c";
         ctx.lineWidth = 2.5;
@@ -453,28 +474,53 @@
       ctx.fillStyle = nodeColor(node, 1);
       ctx.textBaseline = "middle";
       const labelX = x + 14;
-      const labelY = y + NODE_H / 2;
+      const labelY = y + h / 2;
       ctx.fillText(node.label, labelX, labelY);
 
       // bypass button (only for effect nodes)
-      if (!node.fixed) {
+      if (!node.fixed && !FX_TYPES[node.type]?.utility) {
         this._drawBypassBtn(node);
       }
 
       // ports
       if (node.type !== "_input") {
-        // input port (left)
-        const ipx = x;
-        const ipy = y + NODE_H / 2;
-        const ihov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "input";
-        this._drawPort(ipx, ipy, ihov, this._hasIncoming(node.id));
+        if (node.type === "sum") {
+          const inputs = this._sumInputCount(node.id);
+          for (let i = 0; i < inputs; i++) {
+            const ipx = x;
+            const ipy = this._inputPortY(node, i);
+            const ihov = this._hoveredPort?.nodeId === node.id &&
+              this._hoveredPort?.port === "input" &&
+              this._hoveredPort?.portIndex === i;
+            const connected = this._hasIncomingAtPort(node.id, i);
+            const optional = i === 1 && !connected;
+            this._drawPort(ipx, ipy, ihov, connected, optional);
+          }
+        } else {
+          // input port (left)
+          const ipx = x;
+          const ipy = y + h / 2;
+          const ihov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "input";
+          this._drawPort(ipx, ipy, ihov, this._hasIncoming(node.id));
+        }
       }
       if (node.type !== "_output") {
-        // output port (right)
-        const opx = x + NODE_W;
-        const opy = y + NODE_H / 2;
-        const ohov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "output";
-        this._drawPort(opx, opy, ohov, this._hasOutgoing(node.id));
+        if (node.type === "split-freq") {
+          for (let i = 0; i < 2; i++) {
+            const opx = x + NODE_W;
+            const opy = this._outputPortY(node, i);
+            const ohov = this._hoveredPort?.nodeId === node.id &&
+              this._hoveredPort?.port === "output" &&
+              this._hoveredPort?.portIndex === i;
+            this._drawPort(opx, opy, ohov, this._hasOutgoingAtPort(node.id, i));
+          }
+        } else {
+          // output port (right)
+          const opx = x + NODE_W;
+          const opy = y + h / 2;
+          const ohov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "output";
+          this._drawPort(opx, opy, ohov, this._hasOutgoing(node.id));
+        }
       }
 
       ctx.globalAlpha = 1;
@@ -483,7 +529,7 @@
     _drawBypassBtn(node) {
       const ctx = this.ctx;
       const bx = node.x + NODE_W - BYPASS_S - BYPASS_PAD;
-      const by = node.y + (NODE_H - BYPASS_S) / 2;
+      const by = node.y + (this._nodeH(node) - BYPASS_S) / 2;
 
       // button background
       ctx.beginPath();
@@ -512,13 +558,15 @@
       ctx.stroke();
     }
 
-    _drawPort(px, py, hovered, connected) {
+    _drawPort(px, py, hovered, connected, optional = false) {
       const ctx = this.ctx;
       const r = hovered ? PORT_R + 1.5 : PORT_R;
       ctx.beginPath();
       ctx.arc(px, py, r, 0, Math.PI * 2);
       if (connected) {
         ctx.fillStyle = isDark() ? "rgba(140,180,220,0.7)" : "rgba(60,100,140,0.6)";
+      } else if (optional) {
+        ctx.fillStyle = isDark() ? "rgba(100,120,140,0.2)" : "rgba(120,140,160,0.18)";
       } else {
         ctx.fillStyle = isDark() ? "rgba(100,120,140,0.4)" : "rgba(120,140,160,0.35)";
       }
@@ -534,7 +582,7 @@
       // reverse order so topmost node wins
       for (let i = this.nodes.length - 1; i >= 0; i--) {
         const n = this.nodes[i];
-        if (wx >= n.x && wx <= n.x + NODE_W && wy >= n.y && wy <= n.y + NODE_H) {
+        if (wx >= n.x && wx <= n.x + NODE_W && wy >= n.y && wy <= n.y + this._nodeH(n)) {
           return n;
         }
       }
@@ -544,7 +592,7 @@
     _hitBypass(wx, wy, node) {
       if (!node || node.fixed) return false;
       const bx = node.x + NODE_W - BYPASS_S - BYPASS_PAD;
-      const by = node.y + (NODE_H - BYPASS_S) / 2;
+      const by = node.y + (this._nodeH(node) - BYPASS_S) / 2;
       return wx >= bx && wx <= bx + BYPASS_S && wy >= by && wy <= by + BYPASS_S;
     }
 
@@ -554,18 +602,39 @@
         const n = this.nodes[i];
         // input port
         if (n.type !== "_input") {
-          const ipx = n.x;
-          const ipy = n.y + NODE_H / 2;
-          if (Math.hypot(wx - ipx, wy - ipy) <= hitR) {
-            return { nodeId: n.id, port: "input" };
+          if (n.type === "sum") {
+            const inputs = this._sumInputCount(n.id);
+            for (let i = 0; i < inputs; i++) {
+              const ipx = n.x;
+              const ipy = this._inputPortY(n, i);
+              if (Math.hypot(wx - ipx, wy - ipy) <= hitR) {
+                return { nodeId: n.id, port: "input", portIndex: i };
+              }
+            }
+          } else {
+            const ipx = n.x;
+            const ipy = n.y + this._nodeH(n) / 2;
+            if (Math.hypot(wx - ipx, wy - ipy) <= hitR) {
+              return { nodeId: n.id, port: "input" };
+            }
           }
         }
         // output port
         if (n.type !== "_output") {
-          const opx = n.x + NODE_W;
-          const opy = n.y + NODE_H / 2;
-          if (Math.hypot(wx - opx, wy - opy) <= hitR) {
-            return { nodeId: n.id, port: "output" };
+          if (n.type === "split-freq") {
+            for (let i = 0; i < 2; i++) {
+              const opx = n.x + NODE_W;
+              const opy = this._outputPortY(n, i);
+              if (Math.hypot(wx - opx, wy - opy) <= hitR) {
+                return { nodeId: n.id, port: "output", portIndex: i };
+              }
+            }
+          } else {
+            const opx = n.x + NODE_W;
+            const opy = n.y + this._nodeH(n) / 2;
+            if (Math.hypot(wx - opx, wy - opy) <= hitR) {
+              return { nodeId: n.id, port: "output" };
+            }
           }
         }
       }
@@ -580,9 +649,9 @@
         const toNode = this._nodeById(conn.to);
         if (!fromNode || !toNode) continue;
         const x1 = fromNode.x + NODE_W;
-        const y1 = fromNode.y + NODE_H / 2;
+        const y1 = this._outputPortY(fromNode, conn.fromPortIndex);
         const x2 = toNode.x;
-        const y2 = toNode.y + NODE_H / 2;
+        const y2 = this._inputPortY(toNode, conn.toPortIndex);
         const dx = Math.max(Math.abs(x2 - x1) * 0.45, 40);
         const c1x = x1 + dx;
         const c1y = y1;
@@ -689,6 +758,7 @@
           this._action = "connect";
           this._connectFrom = port.nodeId;
           this._connectPort = port.port;
+          this._connectPortIndex = port.portIndex;
           this._connectEnd = { x: wx, y: wy };
           return;
         }
@@ -785,11 +855,19 @@
           // try to complete connection
           const port = this._hitPort(wx, wy);
           if (port && port.nodeId !== this._connectFrom) {
-            this._createConnection(this._connectFrom, this._connectPort, port.nodeId, port.port);
+            this._createConnection(
+              this._connectFrom,
+              this._connectPort,
+              port.nodeId,
+              port.port,
+              this._connectPortIndex,
+              port.portIndex,
+            );
           }
           this._connectFrom = null;
           this._connectEnd  = null;
           this._connectPort = null;
+          this._connectPortIndex = null;
           this.draw();
           return;
         }
@@ -828,6 +906,7 @@
       const wire = this._hitWire(wx, wy);
       if (wire) {
         this.connections = this.connections.filter((c) => c !== wire);
+        this._normalizeSumPortIndexes();
         this._emitChange();
         this._hideMenu();
         this.draw();
@@ -848,13 +927,19 @@
 
     // ---- connection management ---------------------------------------------
 
-    _createConnection(fromId, fromPort, toId, toPort) {
+    _createConnection(fromId, fromPort, toId, toPort, fromPortIndex = null, toPortIndex = null) {
       // normalise direction: always from output to input
       let srcId, dstId;
+      let srcPortIndex = null;
+      let dstPortIndex = null;
       if (fromPort === "output" && toPort === "input") {
         srcId = fromId; dstId = toId;
+        srcPortIndex = fromPortIndex;
+        dstPortIndex = toPortIndex;
       } else if (fromPort === "input" && toPort === "output") {
         srcId = toId; dstId = fromId;
+        srcPortIndex = toPortIndex;
+        dstPortIndex = fromPortIndex;
       } else {
         return; // same-type ports
       }
@@ -870,12 +955,28 @@
 
       const srcOutLimit = this._outgoingLimit(srcNode.type);
       const dstInLimit = this._incomingLimit(dstNode.type);
+
       this.connections = this.connections.filter((c) => {
         if (c.from === srcId && srcOutLimit === 1) return false;
+        if (dstNode.type === "sum" && c.to === dstId) {
+          if (typeof dstPortIndex === "number" && c.toPortIndex === dstPortIndex) return false;
+          return true;
+        }
         if (c.to === dstId && dstInLimit === 1) return false;
         return true;
       });
-      this.connections.push({ from: srcId, to: dstId });
+      const newConn = { from: srcId, to: dstId };
+      if (srcNode.type === "split-freq") {
+        newConn.fromPortIndex = Number.isInteger(srcPortIndex)
+          ? srcPortIndex
+          : 0;
+      }
+      if (dstNode.type === "sum") {
+        const preferredIndex = Number.isInteger(dstPortIndex) ? dstPortIndex : this._firstFreeSumPort(dstId);
+        newConn.toPortIndex = preferredIndex;
+      }
+      this.connections.push(newConn);
+      this._normalizeSumPortIndexes();
       this._emitChange();
     }
 
@@ -948,13 +1049,20 @@
       }
       if (bestConn) {
         const oldTo = bestConn.to;
+        const oldFromPortIndex = bestConn.fromPortIndex;
+        const oldToPortIndex = bestConn.toPortIndex;
         bestConn.to = nodeId;
-        this.connections.push({ from: nodeId, to: oldTo });
+        if (Number.isInteger(oldFromPortIndex)) bestConn.fromPortIndex = oldFromPortIndex;
+        if (Number.isInteger(oldToPortIndex)) delete bestConn.toPortIndex;
+        const bridge = { from: nodeId, to: oldTo };
+        if (Number.isInteger(oldToPortIndex)) bridge.toPortIndex = oldToPortIndex;
+        this.connections.push(bridge);
       } else {
         // no chain yet, connect input -> node -> output
         this.connections.push({ from: "_input", to: nodeId });
         this.connections.push({ from: nodeId, to: "_output" });
       }
+      this._normalizeSumPortIndexes();
     }
 
     _removeFromChain(nodeId) {
@@ -969,6 +1077,7 @@
       this.connections = this.connections.filter(
         (c) => c.from !== nodeId && c.to !== nodeId
       );
+      this._normalizeSumPortIndexes();
     }
 
     // ---- context menu ------------------------------------------------------
@@ -1005,6 +1114,7 @@
         removeConnItem.textContent = "Remove Connection";
         removeConnItem.addEventListener("click", () => {
           this.connections = this.connections.filter((c) => c !== wireUnderCursor);
+          this._normalizeSumPortIndexes();
           this._emitChange();
           this._hideMenu();
           this.draw();
@@ -1018,6 +1128,7 @@
 
         const grouped = new Map();
         for (const [type, def] of Object.entries(FX_TYPES)) {
+          if (def.hidden) continue;
           const category = def.category || "Other";
           if (!grouped.has(category)) grouped.set(category, []);
           grouped.get(category).push([type, def]);
@@ -1071,8 +1182,17 @@
                 bypassed: false, fixed: false, params,
               });
               this.connections = this.connections.filter((c) => c !== wireUnderCursor);
-              this.connections.push({ from: wireUnderCursor.from, to: newId });
-              this.connections.push({ from: newId, to: wireUnderCursor.to });
+              this.connections.push({
+                from: wireUnderCursor.from,
+                to: newId,
+                fromPortIndex: wireUnderCursor.fromPortIndex,
+              });
+              this.connections.push({
+                from: newId,
+                to: wireUnderCursor.to,
+                toPortIndex: wireUnderCursor.toPortIndex,
+              });
+              this._normalizeSumPortIndexes();
               this._emitChange();
               this._hideMenu();
               this.draw();
@@ -1102,6 +1222,7 @@
 
         const grouped = new Map();
         for (const [type, def] of Object.entries(FX_TYPES)) {
+          if (def.hidden) continue;
           const category = def.category || "Other";
           if (!grouped.has(category)) grouped.set(category, []);
           grouped.get(category).push([type, def]);
@@ -1210,14 +1331,90 @@
 
     _incomingLimit(type) {
       if (type === "_input") return 0;
-      if (type === "sum" || type === "_output") return -1;
+      if (type === "_output") return -1;
       return 1;
     }
 
     _outgoingLimit(type) {
       if (type === "_output") return 0;
-      if (type === "split" || type === "_input") return -1;
-      return 1;
+      return -1;
+    }
+
+    _nodeH(node) {
+      if (!node || node.type !== "sum") return NODE_H;
+      const inputs = this._sumInputCount(node.id);
+      const needed = SUM_PORT_PAD * 2 + (inputs - 1) * SUM_PORT_SPACING;
+      return Math.max(NODE_H, needed);
+    }
+
+    _sumInputCount(nodeId) {
+      const connected = this.connections.reduce((n, c) => n + (c.to === nodeId ? 1 : 0), 0);
+      return Math.max(2, connected + 1);
+    }
+
+    _sumInputYs(node) {
+      const count = this._sumInputCount(node.id);
+      const h = this._nodeH(node);
+      const startY = node.y + (h - (count - 1) * SUM_PORT_SPACING) / 2;
+      const out = [];
+      for (let i = 0; i < count; i++) out.push(startY + i * SUM_PORT_SPACING);
+      return out;
+    }
+
+    _inputPortY(node, portIndex) {
+      if (!node) return 0;
+      if (node.type !== "sum") return node.y + this._nodeH(node) / 2;
+      const ys = this._sumInputYs(node);
+      if (ys.length === 0) return node.y + this._nodeH(node) / 2;
+      if (!Number.isInteger(portIndex) || portIndex < 0) return ys[0];
+      return ys[Math.min(portIndex, ys.length - 1)];
+    }
+
+    _hasIncomingAtPort(nodeId, portIndex) {
+      return this.connections.some((c) => c.to === nodeId && c.toPortIndex === portIndex);
+    }
+
+    _firstFreeSumPort(nodeId) {
+      const used = new Set(
+        this.connections
+          .filter((c) => c.to === nodeId && Number.isInteger(c.toPortIndex))
+          .map((c) => c.toPortIndex),
+      );
+      let i = 0;
+      while (used.has(i)) i++;
+      return i;
+    }
+
+    _hasOutgoingAtPort(nodeId, portIndex) {
+      return this.connections.some((c) => c.from === nodeId && c.fromPortIndex === portIndex);
+    }
+
+    _outputPortY(node, portIndex) {
+      if (!node) return 0;
+      if (node.type !== "split-freq") return node.y + this._nodeH(node) / 2;
+      const h = this._nodeH(node);
+      const mid = node.y + h / 2;
+      const offset = SUM_PORT_SPACING / 2;
+      return portIndex === 1 ? (mid + offset) : (mid - offset);
+    }
+
+    _normalizeSumPortIndexes() {
+      const sumIds = new Set(this.nodes.filter((n) => n.type === "sum").map((n) => n.id));
+      for (const sumId of sumIds) {
+        const incoming = this.connections
+          .map((c, idx) => ({ c, idx }))
+          .filter((v) => v.c.to === sumId);
+        incoming.sort((a, b) => {
+          const ai = Number.isInteger(a.c.toPortIndex) ? a.c.toPortIndex : Number.MAX_SAFE_INTEGER;
+          const bi = Number.isInteger(b.c.toPortIndex) ? b.c.toPortIndex : Number.MAX_SAFE_INTEGER;
+          if (ai !== bi) return ai - bi;
+          if (a.c.from !== b.c.from) return String(a.c.from).localeCompare(String(b.c.from));
+          return a.idx - b.idx;
+        });
+        for (let i = 0; i < incoming.length; i++) {
+          incoming[i].c.toPortIndex = i;
+        }
+      }
     }
 
     _emitChange() {
