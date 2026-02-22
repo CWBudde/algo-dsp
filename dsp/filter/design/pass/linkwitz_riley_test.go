@@ -8,7 +8,7 @@ import (
 )
 
 func TestLinkwitzRileyLP_Basic(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
 	tests := []struct {
 		order    int
@@ -22,7 +22,7 @@ func TestLinkwitzRileyLP_Basic(t *testing.T) {
 		{12, 6}, // LR12: two 6th-order Butterworth filters
 	}
 	for _, tt := range tests {
-		sections := LinkwitzRileyLP(1000, tt.order, sr)
+		sections := LinkwitzRileyLP(1000, tt.order, sampleRate)
 		if len(sections) != tt.sections {
 			t.Errorf("LR%d LP: expected %d sections, got %d", tt.order, tt.sections, len(sections))
 			continue
@@ -41,7 +41,7 @@ func TestLinkwitzRileyLP_Basic(t *testing.T) {
 }
 
 func TestLinkwitzRileyHP_Basic(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
 	tests := []struct {
 		order    int
@@ -55,7 +55,7 @@ func TestLinkwitzRileyHP_Basic(t *testing.T) {
 		{12, 6},
 	}
 	for _, tt := range tests {
-		sections := LinkwitzRileyHP(1000, tt.order, sr)
+		sections := LinkwitzRileyHP(1000, tt.order, sampleRate)
 		if len(sections) != tt.sections {
 			t.Errorf("LR%d HP: expected %d sections, got %d", tt.order, tt.sections, len(sections))
 			continue
@@ -72,44 +72,44 @@ func TestLinkwitzRileyHP_Basic(t *testing.T) {
 }
 
 func TestLinkwitzRileyLP_InvalidOrder(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
 	invalid := []int{0, -1, 1}
 	for _, order := range invalid {
-		if got := LinkwitzRileyLP(1000, order, sr); got != nil {
+		if got := LinkwitzRileyLP(1000, order, sampleRate); got != nil {
 			t.Errorf("LR LP order %d: expected nil, got %d sections", order, len(got))
 		}
 	}
 }
 
 func TestLinkwitzRileyHP_InvalidOrder(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
 	invalid := []int{0, -1, 1}
 	for _, order := range invalid {
-		if got := LinkwitzRileyHP(1000, order, sr); got != nil {
+		if got := LinkwitzRileyHP(1000, order, sampleRate); got != nil {
 			t.Errorf("LR HP order %d: expected nil, got %d sections", order, len(got))
 		}
 	}
 }
 
 func TestLinkwitzRileyLP_InvalidFrequency(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
-	invalid := []float64{0, -100, sr / 2, sr}
+	invalid := []float64{0, -100, sampleRate / 2, sampleRate}
 	for _, freq := range invalid {
-		if got := LinkwitzRileyLP(freq, 4, sr); got != nil {
+		if got := LinkwitzRileyLP(freq, 4, sampleRate); got != nil {
 			t.Errorf("LR LP freq %v: expected nil, got %d sections", freq, len(got))
 		}
 	}
 }
 
 func TestLinkwitzRileyHP_InvalidFrequency(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
-	invalid := []float64{0, -100, sr / 2, sr}
+	invalid := []float64{0, -100, sampleRate / 2, sampleRate}
 	for _, freq := range invalid {
-		if got := LinkwitzRileyHP(freq, 4, sr); got != nil {
+		if got := LinkwitzRileyHP(freq, 4, sampleRate); got != nil {
 			t.Errorf("LR HP freq %v: expected nil, got %d sections", freq, len(got))
 		}
 	}
@@ -126,18 +126,18 @@ func TestLinkwitzRileyLP_InvalidSampleRate(t *testing.T) {
 
 // TestLinkwitzRiley_CrossoverMagnitude verifies -6.02 dB at the crossover frequency.
 func TestLinkwitzRiley_CrossoverMagnitude(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	expectedDB := -6.02 // Linkwitz-Riley: -6 dB at crossover
 	tolerance := 0.05   // dB
 
 	orders := []int{2, 3, 4, 5, 8, 12, 16}
 	for _, order := range orders {
-		lpSections := LinkwitzRileyLP(fc, order, sr)
-		hpSections := LinkwitzRileyHP(fc, order, sr)
+		lpSections := LinkwitzRileyLP(cutoffFrequency, order, sampleRate)
+		hpSections := LinkwitzRileyHP(cutoffFrequency, order, sampleRate)
 
-		lpMag := cascadeMagDB(lpSections, fc, sr)
-		hpMag := cascadeMagDB(hpSections, fc, sr)
+		lpMag := cascadeMagDB(lpSections, cutoffFrequency, sampleRate)
+		hpMag := cascadeMagDB(hpSections, cutoffFrequency, sampleRate)
 
 		if math.Abs(lpMag-expectedDB) > tolerance {
 			t.Errorf("LR%d LP at crossover: %.3f dB, want %.2f ±%.2f dB", order, lpMag, expectedDB, tolerance)
@@ -152,37 +152,37 @@ func TestLinkwitzRiley_CrossoverMagnitude(t *testing.T) {
 // TestLinkwitzRiley_AllpassSum verifies LP + HP = allpass (flat magnitude)
 // when using the correct polarity (inverted HP for orders ≡ 2 mod 4).
 func TestLinkwitzRiley_AllpassSum(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	tolerance := 0.05 // dB
 
 	orders := []int{2, 4, 6, 8, 12}
 	for _, order := range orders {
-		lpSections := LinkwitzRileyLP(fc, order, sr)
+		lpSections := LinkwitzRileyLP(cutoffFrequency, order, sampleRate)
 
 		var hpSections []biquad.Coefficients
 		if LinkwitzRileyNeedsHPInvert(order) {
-			hpSections = LinkwitzRileyHPInverted(fc, order, sr)
+			hpSections = LinkwitzRileyHPInverted(cutoffFrequency, order, sampleRate)
 		} else {
-			hpSections = LinkwitzRileyHP(fc, order, sr)
+			hpSections = LinkwitzRileyHP(cutoffFrequency, order, sampleRate)
 		}
 
 		lpChain := biquad.NewChain(lpSections)
 		hpChain := biquad.NewChain(hpSections)
 
 		// Check sum magnitude at several frequencies.
-		freqs := []float64{20, 100, 500, fc, 2000, 5000, 10000, 20000}
-		for _, f := range freqs {
-			if f >= sr/2 {
+		freqs := []float64{20, 100, 500, cutoffFrequency, 2000, 5000, 10000, 20000}
+		for _, freq := range freqs {
+			if freq >= sampleRate/2 {
 				continue
 			}
 
-			lpH := lpChain.Response(f, sr)
-			hpH := hpChain.Response(f, sr)
+			lpH := lpChain.Response(freq, sampleRate)
+			hpH := hpChain.Response(freq, sampleRate)
 			sumMag := 20 * math.Log10(cmplxAbs(lpH+hpH))
 
 			if math.Abs(sumMag) > tolerance {
-				t.Errorf("LR%d sum at %.0f Hz: %.4f dB (want 0 ±%.2f dB)", order, f, sumMag, tolerance)
+				t.Errorf("LR%d sum at %.0f Hz: %.4f dB (want 0 ±%.2f dB)", order, freq, sumMag, tolerance)
 			}
 		}
 	}
@@ -216,12 +216,12 @@ func TestLinkwitzRiley_NeedsHPInvert(t *testing.T) {
 // TestLinkwitzRiley_FamilySignature validates Butterworth-squared passband flatness
 // and monotonic stopband for the lowpass.
 func TestLinkwitzRiley_FamilySignature(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
-	sections := LinkwitzRileyLP(fc, 4, sr)
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
+	sections := LinkwitzRileyLP(cutoffFrequency, 4, sampleRate)
 
-	passband := measureBandSignature(sections, 10, 0.3*fc, 10, sr)
-	stop := measureBandSignature(sections, 2*fc, 0.45*sr, 100, sr)
+	passband := measureBandSignature(sections, 10, 0.3*cutoffFrequency, 10, sampleRate)
+	stop := measureBandSignature(sections, 2*cutoffFrequency, 0.45*sampleRate, 100, sampleRate)
 
 	if passband.spanDB > 0.1 {
 		t.Fatalf("LR4 LP passband should be very flat: span=%.3f dB", passband.spanDB)
@@ -238,12 +238,12 @@ func TestLinkwitzRiley_FamilySignature(t *testing.T) {
 
 // TestLinkwitzRiley_DoubledSections verifies that even orders are exactly doubled Butterworth.
 func TestLinkwitzRiley_DoubledSections(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	order := 8
 
-	bwLP := ButterworthLP(fc, order/2, sr)
-	lrLP := LinkwitzRileyLP(fc, order, sr)
+	bwLP := ButterworthLP(cutoffFrequency, order/2, sampleRate)
+	lrLP := LinkwitzRileyLP(cutoffFrequency, order, sampleRate)
 
 	if len(lrLP) != 2*len(bwLP) {
 		t.Fatalf("LR%d LP: expected %d sections, got %d", order, 2*len(bwLP), len(lrLP))
@@ -266,13 +266,13 @@ func TestLinkwitzRiley_DoubledSections(t *testing.T) {
 // TestLinkwitzRiley_OddOrderSections verifies odd orders are built from
 // adjacent Butterworth orders.
 func TestLinkwitzRiley_OddOrderSections(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	order := 5
 
-	bwLow := ButterworthLP(fc, order/2, sr)
-	bwHigh := ButterworthLP(fc, (order+1)/2, sr)
-	lrLP := LinkwitzRileyLP(fc, order, sr)
+	bwLow := ButterworthLP(cutoffFrequency, order/2, sampleRate)
+	bwHigh := ButterworthLP(cutoffFrequency, (order+1)/2, sampleRate)
+	lrLP := LinkwitzRileyLP(cutoffFrequency, order, sampleRate)
 
 	if len(lrLP) != len(bwLow)+len(bwHigh) {
 		t.Fatalf("LR%d LP: expected %d sections, got %d", order, len(bwLow)+len(bwHigh), len(lrLP))
@@ -295,17 +295,17 @@ func TestLinkwitzRiley_OddOrderSections(t *testing.T) {
 // TestLinkwitzRiley_OddOrderSumNotAllpass verifies odd-order LP/HP pairs do
 // not form an exact allpass response via polarity inversion alone.
 func TestLinkwitzRiley_OddOrderSumNotAllpass(t *testing.T) {
-	sr := 48000.0
+	sampleRate := 48000.0
 
-	fc := 1000.0
+	cutoffFrequency := 1000.0
 	for _, order := range []int{3, 5, 7} {
-		lp := biquad.NewChain(LinkwitzRileyLP(fc, order, sr))
-		hp := biquad.NewChain(LinkwitzRileyHP(fc, order, sr))
-		hpInv := biquad.NewChain(LinkwitzRileyHPInverted(fc, order, sr))
+		lp := biquad.NewChain(LinkwitzRileyLP(cutoffFrequency, order, sampleRate))
+		hp := biquad.NewChain(LinkwitzRileyHP(cutoffFrequency, order, sampleRate))
+		hpInv := biquad.NewChain(LinkwitzRileyHPInverted(cutoffFrequency, order, sampleRate))
 
-		lpH := lp.Response(fc, sr)
-		sum := 20 * math.Log10(cmplxAbs(lpH+hp.Response(fc, sr)))
-		sumInv := 20 * math.Log10(cmplxAbs(lpH+hpInv.Response(fc, sr)))
+		lpH := lp.Response(cutoffFrequency, sampleRate)
+		sum := 20 * math.Log10(cmplxAbs(lpH+hp.Response(cutoffFrequency, sampleRate)))
+		sumInv := 20 * math.Log10(cmplxAbs(lpH+hpInv.Response(cutoffFrequency, sampleRate)))
 
 		if math.Abs(sum) < 0.5 {
 			t.Errorf("LR%d odd-order sum unexpectedly near allpass at crossover: %.3f dB", order, sum)
@@ -319,19 +319,19 @@ func TestLinkwitzRiley_OddOrderSumNotAllpass(t *testing.T) {
 
 // TestLinkwitzRiley_HighOrders verifies that very high orders work.
 func TestLinkwitzRiley_HighOrders(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 
 	for _, order := range []int{20, 21, 24, 33, 48} {
-		lp := LinkwitzRileyLP(fc, order, sr)
+		lowPass := LinkwitzRileyLP(cutoffFrequency, order, sampleRate)
+		highPass := LinkwitzRileyHP(cutoffFrequency, order, sampleRate)
 
-		hp := LinkwitzRileyHP(fc, order, sr)
-		if lp == nil {
+		if lowPass == nil {
 			t.Errorf("LR%d LP: got nil", order)
 			continue
 		}
 
-		if hp == nil {
+		if highPass == nil {
 			t.Errorf("LR%d HP: got nil", order)
 			continue
 		}
@@ -339,14 +339,14 @@ func TestLinkwitzRiley_HighOrders(t *testing.T) {
 		lowOrder := order / 2
 		highOrder := (order + 1) / 2
 
-		expectedSections := len(ButterworthLP(fc, lowOrder, sr)) + len(ButterworthLP(fc, highOrder, sr))
-		if len(lp) != expectedSections {
-			t.Errorf("LR%d LP: expected %d sections, got %d", order, expectedSections, len(lp))
+		expectedSections := len(ButterworthLP(cutoffFrequency, lowOrder, sampleRate)) + len(ButterworthLP(cutoffFrequency, highOrder, sampleRate))
+		if len(lowPass) != expectedSections {
+			t.Errorf("LR%d LP: expected %d sections, got %d", order, expectedSections, len(lowPass))
 		}
 
 		// Verify crossover magnitude.
-		lpMag := cascadeMagDB(lp, fc, sr)
-		hpMag := cascadeMagDB(hp, fc, sr)
+		lpMag := cascadeMagDB(lowPass, cutoffFrequency, sampleRate)
+		hpMag := cascadeMagDB(highPass, cutoffFrequency, sampleRate)
 
 		if math.Abs(lpMag-(-6.02)) > 0.1 {
 			t.Errorf("LR%d LP at crossover: %.3f dB, want -6.02 dB", order, lpMag)
@@ -360,34 +360,34 @@ func TestLinkwitzRiley_HighOrders(t *testing.T) {
 
 // TestLinkwitzRileyHPInverted_Polarity verifies inverted HP negates B coefficients.
 func TestLinkwitzRileyHPInverted_Polarity(t *testing.T) {
-	sr := 48000.0
-	fc := 1000.0
+	sampleRate := 48000.0
+	cutoffFrequency := 1000.0
 	order := 2
 
-	hp := LinkwitzRileyHP(fc, order, sr)
-	hpInv := LinkwitzRileyHPInverted(fc, order, sr)
+	highPass := LinkwitzRileyHP(cutoffFrequency, order, sampleRate)
+	hpInv := LinkwitzRileyHPInverted(cutoffFrequency, order, sampleRate)
 
-	if len(hp) != len(hpInv) {
-		t.Fatalf("section count mismatch: %d vs %d", len(hp), len(hpInv))
+	if len(highPass) != len(hpInv) {
+		t.Fatalf("section count mismatch: %d vs %d", len(highPass), len(hpInv))
 	}
 
 	// First section should have negated B coefficients.
-	if math.Abs(hp[0].B0+hpInv[0].B0) > 1e-15 {
-		t.Errorf("B0: %v vs %v (should be negated)", hp[0].B0, hpInv[0].B0)
+	if math.Abs(highPass[0].B0+hpInv[0].B0) > 1e-15 {
+		t.Errorf("B0: %v vs %v (should be negated)", highPass[0].B0, hpInv[0].B0)
 	}
 
-	if math.Abs(hp[0].B1+hpInv[0].B1) > 1e-15 {
-		t.Errorf("B1: %v vs %v (should be negated)", hp[0].B1, hpInv[0].B1)
+	if math.Abs(highPass[0].B1+hpInv[0].B1) > 1e-15 {
+		t.Errorf("B1: %v vs %v (should be negated)", highPass[0].B1, hpInv[0].B1)
 	}
 
 	// A coefficients should be identical.
-	if math.Abs(hp[0].A1-hpInv[0].A1) > 1e-15 {
-		t.Errorf("A1 should be identical: %v vs %v", hp[0].A1, hpInv[0].A1)
+	if math.Abs(highPass[0].A1-hpInv[0].A1) > 1e-15 {
+		t.Errorf("A1 should be identical: %v vs %v", highPass[0].A1, hpInv[0].A1)
 	}
 
 	// Remaining sections should be unchanged.
-	for i := 1; i < len(hp); i++ {
-		if !coeffEqual(hp[i], hpInv[i]) {
+	for i := 1; i < len(highPass); i++ {
+		if !coeffEqual(highPass[i], hpInv[i]) {
 			t.Errorf("section %d should be unchanged", i)
 		}
 	}

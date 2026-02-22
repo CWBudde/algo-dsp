@@ -24,80 +24,80 @@ func TestNewValidation(t *testing.T) {
 }
 
 func TestNewDefaults(t *testing.T) {
-	d, err := New(16)
+	delayLine, err := New(16)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if d.Len() != 16 {
-		t.Fatalf("Len: got %d want 16", d.Len())
+	if delayLine.Len() != 16 {
+		t.Fatalf("Len: got %d want 16", delayLine.Len())
 	}
 
-	if d.mode != interp.Hermite {
-		t.Fatalf("default mode: got %v want Hermite", d.mode)
+	if delayLine.mode != interp.Hermite {
+		t.Fatalf("default mode: got %v want Hermite", delayLine.mode)
 	}
 }
 
 func TestNewWithOptions(t *testing.T) {
-	d, err := New(16, WithMode(interp.Linear))
+	delayLine, err := New(16, WithMode(interp.Linear))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if d.mode != interp.Linear {
-		t.Fatalf("mode: got %v want Linear", d.mode)
+	if delayLine.mode != interp.Linear {
+		t.Fatalf("mode: got %v want Linear", delayLine.mode)
 	}
 }
 
 // --- integer Read/Write ---
 
 func TestReadWrite(t *testing.T) {
-	d, err := New(8)
+	delayLine, err := New(8)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for i := 0; i < 8; i++ {
-		d.Write(float64(i))
+		delayLine.Write(float64(i))
 	}
 	// delay=1 => most recently written (7)
-	if got := d.Read(1); got != 7 {
+	if got := delayLine.Read(1); got != 7 {
 		t.Fatalf("got %v want 7", got)
 	}
 	// delay=3 => 3 samples back from write head
-	if got := d.Read(3); got != 5 {
+	if got := delayLine.Read(3); got != 5 {
 		t.Fatalf("got %v want 5", got)
 	}
 }
 
 func TestReadWraparound(t *testing.T) {
-	d, err := New(4)
+	delayLine, err := New(4)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for i := 0; i < 10; i++ {
-		d.Write(float64(i))
+		delayLine.Write(float64(i))
 	}
 	// buffer should contain [8, 9, 6, 7], writePos=2
 	// Read(1) = most recent = 9
-	if got := d.Read(1); got != 9 {
+	if got := delayLine.Read(1); got != 9 {
 		t.Fatalf("got %v want 9", got)
 	}
 }
 
 func TestReset(t *testing.T) {
-	d, err := New(4)
+	delayLine, err := New(4)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	d.Write(1)
-	d.Write(2)
-	d.Reset()
+	delayLine.Write(1)
+	delayLine.Write(2)
+	delayLine.Reset()
 
 	for i := 0; i < 4; i++ {
-		if got := d.Read(i); got != 0 {
+		if got := delayLine.Read(i); got != 0 {
 			t.Fatalf("after reset Read(%d): got %v want 0", i, got)
 		}
 	}
@@ -106,31 +106,31 @@ func TestReset(t *testing.T) {
 // --- fractional read with default (Hermite) ---
 
 func TestReadFractionalLinearRamp(t *testing.T) {
-	d, err := New(16)
+	delayLine, err := New(16)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < d.Len(); i++ {
-		d.Write(float64(i))
+	for i := 0; i < delayLine.Len(); i++ {
+		delayLine.Write(float64(i))
 	}
 
-	if got := d.ReadFractional(3.5); got < 12.49 || got > 12.51 {
+	if got := delayLine.ReadFractional(3.5); got < 12.49 || got > 12.51 {
 		t.Fatalf("got %v want about 12.5", got)
 	}
 }
 
 func TestReadFractionalNegativeClamped(t *testing.T) {
-	d, err := New(8)
+	delayLine, err := New(8)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for i := 0; i < 8; i++ {
-		d.Write(float64(i + 1))
+		delayLine.Write(float64(i + 1))
 	}
 
-	got := d.ReadFractional(-1.0)
+	got := delayLine.ReadFractional(-1.0)
 	// negative delay clamped to 0
 	if math.IsNaN(got) || math.IsInf(got, 0) {
 		t.Fatalf("negative delay produced %v", got)
@@ -147,60 +147,60 @@ func fillRamp(d *Line) {
 }
 
 func TestReadFractionalLinear(t *testing.T) {
-	d, err := New(32, WithMode(interp.Linear))
+	delayLine, err := New(32, WithMode(interp.Linear))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fillRamp(d)
+	fillRamp(delayLine)
 	// With a linear ramp, linear interpolation is exact.
-	got := d.ReadFractional(5.5)
+	got := delayLine.ReadFractional(5.5)
 
-	want := float64(d.Len()) - 5.5 // 26.5
+	want := float64(delayLine.Len()) - 5.5 // 26.5
 	if !approxEqual(got, want, 1e-10) {
 		t.Fatalf("Linear: got %v want %v", got, want)
 	}
 }
 
 func TestReadFractionalHermite(t *testing.T) {
-	d, err := New(32, WithMode(interp.Hermite))
+	delayLine, err := New(32, WithMode(interp.Hermite))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fillRamp(d)
-	got := d.ReadFractional(5.5)
+	fillRamp(delayLine)
+	got := delayLine.ReadFractional(5.5)
 
-	want := float64(d.Len()) - 5.5
+	want := float64(delayLine.Len()) - 5.5
 	if !approxEqual(got, want, 1e-10) {
 		t.Fatalf("Hermite: got %v want %v", got, want)
 	}
 }
 
 func TestReadFractionalLagrange(t *testing.T) {
-	d, err := New(32, WithMode(interp.Lagrange3))
+	delayLine, err := New(32, WithMode(interp.Lagrange3))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fillRamp(d)
-	got := d.ReadFractional(5.5)
+	fillRamp(delayLine)
+	got := delayLine.ReadFractional(5.5)
 
-	want := float64(d.Len()) - 5.5
+	want := float64(delayLine.Len()) - 5.5
 	if !approxEqual(got, want, 1e-10) {
 		t.Fatalf("Lagrange3: got %v want %v", got, want)
 	}
 }
 
 func TestReadFractionalLanczos(t *testing.T) {
-	d, err := New(64, WithMode(interp.Lanczos3))
+	delayLine, err := New(64, WithMode(interp.Lanczos3))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fillRamp(d)
-	got := d.ReadFractional(10.5)
-	want := float64(d.Len()) - 10.5
+	fillRamp(delayLine)
+	got := delayLine.ReadFractional(10.5)
+	want := float64(delayLine.Len()) - 10.5
 	// Lanczos is approximate on a finite ramp.
 	if !approxEqual(got, want, 0.5) {
 		t.Fatalf("Lanczos3: got %v want ~%v", got, want)
@@ -208,44 +208,44 @@ func TestReadFractionalLanczos(t *testing.T) {
 }
 
 func TestReadFractionalSinc(t *testing.T) {
-	d, err := New(64, WithMode(interp.Sinc), WithSincN(4))
+	delayLine, err := New(64, WithMode(interp.Sinc), WithSincN(4))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fillRamp(d)
-	got := d.ReadFractional(10.5)
+	fillRamp(delayLine)
+	got := delayLine.ReadFractional(10.5)
 
-	want := float64(d.Len()) - 10.5
+	want := float64(delayLine.Len()) - 10.5
 	if !approxEqual(got, want, 0.5) {
 		t.Fatalf("Sinc: got %v want ~%v", got, want)
 	}
 }
 
 func TestReadFractionalAllpass(t *testing.T) {
-	d, err := New(64, WithMode(interp.Allpass))
+	delayLine, err := New(64, WithMode(interp.Allpass))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Fill with DC to let the allpass state settle.
-	for i := 0; i < d.Len(); i++ {
-		d.Write(50.0)
+	for i := 0; i < delayLine.Len(); i++ {
+		delayLine.Write(50.0)
 	}
 
 	for i := 0; i < 50; i++ {
-		d.ReadFractional(10.5)
+		delayLine.ReadFractional(10.5)
 	}
 	// Now fill with ramp and verify the output is finite and in range.
-	d.Reset()
-	fillRamp(d)
+	delayLine.Reset()
+	fillRamp(delayLine)
 
-	got := d.ReadFractional(10.5)
+	got := delayLine.ReadFractional(10.5)
 	if math.IsNaN(got) || math.IsInf(got, 0) {
 		t.Fatalf("Allpass: produced %v", got)
 	}
 	// Allpass state is reset, so first-call accuracy is limited;
 	// just check it's in the right ballpark.
-	want := float64(d.Len()) - 10.5
+	want := float64(delayLine.Len()) - 10.5
 	if math.Abs(got-want) > 30 {
 		t.Fatalf("Allpass: got %v, expected roughly %v", got, want)
 	}
@@ -265,19 +265,19 @@ func TestAllModesDCPreservation(t *testing.T) {
 		{"Sinc", interp.Sinc},
 	}
 
-	for _, tc := range modes {
-		d, err := New(32, WithMode(tc.mode))
+	for _, testCase := range modes {
+		delayLine, err := New(32, WithMode(testCase.mode))
 		if err != nil {
 			t.Fatal(err)
 		}
 		// Fill with constant value.
-		for i := 0; i < d.Len(); i++ {
-			d.Write(42.0)
+		for i := 0; i < delayLine.Len(); i++ {
+			delayLine.Write(42.0)
 		}
 
-		got := d.ReadFractional(5.3)
+		got := delayLine.ReadFractional(5.3)
 		if !approxEqual(got, 42.0, 1e-6) {
-			t.Fatalf("%s DC: got %v want 42", tc.name, got)
+			t.Fatalf("%s DC: got %v want 42", testCase.name, got)
 		}
 	}
 }
@@ -285,18 +285,18 @@ func TestAllModesDCPreservation(t *testing.T) {
 // --- allpass DC convergence (needs state settling) ---
 
 func TestAllpassDCConvergence(t *testing.T) {
-	d, err := New(32, WithMode(interp.Allpass))
+	delayLine, err := New(32, WithMode(interp.Allpass))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < d.Len(); i++ {
-		d.Write(10.0)
+	for i := 0; i < delayLine.Len(); i++ {
+		delayLine.Write(10.0)
 	}
 	// Read multiple times at the same delay to let the allpass state settle.
 	var got float64
 	for i := 0; i < 100; i++ {
-		got = d.ReadFractional(5.3)
+		got = delayLine.ReadFractional(5.3)
 	}
 
 	if !approxEqual(got, 10.0, 1e-4) {
@@ -324,14 +324,14 @@ func TestAllModesSineQuality(t *testing.T) {
 		{"Sinc", interp.Sinc, 1e-3},
 	}
 
-	for _, tc := range modes {
-		d, err := New(size, WithMode(tc.mode))
+	for _, testCase := range modes {
+		delayLine, err := New(size, WithMode(testCase.mode))
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		for i := 0; i < size; i++ {
-			d.Write(math.Sin(2 * math.Pi * freq * float64(i)))
+			delayLine.Write(math.Sin(2 * math.Pi * freq * float64(i)))
 		}
 
 		delay := 20.37
@@ -339,12 +339,12 @@ func TestAllModesSineQuality(t *testing.T) {
 		// so fractional delay d corresponds to sample index (size-d).
 		exactSample := float64(size) - delay
 		want := math.Sin(2 * math.Pi * freq * exactSample)
-		got := d.ReadFractional(delay)
+		got := delayLine.ReadFractional(delay)
 
 		err2 := math.Abs(got - want)
-		if err2 > tc.tol {
+		if err2 > testCase.tol {
 			t.Fatalf("%s sine: got %v want %v (err=%e, tol=%e)",
-				tc.name, got, want, err2, tc.tol)
+				testCase.name, got, want, err2, testCase.tol)
 		}
 	}
 }
@@ -352,13 +352,13 @@ func TestAllModesSineQuality(t *testing.T) {
 // --- WithSincN option ---
 
 func TestWithSincN(t *testing.T) {
-	d, err := New(64, WithMode(interp.Sinc), WithSincN(4))
+	delayLine, err := New(64, WithMode(interp.Sinc), WithSincN(4))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if d.sincHalfN != 4 {
-		t.Fatalf("sincHalfN: got %d want 4", d.sincHalfN)
+	if delayLine.sincHalfN != 4 {
+		t.Fatalf("sincHalfN: got %d want 4", delayLine.sincHalfN)
 	}
 }
 
@@ -376,51 +376,48 @@ func TestWithSincNIgnoresInvalid(t *testing.T) {
 // --- benchmarks ---
 
 func BenchmarkReadFractionalLinear(b *testing.B) {
-	d, _ := New(1024, WithMode(interp.Linear))
-	fillRamp(d)
-	b.ResetTimer()
+	delayLine, _ := New(1024, WithMode(interp.Linear))
+	fillRamp(delayLine)
 
-	for i := 0; i < b.N; i++ {
-		d.ReadFractional(100.37)
+	for b.Loop() {
+		delayLine.ReadFractional(100.37)
 	}
 }
 
 func BenchmarkReadFractionalHermite(b *testing.B) {
-	d, _ := New(1024, WithMode(interp.Hermite))
-	fillRamp(d)
+	delayLine, _ := New(1024, WithMode(interp.Hermite))
+	fillRamp(delayLine)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		d.ReadFractional(100.37)
+		delayLine.ReadFractional(100.37)
 	}
 }
 
 func BenchmarkReadFractionalLanczos(b *testing.B) {
-	d, _ := New(1024, WithMode(interp.Lanczos3))
-	fillRamp(d)
+	delayLine, _ := New(1024, WithMode(interp.Lanczos3))
+	fillRamp(delayLine)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		d.ReadFractional(100.37)
+		delayLine.ReadFractional(100.37)
 	}
 }
 
 func BenchmarkReadFractionalSinc(b *testing.B) {
-	d, _ := New(1024, WithMode(interp.Sinc))
-	fillRamp(d)
-	b.ResetTimer()
+	delayLine, _ := New(1024, WithMode(interp.Sinc))
+	fillRamp(delayLine)
 
-	for i := 0; i < b.N; i++ {
-		d.ReadFractional(100.37)
+	for b.Loop() {
+		delayLine.ReadFractional(100.37)
 	}
 }
 
 func BenchmarkReadFractionalAllpass(b *testing.B) {
-	d, _ := New(1024, WithMode(interp.Allpass))
-	fillRamp(d)
-	b.ResetTimer()
+	delayLine, _ := New(1024, WithMode(interp.Allpass))
+	fillRamp(delayLine)
 
-	for i := 0; i < b.N; i++ {
-		d.ReadFractional(100.37)
+	for b.Loop() {
+		delayLine.ReadFractional(100.37)
 	}
 }

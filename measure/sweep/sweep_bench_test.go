@@ -5,7 +5,7 @@ import (
 )
 
 func BenchmarkLogSweepGenerate(b *testing.B) {
-	sweep := &LogSweep{
+	logSweep := &LogSweep{
 		StartFreq:  20,
 		EndFreq:    20000,
 		Duration:   1,
@@ -15,14 +15,14 @@ func BenchmarkLogSweepGenerate(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := sweep.Generate(); err != nil {
+		if _, err := logSweep.Generate(); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 func BenchmarkLogSweepInverseFilter(b *testing.B) {
-	sweep := &LogSweep{
+	logSweep := &LogSweep{
 		StartFreq:  20,
 		EndFreq:    20000,
 		Duration:   1,
@@ -32,50 +32,50 @@ func BenchmarkLogSweepInverseFilter(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := sweep.InverseFilter(); err != nil {
+		if _, err := logSweep.InverseFilter(); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 func BenchmarkLogSweepDeconvolve(b *testing.B) {
-	s := &LogSweep{
+	logSweep := &LogSweep{
 		StartFreq:  100,
 		EndFreq:    4000,
 		Duration:   0.5,
 		SampleRate: 16000,
 	}
-	sweep, _ := s.Generate()
+	sweep, _ := logSweep.Generate()
 
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := s.Deconvolve(sweep); err != nil {
+		if _, err := logSweep.Deconvolve(sweep); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 func BenchmarkLogSweepDeconvolve48k(b *testing.B) {
-	s := &LogSweep{
+	logSweep := &LogSweep{
 		StartFreq:  20,
 		EndFreq:    20000,
 		Duration:   1,
 		SampleRate: 48000,
 	}
-	sweep, _ := s.Generate()
+	sweep, _ := logSweep.Generate()
 
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := s.Deconvolve(sweep); err != nil {
+		if _, err := logSweep.Deconvolve(sweep); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 func BenchmarkLinearSweepGenerate(b *testing.B) {
-	s := &LinearSweep{
+	linearSweep := &LinearSweep{
 		StartFreq:  20,
 		EndFreq:    20000,
 		Duration:   1,
@@ -85,7 +85,7 @@ func BenchmarkLinearSweepGenerate(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := s.Generate(); err != nil {
+		if _, err := linearSweep.Generate(); err != nil {
 			b.Fatal(err)
 		}
 	}

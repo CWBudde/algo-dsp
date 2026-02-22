@@ -395,6 +395,8 @@ const el = {
   fxMBHighThreshValue: document.getElementById("fx-mb-high-thresh-value"),
   fxMBHighRatio: document.getElementById("fx-mb-high-ratio"),
   fxMBHighRatioValue: document.getElementById("fx-mb-high-ratio-value"),
+  splitFreq: document.getElementById("split-freq"),
+  splitFreqValue: document.getElementById("split-freq-value"),
   widenerWidth: document.getElementById("widener-width"),
   widenerWidthValue: document.getElementById("widener-width-value"),
   widenerMix: document.getElementById("widener-mix"),
@@ -605,6 +607,7 @@ const EFFECT_NODE_DEFAULTS = {
     highThresholdDB: -14,
     highRatio: 4.0,
   },
+  "split-freq": { freqHz: 1200 },
   widener: { width: 1.0, mix: 0.5 },
   phaser: {
     rateHz: 0.4,
@@ -774,6 +777,9 @@ function applyNodeParamsToUI(node) {
       el.fxMBMidRatio.value = p.midRatio;
       el.fxMBHighThresh.value = p.highThresholdDB;
       el.fxMBHighRatio.value = p.highRatio;
+      break;
+    case "split-freq":
+      el.splitFreq.value = p.freqHz;
       break;
     case "widener":
       el.widenerWidth.value = p.width;
@@ -981,6 +987,10 @@ function collectNodeParamsFromUI(nodeType) {
         midRatio: Number(el.fxMBMidRatio.value),
         highThresholdDB: Number(el.fxMBHighThresh.value),
         highRatio: Number(el.fxMBHighRatio.value),
+      };
+    case "split-freq":
+      return {
+        freqHz: Number(el.splitFreq.value),
       };
     case "widener":
       return {
@@ -1791,6 +1801,9 @@ function updateEffectsText() {
   if (el.fxMBHighRatioValue) {
     el.fxMBHighRatioValue.textContent = `${Number(el.fxMBHighRatio.value).toFixed(1)}:1`;
   }
+  if (el.splitFreqValue) {
+    el.splitFreqValue.textContent = `${Number(el.splitFreq.value).toFixed(0)} Hz`;
+  }
   el.widenerWidthValue.textContent = `${Number(el.widenerWidth.value).toFixed(2)}x`;
   el.widenerMixValue.textContent = `${Math.round(Number(el.widenerMix.value) * 100)}%`;
   el.phaserRateValue.textContent = `${Number(el.phaserRate.value).toFixed(2)} Hz`;
@@ -2188,6 +2201,7 @@ function bindEvents() {
     el.fxMBMidRatio,
     el.fxMBHighThresh,
     el.fxMBHighRatio,
+    el.splitFreq,
     el.widenerWidth,
     el.widenerMix,
     el.phaserRate,
