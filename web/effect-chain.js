@@ -136,8 +136,8 @@
       this._submenu = null;
 
       // add fixed Input and Output nodes
-      this._addFixedNode("_input",  "Input",  60,  130);
-      this._addFixedNode("_output", "Output", 560, 130);
+      this._addFixedNode("_input",  "Input",  60,  250);
+      this._addFixedNode("_output", "Output", 560, 250);
       // default connection
       this.connections.push({ from: "_input", to: "_output" });
 

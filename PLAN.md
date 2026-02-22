@@ -176,7 +176,7 @@ Phase 16: Effects — High-Priority Dynamics            [2 weeks]  📋 Planned
 Phase 17: Effects — High-Priority Spatial             [1 week]   ✅ Complete
 Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  📋 Planned
 Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  ✅ Complete
-Phase 20: Effects — Medium-Priority Dynamics          [2 weeks]  📋 Planned
+Phase 20: Effects — Medium-Priority Dynamics          [2 weeks]  ✅ Complete
 Phase 21: Effects — Spatial and Convolution Reverb    [2 weeks]  📋 Planned
 Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  📋 Planned
 Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
@@ -451,16 +451,16 @@ Web demo:
 
 - Live demo: [https://cwbudde.github.io/algo-dsp/](https://cwbudde.github.io/algo-dsp/)
 
-### Phase 20: Effects — Medium-Priority Dynamics (Planned)
+### Phase 20: Effects — Medium-Priority Dynamics (Complete)
 
 Tasks:
 
 - [x] Transient shaper
   - [x] Implement attack/release split + shaping.
   - [x] Add tests + example.
-- [ ] Lookahead limiter
-  - [ ] Implement delay + detector + gain.
-  - [ ] Add tests + example.
+- [x] Lookahead limiter
+  - [x] Implement delay + detector + gain.
+  - [x] Add tests + example.
 
 ### Phase 21: Effects — Spatial and Convolution Reverb (Planned)
 

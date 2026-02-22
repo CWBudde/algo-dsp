@@ -570,7 +570,8 @@ const EFFECT_NODE_DEFAULTS = {
     releaseMs: 100,
     makeupGainDB: 0,
   },
-    "dyn-limiter": { thresholdDB: -0.1, releaseMs: 100 },
+  "dyn-limiter": { thresholdDB: -0.1, releaseMs: 100 },
+  "dyn-lookahead": { thresholdDB: -1.0, releaseMs: 100, lookaheadMs: 3.0 },
   "dyn-gate": {
     mode: "gate",
     thresholdDB: -40,
@@ -641,6 +642,7 @@ const EFFECT_NODE_DEFAULTS = {
   },
   tremolo: { rateHz: 4, depth: 0.6, smoothingMs: 5, mix: 1.0 },
   delay: { time: 0.25, feedback: 0.35, mix: 0.25 },
+  "delay-simple": { delayMs: 20 },
   bass: {
     frequency: 80,
     inputGain: 1,
@@ -748,6 +750,11 @@ function applyNodeParamsToUI(node) {
       el.fxLimThresh.value = p.thresholdDB;
       el.fxLimRelease.value = p.releaseMs;
       break;
+    case "dyn-lookahead":
+      el.fxLookaheadThresh.value = p.thresholdDB;
+      el.fxLookaheadRelease.value = p.releaseMs;
+      el.fxLookaheadMs.value = p.lookaheadMs;
+      break;
     case "dyn-gate":
       el.fxGateMode.value = p.mode || "gate";
       el.fxGateThresh.value = p.thresholdDB;
@@ -831,6 +838,9 @@ function applyNodeParamsToUI(node) {
       el.delayTime.value = p.time;
       el.delayFeedback.value = p.feedback;
       el.delayMix.value = p.mix;
+      break;
+    case "delay-simple":
+      el.simpleDelayMs.value = p.delayMs;
       break;
     case "bass":
       el.harmonicFrequency.value = p.frequency;
@@ -960,6 +970,12 @@ function collectNodeParamsFromUI(nodeType) {
         thresholdDB: Number(el.fxLimThresh.value),
         releaseMs: Number(el.fxLimRelease.value),
       };
+    case "dyn-lookahead":
+      return {
+        thresholdDB: Number(el.fxLookaheadThresh.value),
+        releaseMs: Number(el.fxLookaheadRelease.value),
+        lookaheadMs: Number(el.fxLookaheadMs.value),
+      };
     case "dyn-gate":
       return {
         mode: String(el.fxGateMode.value || "gate"),
@@ -1053,6 +1069,10 @@ function collectNodeParamsFromUI(nodeType) {
         time: Number(el.delayTime.value),
         feedback: Number(el.delayFeedback.value),
         mix: Number(el.delayMix.value),
+      };
+    case "delay-simple":
+      return {
+        delayMs: Number(el.simpleDelayMs.value),
       };
     case "bass":
       return {
@@ -1728,6 +1748,15 @@ function updateEffectsText() {
   if (el.fxLimReleaseValue) {
     el.fxLimReleaseValue.textContent = `${Number(el.fxLimRelease.value).toFixed(0)} ms`;
   }
+  if (el.fxLookaheadThreshValue) {
+    el.fxLookaheadThreshValue.textContent = `${Number(el.fxLookaheadThresh.value).toFixed(1)} dB`;
+  }
+  if (el.fxLookaheadReleaseValue) {
+    el.fxLookaheadReleaseValue.textContent = `${Number(el.fxLookaheadRelease.value).toFixed(0)} ms`;
+  }
+  if (el.fxLookaheadMsValue) {
+    el.fxLookaheadMsValue.textContent = `${Number(el.fxLookaheadMs.value).toFixed(1)} ms`;
+  }
   if (el.fxGateThreshValue) {
     el.fxGateThreshValue.textContent = `${Number(el.fxGateThresh.value).toFixed(1)} dB`;
   }
@@ -1868,6 +1897,9 @@ function updateEffectsText() {
   el.delayTimeValue.textContent = `${(Number(el.delayTime.value) * 1000).toFixed(0)} ms`;
   el.delayFeedbackValue.textContent = `${Math.round(Number(el.delayFeedback.value) * 100)}%`;
   el.delayMixValue.textContent = `${Math.round(Number(el.delayMix.value) * 100)}%`;
+  if (el.simpleDelayMsValue) {
+    el.simpleDelayMsValue.textContent = `${Number(el.simpleDelayMs.value).toFixed(0)} ms`;
+  }
   el.timePitchSemitonesValue.textContent = `${Number(el.timePitchSemitones.value).toFixed(1)} st`;
   el.timePitchSequenceValue.textContent = `${Number(el.timePitchSequence.value).toFixed(0)} ms`;
   el.timePitchOverlapValue.textContent = `${Number(el.timePitchOverlap.value).toFixed(0)} ms`;
@@ -2204,6 +2236,9 @@ function bindEvents() {
     el.fxCompMakeup,
     el.fxLimThresh,
     el.fxLimRelease,
+    el.fxLookaheadThresh,
+    el.fxLookaheadRelease,
+    el.fxLookaheadMs,
     el.fxGateMode,
     el.fxGateThresh,
     el.fxGateRatio,
@@ -2268,6 +2303,7 @@ function bindEvents() {
     el.delayTime,
     el.delayFeedback,
     el.delayMix,
+    el.simpleDelayMs,
     el.timePitchSemitones,
     el.timePitchSequence,
     el.timePitchOverlap,
