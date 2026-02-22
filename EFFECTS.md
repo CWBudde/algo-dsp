@@ -16,6 +16,7 @@ both single-sample (`Process`) and buffer-based (`ProcessInPlace`) processing.
 | **Compressor** | `compressor.go` | Soft-knee feed-forward compressor with log2-domain gain calculation. Configurable threshold, ratio, knee width, attack/release, and auto-makeup gain. |
 | **Gate**       | `gate.go`       | Soft-knee noise gate with hold time to prevent chattering. Configurable threshold, expansion ratio, knee width, attack/hold/release, and range.       |
 | **Limiter**    | `limiter.go`    | Peak limiter (compressor preset with 100:1 ratio, 0.1 ms attack, hard knee).                                                                          |
+| **TransientShaper** | `transient_shaper.go` | Attack/release envelope-split transient shaper with independent attack and sustain emphasis/attenuation controls.                                     |
 
 ### Time-Based
 
@@ -91,7 +92,6 @@ additional DSP building blocks.
 | ------------------------------ | ----------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | **Distortion / Saturation**    | Waveshaping | Tube, tape, or transistor-style non-linear waveshaping with configurable transfer curves. | Oversampling recommended to control aliasing     |
 | **Convolution Reverb**         | Spatial     | IR-based reverb using partitioned convolution.                                            | `conv` package (overlap-add already implemented) |
-| **Transient Shaper**           | Dynamics    | Independent control of attack and sustain portions of transients.                         | Envelope follower with dual time constants       |
 | **Lookahead Limiter**          | Dynamics    | True-peak limiter with lookahead buffer for inter-sample peak detection.                  | Oversampled peak detection, delay compensation   |
 
 ### Lower Priority / Specialized

@@ -243,6 +243,16 @@
                 <span id="delay-mix-value">25%</span>
               </label>
             </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="delay-simple" hidden>
+              <div class="fx-option-head">
+                <span>Simple Delay</span>
+              </div>
+              <label>
+                Delay
+                <input id="simple-delay-ms" type="range" min="0" max="500" step="1" value="20" />
+                <span id="simple-delay-ms-value">20 ms</span>
+              </label>
+            </div>
             <div class="fx-card chain-detail-card" data-chain-detail="flanger" hidden>
               <div class="fx-option-head">
                 <span>Flanger</span>
@@ -546,6 +556,26 @@
                 <span id="fx-lim-release-value">100 ms</span>
               </label>
             </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="dyn-lookahead" hidden>
+              <div class="fx-option-head">
+                <span>Lookahead Limiter (Chain)</span>
+              </div>
+              <label>
+                Threshold
+                <input id="fx-lookahead-thresh" type="range" min="-24" max="0" step="0.1" value="-1.0" />
+                <span id="fx-lookahead-thresh-value">-1.0 dB</span>
+              </label>
+              <label>
+                Release
+                <input id="fx-lookahead-release" type="range" min="1" max="1000" step="1" value="100" />
+                <span id="fx-lookahead-release-value">100 ms</span>
+              </label>
+              <label>
+                Lookahead
+                <input id="fx-lookahead-ms" type="range" min="0" max="200" step="0.1" value="3.0" />
+                <span id="fx-lookahead-ms-value">3.0 ms</span>
+              </label>
+            </div>
             <div class="fx-card chain-detail-card" data-chain-detail="dyn-gate" hidden>
               <div class="fx-option-head">
                 <span>Gate / Expander (Chain)</span>
@@ -716,6 +746,31 @@
                 Range
                 <input id="fx-deess-range" type="range" min="-60" max="0" step="1" value="-24" />
                 <span id="fx-deess-range-value">-24 dB</span>
+              </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="dyn-transient" hidden>
+              <div class="fx-option-head">
+                <span>Transient Shaper (Chain)</span>
+              </div>
+              <label>
+                Attack Amount
+                <input id="fx-transient-attack" type="range" min="-1" max="1" step="0.01" value="0" />
+                <span id="fx-transient-attack-value">0.00</span>
+              </label>
+              <label>
+                Sustain Amount
+                <input id="fx-transient-sustain" type="range" min="-1" max="1" step="0.01" value="0" />
+                <span id="fx-transient-sustain-value">0.00</span>
+              </label>
+              <label>
+                Attack Time
+                <input id="fx-transient-attack-ms" type="range" min="0.1" max="200" step="0.1" value="10" />
+                <span id="fx-transient-attack-ms-value">10.0 ms</span>
+              </label>
+              <label>
+                Release Time
+                <input id="fx-transient-release-ms" type="range" min="1" max="2000" step="1" value="120" />
+                <span id="fx-transient-release-ms-value">120 ms</span>
               </label>
             </div>
             <div class="fx-card chain-detail-card" data-chain-detail="dyn-multiband" hidden>

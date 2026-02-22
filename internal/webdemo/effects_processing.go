@@ -108,6 +108,9 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 	if e.chainSplitHighBuf == nil {
 		e.chainSplitHighBuf = make(map[string][]float64, len(g.Nodes))
 	}
+	if e.chainMixBuf == nil {
+		e.chainMixBuf = make([]float64, len(block))
+	}
 
 	buffers := e.chainOutBuf
 	splitLow := e.chainSplitLowBuf
@@ -170,29 +173,19 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 			return buffers[edge.From]
 		}
 
-		if len(parents) == 0 {
-			for i := range dst {
-				dst[i] = 0
-			}
-		} else if len(parents) == 1 {
-			copy(dst, edgeSrc(parents[0]))
-		} else {
-			for i := range mixBuf {
-				mixBuf[i] = 0
-			}
-
+		mainParents := parents
+		sideParents := []compiledChainEdge(nil)
+		if node.Type == "dyn-lookahead" {
+			mainParents = mainParents[:0]
 			for _, edge := range parents {
-				src := edgeSrc(edge)
-				for i := range mixBuf {
-					mixBuf[i] += src[i]
+				if edge.ToPortIndex == 1 {
+					sideParents = append(sideParents, edge)
+				} else {
+					mainParents = append(mainParents, edge)
 				}
 			}
-
-			scale := 1.0 / float64(len(parents))
-			for i := range mixBuf {
-				dst[i] = mixBuf[i] * scale
-			}
 		}
+		mixParentEdgesInto(mainParents, dst, mixBuf, edgeSrc)
 
 		if node.Type == "split-freq" {
 			low := splitLow[id]
@@ -237,6 +230,22 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 			continue
 		}
 
+		if node.Type == "dyn-lookahead" {
+			rt := e.chainNodes[node.ID]
+			if rt != nil {
+				if lookahead, ok := rt.effect.(*lookaheadLimiterChainRuntime); ok {
+					sideBuf := e.chainMixBuf[:len(dst)]
+					mixParentEdgesInto(sideParents, sideBuf, mixBuf, edgeSrc)
+					if len(sideParents) == 0 {
+						copy(sideBuf, dst)
+					}
+
+					lookahead.ProcessWithSidechain(dst, sideBuf)
+					continue
+				}
+			}
+		}
+
 		e.applyCompiledNode(node, dst)
 	}
 
@@ -248,6 +257,42 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 	copy(block, out)
 
 	return true
+}
+
+func mixParentEdgesInto(
+	parents []compiledChainEdge,
+	dst []float64,
+	mixBuf []float64,
+	edgeSrc func(edge compiledChainEdge) []float64,
+) {
+	if len(parents) == 0 {
+		for i := range dst {
+			dst[i] = 0
+		}
+
+		return
+	}
+
+	if len(parents) == 1 {
+		copy(dst, edgeSrc(parents[0]))
+		return
+	}
+
+	for i := range mixBuf {
+		mixBuf[i] = 0
+	}
+
+	for _, edge := range parents {
+		src := edgeSrc(edge)
+		for i := range mixBuf {
+			mixBuf[i] += src[i]
+		}
+	}
+
+	scale := 1.0 / float64(len(parents))
+	for i := range mixBuf {
+		dst[i] = mixBuf[i] * scale
+	}
 }
 
 // applyCompiledNode dispatches a single compiled graph node to its runtime effect.
