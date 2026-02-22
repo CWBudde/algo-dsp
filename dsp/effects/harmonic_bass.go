@@ -63,10 +63,12 @@ func NewHarmonicBass(sampleRate float64) (*HarmonicBass, error) {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return nil, fmt.Errorf("harmonic bass sample rate must be positive and finite: %f", sampleRate)
 	}
+
 	l, err := dynamics.NewLimiter(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	b := &HarmonicBass{
 		sampleRate:        sampleRate,
 		frequency:         defaultHarmonicBassFrequency,
@@ -83,9 +85,11 @@ func NewHarmonicBass(sampleRate float64) (*HarmonicBass, error) {
 	if err := b.rebuildFilters(); err != nil {
 		return nil, err
 	}
+
 	if err := b.applyResponse(); err != nil {
 		return nil, err
 	}
+
 	return b, nil
 }
 
@@ -124,10 +128,12 @@ func (b *HarmonicBass) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("harmonic bass sample rate must be positive and finite: %f", sampleRate)
 	}
+
 	b.sampleRate = sampleRate
 	if err := b.rebuildFilters(); err != nil {
 		return err
 	}
+
 	return b.applyResponse()
 }
 
@@ -138,7 +144,9 @@ func (b *HarmonicBass) SetFrequency(freq float64) error {
 		return fmt.Errorf("harmonic bass frequency must be in [%f, %f]: %f",
 			minHarmonicBassFrequency, maxHarmonicBassFrequency, freq)
 	}
+
 	b.frequency = freq
+
 	return b.rebuildFilters()
 }
 
@@ -147,7 +155,9 @@ func (b *HarmonicBass) SetRatio(ratio float64) error {
 	if ratio <= 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
 		return fmt.Errorf("harmonic bass ratio must be positive and finite: %f", ratio)
 	}
+
 	b.ratio = ratio
+
 	return nil
 }
 
@@ -156,7 +166,9 @@ func (b *HarmonicBass) SetResponse(ms float64) error {
 	if ms <= 0 || math.IsNaN(ms) || math.IsInf(ms, 0) {
 		return fmt.Errorf("harmonic bass response must be positive and finite: %f", ms)
 	}
+
 	b.responseMs = ms
+
 	return b.applyResponse()
 }
 
@@ -165,7 +177,9 @@ func (b *HarmonicBass) SetDecay(decay float64) error {
 	if math.IsNaN(decay) || math.IsInf(decay, 0) {
 		return fmt.Errorf("harmonic bass decay must be finite: %f", decay)
 	}
+
 	b.decay = decay
+
 	return nil
 }
 
@@ -174,7 +188,9 @@ func (b *HarmonicBass) SetInputLevel(gain float64) error {
 	if math.IsNaN(gain) || math.IsInf(gain, 0) {
 		return fmt.Errorf("harmonic bass input gain must be finite: %f", gain)
 	}
+
 	b.inputLevel = gain
+
 	return nil
 }
 
@@ -183,7 +199,9 @@ func (b *HarmonicBass) SetHighFrequencyLevel(gain float64) error {
 	if math.IsNaN(gain) || math.IsInf(gain, 0) {
 		return fmt.Errorf("harmonic bass high frequency gain must be finite: %f", gain)
 	}
+
 	b.highFrequencyGain = gain
+
 	return nil
 }
 
@@ -192,7 +210,9 @@ func (b *HarmonicBass) SetOriginalBassLevel(gain float64) error {
 	if math.IsNaN(gain) || math.IsInf(gain, 0) {
 		return fmt.Errorf("harmonic bass original bass gain must be finite: %f", gain)
 	}
+
 	b.originalBassGain = gain
+
 	return nil
 }
 
@@ -201,7 +221,9 @@ func (b *HarmonicBass) SetHarmonicBassLevel(gain float64) error {
 	if math.IsNaN(gain) || math.IsInf(gain, 0) {
 		return fmt.Errorf("harmonic bass harmonic gain must be finite: %f", gain)
 	}
+
 	b.harmonicBassGain = gain
+
 	return nil
 }
 
@@ -216,12 +238,15 @@ func (b *HarmonicBass) Reset() {
 	if b.crossoverLP != nil {
 		b.crossoverLP.Reset()
 	}
+
 	if b.crossoverHP != nil {
 		b.crossoverHP.Reset()
 	}
+
 	if b.highpass != nil {
 		b.highpass.Reset()
 	}
+
 	if b.limiter != nil {
 		b.limiter.Reset()
 	}
@@ -254,9 +279,11 @@ func (b *HarmonicBass) applyResponse() error {
 	if b.limiter == nil {
 		return nil
 	}
+
 	if err := b.limiter.SetRelease(b.responseMs); err != nil {
 		return err
 	}
+
 	return b.limiter.SetThreshold(0)
 }
 
@@ -264,21 +291,27 @@ func (b *HarmonicBass) rebuildFilters() error {
 	if b.sampleRate <= 0 || math.IsNaN(b.sampleRate) || math.IsInf(b.sampleRate, 0) {
 		return fmt.Errorf("harmonic bass sample rate must be positive and finite: %f", b.sampleRate)
 	}
+
 	freq := b.frequency
 	if freq < minHarmonicBassFrequency {
 		freq = minHarmonicBassFrequency
 	}
 
 	lp := design.ButterworthLP(freq, 3, b.sampleRate)
+
 	hp := design.ButterworthHP(freq, 3, b.sampleRate)
 	if len(lp) == 0 || len(hp) == 0 {
 		return fmt.Errorf("harmonic bass crossover design failed for freq=%f sr=%f", freq, b.sampleRate)
 	}
+
 	b.crossoverLP = biquad.NewChain(lp)
 	b.crossoverHP = biquad.NewChain(hp)
 
-	var hpFreq float64
-	var hpOrder int
+	var (
+		hpFreq  float64
+		hpOrder int
+	)
+
 	switch b.highpassSelect {
 	case HighpassDC:
 		hpFreq = 16.0
@@ -292,18 +325,22 @@ func (b *HarmonicBass) rebuildFilters() error {
 	default:
 		return fmt.Errorf("harmonic bass highpass mode invalid: %d", b.highpassSelect)
 	}
+
 	if hpFreq <= 0 {
 		hpFreq = 16.0
 	}
+
 	hpCoeffs := design.ButterworthHP(hpFreq, hpOrder, b.sampleRate)
 	if len(hpCoeffs) == 0 {
 		return fmt.Errorf("harmonic bass highpass design failed for freq=%f sr=%f", hpFreq, b.sampleRate)
 	}
+
 	b.highpass = biquad.NewChain(hpCoeffs)
 
 	if b.limiter != nil {
 		return b.limiter.SetSampleRate(b.sampleRate)
 	}
+
 	return nil
 }
 

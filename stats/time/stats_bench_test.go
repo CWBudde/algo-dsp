@@ -10,6 +10,7 @@ func makeBenchSignal(n int) []float64 {
 	for i := range out {
 		out[i] = math.Sin(2 * math.Pi * float64(i) / float64(n))
 	}
+
 	return out
 }
 
@@ -20,6 +21,7 @@ func BenchmarkCalculate(b *testing.B) {
 		b.Run(itoa(n), func(b *testing.B) {
 			b.ReportAllocs()
 			b.SetBytes(int64(n * 8))
+
 			for i := 0; i < b.N; i++ {
 				Calculate(signal)
 			}
@@ -34,6 +36,7 @@ func BenchmarkRMS(b *testing.B) {
 		b.Run(itoa(n), func(b *testing.B) {
 			b.ReportAllocs()
 			b.SetBytes(int64(n * 8))
+
 			for i := 0; i < b.N; i++ {
 				RMS(signal)
 			}
@@ -48,6 +51,7 @@ func BenchmarkStreamingUpdate(b *testing.B) {
 		b.Run(itoa(n), func(b *testing.B) {
 			b.ReportAllocs()
 			b.SetBytes(int64(n * 8))
+
 			ss := NewStreamingStats()
 			for i := 0; i < b.N; i++ {
 				ss.Reset()

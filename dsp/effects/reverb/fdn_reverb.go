@@ -76,6 +76,7 @@ func NewFDNReverb(sampleRate float64) (*FDNReverb, error) {
 	for i := range r.baseDelaySamples {
 		r.baseDelaySamples[i] = fdnDelaySamples[i]
 	}
+
 	scale := 1 / math.Sqrt(float64(fdnSize))
 	r.inputGain = scale
 	r.outputGain = scale
@@ -84,6 +85,7 @@ func NewFDNReverb(sampleRate float64) (*FDNReverb, error) {
 	if err := r.SetSampleRate(sampleRate); err != nil {
 		return nil, err
 	}
+
 	return r, nil
 }
 
@@ -92,10 +94,12 @@ func (r *FDNReverb) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("fdn reverb sample rate must be > 0: %f", sampleRate)
 	}
+
 	r.sampleRate = sampleRate
 	r.lineDelayScale = sampleRate / fdnReferenceSampleRate
 	r.modDepthSamples = r.modDepthSeconds * r.sampleRate
 	r.preDelaySamples = r.preDelaySeconds * r.sampleRate
+
 	return r.reconfigureDelays()
 }
 
@@ -104,7 +108,9 @@ func (r *FDNReverb) SetWet(v float64) error {
 	if v < 0 || math.IsNaN(v) || math.IsInf(v, 0) {
 		return fmt.Errorf("fdn reverb wet must be >= 0: %f", v)
 	}
+
 	r.wet = v
+
 	return nil
 }
 
@@ -113,7 +119,9 @@ func (r *FDNReverb) SetDry(v float64) error {
 	if v < 0 || math.IsNaN(v) || math.IsInf(v, 0) {
 		return fmt.Errorf("fdn reverb dry must be >= 0: %f", v)
 	}
+
 	r.dry = v
+
 	return nil
 }
 
@@ -122,8 +130,10 @@ func (r *FDNReverb) SetRT60(seconds float64) error {
 	if seconds <= 0 || math.IsNaN(seconds) || math.IsInf(seconds, 0) {
 		return fmt.Errorf("fdn reverb RT60 must be > 0: %f", seconds)
 	}
+
 	r.rt60Seconds = seconds
 	r.updateFeedbackGains()
+
 	return nil
 }
 
@@ -132,7 +142,9 @@ func (r *FDNReverb) SetDamp(v float64) error {
 	if v < 0 || v > 1 || math.IsNaN(v) || math.IsInf(v, 0) {
 		return fmt.Errorf("fdn reverb damp must be in [0,1]: %f", v)
 	}
+
 	r.damp = v
+
 	return nil
 }
 
@@ -141,8 +153,10 @@ func (r *FDNReverb) SetPreDelay(seconds float64) error {
 	if seconds < 0 || math.IsNaN(seconds) || math.IsInf(seconds, 0) {
 		return fmt.Errorf("fdn reverb pre-delay must be >= 0: %f", seconds)
 	}
+
 	r.preDelaySeconds = seconds
 	r.preDelaySamples = r.preDelaySeconds * r.sampleRate
+
 	return r.reconfigureDelays()
 }
 
@@ -151,8 +165,10 @@ func (r *FDNReverb) SetModDepth(seconds float64) error {
 	if seconds < 0 || math.IsNaN(seconds) || math.IsInf(seconds, 0) {
 		return fmt.Errorf("fdn reverb mod depth must be >= 0: %f", seconds)
 	}
+
 	r.modDepthSeconds = seconds
 	r.modDepthSamples = r.modDepthSeconds * r.sampleRate
+
 	return r.reconfigureDelays()
 }
 
@@ -161,7 +177,9 @@ func (r *FDNReverb) SetModRate(hz float64) error {
 	if hz < 0 || math.IsNaN(hz) || math.IsInf(hz, 0) {
 		return fmt.Errorf("fdn reverb mod rate must be >= 0: %f", hz)
 	}
+
 	r.modRateHz = hz
+
 	return nil
 }
 
@@ -171,6 +189,7 @@ func (r *FDNReverb) Reset() {
 		r.lines[i].reset()
 		r.filterState[i] = 0
 	}
+
 	r.preDelayLine.reset()
 	r.lfoPhase = 0
 }
@@ -201,6 +220,7 @@ func (r *FDNReverb) ProcessSample(input float64) float64 {
 		for j := 0; j < fdnSize; j++ {
 			feedback += fdnHadamard[i][j] * delays[j]
 		}
+
 		feedback *= r.matrixScale
 		filtered := feedback*(1-r.damp) + r.filterState[i]*r.damp
 		r.filterState[i] = filtered
@@ -212,6 +232,7 @@ func (r *FDNReverb) ProcessSample(input float64) float64 {
 	for i := 0; i < fdnSize; i++ {
 		out += delays[i]
 	}
+
 	out *= r.outputGain
 
 	return input*r.dry + out*r.wet
@@ -252,9 +273,11 @@ func (r *FDNReverb) reconfigureDelays() error {
 	if r.sampleRate <= 0 {
 		return fmt.Errorf("fdn reverb sample rate must be > 0: %f", r.sampleRate)
 	}
+
 	if r.modDepthSeconds < 0 {
 		return fmt.Errorf("fdn reverb mod depth must be >= 0: %f", r.modDepthSeconds)
 	}
+
 	if r.preDelaySeconds < 0 {
 		return fmt.Errorf("fdn reverb pre-delay must be >= 0: %f", r.preDelaySeconds)
 	}
@@ -264,6 +287,7 @@ func (r *FDNReverb) reconfigureDelays() error {
 		if maxDelay < minFDNDelayBufferSize {
 			maxDelay = minFDNDelayBufferSize
 		}
+
 		r.lines[i].resize(maxDelay)
 		r.filterState[i] = 0
 	}
@@ -272,9 +296,11 @@ func (r *FDNReverb) reconfigureDelays() error {
 	if preDelayMax < minFDNDelayBufferSize {
 		preDelayMax = minFDNDelayBufferSize
 	}
+
 	r.preDelayLine.resize(preDelayMax)
 
 	r.updateFeedbackGains()
+
 	return nil
 }
 
@@ -282,6 +308,7 @@ func (r *FDNReverb) updateFeedbackGains() {
 	if r.sampleRate <= 0 || r.rt60Seconds <= 0 {
 		return
 	}
+
 	for i := 0; i < fdnSize; i++ {
 		delaySeconds := (r.baseDelaySamples[i] * r.lineDelayScale) / r.sampleRate
 		r.feedbackGain[i] = math.Pow(10, -3*delaySeconds/r.rt60Seconds)
@@ -298,9 +325,11 @@ func (d *fdnDelayLine) resize(maxDelay int) {
 	if maxDelay < minFDNDelayBufferSize {
 		maxDelay = minFDNDelayBufferSize
 	}
+
 	if maxDelay == len(d.buffer) {
 		return
 	}
+
 	d.buffer = make([]float64, maxDelay)
 	d.writePos = 0
 	d.maxDelay = maxDelay - 3
@@ -310,6 +339,7 @@ func (d *fdnDelayLine) reset() {
 	for i := range d.buffer {
 		d.buffer[i] = 0
 	}
+
 	d.writePos = 0
 }
 
@@ -317,7 +347,9 @@ func (d *fdnDelayLine) writeSample(x float64) {
 	if len(d.buffer) == 0 {
 		return
 	}
+
 	d.buffer[d.writePos] = x
+
 	d.writePos++
 	if d.writePos >= len(d.buffer) {
 		d.writePos = 0
@@ -328,9 +360,11 @@ func (d *fdnDelayLine) sampleFractionalDelay(delay float64) float64 {
 	if len(d.buffer) == 0 {
 		return 0
 	}
+
 	if delay < 0 {
 		delay = 0
 	}
+
 	maxDelay := float64(d.maxDelay)
 	if delay > maxDelay {
 		delay = maxDelay
@@ -343,6 +377,7 @@ func (d *fdnDelayLine) sampleFractionalDelay(delay float64) float64 {
 	x0 := d.sampleDelayInt(p)
 	x1 := d.sampleDelayInt(p + 1)
 	x2 := d.sampleDelayInt(p + 2)
+
 	return hermite4(t, xm1, x0, x1, x2)
 }
 
@@ -350,9 +385,11 @@ func (d *fdnDelayLine) sampleDelayInt(delay int) float64 {
 	if delay < 0 || delay >= len(d.buffer) {
 		return 0
 	}
+
 	idx := d.writePos - 1 - delay
 	if idx < 0 {
 		idx += len(d.buffer)
 	}
+
 	return d.buffer[idx]
 }

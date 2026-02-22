@@ -10,15 +10,18 @@ import (
 func bandMaxMin(sections []biquad.Coefficients, fStart, fEnd, step, sr float64) (float64, float64) {
 	maxDB := -math.MaxFloat64
 	minDB := math.MaxFloat64
+
 	for f := fStart; f <= fEnd; f += step {
 		d := cascadeMagDB(sections, f, sr)
 		if d > maxDB {
 			maxDB = d
 		}
+
 		if d < minDB {
 			minDB = d
 		}
 	}
+
 	return maxDB, minDB
 }
 
@@ -27,15 +30,19 @@ func interiorExtremaCount(sections []biquad.Coefficients, fStart, fEnd, step, sr
 	for f := fStart; f <= fEnd; f += step {
 		vals = append(vals, cascadeMagDB(sections, f, sr))
 	}
+
 	if len(vals) < 3 {
 		return 0
 	}
+
 	count := 0
+
 	for i := 1; i < len(vals)-1; i++ {
 		if (vals[i] > vals[i-1] && vals[i] > vals[i+1]) || (vals[i] < vals[i-1] && vals[i] < vals[i+1]) {
 			count++
 		}
 	}
+
 	return count
 }
 
@@ -63,6 +70,7 @@ func TestEllipticLP_ValidOrders(t *testing.T) {
 		if len(sections) != tt.sections {
 			t.Errorf("order %d: got %d sections, want %d", tt.order, len(sections), tt.sections)
 		}
+
 		for _, s := range sections {
 			assertFiniteCoefficients(t, s)
 			assertStableSection(t, s)
@@ -94,6 +102,7 @@ func TestEllipticHP_ValidOrders(t *testing.T) {
 		if len(sections) != tt.sections {
 			t.Errorf("order %d: got %d sections, want %d", tt.order, len(sections), tt.sections)
 		}
+
 		for _, s := range sections {
 			assertFiniteCoefficients(t, s)
 			assertStableSection(t, s)
@@ -115,12 +124,14 @@ func TestEllipticLP_PassbandRipple(t *testing.T) {
 	minGain := 100.0
 	maxRippleFreq := 0.0
 	minGainFreq := 0.0
+
 	for freq := 10.0; freq < fc*0.8; freq += 10 {
 		magDB := cascadeMagDB(sections, freq, sr)
 		if absDB := math.Abs(magDB); absDB > maxRipple {
 			maxRipple = absDB
 			maxRippleFreq = freq
 		}
+
 		if magDB < minGain {
 			minGain = magDB
 			minGainFreq = freq
@@ -131,6 +142,7 @@ func TestEllipticLP_PassbandRipple(t *testing.T) {
 	if maxRipple > rippleDB+0.1 {
 		t.Errorf("passband ripple %.3f dB at %.1f Hz exceeds spec %.3f dB", maxRipple, maxRippleFreq, rippleDB)
 	}
+
 	if minGain < -rippleDB-0.1 {
 		t.Errorf("passband minimum %.3f dB at %.1f Hz exceeds ripple spec %.3f dB", minGain, minGainFreq, rippleDB)
 	}
@@ -148,6 +160,7 @@ func TestEllipticLP_StopbandAttenuation(t *testing.T) {
 	// Test stopband from 2x cutoff to Nyquist.
 	maxStopband := -200.0
 	maxStopbandFreq := 0.0
+
 	for freq := fc * 2; freq < sr*0.45; freq += 100 {
 		magDB := cascadeMagDB(sections, freq, sr)
 		if magDB > maxStopband {
@@ -176,12 +189,14 @@ func TestEllipticHP_PassbandRipple(t *testing.T) {
 	minGain := 100.0
 	maxRippleFreq := 0.0
 	minGainFreq := 0.0
+
 	for freq := fc * 1.2; freq < sr*0.4; freq += 100 {
 		magDB := cascadeMagDB(sections, freq, sr)
 		if absDB := math.Abs(magDB); absDB > maxRipple {
 			maxRipple = absDB
 			maxRippleFreq = freq
 		}
+
 		if magDB < minGain {
 			minGain = magDB
 			minGainFreq = freq
@@ -192,6 +207,7 @@ func TestEllipticHP_PassbandRipple(t *testing.T) {
 	if maxRipple > rippleDB+0.2 {
 		t.Errorf("HP passband ripple %.3f dB at %.1f Hz exceeds spec %.3f dB", maxRipple, maxRippleFreq, rippleDB)
 	}
+
 	if minGain < -rippleDB-0.2 {
 		t.Errorf("HP passband minimum %.3f dB at %.1f Hz exceeds ripple spec %.3f dB", minGain, minGainFreq, rippleDB)
 	}
@@ -209,6 +225,7 @@ func TestEllipticHP_StopbandAttenuation(t *testing.T) {
 	// Test stopband from 10 Hz to 0.5x cutoff.
 	maxStopband := -200.0
 	maxStopbandFreq := 0.0
+
 	for freq := 10.0; freq < fc*0.5; freq += 10 {
 		magDB := cascadeMagDB(sections, freq, sr)
 		if magDB > maxStopband {
@@ -361,6 +378,7 @@ func TestEllipticLP_FiniteResponses(t *testing.T) {
 				if freq >= sr/2 {
 					continue
 				}
+
 				magDB := cascadeMagDB(sections, freq, sr)
 				if math.IsNaN(magDB) || math.IsInf(magDB, 0) {
 					t.Errorf("LP order %d, sr %.0f, freq %.0f: invalid response %.3f",
@@ -384,6 +402,7 @@ func TestEllipticHP_FiniteResponses(t *testing.T) {
 				if freq >= sr/2 {
 					continue
 				}
+
 				magDB := cascadeMagDB(sections, freq, sr)
 				if math.IsNaN(magDB) || math.IsInf(magDB, 0) {
 					t.Errorf("HP order %d, sr %.0f, freq %.0f: invalid response %.3f",
@@ -471,14 +490,17 @@ func TestEllipticLPHP_EdgeCasesNearLimits(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			lp := EllipticLP(tc.fc, tc.order, tc.rippleDB, tc.stopbandDB, sr)
+
 			hp := EllipticHP(tc.fc, tc.order, tc.rippleDB, tc.stopbandDB, sr)
 			if len(lp) == 0 || len(hp) == 0 {
 				t.Fatalf("expected non-empty sections for %+v", tc)
 			}
+
 			for _, s := range lp {
 				assertFiniteCoefficients(t, s)
 				assertStableSection(t, s)
 			}
+
 			for _, s := range hp {
 				assertFiniteCoefficients(t, s)
 				assertStableSection(t, s)

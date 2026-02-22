@@ -53,6 +53,7 @@ func Hermite4(t, xm1, x0, x1, x2 float64) float64 {
 	c1 := 0.5 * (x1 - xm1)
 	c2 := xm1 - 2.5*x0 + 2*x1 - 0.5*x2
 	c3 := 0.5*(x2-xm1) + 1.5*(x0-x1)
+
 	return ((c3*t+c2)*t+c1)*t + c0
 }
 
@@ -68,6 +69,7 @@ func Lagrange4(t, xm1, x0, x1, x2 float64) float64 {
 	l1 := d2 * d1 * (t - 2) / 2.0  // basis for x0 at node 0
 	l2 := -d2 * d0 * (t - 2) / 2.0 // basis for x1 at node 1
 	l3 := d2 * d0 * d1 / 6.0       // basis for x2 at node 2
+
 	return l0*xm1 + l1*x0 + l2*x1 + l3*x2
 }
 
@@ -76,7 +78,9 @@ func sincNormalized(x float64) float64 {
 	if x == 0 {
 		return 1
 	}
+
 	px := math.Pi * x
+
 	return math.Sin(px) / px
 }
 
@@ -86,6 +90,7 @@ func lanczosWindow(x float64, a int) float64 {
 	if x <= -fa || x >= fa {
 		return 0
 	}
+
 	return sincNormalized(x / fa)
 }
 
@@ -98,6 +103,7 @@ func lanczosWindow(x float64, a int) float64 {
 // samples[2]..samples[3] is the integer bracket.
 func LanczosN(t float64, samples []float64, a int) float64 {
 	var sum, wsum float64
+
 	for i := 0; i < 2*a; i++ {
 		// distance from sample i to the fractional point
 		d := float64(i-(a-1)) - t
@@ -105,9 +111,11 @@ func LanczosN(t float64, samples []float64, a int) float64 {
 		sum += w * samples[i]
 		wsum += w
 	}
+
 	if wsum == 0 {
 		return 0
 	}
+
 	return sum / wsum
 }
 
@@ -125,7 +133,9 @@ func Lanczos6(t float64, samples []float64) float64 {
 // fractional position t in [0, 1].
 func SincInterp(t float64, samples []float64, n int) float64 {
 	taps := 2 * n
+
 	var sum, wsum float64
+
 	for i := 0; i < taps; i++ {
 		d := float64(i-(n-1)) - t
 		// Blackman window over the kernel span.
@@ -136,9 +146,11 @@ func SincInterp(t float64, samples []float64, n int) float64 {
 		sum += w * samples[i]
 		wsum += w
 	}
+
 	if wsum == 0 {
 		return 0
 	}
+
 	return sum / wsum
 }
 
@@ -160,6 +172,7 @@ func AllpassTick(t, x0, x1 float64, state *float64) float64 {
 	eta := AllpassCoeff(t)
 	out := x1 + eta*(x0-*state)
 	*state = out
+
 	return out
 }
 
@@ -183,23 +196,30 @@ func (l *LagrangeInterpolator) Interpolate(samples []float64, frac float64) floa
 	if len(samples) == 0 {
 		return 0
 	}
+
 	if l.order == 1 {
 		if len(samples) < 2 {
 			return samples[0]
 		}
+
 		return samples[0] + frac*(samples[1]-samples[0])
 	}
+
 	if l.order == 3 {
 		if len(samples) < 4 {
 			if len(samples) < 2 {
 				return samples[0]
 			}
+
 			return samples[0] + frac*(samples[1]-samples[0])
 		}
+
 		return Hermite4(frac, samples[0], samples[1], samples[2], samples[3])
 	}
+
 	if len(samples) < 2 {
 		return samples[0]
 	}
+
 	return samples[0] + frac*(samples[1]-samples[0])
 }

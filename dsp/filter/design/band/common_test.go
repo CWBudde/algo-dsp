@@ -16,11 +16,14 @@ func TestBandParams_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	expectW0 := 2 * math.Pi * 1000 / 48000
 	expectWb := 2 * math.Pi * 500 / 48000
+
 	if !almostEqual(w0, expectW0, 1e-12) {
 		t.Errorf("w0 = %v, expected %v", w0, expectW0)
 	}
+
 	if !almostEqual(wb, expectWb, 1e-12) {
 		t.Errorf("wb = %v, expected %v", wb, expectWb)
 	}
@@ -56,9 +59,11 @@ func TestBWGainDB_Functions(t *testing.T) {
 	if !almostEqual(butterworthBWGainDB(6), 3, 1e-12) {
 		t.Errorf("butterworth(6) = %v, expected 3", butterworthBWGainDB(6))
 	}
+
 	if !almostEqual(butterworthBWGainDB(-6), -3, 1e-12) {
 		t.Errorf("butterworth(-6) = %v, expected -3", butterworthBWGainDB(-6))
 	}
+
 	if !almostEqual(butterworthBWGainDB(2), 2/math.Sqrt2, 1e-12) {
 		t.Errorf("butterworth(2) = %v, expected %v", butterworthBWGainDB(2), 2/math.Sqrt2)
 	}
@@ -66,6 +71,7 @@ func TestBWGainDB_Functions(t *testing.T) {
 	if !almostEqual(chebyshev1BWGainDB(6), 5.9, 1e-12) {
 		t.Errorf("chebyshev1(6) = %v, expected 5.9", chebyshev1BWGainDB(6))
 	}
+
 	if !almostEqual(chebyshev1BWGainDB(-6), -5.9, 1e-12) {
 		t.Errorf("chebyshev1(-6) = %v, expected -5.9", chebyshev1BWGainDB(-6))
 	}
@@ -73,6 +79,7 @@ func TestBWGainDB_Functions(t *testing.T) {
 	if !almostEqual(chebyshev2BWGainDB(12), 0.1, 1e-12) {
 		t.Errorf("chebyshev2(12) = %v, expected 0.1", chebyshev2BWGainDB(12))
 	}
+
 	if !almostEqual(chebyshev2BWGainDB(-12), -0.1, 1e-12) {
 		t.Errorf("chebyshev2(-12) = %v, expected -0.1", chebyshev2BWGainDB(-12))
 	}
@@ -87,6 +94,7 @@ func TestPassthroughSections(t *testing.T) {
 	if len(s) != 1 {
 		t.Fatalf("expected 1 section, got %d", len(s))
 	}
+
 	if s[0].B0 != 1 || s[0].B1 != 0 || s[0].B2 != 0 || s[0].A1 != 0 || s[0].A2 != 0 {
 		t.Errorf("passthrough section not unity: %+v", s[0])
 	}
@@ -96,9 +104,11 @@ func TestDb2Lin(t *testing.T) {
 	if !almostEqual(db2Lin(0), 1.0, 1e-12) {
 		t.Errorf("db2Lin(0) = %v, expected 1", db2Lin(0))
 	}
+
 	if !almostEqual(db2Lin(20), 10.0, 1e-10) {
 		t.Errorf("db2Lin(20) = %v, expected 10", db2Lin(20))
 	}
+
 	if !almostEqual(db2Lin(-20), 0.1, 1e-10) {
 		t.Errorf("db2Lin(-20) = %v, expected 0.1", db2Lin(-20))
 	}

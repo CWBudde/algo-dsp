@@ -43,6 +43,7 @@ func ExampleConvolve() {
 	for i := range longKernel {
 		longKernel[i] = math.Exp(-float64(i) / 20)
 	}
+
 	result2, _ := conv.Convolve(signal, longKernel)
 	fmt.Printf("Long kernel result length: %d\n", len(result2))
 
@@ -57,6 +58,7 @@ func ExampleOverlapAdd() {
 	for i := range kernel {
 		kernel[i] = math.Exp(-float64(i) / 10)
 	}
+
 	kernel[0] = 1 // Normalize
 
 	convolver, _ := conv.NewOverlapAdd(kernel, 256)
@@ -103,6 +105,7 @@ func ExampleAutoCorrelate() {
 	// Compute auto-correlation of a periodic signal
 	n := 100
 	signal := make([]float64, n)
+
 	period := 20
 	for i := range signal {
 		signal[i] = math.Sin(2 * math.Pi * float64(i) / float64(period))

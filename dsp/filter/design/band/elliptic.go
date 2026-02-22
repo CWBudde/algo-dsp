@@ -117,8 +117,10 @@ func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffici
 			// Gain-only: single passthrough biquad with gain.
 			gain := s.b[0] / s.a[0]
 			out = append(out, biquad.Coefficients{B0: gain, B1: 0, B2: 0, A1: 0, A2: 0})
+
 			continue
 		}
+
 		if isZero(s.b[3]) && isZero(s.b[4]) && isZero(s.a[3]) && isZero(s.a[4]) {
 			// Second-order section: directly map to a single biquad.
 			a0 := s.a[0]
@@ -126,6 +128,7 @@ func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffici
 				B0: s.b[0] / a0, B1: s.b[1] / a0, B2: s.b[2] / a0,
 				A1: s.a[1] / a0, A2: s.a[2] / a0,
 			})
+
 			continue
 		}
 		// Full fourth-order section: factor into two cascaded biquads
@@ -134,6 +137,7 @@ func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeffici
 		if err != nil {
 			return nil, err
 		}
+
 		out = append(out, biquads...)
 	}
 
@@ -187,6 +191,7 @@ func blt(aSections []soSection, w0 float64) []foSection {
 		if degenerate {
 			out[j].b = [5]float64{bh[0], bh[1] * c0, bh[2]}
 			out[j].a = [5]float64{ah[0], ah[1] * c0, ah[2]}
+
 			continue
 		}
 

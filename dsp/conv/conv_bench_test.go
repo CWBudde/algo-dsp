@@ -29,6 +29,7 @@ func BenchmarkDirect(b *testing.B) {
 
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = Direct(signal, kernel)
 			}
@@ -59,6 +60,7 @@ func BenchmarkOverlapAdd(b *testing.B) {
 
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = OverlapAddConvolve(signal, kernel)
 			}
@@ -89,6 +91,7 @@ func BenchmarkOverlapAddReuse(b *testing.B) {
 
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = oa.Process(signal)
 			}
@@ -116,6 +119,7 @@ func BenchmarkOverlapSave(b *testing.B) {
 
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = OverlapSaveConvolve(signal, kernel)
 			}
@@ -145,6 +149,7 @@ func BenchmarkConvolve(b *testing.B) {
 
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = Convolve(signal, kernel)
 			}
@@ -162,6 +167,7 @@ func BenchmarkCorrelate(b *testing.B) {
 
 		b.Run(fmt.Sprintf("size=%d", size), func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = Correlate(signal, template)
 			}
@@ -178,6 +184,7 @@ func BenchmarkAutoCorrelate(b *testing.B) {
 
 		b.Run(fmt.Sprintf("size=%d", size), func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = AutoCorrelate(signal)
 			}
@@ -206,6 +213,7 @@ func BenchmarkDeconvolve(b *testing.B) {
 
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = Deconvolve(convolved, kernel, opts)
 			}
@@ -280,6 +288,7 @@ func makeTestSignal(n int) []float64 {
 	for i := range signal {
 		signal[i] = math.Sin(2*math.Pi*float64(i)/100) + 0.5*math.Cos(2*math.Pi*float64(i)/30)
 	}
+
 	return signal
 }
 
@@ -298,5 +307,6 @@ func makeTestKernel(n int) []float64 {
 		// Apply Hann window
 		kernel[i] *= 0.5 * (1 - math.Cos(2*math.Pi*float64(i)/float64(n-1)))
 	}
+
 	return kernel
 }

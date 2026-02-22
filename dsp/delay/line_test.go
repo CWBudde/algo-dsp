@@ -17,6 +17,7 @@ func TestNewValidation(t *testing.T) {
 	if _, err := New(0); err == nil {
 		t.Fatal("expected error for size=0")
 	}
+
 	if _, err := New(-1); err == nil {
 		t.Fatal("expected error for size=-1")
 	}
@@ -27,9 +28,11 @@ func TestNewDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if d.Len() != 16 {
 		t.Fatalf("Len: got %d want 16", d.Len())
 	}
+
 	if d.mode != interp.Hermite {
 		t.Fatalf("default mode: got %v want Hermite", d.mode)
 	}
@@ -40,6 +43,7 @@ func TestNewWithOptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if d.mode != interp.Linear {
 		t.Fatalf("mode: got %v want Linear", d.mode)
 	}
@@ -52,6 +56,7 @@ func TestReadWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for i := 0; i < 8; i++ {
 		d.Write(float64(i))
 	}
@@ -70,6 +75,7 @@ func TestReadWraparound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for i := 0; i < 10; i++ {
 		d.Write(float64(i))
 	}
@@ -85,9 +91,11 @@ func TestReset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	d.Write(1)
 	d.Write(2)
 	d.Reset()
+
 	for i := 0; i < 4; i++ {
 		if got := d.Read(i); got != 0 {
 			t.Fatalf("after reset Read(%d): got %v want 0", i, got)
@@ -102,9 +110,11 @@ func TestReadFractionalLinearRamp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for i := 0; i < d.Len(); i++ {
 		d.Write(float64(i))
 	}
+
 	if got := d.ReadFractional(3.5); got < 12.49 || got > 12.51 {
 		t.Fatalf("got %v want about 12.5", got)
 	}
@@ -115,9 +125,11 @@ func TestReadFractionalNegativeClamped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for i := 0; i < 8; i++ {
 		d.Write(float64(i + 1))
 	}
+
 	got := d.ReadFractional(-1.0)
 	// negative delay clamped to 0
 	if math.IsNaN(got) || math.IsInf(got, 0) {
@@ -139,9 +151,11 @@ func TestReadFractionalLinear(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	fillRamp(d)
 	// With a linear ramp, linear interpolation is exact.
 	got := d.ReadFractional(5.5)
+
 	want := float64(d.Len()) - 5.5 // 26.5
 	if !approxEqual(got, want, 1e-10) {
 		t.Fatalf("Linear: got %v want %v", got, want)
@@ -153,8 +167,10 @@ func TestReadFractionalHermite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	fillRamp(d)
 	got := d.ReadFractional(5.5)
+
 	want := float64(d.Len()) - 5.5
 	if !approxEqual(got, want, 1e-10) {
 		t.Fatalf("Hermite: got %v want %v", got, want)
@@ -166,8 +182,10 @@ func TestReadFractionalLagrange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	fillRamp(d)
 	got := d.ReadFractional(5.5)
+
 	want := float64(d.Len()) - 5.5
 	if !approxEqual(got, want, 1e-10) {
 		t.Fatalf("Lagrange3: got %v want %v", got, want)
@@ -179,6 +197,7 @@ func TestReadFractionalLanczos(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	fillRamp(d)
 	got := d.ReadFractional(10.5)
 	want := float64(d.Len()) - 10.5
@@ -193,8 +212,10 @@ func TestReadFractionalSinc(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	fillRamp(d)
 	got := d.ReadFractional(10.5)
+
 	want := float64(d.Len()) - 10.5
 	if !approxEqual(got, want, 0.5) {
 		t.Fatalf("Sinc: got %v want ~%v", got, want)
@@ -210,12 +231,14 @@ func TestReadFractionalAllpass(t *testing.T) {
 	for i := 0; i < d.Len(); i++ {
 		d.Write(50.0)
 	}
+
 	for i := 0; i < 50; i++ {
 		d.ReadFractional(10.5)
 	}
 	// Now fill with ramp and verify the output is finite and in range.
 	d.Reset()
 	fillRamp(d)
+
 	got := d.ReadFractional(10.5)
 	if math.IsNaN(got) || math.IsInf(got, 0) {
 		t.Fatalf("Allpass: produced %v", got)
@@ -251,6 +274,7 @@ func TestAllModesDCPreservation(t *testing.T) {
 		for i := 0; i < d.Len(); i++ {
 			d.Write(42.0)
 		}
+
 		got := d.ReadFractional(5.3)
 		if !approxEqual(got, 42.0, 1e-6) {
 			t.Fatalf("%s DC: got %v want 42", tc.name, got)
@@ -265,6 +289,7 @@ func TestAllpassDCConvergence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for i := 0; i < d.Len(); i++ {
 		d.Write(10.0)
 	}
@@ -273,6 +298,7 @@ func TestAllpassDCConvergence(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		got = d.ReadFractional(5.3)
 	}
+
 	if !approxEqual(got, 10.0, 1e-4) {
 		t.Fatalf("Allpass DC: got %v want 10", got)
 	}
@@ -303,6 +329,7 @@ func TestAllModesSineQuality(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		for i := 0; i < size; i++ {
 			d.Write(math.Sin(2 * math.Pi * freq * float64(i)))
 		}
@@ -313,6 +340,7 @@ func TestAllModesSineQuality(t *testing.T) {
 		exactSample := float64(size) - delay
 		want := math.Sin(2 * math.Pi * freq * exactSample)
 		got := d.ReadFractional(delay)
+
 		err2 := math.Abs(got - want)
 		if err2 > tc.tol {
 			t.Fatalf("%s sine: got %v want %v (err=%e, tol=%e)",
@@ -328,6 +356,7 @@ func TestWithSincN(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if d.sincHalfN != 4 {
 		t.Fatalf("sincHalfN: got %d want 4", d.sincHalfN)
 	}
@@ -350,6 +379,7 @@ func BenchmarkReadFractionalLinear(b *testing.B) {
 	d, _ := New(1024, WithMode(interp.Linear))
 	fillRamp(d)
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		d.ReadFractional(100.37)
 	}
@@ -359,6 +389,7 @@ func BenchmarkReadFractionalHermite(b *testing.B) {
 	d, _ := New(1024, WithMode(interp.Hermite))
 	fillRamp(d)
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		d.ReadFractional(100.37)
 	}
@@ -368,6 +399,7 @@ func BenchmarkReadFractionalLanczos(b *testing.B) {
 	d, _ := New(1024, WithMode(interp.Lanczos3))
 	fillRamp(d)
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		d.ReadFractional(100.37)
 	}
@@ -377,6 +409,7 @@ func BenchmarkReadFractionalSinc(b *testing.B) {
 	d, _ := New(1024, WithMode(interp.Sinc))
 	fillRamp(d)
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		d.ReadFractional(100.37)
 	}
@@ -386,6 +419,7 @@ func BenchmarkReadFractionalAllpass(b *testing.B) {
 	d, _ := New(1024, WithMode(interp.Allpass))
 	fillRamp(d)
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		d.ReadFractional(100.37)
 	}

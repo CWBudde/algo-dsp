@@ -12,5 +12,6 @@ func splitFOSection(b, a [5]float64) ([]biquad.Coefficients, error) {
 	if err != nil {
 		return nil, ErrInvalidParams
 	}
+
 	return sections, nil
 }

@@ -10,6 +10,7 @@ func TestLimiterProcessInPlaceMatchesSample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewLimiter() error = %v", err)
 	}
+
 	l2, err := NewLimiter(48000)
 	if err != nil {
 		t.Fatalf("NewLimiter() error = %v", err)
@@ -18,12 +19,15 @@ func TestLimiterProcessInPlaceMatchesSample(t *testing.T) {
 	if err := l1.SetThreshold(-3); err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
+
 	if err := l1.SetRelease(80); err != nil {
 		t.Fatalf("SetRelease() error = %v", err)
 	}
+
 	if err := l2.SetThreshold(-3); err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
+
 	if err := l2.SetRelease(80); err != nil {
 		t.Fatalf("SetRelease() error = %v", err)
 	}

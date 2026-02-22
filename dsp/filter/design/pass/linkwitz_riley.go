@@ -25,10 +25,13 @@ func LinkwitzRileyLP(freq float64, order int, sampleRate float64) []biquad.Coeff
 	if !ok {
 		return nil
 	}
+
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return nil
 	}
+
 	low := ButterworthLP(freq, lowOrder, sampleRate)
+
 	high := ButterworthLP(freq, highOrder, sampleRate)
 	if low == nil || high == nil {
 		return nil
@@ -37,6 +40,7 @@ func LinkwitzRileyLP(freq float64, order int, sampleRate float64) []biquad.Coeff
 	sections := make([]biquad.Coefficients, 0, len(low)+len(high))
 	sections = append(sections, low...)
 	sections = append(sections, high...)
+
 	return sections
 }
 
@@ -59,11 +63,13 @@ func LinkwitzRileyHP(freq float64, order int, sampleRate float64) []biquad.Coeff
 	if !ok {
 		return nil
 	}
+
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return nil
 	}
 
 	low := ButterworthHP(freq, lowOrder, sampleRate)
+
 	high := ButterworthHP(freq, highOrder, sampleRate)
 	if low == nil || high == nil {
 		return nil
@@ -72,6 +78,7 @@ func LinkwitzRileyHP(freq float64, order int, sampleRate float64) []biquad.Coeff
 	sections := make([]biquad.Coefficients, 0, len(low)+len(high))
 	sections = append(sections, low...)
 	sections = append(sections, high...)
+
 	return sections
 }
 
@@ -93,6 +100,7 @@ func LinkwitzRileyHPInverted(freq float64, order int, sampleRate float64) []biqu
 	sections[0].B0 = -sections[0].B0
 	sections[0].B1 = -sections[0].B1
 	sections[0].B2 = -sections[0].B2
+
 	return sections
 }
 
@@ -109,5 +117,6 @@ func linkwitzRileyPrototypeOrders(order int) (int, int, bool) {
 	if order < 2 {
 		return 0, 0, false
 	}
+
 	return order / 2, (order + 1) / 2, true
 }

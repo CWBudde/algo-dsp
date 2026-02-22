@@ -15,6 +15,7 @@ func BesselLP(freq float64, order int, sampleRate float64) []biquad.Coefficients
 	if order <= 0 || order > maxBesselOrder {
 		return nil
 	}
+
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return nil
 	}
@@ -23,8 +24,10 @@ func BesselLP(freq float64, order int, sampleRate float64) []biquad.Coefficients
 	poles := besselNormPoles(order)
 
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
+
 	for _, p := range poles {
 		sigma := -real(p)
+
 		omega := imag(p)
 		if omega == 0 {
 			sections = append(sections, besselFirstOrderLP(wc, sigma))
@@ -32,6 +35,7 @@ func BesselLP(freq float64, order int, sampleRate float64) []biquad.Coefficients
 			sections = append(sections, besselSecondOrderLP(wc, sigma, omega))
 		}
 	}
+
 	return sections
 }
 
@@ -44,6 +48,7 @@ func BesselHP(freq float64, order int, sampleRate float64) []biquad.Coefficients
 	if order <= 0 || order > maxBesselOrder {
 		return nil
 	}
+
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return nil
 	}
@@ -52,8 +57,10 @@ func BesselHP(freq float64, order int, sampleRate float64) []biquad.Coefficients
 	poles := besselNormPoles(order)
 
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
+
 	for _, p := range poles {
 		sigma := -real(p)
+
 		omega := imag(p)
 		if omega == 0 {
 			sections = append(sections, besselFirstOrderHP(wc, sigma))
@@ -61,6 +68,7 @@ func BesselHP(freq float64, order int, sampleRate float64) []biquad.Coefficients
 			sections = append(sections, besselSecondOrderHP(wc, sigma, omega))
 		}
 	}
+
 	return sections
 }
 
@@ -91,6 +99,7 @@ func besselSecondOrderLP(wc, sigma, omega float64) biquad.Coefficients {
 func besselFirstOrderLP(wc, sigma float64) biquad.Coefficients {
 	sp := sigma * wc
 	norm := 1 / (1 + sp)
+
 	return biquad.Coefficients{
 		B0: sp * norm,
 		B1: sp * norm,
@@ -122,6 +131,7 @@ func besselSecondOrderHP(wc, sigma, omega float64) biquad.Coefficients {
 // besselFirstOrderHP creates a first-order highpass section from a real Bessel pole.
 func besselFirstOrderHP(wc, sigma float64) biquad.Coefficients {
 	norm := 1 / (wc + sigma)
+
 	return biquad.Coefficients{
 		B0: sigma * norm,
 		B1: -sigma * norm,
@@ -135,10 +145,12 @@ func besselFirstOrderHP(wc, sigma float64) biquad.Coefficients {
 func besselNormPoles(order int) []complex128 {
 	delay := besselDelayPoles[order]
 	s := besselScaleFactors[order]
+
 	out := make([]complex128, len(delay))
 	for i, p := range delay {
 		out[i] = complex(real(p)/s, imag(p)/s)
 	}
+
 	return out
 }
 

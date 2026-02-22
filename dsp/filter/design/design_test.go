@@ -19,6 +19,7 @@ func TestBilinearTransform_NormalizesA0(t *testing.T) {
 	if !almostEqual(got[0], 1, 1e-12) {
 		t.Fatalf("got a0=%v, want 1", got[0])
 	}
+
 	for i := range got {
 		if math.IsNaN(got[i]) || math.IsInf(got[i], 0) {
 			t.Fatalf("coef[%d] invalid: %v", i, got[i])
@@ -65,6 +66,7 @@ func TestEQDesigners_BasicBehavior(t *testing.T) {
 	q := 1.0
 
 	peakUp := Peak(f, 6, q, sr)
+
 	peakDown := Peak(f, -6, q, sr)
 	if !(mag(peakUp, f, sr) > 1 && mag(peakDown, f, sr) < 1) {
 		t.Fatal("peak filter gain check failed")
@@ -101,16 +103,20 @@ func TestDesigners_ValidateAcrossSampleRates(t *testing.T) {
 
 func TestButterworthLP_OrderAndShape(t *testing.T) {
 	sr := 48000.0
+
 	coeffs := ButterworthLP(1000, 5, sr)
 	if len(coeffs) != 3 {
 		t.Fatalf("len=%d, want 3", len(coeffs))
 	}
+
 	if coeffs[len(coeffs)-1].A2 != 0 || coeffs[len(coeffs)-1].B2 != 0 {
 		t.Fatalf("expected final first-order section, got %#v", coeffs[len(coeffs)-1])
 	}
+
 	for _, c := range coeffs {
 		assertStableSection(t, c)
 	}
+
 	chain := biquad.NewChain(coeffs)
 	if !(magChain(chain, 100, sr) > magChain(chain, 10000, sr)) {
 		t.Fatal("ButterworthLP response shape check failed")
@@ -119,16 +125,20 @@ func TestButterworthLP_OrderAndShape(t *testing.T) {
 
 func TestButterworthHP_OrderAndShape(t *testing.T) {
 	sr := 48000.0
+
 	coeffs := ButterworthHP(1000, 5, sr)
 	if len(coeffs) != 3 {
 		t.Fatalf("len=%d, want 3", len(coeffs))
 	}
+
 	if coeffs[len(coeffs)-1].A2 != 0 || coeffs[len(coeffs)-1].B2 != 0 {
 		t.Fatalf("expected final first-order section, got %#v", coeffs[len(coeffs)-1])
 	}
+
 	for _, c := range coeffs {
 		assertStableSection(t, c)
 	}
+
 	chain := biquad.NewChain(coeffs)
 	if !(magChain(chain, 10000, sr) > magChain(chain, 100, sr)) {
 		t.Fatal("ButterworthHP response shape check failed")
@@ -149,6 +159,7 @@ func TestChebyshev1ParityWithRefFormulas(t *testing.T) {
 	if !coeffSliceEqual(c1lp, ref1lp) {
 		t.Fatal("Chebyshev1LP parity mismatch")
 	}
+
 	if !coeffSliceEqual(c1hp, ref1hp) {
 		t.Fatal("Chebyshev1HP parity mismatch")
 	}
@@ -166,6 +177,7 @@ func TestChebyshevResponseShape(t *testing.T) {
 	if !(magChain(c1lp, 100, sr) > magChain(c1lp, 10000, sr)) {
 		t.Fatal("Chebyshev1LP shape check failed")
 	}
+
 	if !(magChain(c1hp, 10000, sr) > magChain(c1hp, 100, sr)) {
 		t.Fatal("Chebyshev1HP shape check failed")
 	}
@@ -186,6 +198,7 @@ func TestChebyshev2ParityWithRefFormulas(t *testing.T) {
 	if !coeffSliceEqual(gotLP, refLP) {
 		t.Fatal("Chebyshev2LP parity mismatch")
 	}
+
 	if !coeffSliceEqual(gotHP, refHP) {
 		t.Fatal("Chebyshev2HP parity mismatch")
 	}
@@ -195,22 +208,28 @@ func TestChebyshev2FiniteResponses(t *testing.T) {
 	for _, sr := range []float64{44100, 48000, 96000, 192000} {
 		for _, order := range []int{3, 4, 5} {
 			lp := Chebyshev2LP(1000, order, 2, sr)
+
 			hp := Chebyshev2HP(1000, order, 2, sr)
 			if len(lp) == 0 || len(hp) == 0 {
 				t.Fatalf("expected non-empty sections for sr=%v order=%d", sr, order)
 			}
+
 			for _, s := range lp {
 				assertFiniteCoefficients(t, s)
 			}
+
 			for _, s := range hp {
 				assertFiniteCoefficients(t, s)
 			}
+
 			chainLP := biquad.NewChain(lp)
 			chainHP := biquad.NewChain(hp)
+
 			for _, f := range []float64{10, 100, 1000, 5000, 10000, 20000} {
 				if m := magChain(chainLP, f, sr); math.IsNaN(m) || math.IsInf(m, 0) {
 					t.Fatalf("invalid Chebyshev2LP response at sr=%v order=%d f=%v", sr, order, f)
 				}
+
 				if m := magChain(chainHP, f, sr); math.IsNaN(m) || math.IsInf(m, 0) {
 					t.Fatalf("invalid Chebyshev2HP response at sr=%v order=%d f=%v", sr, order, f)
 				}
@@ -223,9 +242,11 @@ func TestInvalidInputs(t *testing.T) {
 	if got := Lowpass(1000, 0.707, 0); got != (biquad.Coefficients{}) {
 		t.Fatalf("expected zero coefficients for invalid sample rate, got %#v", got)
 	}
+
 	if got := Highpass(0, 0.707, 48000); got != (biquad.Coefficients{}) {
 		t.Fatalf("expected zero coefficients for invalid frequency, got %#v", got)
 	}
+
 	_ = Bandpass(1000, 0, 48000) // q<=0 path uses defaultQ
 	_ = Notch(1000, -1, 48000)   // q<=0 path uses defaultQ
 	_ = Allpass(1000, 0, 48000)  // q<=0 path uses defaultQ
@@ -236,6 +257,7 @@ func TestInvalidInputs(t *testing.T) {
 	if got := BilinearTransform([3]float64{1, 1, 1}, 0); got != ([3]float64{1, 0, 0}) {
 		t.Fatalf("unexpected bilinear fallback: %#v", got)
 	}
+
 	if got := BilinearTransform([3]float64{0, 0, 0}, 48000); got != ([3]float64{1, 0, 0}) {
 		t.Fatalf("unexpected bilinear zero-poly fallback: %#v", got)
 	}
@@ -243,6 +265,7 @@ func TestInvalidInputs(t *testing.T) {
 	if got := ButterworthLP(1000, 0, 48000); got != nil {
 		t.Fatalf("expected nil for order <= 0, got %#v", got)
 	}
+
 	if got := ButterworthHP(1000, 0, 48000); got != nil {
 		t.Fatalf("expected nil for order <= 0, got %#v", got)
 	}
@@ -260,6 +283,7 @@ func magChain(c *biquad.Chain, freq, sr float64) float64 {
 
 func assertFiniteCoefficients(t *testing.T, c biquad.Coefficients) {
 	t.Helper()
+
 	v := []float64{c.B0, c.B1, c.B2, c.A1, c.A2}
 	for i := range v {
 		if math.IsNaN(v[i]) || math.IsInf(v[i], 0) {
@@ -270,6 +294,7 @@ func assertFiniteCoefficients(t *testing.T, c biquad.Coefficients) {
 
 func assertStableSection(t *testing.T, c biquad.Coefficients) {
 	t.Helper()
+
 	r1, r2 := sectionRoots(c)
 	if cmplx.Abs(r1) >= 1+tol || cmplx.Abs(r2) >= 1+tol {
 		t.Fatalf("unstable poles: |r1|=%v |r2|=%v coeff=%#v", cmplx.Abs(r1), cmplx.Abs(r2), c)
@@ -281,6 +306,7 @@ func sectionRoots(c biquad.Coefficients) (complex128, complex128) {
 	sqrtDisc := cmplx.Sqrt(disc)
 	r1 := (-complex(c.A1, 0) + sqrtDisc) / 2
 	r2 := (-complex(c.A1, 0) - sqrtDisc) / 2
+
 	return r1, r2
 }
 
@@ -288,6 +314,7 @@ func coeffSliceEqual(a, b []biquad.Coefficients) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	for i := range a {
 		if !almostEqual(a[i].B0, b[i].B0, 1e-12) ||
 			!almostEqual(a[i].B1, b[i].B1, 1e-12) ||
@@ -297,6 +324,7 @@ func coeffSliceEqual(a, b []biquad.Coefficients) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -321,9 +349,11 @@ func refCheby1LP(freq float64, order int, ripple float64, sampleRate float64) []
 			A1: -2 * (b - k2) * n, A2: -(a - k2 - b) * n,
 		})
 	}
+
 	if order%2 != 0 {
 		out = append(out, butterworthFirstOrderLP(freq, sampleRate))
 	}
+
 	return out
 }
 
@@ -349,9 +379,11 @@ func refCheby1HP(freq float64, order int, ripple float64, sampleRate float64) []
 			A1: -2 * (1 - a*k2) * n, A2: -(b - 1 - a*k2) * n,
 		})
 	}
+
 	if order%2 != 0 {
 		out = append(out, butterworthFirstOrderHP(freq, sampleRate))
 	}
+
 	return out
 }
 
@@ -359,9 +391,11 @@ func refCheby1HP(freq float64, order int, ripple float64, sampleRate float64) []
 // (inverted Chebyshev I poles + imaginary-axis zeros) with bilinear transform.
 func refCheby2LP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
 	wc := math.Tan(math.Pi * freq / sampleRate)
+
 	if ripple <= 0 {
 		ripple = 1
 	}
+
 	mu := math.Asinh(ripple) / float64(order)
 	out := make([]biquad.Coefficients, 0, (order+1)/2)
 
@@ -392,11 +426,13 @@ func refCheby2LP(freq float64, order int, ripple float64, sampleRate float64) []
 		b2 /= dc
 		out = append(out, biquad.Coefficients{B0: b0, B1: b1, B2: b2, A1: a1, A2: a2})
 	}
+
 	if order%2 != 0 {
 		sp := wc / math.Sinh(mu)
 		g := sp / (1 + sp)
 		out = append(out, biquad.Coefficients{B0: g, B1: g, A1: (sp - 1) / (1 + sp)})
 	}
+
 	return out
 }
 
@@ -404,9 +440,11 @@ func refCheby2LP(freq float64, order int, ripple float64, sampleRate float64) []
 // transform followed by bilinear transform.
 func refCheby2HP(freq float64, order int, ripple float64, sampleRate float64) []biquad.Coefficients {
 	wc := math.Tan(math.Pi * freq / sampleRate)
+
 	if ripple <= 0 {
 		ripple = 1
 	}
+
 	mu := math.Asinh(ripple) / float64(order)
 	out := make([]biquad.Coefficients, 0, (order+1)/2)
 
@@ -435,11 +473,13 @@ func refCheby2HP(freq float64, order int, ripple float64, sampleRate float64) []
 		b2 /= nyq
 		out = append(out, biquad.Coefficients{B0: b0, B1: b1, B2: b2, A1: a1, A2: a2})
 	}
+
 	if order%2 != 0 {
 		sp := wc * math.Sinh(mu)
 		g := 1.0 / (1 + sp)
 		out = append(out, biquad.Coefficients{B0: g, B1: -g, A1: (sp - 1) / (1 + sp)})
 	}
+
 	return out
 }
 
@@ -449,8 +489,10 @@ func butterworthFirstOrderLP(freq, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return biquad.Coefficients{}
 	}
+
 	k := math.Tan(math.Pi * freq / sampleRate)
 	norm := 1 / (1 + k)
+
 	return biquad.Coefficients{
 		B0: k * norm,
 		B1: k * norm,
@@ -464,8 +506,10 @@ func butterworthFirstOrderHP(freq, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return biquad.Coefficients{}
 	}
+
 	k := math.Tan(math.Pi * freq / sampleRate)
 	norm := 1 / (1 + k)
+
 	return biquad.Coefficients{
 		B0: norm,
 		B1: -norm,

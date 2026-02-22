@@ -14,6 +14,7 @@ func (c *Coefficients) Response(freqHz, sampleRate float64) complex128 {
 
 	num := complex(c.B0, 0) + complex(c.B1, 0)*ejw + complex(c.B2, 0)*ej2w
 	den := complex(1, 0) + complex(c.A1, 0)*ejw + complex(c.A2, 0)*ej2w
+
 	return num / den
 }
 
@@ -28,6 +29,7 @@ func (c *Coefficients) MagnitudeSquared(freqHz, sampleRate float64) float64 {
 
 	num := (b0-b2)*(b0-b2) + b1*b1 + (b1*(b0+b2)+b0*b2*cw)*cw
 	den := (1-a2)*(1-a2) + a1*a1 + (a1*(a2+1)+cw*a2)*cw
+
 	return num / den
 }
 
@@ -52,6 +54,7 @@ func (c *Chain) Response(freqHz, sampleRate float64) complex128 {
 	for i := range c.sections {
 		h *= c.sections[i].Response(freqHz, sampleRate)
 	}
+
 	return h
 }
 
@@ -70,14 +73,19 @@ func (s *Section) ImpulseResponse(n int) []float64 {
 	if n <= 0 {
 		return nil
 	}
+
 	saved := s.State()
 	s.Reset()
+
 	ir := make([]float64, n)
+
 	ir[0] = s.ProcessSample(1)
 	for i := 1; i < n; i++ {
 		ir[i] = s.ProcessSample(0)
 	}
+
 	s.SetState(saved)
+
 	return ir
 }
 
@@ -87,13 +95,18 @@ func (c *Chain) ImpulseResponse(n int) []float64 {
 	if n <= 0 {
 		return nil
 	}
+
 	saved := c.State()
 	c.Reset()
+
 	ir := make([]float64, n)
+
 	ir[0] = c.ProcessSample(1)
 	for i := 1; i < n; i++ {
 		ir[i] = c.ProcessSample(0)
 	}
+
 	c.SetState(saved)
+
 	return ir
 }

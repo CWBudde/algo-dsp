@@ -245,6 +245,7 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 	if sampleRate <= 0 {
 		return nil, fmt.Errorf("sample rate must be > 0: %f", sampleRate)
 	}
+
 	e := &Engine{
 		sampleRate: sampleRate,
 		tempoBPM:   110,
@@ -377,95 +378,128 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 	if err := e.initSpectrumAnalyzer(); err != nil {
 		return nil, err
 	}
+
 	chorus, err := modulation.NewChorus()
 	if err != nil {
 		return nil, err
 	}
+
 	e.chorus = chorus
+
 	flanger, err := modulation.NewFlanger(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.flanger = flanger
+
 	ringMod, err := modulation.NewRingModulator(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.ringMod = ringMod
+
 	crusher, err := effects.NewBitCrusher(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.crusher = crusher
+
 	widener, err := spatial.NewStereoWidener(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.widener = widener
+
 	phaser, err := modulation.NewPhaser(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.phaser = phaser
+
 	tremolo, err := modulation.NewTremolo(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.tremolo = tremolo
+
 	delay, err := effects.NewDelay(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.delay = delay
 	e.reverb = reverb.NewReverb()
+
 	fdn, err := reverb.NewFDNReverb(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.fdn = fdn
+
 	bass, err := effects.NewHarmonicBass(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.bass = bass
+
 	tp, err := pitch.NewPitchShifter(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.tp = tp
+
 	sp, err := pitch.NewSpectralPitchShifter(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.sp = sp
+
 	comp, err := dynamics.NewCompressor(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.compressor = comp
 
 	lim, err := dynamics.NewLimiter(sampleRate)
 	if err != nil {
 		return nil, err
 	}
+
 	e.limiter = lim
 
 	if err := e.rebuildEffects(); err != nil {
 		return nil, err
 	}
+
 	if err := e.rebuildCompressor(); err != nil {
 		return nil, err
 	}
+
 	if err := e.rebuildLimiter(); err != nil {
 		return nil, err
 	}
+
 	for i := 0; i < stepCount; i++ {
 		e.steps[i] = StepConfig{Enabled: i%4 == 0, FreqHz: defaultStepFreq(i)}
 	}
+
 	if err := e.rebuildEQ(); err != nil {
 		return nil, err
 	}
+
 	e.samplesUntilNextStep = e.stepDurationSamples()
+
 	return e, nil
 }
 
@@ -479,6 +513,7 @@ func (e *Engine) Render(dst []float32) {
 	if len(dst) == 0 {
 		return
 	}
+
 	block := e.ensureRenderBlock(len(dst))
 
 	for i := range dst {
@@ -527,7 +562,9 @@ func (e *Engine) ensureRenderBlock(n int) []float64 {
 		e.renderBlock = make([]float64, n)
 		return e.renderBlock
 	}
+
 	e.renderBlock = e.renderBlock[:n]
+
 	return e.renderBlock
 }
 
@@ -544,12 +581,14 @@ func (e *Engine) ResponseCurveDB(freqs []float64) []float64 {
 		mag := cmplx.Abs(h)
 		out[i] = 20 * math.Log10(math.Max(1e-12, mag))
 	}
+
 	return out
 }
 
 // NodeResponseCurveDB returns one EQ node magnitude response in dB for freqs.
 func (e *Engine) NodeResponseCurveDB(node string, freqs []float64) []float64 {
 	chain := e.hp
+
 	switch node {
 	case "hp":
 		chain = e.hp
@@ -562,6 +601,7 @@ func (e *Engine) NodeResponseCurveDB(node string, freqs []float64) []float64 {
 	case "lp":
 		chain = e.lp
 	}
+
 	out := make([]float64, len(freqs))
 	for i, f := range freqs {
 		f = clamp(f, 1, e.sampleRate*0.49)
@@ -569,6 +609,7 @@ func (e *Engine) NodeResponseCurveDB(node string, freqs []float64) []float64 {
 		mag := cmplx.Abs(h)
 		out[i] = 20 * math.Log10(math.Max(1e-12, mag))
 	}
+
 	return out
 }
 
@@ -580,6 +621,7 @@ func (e *Engine) CompressorCurveDB(inputsDB []float64) []float64 {
 		outLin := e.compressor.CalculateOutputLevel(lin)
 		out[i] = 20 * math.Log10(math.Max(1e-12, outLin))
 	}
+
 	return out
 }
 
@@ -591,6 +633,7 @@ func (e *Engine) LimiterCurveDB(inputsDB []float64) []float64 {
 		outLin := e.limiter.CalculateOutputLevel(lin)
 		out[i] = 20 * math.Log10(math.Max(1e-12, outLin))
 	}
+
 	return out
 }
 
@@ -598,8 +641,10 @@ func clamp(v, minV, maxV float64) float64 {
 	if v < minV {
 		return minV
 	}
+
 	if v > maxV {
 		return maxV
 	}
+
 	return v
 }

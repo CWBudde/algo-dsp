@@ -93,14 +93,17 @@ func lowShelfFOS(K, P, sigma float64) biquad.Coefficients {
 // at angle alpha_m = (1/2 − (2m−1)/(2M))·π, so sigma = cos(alpha_m) and r2 = 1.
 func butterworthPoles(M int) (pairs []poleParams, realSigma float64) {
 	L := M / 2
+
 	pairs = make([]poleParams, L)
 	for m := 1; m <= L; m++ {
 		cm := math.Cos((0.5 - (2.0*float64(m)-1.0)/(2.0*float64(M))) * math.Pi)
 		pairs[m-1] = poleParams{sigma: cm, r2: 1.0}
 	}
+
 	if M%2 == 1 {
 		realSigma = 1.0 // pole at s = −1
 	}
+
 	return
 }
 
@@ -117,6 +120,7 @@ func chebyshev1Poles(M int, rippleDB float64) (pairs []poleParams, realSigma flo
 	coshV0 := math.Cosh(v0)
 
 	L := M / 2
+
 	pairs = make([]poleParams, L)
 	for m := 1; m <= L; m++ {
 		theta := float64(2*m-1) / float64(2*M) * math.Pi
@@ -124,10 +128,12 @@ func chebyshev1Poles(M int, rippleDB float64) (pairs []poleParams, realSigma flo
 		w := coshV0 * math.Cos(theta)
 		pairs[m-1] = poleParams{sigma: s, r2: s*s + w*w}
 	}
+
 	if M%2 == 1 {
 		// Real pole: theta = pi/2, so sin=1, cos=0.
 		realSigma = sinhV0
 	}
+
 	return
 }
 
@@ -137,10 +143,12 @@ func chebyshev1Poles(M int, rippleDB float64) (pairs []poleParams, realSigma flo
 // (for odd M). Used by Butterworth and Chebyshev I.
 func lowShelfSections(K, P float64, pairs []poleParams, realSigma float64) []biquad.Coefficients {
 	n := len(pairs)
+
 	hasFirstOrder := realSigma > 0
 	if hasFirstOrder {
 		n++
 	}
+
 	sections := make([]biquad.Coefficients, 0, n)
 
 	for _, pp := range pairs {
@@ -184,6 +192,7 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 
 	num := G*G - Gb*Gb
 	den := Gb*Gb - G0*G0
+
 	ratio := num / den
 	if !isFinite(ratio) || ratio <= 0 {
 		return nil, ErrInvalidParams
@@ -193,6 +202,7 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 	eu := math.Pow(e+math.Sqrt(1+e*e), 1.0/float64(order))
 	ew := math.Pow(G0*e+Gb*math.Sqrt(1.0+e*e), 1.0/float64(order))
 	A := (eu - 1.0/eu) * 0.5
+
 	B := (ew - g*g/ew) * 0.5
 	if !isFinite(A) || !isFinite(B) {
 		return nil, ErrInvalidParams
@@ -200,10 +210,12 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 
 	L := order / 2
 	hasFirstOrder := order%2 == 1
+
 	n := L
 	if hasFirstOrder {
 		n++
 	}
+
 	sections := make([]biquad.Coefficients, 0, n)
 
 	// Empirical damping for the Orfanidis Chebyshev II shelving realization.
@@ -211,6 +223,7 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 	// monotonic while preserving boost/cut inversion behavior.
 	denSigmaScale := 3.65
 	numSigmaScale := 16.499
+
 	if gainDB < 0 {
 		denSigmaScale = 0.2
 		numSigmaScale = 0.2
@@ -225,10 +238,12 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 			den: poleParams{sigma: denSigmaScale * A * si, r2: A*A + ci*ci},
 			num: poleParams{sigma: numSigmaScale * B * si, r2: B*B + g*g*ci*ci},
 		}
+
 		section := bilinearSOS(K, sp)
 		if !coeffsAreFinite(section) {
 			return nil, ErrInvalidParams
 		}
+
 		sections = append(sections, section)
 	}
 
@@ -240,6 +255,7 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 		if !coeffsAreFinite(section) {
 			return nil, ErrInvalidParams
 		}
+
 		sections = append(sections, section)
 	}
 
@@ -248,6 +264,7 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 	for _, s := range sections {
 		nyqGain *= (s.B0 - s.B1 + s.B2) / (1.0 - s.A1 + s.A2)
 	}
+
 	if !isFinite(nyqGain) || nyqGain == 0 || len(sections) == 0 {
 		return nil, ErrInvalidParams
 	}
@@ -256,8 +273,10 @@ func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biq
 	if !isFinite(corr) {
 		return nil, ErrInvalidParams
 	}
+
 	sections[0].B0 *= corr
 	sections[0].B1 *= corr
+
 	sections[0].B2 *= corr
 	if !coeffsAreFinite(sections[0]) {
 		return nil, ErrInvalidParams

@@ -47,6 +47,7 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 	if G == 0 || Gb == 0 || G0 == 0 {
 		return nil, ErrInvalidParams
 	}
+
 	if Gb*Gb == G0*G0 {
 		return nil, ErrInvalidParams
 	}
@@ -58,10 +59,12 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 	c0 := math.Cos(w0)
 
 	sections := make([]biquad.Coefficients, 0, order)
+
 	L := order / 2
 	for i := 1; i <= L; i++ {
 		ui := (2.0*float64(i) - 1) / float64(order)
 		si := math.Sin(math.Pi * ui * 0.5)
+
 		Di := beta*beta + 2*si*beta + 1
 		if Di == 0 {
 			return nil, ErrInvalidParams
@@ -87,6 +90,7 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 		if err != nil {
 			return nil, err
 		}
+
 		sections = append(sections, biquads...)
 	}
 

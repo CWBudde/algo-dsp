@@ -13,13 +13,17 @@ func BenchmarkProcessBlock_Baseline(b *testing.B) {
 			for i := range coeffs {
 				coeffs[i] = 1.0 / float64(taps)
 			}
+
 			f := New(coeffs)
+
 			buf := make([]float64, 1024)
 			for i := range buf {
 				buf[i] = float64(i) * 0.001
 			}
+
 			b.SetBytes(1024 * 8)
 			b.ResetTimer()
+
 			for range b.N {
 				f.processBlockBaseline(buf)
 			}
@@ -35,13 +39,17 @@ func BenchmarkProcessBlock_Optimized(b *testing.B) {
 			for i := range coeffs {
 				coeffs[i] = 1.0 / float64(taps)
 			}
+
 			f := New(coeffs)
+
 			buf := make([]float64, 1024)
 			for i := range buf {
 				buf[i] = float64(i) * 0.001
 			}
+
 			b.SetBytes(1024 * 8)
 			b.ResetTimer()
+
 			for range b.N {
 				f.ProcessBlock(buf)
 			}

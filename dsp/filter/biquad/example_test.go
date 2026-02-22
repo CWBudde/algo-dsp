@@ -19,6 +19,7 @@ func ExampleSection_ProcessSample() {
 		if i == 0 {
 			x = 1
 		}
+
 		y := s.ProcessSample(x)
 		fmt.Printf("y[%d] = %.6f\n", i, y)
 	}
@@ -74,6 +75,7 @@ func ExampleCoefficients_MagnitudeDB() {
 		B0: 0.25, B1: 0.5, B2: 0.25,
 		A1: -0.2, A2: 0.04,
 	}
+
 	sr := 48000.0
 	for _, freq := range []float64{100, 1000, 10000, 20000} {
 		db := c.MagnitudeDB(freq, sr)

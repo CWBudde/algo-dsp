@@ -75,6 +75,7 @@ func Direct(a, b []float64) ([]float64, error) {
 	if len(a) == 0 {
 		return nil, ErrEmptyInput
 	}
+
 	if len(b) == 0 {
 		return nil, ErrEmptyKernel
 	}
@@ -85,6 +86,7 @@ func Direct(a, b []float64) ([]float64, error) {
 	result := make([]float64, resultLen)
 
 	DirectTo(result, a, b)
+
 	return result, nil
 }
 
@@ -131,6 +133,7 @@ func directToSIMD(dst, a, b []float64, n, m int) {
 		temp = make([]float64, m)
 		*bufPtr = temp
 	}
+
 	temp = temp[:m]
 
 	for i := 0; i < n; i++ {
@@ -148,6 +151,7 @@ func DirectCircular(a, b []float64) ([]float64, error) {
 	if len(a) == 0 || len(b) == 0 {
 		return nil, ErrEmptyInput
 	}
+
 	if len(a) != len(b) {
 		return nil, ErrLengthMismatch
 	}
@@ -156,6 +160,7 @@ func DirectCircular(a, b []float64) ([]float64, error) {
 	result := make([]float64, n)
 
 	DirectCircularTo(result, a, b)
+
 	return result, nil
 }
 
@@ -182,6 +187,7 @@ func Convolve(a, b []float64) ([]float64, error) {
 	if len(a) == 0 {
 		return nil, ErrEmptyInput
 	}
+
 	if len(b) == 0 {
 		return nil, ErrEmptyKernel
 	}
@@ -225,6 +231,7 @@ func trimToMode(full []float64, lenA, lenB int, mode Mode) []float64 {
 		if lenA >= lenB {
 			return full[lenB-1 : lenA]
 		}
+
 		return full[lenA-1 : lenB]
 	default:
 		return full
@@ -236,10 +243,12 @@ func nextPowerOf2(n int) int {
 	if n <= 1 {
 		return 1
 	}
+
 	p := 1
 	for p < n {
 		p *= 2
 	}
+
 	return p
 }
 

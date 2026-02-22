@@ -127,9 +127,11 @@ func CorrelateFFT(a, b []float64) ([]float64, error) {
 	// Zero-pad inputs
 	aPadded := make([]complex128, fftSize)
 	bPadded := make([]complex128, fftSize)
+
 	for i := 0; i < n; i++ {
 		aPadded[i] = complex(a[i], 0)
 	}
+
 	for i := 0; i < m; i++ {
 		bPadded[i] = complex(b[i], 0)
 	}
@@ -158,6 +160,7 @@ func CorrelateFFT(a, b []float64) ([]float64, error) {
 
 	// Inverse FFT
 	resultTime := make([]complex128, fftSize)
+
 	err = plan.Inverse(resultTime, resultFreq)
 	if err != nil {
 		return nil, fmt.Errorf("conv: inverse FFT failed: %w", err)
@@ -174,6 +177,7 @@ func CorrelateFFT(a, b []float64) ([]float64, error) {
 	for i := 0; i < n; i++ {
 		result[m-1+i] = real(resultTime[i])
 	}
+
 	for i := 0; i < m-1; i++ {
 		result[i] = real(resultTime[fftSize-m+1+i])
 	}
@@ -187,6 +191,7 @@ func l2Norm(x []float64) float64 {
 	for _, v := range x {
 		sum += v * v
 	}
+
 	return math.Sqrt(sum)
 }
 

@@ -21,12 +21,14 @@ var scratchPool = sync.Pool{
 
 func getScratch(n int) (re, im []float64, buf *scratchBuf) {
 	buf = scratchPool.Get().(*scratchBuf)
+
 	need := 2 * n
 	if cap(buf.data) < need {
 		buf.data = make([]float64, need)
 	} else {
 		buf.data = buf.data[:need]
 	}
+
 	return buf.data[:n], buf.data[n:need], buf
 }
 
@@ -72,6 +74,7 @@ func Magnitude(in []complex128) []float64 {
 
 	vecmath.Magnitude(out, re, im)
 	putScratch(buf)
+
 	return out
 }
 
@@ -88,10 +91,12 @@ func MagnitudeBins(in ComplexBins) []float64 {
 	if in == nil {
 		return nil
 	}
+
 	out := make([]float64, in.Len())
 	for i := range out {
 		out[i] = cmplx.Abs(in.At(i))
 	}
+
 	return out
 }
 
@@ -115,6 +120,7 @@ func Power(in []complex128) []float64 {
 
 	vecmath.Power(out, re, im)
 	putScratch(buf)
+
 	return out
 }
 
@@ -131,6 +137,7 @@ func PowerBins(in ComplexBins) []float64 {
 	if in == nil {
 		return nil
 	}
+
 	out := make([]float64, in.Len())
 	for i := range out {
 		x := in.At(i)
@@ -138,6 +145,7 @@ func PowerBins(in ComplexBins) []float64 {
 		im := imag(x)
 		out[i] = re*re + im*im
 	}
+
 	return out
 }
 
@@ -151,10 +159,12 @@ func PhaseBins(in ComplexBins) []float64 {
 	if in == nil {
 		return nil
 	}
+
 	out := make([]float64, in.Len())
 	for i := range out {
 		out[i] = cmplx.Phase(in.At(i))
 	}
+
 	return out
 }
 
@@ -163,9 +173,11 @@ func UnwrapPhase(phase []float64) []float64 {
 	if len(phase) == 0 {
 		return nil
 	}
+
 	out := make([]float64, len(phase))
 	out[0] = phase[0]
 	offset := 0.0
+
 	for i := 1; i < len(phase); i++ {
 		d := phase[i] - phase[i-1]
 		switch {
@@ -174,8 +186,10 @@ func UnwrapPhase(phase []float64) []float64 {
 		case d < -math.Pi:
 			offset += 2 * math.Pi
 		}
+
 		out[i] = phase[i] + offset
 	}
+
 	return out
 }
 
@@ -188,16 +202,20 @@ func GroupDelayFromPhase(unwrapped []float64, fftSize int) ([]float64, error) {
 	if len(unwrapped) < 2 {
 		return nil, fmt.Errorf("group delay requires at least 2 phase points: %d", len(unwrapped))
 	}
+
 	if fftSize <= 0 {
 		return nil, fmt.Errorf("group delay fftSize must be > 0: %d", fftSize)
 	}
+
 	dw := 2 * math.Pi / float64(fftSize)
 	if dw == 0 || math.IsInf(dw, 0) || math.IsNaN(dw) {
 		return nil, fmt.Errorf("group delay invalid frequency spacing")
 	}
+
 	out := make([]float64, len(unwrapped))
 	for i := range unwrapped {
 		var dphi float64
+
 		switch i {
 		case 0:
 			dphi = unwrapped[1] - unwrapped[0]
@@ -206,8 +224,10 @@ func GroupDelayFromPhase(unwrapped []float64, fftSize int) ([]float64, error) {
 		default:
 			dphi = (unwrapped[i+1] - unwrapped[i-1]) / 2
 		}
+
 		out[i] = -dphi / dw
 	}
+
 	return out, nil
 }
 
@@ -216,14 +236,17 @@ func GroupDelaySeconds(unwrapped []float64, fftSize int, sampleRate float64) ([]
 	if sampleRate <= 0 {
 		return nil, fmt.Errorf("group delay sampleRate must be > 0: %f", sampleRate)
 	}
+
 	samples, err := GroupDelayFromPhase(unwrapped, fftSize)
 	if err != nil {
 		return nil, err
 	}
+
 	invSR := 1 / sampleRate
 	for i := range samples {
 		samples[i] *= invSR
 	}
+
 	return samples, nil
 }
 
@@ -234,9 +257,11 @@ func InterpolateLinear(x, y, queryX []float64) ([]float64, error) {
 	if len(x) == 0 || len(y) == 0 {
 		return nil, fmt.Errorf("interpolate requires non-empty x and y")
 	}
+
 	if len(x) != len(y) {
 		return nil, fmt.Errorf("interpolate x/y length mismatch: %d != %d", len(x), len(y))
 	}
+
 	for i := 1; i < len(x); i++ {
 		if !(x[i] > x[i-1]) {
 			return nil, fmt.Errorf("interpolate x must be strictly increasing at index %d", i)
@@ -249,6 +274,7 @@ func InterpolateLinear(x, y, queryX []float64) ([]float64, error) {
 			out[i] = y[0]
 			continue
 		}
+
 		if q >= x[len(x)-1] {
 			out[i] = y[len(y)-1]
 			continue
@@ -259,6 +285,7 @@ func InterpolateLinear(x, y, queryX []float64) ([]float64, error) {
 		t := (q - x0) / (x1 - x0)
 		out[i] = y[j-1] + t*(y[j]-y[j-1])
 	}
+
 	return out, nil
 }
 
@@ -271,16 +298,20 @@ func SmoothFractionalOctave(freqHz, values []float64, fraction int) ([]float64, 
 	if len(freqHz) == 0 || len(values) == 0 {
 		return nil, fmt.Errorf("fractional-octave smoothing requires non-empty inputs")
 	}
+
 	if len(freqHz) != len(values) {
 		return nil, fmt.Errorf("fractional-octave input length mismatch: %d != %d", len(freqHz), len(values))
 	}
+
 	if fraction <= 0 {
 		return nil, fmt.Errorf("fractional-octave fraction must be > 0: %d", fraction)
 	}
+
 	for i := range freqHz {
 		if freqHz[i] <= 0 {
 			return nil, fmt.Errorf("fractional-octave frequencies must be > 0 at index %d", i)
 		}
+
 		if i > 0 && !(freqHz[i] > freqHz[i-1]) {
 			return nil, fmt.Errorf("fractional-octave frequencies must be strictly increasing at index %d", i)
 		}
@@ -294,6 +325,7 @@ func SmoothFractionalOctave(freqHz, values []float64, fraction int) ([]float64, 
 		fHi := f * halfBand
 
 		i0 := sort.Search(len(freqHz), func(k int) bool { return freqHz[k] >= fLo })
+
 		i1 := sort.Search(len(freqHz), func(k int) bool { return freqHz[k] > fHi })
 		if i0 >= i1 {
 			out[i] = values[i]
@@ -304,6 +336,7 @@ func SmoothFractionalOctave(freqHz, values []float64, fraction int) ([]float64, 
 		for j := i0; j < i1; j++ {
 			sum += values[j]
 		}
+
 		out[i] = sum / float64(i1-i0)
 	}
 

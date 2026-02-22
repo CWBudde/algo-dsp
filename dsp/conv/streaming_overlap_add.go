@@ -44,6 +44,7 @@ func NewStreamingOverlapAddT[F algofft.Float, C algofft.Complex](kernel []F, blo
 	if len(kernel) == 0 {
 		return nil, ErrEmptyKernel
 	}
+
 	if blockSize <= 0 {
 		return nil, fmt.Errorf("conv: blockSize must be positive, got %d", blockSize)
 	}
@@ -125,6 +126,7 @@ func (soa *StreamingOverlapAddT[F, C]) processBlockCore(input []F) {
 	for i := range newTailLen {
 		soa.tail[i] = soa.convResult[soa.blockSize+i]
 	}
+
 	for i := newTailLen; i < len(soa.tail); i++ {
 		soa.tail[i] = 0
 	}
@@ -142,6 +144,7 @@ func (soa *StreamingOverlapAddT[F, C]) ProcessBlock(input []F) ([]F, error) {
 
 	output := make([]F, soa.blockSize)
 	copy(output, soa.convResult[:soa.blockSize])
+
 	return output, nil
 }
 
@@ -152,6 +155,7 @@ func (soa *StreamingOverlapAddT[F, C]) ProcessBlockTo(output, input []F) error {
 	if len(input) != soa.blockSize {
 		return fmt.Errorf("%w: expected %d input samples, got %d", ErrLengthMismatch, soa.blockSize, len(input))
 	}
+
 	if len(output) != soa.blockSize {
 		return fmt.Errorf("%w: expected %d output samples, got %d", ErrLengthMismatch, soa.blockSize, len(output))
 	}
@@ -159,6 +163,7 @@ func (soa *StreamingOverlapAddT[F, C]) ProcessBlockTo(output, input []F) error {
 	soa.processBlockCore(input)
 
 	copy(output, soa.convResult[:soa.blockSize])
+
 	return nil
 }
 

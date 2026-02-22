@@ -10,6 +10,7 @@ func TestPhaserProcessInPlaceMatchesProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewPhaser() error = %v", err)
 	}
+
 	p2, err := NewPhaser(48000)
 	if err != nil {
 		t.Fatalf("NewPhaser() error = %v", err)
@@ -22,12 +23,14 @@ func TestPhaserProcessInPlaceMatchesProcess(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = p1.Process(want[i])
 	}
 
 	got := make([]float64, len(input))
 	copy(got, input)
+
 	if err := p2.ProcessInPlace(got); err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
@@ -97,6 +100,7 @@ func TestPhaserFiniteOutputUnderFeedback(t *testing.T) {
 
 	for i := 0; i < 12000; i++ {
 		in := 0.3 * math.Sin(2*math.Pi*440*float64(i)/48000)
+
 		out := p.Process(in)
 		if math.IsNaN(out) || math.IsInf(out, 0) {
 			t.Fatalf("non-finite output at sample %d: %v", i, out)

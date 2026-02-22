@@ -41,7 +41,9 @@ func WithBitCrusherBitDepth(bitDepth float64) BitCrusherOption {
 			return fmt.Errorf("bit crusher bit depth must be in [%g, %g]: %f",
 				minBitCrusherBitDepth, maxBitCrusherBitDepth, bitDepth)
 		}
+
 		cfg.bitDepth = bitDepth
+
 		return nil
 	}
 }
@@ -55,7 +57,9 @@ func WithBitCrusherDownsample(factor int) BitCrusherOption {
 			return fmt.Errorf("bit crusher downsample factor must be in [1, %d]: %d",
 				maxBitCrusherDownsample, factor)
 		}
+
 		cfg.downsample = factor
+
 		return nil
 	}
 }
@@ -66,7 +70,9 @@ func WithBitCrusherMix(mix float64) BitCrusherOption {
 		if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 			return fmt.Errorf("bit crusher mix must be in [0, 1]: %f", mix)
 		}
+
 		cfg.mix = mix
+
 		return nil
 	}
 }
@@ -105,10 +111,12 @@ func NewBitCrusher(sampleRate float64, opts ...BitCrusherOption) (*BitCrusher, e
 	}
 
 	cfg := defaultBitCrusherConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -121,6 +129,7 @@ func NewBitCrusher(sampleRate float64, opts ...BitCrusherOption) (*BitCrusher, e
 		mix:        cfg.mix,
 	}
 	bc.updateQuantLevels()
+
 	return bc, nil
 }
 
@@ -129,7 +138,9 @@ func (bc *BitCrusher) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("bit crusher sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	bc.sampleRate = sampleRate
+
 	return nil
 }
 
@@ -140,8 +151,10 @@ func (bc *BitCrusher) SetBitDepth(bitDepth float64) error {
 		return fmt.Errorf("bit crusher bit depth must be in [%g, %g]: %f",
 			minBitCrusherBitDepth, maxBitCrusherBitDepth, bitDepth)
 	}
+
 	bc.bitDepth = bitDepth
 	bc.updateQuantLevels()
+
 	return nil
 }
 
@@ -151,7 +164,9 @@ func (bc *BitCrusher) SetDownsample(factor int) error {
 		return fmt.Errorf("bit crusher downsample factor must be in [1, %d]: %d",
 			maxBitCrusherDownsample, factor)
 	}
+
 	bc.downsample = factor
+
 	return nil
 }
 
@@ -160,7 +175,9 @@ func (bc *BitCrusher) SetMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("bit crusher mix must be in [0, 1]: %f", mix)
 	}
+
 	bc.mix = mix
+
 	return nil
 }
 

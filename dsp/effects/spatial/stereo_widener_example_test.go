@@ -30,6 +30,7 @@ func ExampleStereoWidener_ProcessStereoInPlace() {
 	}
 
 	left := []float64{1, 0, -1, 0}
+
 	right := []float64{0, 1, 0, -1}
 	if err := w.ProcessStereoInPlace(left, right); err != nil {
 		fmt.Println("error:", err)

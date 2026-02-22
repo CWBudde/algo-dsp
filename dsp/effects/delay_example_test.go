@@ -12,6 +12,7 @@ func ExampleDelay_ProcessInPlace() {
 		fmt.Println("error")
 		return
 	}
+
 	_ = delay.SetTime(0.2)
 	_ = delay.SetFeedback(0.4)
 	_ = delay.SetMix(0.3)

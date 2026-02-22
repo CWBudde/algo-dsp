@@ -15,6 +15,7 @@ func ButterworthLowShelf(sampleRate, freqHz, gainDB float64, order int) ([]biqua
 	if err := validateParams(sampleRate, freqHz, order); err != nil {
 		return nil, err
 	}
+
 	if gainDB == 0 {
 		return passthroughSections(), nil
 	}
@@ -36,6 +37,7 @@ func ButterworthHighShelf(sampleRate, freqHz, gainDB float64, order int) ([]biqu
 	if err := validateParams(sampleRate, freqHz, order); err != nil {
 		return nil, err
 	}
+
 	if gainDB == 0 {
 		return passthroughSections(), nil
 	}
@@ -47,5 +49,6 @@ func ButterworthHighShelf(sampleRate, freqHz, gainDB float64, order int) ([]biqu
 
 	sections := lowShelfSections(K, P, pairs, realSigma)
 	negateOddPowers(sections)
+
 	return sections, nil
 }
