@@ -48,7 +48,9 @@ func WithHRTFMode(mode HRTFMode) HRTFCrosstalkSimulatorOption {
 		if !validHRTFMode(mode) {
 			return fmt.Errorf("hrtf crosstalk simulator mode is invalid: %d", mode)
 		}
+
 		cfg.mode = mode
+
 		return nil
 	}
 }
@@ -59,7 +61,9 @@ func WithHRTFProvider(provider HRTFProvider) HRTFCrosstalkSimulatorOption {
 		if provider == nil {
 			return fmt.Errorf("hrtf crosstalk simulator provider must not be nil")
 		}
+
 		cfg.provider = provider
+
 		return nil
 	}
 }
@@ -83,14 +87,17 @@ func NewHRTFCrosstalkSimulator(sampleRate float64, opts ...HRTFCrosstalkSimulato
 	}
 
 	cfg := defaultHRTFCrosstalkConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
 	}
+
 	if cfg.provider == nil {
 		return nil, fmt.Errorf("hrtf crosstalk simulator provider must not be nil")
 	}
@@ -103,6 +110,7 @@ func NewHRTFCrosstalkSimulator(sampleRate float64, opts ...HRTFCrosstalkSimulato
 	if err := s.reloadIR(); err != nil {
 		return nil, err
 	}
+
 	return s, nil
 }
 
@@ -115,6 +123,7 @@ func (s *HRTFCrosstalkSimulator) ProcessStereo(left, right float64) (float64, fl
 	case HRTFModeComplete:
 		outL := s.leftDirect.process(left) + crossL
 		outR := s.rightDirect.process(right) + crossR
+
 		return outL, outR
 	case HRTFModeCrossfeedOnly:
 		fallthrough
@@ -128,9 +137,11 @@ func (s *HRTFCrosstalkSimulator) ProcessInPlace(left, right []float64) error {
 	if len(left) != len(right) {
 		return fmt.Errorf("hrtf crosstalk simulator: left and right lengths must match: %d != %d", len(left), len(right))
 	}
+
 	for i := range left {
 		left[i], right[i] = s.ProcessStereo(left[i], right[i])
 	}
+
 	return nil
 }
 
@@ -147,7 +158,9 @@ func (s *HRTFCrosstalkSimulator) SetMode(mode HRTFMode) error {
 	if !validHRTFMode(mode) {
 		return fmt.Errorf("hrtf crosstalk simulator mode is invalid: %d", mode)
 	}
+
 	s.mode = mode
+
 	return nil
 }
 
@@ -156,7 +169,9 @@ func (s *HRTFCrosstalkSimulator) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("hrtf crosstalk simulator sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	s.sampleRate = sampleRate
+
 	return s.reloadIR()
 }
 
@@ -165,7 +180,9 @@ func (s *HRTFCrosstalkSimulator) SetProvider(provider HRTFProvider) error {
 	if provider == nil {
 		return fmt.Errorf("hrtf crosstalk simulator provider must not be nil")
 	}
+
 	s.provider = provider
+
 	return s.reloadIR()
 }
 
@@ -174,6 +191,7 @@ func (s *HRTFCrosstalkSimulator) reloadIR() error {
 	if err != nil {
 		return fmt.Errorf("hrtf crosstalk simulator impulse response load failed: %w", err)
 	}
+
 	if err := validateIRSet(irSet, s.mode); err != nil {
 		return err
 	}
@@ -186,6 +204,7 @@ func (s *HRTFCrosstalkSimulator) reloadIR() error {
 	} else {
 		s.leftDirect.init(copyIR(irSet.LeftDirect))
 	}
+
 	if len(irSet.RightDirect) == 0 {
 		s.rightDirect.init([]float64{1})
 	} else {
@@ -199,17 +218,21 @@ func validateIRSet(irSet HRTFImpulseResponseSet, mode HRTFMode) error {
 	if len(irSet.LeftCross) == 0 {
 		return fmt.Errorf("hrtf crosstalk simulator left crossfeed IR must not be empty")
 	}
+
 	if len(irSet.RightCross) == 0 {
 		return fmt.Errorf("hrtf crosstalk simulator right crossfeed IR must not be empty")
 	}
+
 	if mode == HRTFModeComplete {
 		if len(irSet.LeftDirect) == 0 {
 			return fmt.Errorf("hrtf crosstalk simulator left direct IR must not be empty in complete mode")
 		}
+
 		if len(irSet.RightDirect) == 0 {
 			return fmt.Errorf("hrtf crosstalk simulator right direct IR must not be empty in complete mode")
 		}
 	}
+
 	return nil
 }
 
@@ -225,6 +248,7 @@ func validHRTFMode(mode HRTFMode) bool {
 func copyIR(ir []float64) []float64 {
 	cp := make([]float64, len(ir))
 	copy(cp, ir)
+
 	return cp
 }
 
@@ -238,6 +262,7 @@ func (f *firPath) init(ir []float64) {
 	if len(ir) == 0 {
 		ir = []float64{1}
 	}
+
 	f.ir = ir
 	f.hist = make([]float64, len(ir))
 	f.write = 0
@@ -251,9 +276,11 @@ func (f *firPath) process(x float64) float64 {
 	f.hist[f.write] = x
 
 	sum := 0.0
+
 	idx := f.write
 	for i := 0; i < len(f.ir); i++ {
 		sum += f.ir[i] * f.hist[idx]
+
 		idx--
 		if idx < 0 {
 			idx = len(f.hist) - 1
@@ -272,5 +299,6 @@ func (f *firPath) reset() {
 	for i := range f.hist {
 		f.hist[i] = 0
 	}
+
 	f.write = 0
 }

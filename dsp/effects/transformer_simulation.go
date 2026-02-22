@@ -65,7 +65,9 @@ func WithTransformerQuality(quality TransformerQuality) TransformerSimulationOpt
 		if !validTransformerQuality(quality) {
 			return fmt.Errorf("transformer simulation quality is invalid: %d", quality)
 		}
+
 		cfg.quality = quality
+
 		return nil
 	}
 }
@@ -77,7 +79,9 @@ func WithTransformerDrive(drive float64) TransformerSimulationOption {
 			return fmt.Errorf("transformer simulation drive must be in [%g, %g]: %f",
 				minTransformerDrive, maxTransformerDrive, drive)
 		}
+
 		cfg.drive = drive
+
 		return nil
 	}
 }
@@ -88,7 +92,9 @@ func WithTransformerMix(mix float64) TransformerSimulationOption {
 		if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 			return fmt.Errorf("transformer simulation mix must be in [0, 1]: %f", mix)
 		}
+
 		cfg.mix = mix
+
 		return nil
 	}
 }
@@ -100,7 +106,9 @@ func WithTransformerOutputLevel(level float64) TransformerSimulationOption {
 			return fmt.Errorf("transformer simulation output level must be in [%g, %g]: %f",
 				minTransformerOutputLevel, maxTransformerOutputLevel, level)
 		}
+
 		cfg.outputLevel = level
+
 		return nil
 	}
 }
@@ -112,7 +120,9 @@ func WithTransformerHighpassHz(freq float64) TransformerSimulationOption {
 			return fmt.Errorf("transformer simulation high-pass frequency must be >= %g: %f",
 				minTransformerHighpassHz, freq)
 		}
+
 		cfg.highpassHz = freq
+
 		return nil
 	}
 }
@@ -124,7 +134,9 @@ func WithTransformerDampingHz(freq float64) TransformerSimulationOption {
 			return fmt.Errorf("transformer simulation damping frequency must be >= %g: %f",
 				minTransformerDampingHz, freq)
 		}
+
 		cfg.dampingHz = freq
+
 		return nil
 	}
 }
@@ -136,7 +148,9 @@ func WithTransformerOversampling(factor int) TransformerSimulationOption {
 		if !validOversamplingFactor(factor) {
 			return fmt.Errorf("transformer simulation oversampling factor must be one of {2,4,8}: %d", factor)
 		}
+
 		cfg.overSampling = factor
+
 		return nil
 	}
 }
@@ -170,10 +184,12 @@ func NewTransformerSimulation(sampleRate float64, opts ...TransformerSimulationO
 	}
 
 	cfg := defaultTransformerSimulationConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -202,7 +218,9 @@ func (t *TransformerSimulation) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("transformer simulation sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	t.sampleRate = sampleRate
+
 	return t.rebuildFilters()
 }
 
@@ -211,7 +229,9 @@ func (t *TransformerSimulation) SetQuality(quality TransformerQuality) error {
 	if !validTransformerQuality(quality) {
 		return fmt.Errorf("transformer simulation quality is invalid: %d", quality)
 	}
+
 	t.quality = quality
+
 	return nil
 }
 
@@ -221,7 +241,9 @@ func (t *TransformerSimulation) SetDrive(drive float64) error {
 		return fmt.Errorf("transformer simulation drive must be in [%g, %g]: %f",
 			minTransformerDrive, maxTransformerDrive, drive)
 	}
+
 	t.drive = drive
+
 	return nil
 }
 
@@ -230,7 +252,9 @@ func (t *TransformerSimulation) SetMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("transformer simulation mix must be in [0, 1]: %f", mix)
 	}
+
 	t.mix = mix
+
 	return nil
 }
 
@@ -240,7 +264,9 @@ func (t *TransformerSimulation) SetOutputLevel(level float64) error {
 		return fmt.Errorf("transformer simulation output level must be in [%g, %g]: %f",
 			minTransformerOutputLevel, maxTransformerOutputLevel, level)
 	}
+
 	t.outputLevel = level
+
 	return nil
 }
 
@@ -250,7 +276,9 @@ func (t *TransformerSimulation) SetHighpassHz(freq float64) error {
 		return fmt.Errorf("transformer simulation high-pass frequency must be >= %g: %f",
 			minTransformerHighpassHz, freq)
 	}
+
 	t.highpassHz = freq
+
 	return t.rebuildFilters()
 }
 
@@ -260,7 +288,9 @@ func (t *TransformerSimulation) SetDampingHz(freq float64) error {
 		return fmt.Errorf("transformer simulation damping frequency must be >= %g: %f",
 			minTransformerDampingHz, freq)
 	}
+
 	t.dampingHz = freq
+
 	return t.rebuildFilters()
 }
 
@@ -269,7 +299,9 @@ func (t *TransformerSimulation) SetOversampling(factor int) error {
 	if !validOversamplingFactor(factor) {
 		return fmt.Errorf("transformer simulation oversampling factor must be one of {2,4,8}: %d", factor)
 	}
+
 	t.overSampling = factor
+
 	return t.rebuildFilters()
 }
 
@@ -278,15 +310,19 @@ func (t *TransformerSimulation) Reset() {
 	if t.preHP != nil {
 		t.preHP.Reset()
 	}
+
 	if t.dampBase != nil {
 		t.dampBase.Reset()
 	}
+
 	if t.upAA != nil {
 		t.upAA.Reset()
 	}
+
 	if t.downAA != nil {
 		t.downAA.Reset()
 	}
+
 	if t.dampOS != nil {
 		t.dampOS.Reset()
 	}
@@ -351,6 +387,7 @@ func (t *TransformerSimulation) processLightweight(x float64) float64 {
 	if t.dampBase != nil {
 		y = t.dampBase.ProcessSample(y)
 	}
+
 	return y
 }
 
@@ -360,6 +397,7 @@ func (t *TransformerSimulation) processHighQuality(x float64) float64 {
 	}
 
 	os := float64(t.overSampling)
+
 	var out float64
 
 	for i := 0; i < t.overSampling; i++ {
@@ -385,18 +423,22 @@ func (t *TransformerSimulation) rebuildFilters() error {
 	if t.sampleRate <= 0 || math.IsNaN(t.sampleRate) || math.IsInf(t.sampleRate, 0) {
 		return fmt.Errorf("transformer simulation sample rate must be > 0 and finite: %f", t.sampleRate)
 	}
+
 	if !validTransformerQuality(t.quality) {
 		return fmt.Errorf("transformer simulation quality is invalid: %d", t.quality)
 	}
+
 	if !validOversamplingFactor(t.overSampling) {
 		return fmt.Errorf("transformer simulation oversampling factor must be one of {2,4,8}: %d", t.overSampling)
 	}
 
 	nyquist := t.sampleRate / 2
+
 	hpHz := t.highpassHz
 	if hpHz >= nyquist {
 		hpHz = nyquist * 0.9
 	}
+
 	if hpHz < minTransformerHighpassHz {
 		hpHz = minTransformerHighpassHz
 	}
@@ -405,6 +447,7 @@ func (t *TransformerSimulation) rebuildFilters() error {
 	if dampHz >= nyquist {
 		dampHz = nyquist * 0.95
 	}
+
 	if dampHz < minTransformerDampingHz {
 		dampHz = minTransformerDampingHz
 	}
@@ -415,6 +458,7 @@ func (t *TransformerSimulation) rebuildFilters() error {
 	t.dampBase = biquad.NewSection(dampBase)
 
 	osRate := t.sampleRate * float64(t.overSampling)
+
 	antiAliasHz := t.sampleRate * 0.45 / 2 // keep content below base Nyquist before decimation
 	if antiAliasHz >= osRate/2 {
 		antiAliasHz = osRate * 0.45 / 2
@@ -443,9 +487,12 @@ func transformerPolySaturate(x float64) float64 {
 	if x > 3 {
 		return 1
 	}
+
 	if x < -3 {
 		return -1
 	}
+
 	x2 := x * x
+
 	return clamp(x*(27+x2)/(27+9*x2), -1, 1)
 }

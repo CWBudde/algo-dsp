@@ -15,6 +15,7 @@ func (p fixedHRTFProvider) ImpulseResponses(sampleRate float64) (HRTFImpulseResp
 	if p.err != nil {
 		return HRTFImpulseResponseSet{}, p.err
 	}
+
 	return p.set, nil
 }
 
@@ -57,6 +58,7 @@ func TestHRTFCrosstalkSimulatorCrossfeedOnlyRouting(t *testing.T) {
 	if math.Abs(outL-(1+2*0.25)) > 1e-12 {
 		t.Fatalf("crossfeed-only left mismatch: got=%g", outL)
 	}
+
 	if math.Abs(outR-(2+1*0.5)) > 1e-12 {
 		t.Fatalf("crossfeed-only right mismatch: got=%g", outR)
 	}
@@ -82,6 +84,7 @@ func TestHRTFCrosstalkSimulatorCompleteRouting(t *testing.T) {
 	if math.Abs(outL-(1*0.8+2*0.1)) > 1e-12 {
 		t.Fatalf("complete left mismatch: got=%g", outL)
 	}
+
 	if math.Abs(outR-(2*0.9+1*0.2)) > 1e-12 {
 		t.Fatalf("complete right mismatch: got=%g", outR)
 	}
@@ -119,6 +122,7 @@ func TestHRTFCrosstalkSimulatorResetDeterministic(t *testing.T) {
 		if math.Abs(outL1[i]-outL2) > 1e-12 {
 			t.Fatalf("left mismatch at %d after reset", i)
 		}
+
 		if math.Abs(outR1[i]-outR2) > 1e-12 {
 			t.Fatalf("right mismatch at %d after reset", i)
 		}

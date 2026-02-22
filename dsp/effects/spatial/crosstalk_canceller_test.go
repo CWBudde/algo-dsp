@@ -65,6 +65,7 @@ func TestCrosstalkCancellerInPlaceMatchesSampleBySample(t *testing.T) {
 
 	n := 128
 	inL := make([]float64, n)
+
 	inR := make([]float64, n)
 	for i := 0; i < n; i++ {
 		inL[i] = math.Sin(2 * math.Pi * float64(i) / 21)
@@ -72,12 +73,14 @@ func TestCrosstalkCancellerInPlaceMatchesSampleBySample(t *testing.T) {
 	}
 
 	wantL := make([]float64, n)
+
 	wantR := make([]float64, n)
 	for i := range inL {
 		wantL[i], wantR[i] = c1.ProcessStereo(inL[i], inR[i])
 	}
 
 	gotL := append([]float64(nil), inL...)
+
 	gotR := append([]float64(nil), inR...)
 	if err := c2.ProcessInPlace(gotL, gotR); err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
@@ -87,6 +90,7 @@ func TestCrosstalkCancellerInPlaceMatchesSampleBySample(t *testing.T) {
 		if d := math.Abs(gotL[i] - wantL[i]); d > 1e-12 {
 			t.Fatalf("left[%d] mismatch: got=%g want=%g", i, gotL[i], wantL[i])
 		}
+
 		if d := math.Abs(gotR[i] - wantR[i]); d > 1e-12 {
 			t.Fatalf("right[%d] mismatch: got=%g want=%g", i, gotR[i], wantR[i])
 		}
@@ -101,6 +105,7 @@ func TestCrosstalkCancellerResetDeterministic(t *testing.T) {
 
 	n := 96
 	inL := make([]float64, n)
+
 	inR := make([]float64, n)
 	for i := 0; i < n; i++ {
 		inL[i] = math.Sin(2 * math.Pi * float64(i) / 37)
@@ -108,6 +113,7 @@ func TestCrosstalkCancellerResetDeterministic(t *testing.T) {
 	}
 
 	outL1 := make([]float64, n)
+
 	outR1 := make([]float64, n)
 	for i := 0; i < n; i++ {
 		outL1[i], outR1[i] = c.ProcessStereo(inL[i], inR[i])
@@ -120,6 +126,7 @@ func TestCrosstalkCancellerResetDeterministic(t *testing.T) {
 		if math.Abs(outL1[i]-outL2) > 1e-12 {
 			t.Fatalf("left mismatch at %d after reset", i)
 		}
+
 		if math.Abs(outR1[i]-outR2) > 1e-12 {
 			t.Fatalf("right mismatch at %d after reset", i)
 		}

@@ -9,15 +9,19 @@ func TestCrosstalkSimulatorValidation(t *testing.T) {
 	if _, err := NewCrosstalkSimulator(0); err == nil {
 		t.Fatal("expected error for zero sample rate")
 	}
+
 	if _, err := NewCrosstalkSimulator(48000, WithSimulatorDiameter(0.01)); err == nil {
 		t.Fatal("expected error for small diameter")
 	}
+
 	if _, err := NewCrosstalkSimulator(48000, WithSimulatorCrossfeedMix(2)); err == nil {
 		t.Fatal("expected error for invalid mix")
 	}
+
 	if _, err := NewCrosstalkSimulator(48000, WithSimulatorPreset(CrosstalkPreset(99))); err == nil {
 		t.Fatal("expected error for invalid preset")
 	}
+
 	if _, err := NewCrosstalkSimulator(48000, WithSimulatorSpeedOfSound(200)); err == nil {
 		t.Fatal("expected error for invalid speed of sound")
 	}
@@ -33,6 +37,7 @@ func TestCrosstalkSimulatorDelayCalculation(t *testing.T) {
 	if expected < 1 {
 		expected = 1
 	}
+
 	if s.DelaySamples() != expected {
 		t.Fatalf("delay samples mismatch: got=%d want=%d", s.DelaySamples(), expected)
 	}
@@ -41,6 +46,7 @@ func TestCrosstalkSimulatorDelayCalculation(t *testing.T) {
 	if err := s.SetSpeedOfSound(320); err != nil {
 		t.Fatalf("SetSpeedOfSound() error = %v", err)
 	}
+
 	after := s.DelaySamples()
 	if after <= before {
 		t.Fatalf("expected larger delay with lower speed of sound: before=%d after=%d", before, after)
@@ -65,12 +71,15 @@ func TestCrosstalkSimulatorPresetsDifferentResponse(t *testing.T) {
 	}
 
 	var handEnergy, ircamEnergy float64
+
 	for i := 0; i < 512; i++ {
 		inL := 0.0
+
 		inR := 0.0
 		if i == 0 {
 			inR = 1
 		}
+
 		ohL, _ := hand.ProcessStereo(inL, inR)
 		oiL, _ := ircam.ProcessStereo(inL, inR)
 		handEnergy += ohL * ohL
@@ -118,6 +127,7 @@ func TestCrosstalkSimulatorInPlaceMatchesSampleBySample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewCrosstalkSimulator() error = %v", err)
 	}
+
 	s2, err := NewCrosstalkSimulator(48000, WithSimulatorCrossfeedMix(0.35))
 	if err != nil {
 		t.Fatalf("NewCrosstalkSimulator() error = %v", err)
@@ -126,18 +136,21 @@ func TestCrosstalkSimulatorInPlaceMatchesSampleBySample(t *testing.T) {
 	n := 120
 	inL := make([]float64, n)
 	inR := make([]float64, n)
+
 	for i := range inL {
 		inL[i] = math.Sin(2 * math.Pi * float64(i) / 31)
 		inR[i] = math.Sin(2*math.Pi*float64(i)/27 + 0.3)
 	}
 
 	wantL := make([]float64, n)
+
 	wantR := make([]float64, n)
 	for i := range inL {
 		wantL[i], wantR[i] = s1.ProcessStereo(inL[i], inR[i])
 	}
 
 	gotL := append([]float64(nil), inL...)
+
 	gotR := append([]float64(nil), inR...)
 	if err := s2.ProcessInPlace(gotL, gotR); err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
@@ -147,6 +160,7 @@ func TestCrosstalkSimulatorInPlaceMatchesSampleBySample(t *testing.T) {
 		if math.Abs(gotL[i]-wantL[i]) > 1e-12 {
 			t.Fatalf("left[%d] mismatch", i)
 		}
+
 		if math.Abs(gotR[i]-wantR[i]) > 1e-12 {
 			t.Fatalf("right[%d] mismatch", i)
 		}

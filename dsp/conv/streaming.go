@@ -79,12 +79,12 @@ func (e *fftEngine[C]) Inverse(dst, src []C) {
 
 // newFFTEngine creates an fftEngine that prefers FastPlan over Plan.
 func newFFTEngine[C algofft.Complex](n int) (*fftEngine[C], error) {
-	e := &fftEngine[C]{}
+	engine := &fftEngine[C]{}
 
 	fp, err := algofft.NewFastPlan[C](n)
 	if err == nil {
-		e.fast = fp
-		return e, nil
+		engine.fast = fp
+		return engine, nil
 	}
 	// FastPlan unavailable (e.g. no codelet for this size), fall back to Plan.
 	plan, err := algofft.NewPlanT[C](n)
@@ -92,9 +92,9 @@ func newFFTEngine[C algofft.Complex](n int) (*fftEngine[C], error) {
 		return nil, err
 	}
 
-	e.plan = plan
+	engine.plan = plan
 
-	return e, nil
+	return engine, nil
 }
 
 // packReal writes float values into the real parts of a complex slice.

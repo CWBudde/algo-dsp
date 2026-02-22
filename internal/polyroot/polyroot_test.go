@@ -6,14 +6,14 @@ import (
 	"testing"
 )
 
-func almostEqual(a, b, tol float64) bool {
-	if a == b {
+func almostEqual(valA, valB, tol float64) bool {
+	if valA == valB {
 		return true
 	}
 
-	diff := math.Abs(a - b)
+	diff := math.Abs(valA - valB)
 	if tol > 0 && tol < 1 {
-		mag := math.Max(math.Abs(a), math.Abs(b))
+		mag := math.Max(math.Abs(valA), math.Abs(valB))
 		if mag > 1 {
 			return diff/mag < tol
 		}

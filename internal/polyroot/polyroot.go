@@ -114,15 +114,15 @@ func rootsFromPolyAsc(c [5]float64) ([]complex128, error) {
 // polynomial coefficients. Given roots (a+jb) and (a-jb), it returns the
 // coefficients of z^2 - 2a*z + (a^2 + b^2) as (1, -2a, a^2+b^2).
 func QuadFromRoots(pair [2]complex128) (float64, float64, float64, error) {
-	r1 := pair[0]
+	root1 := pair[0]
+	root2 := pair[1]
 
-	r2 := pair[1]
-	if !IsConjugate(r1, r2, ConjugateTol) {
+	if !IsConjugate(root1, root2, ConjugateTol) {
 		return 0, 0, 0, ErrDegeneratePolynomial
 	}
 
-	a := real(r1)
-	b := math.Abs(imag(r1))
+	a := real(root1)
+	b := math.Abs(imag(root1))
 
 	return 1.0, -2 * a, a*a + b*b, nil
 }
@@ -139,8 +139,8 @@ func PairConjugates(roots []complex128) ([][2]complex128, error) {
 			continue
 		}
 
-		r := roots[i]
-		conj := complex(real(r), -imag(r))
+		root := roots[i]
+		conj := complex(real(root), -imag(root))
 		best := -1
 		bestDist := math.MaxFloat64
 
@@ -156,13 +156,13 @@ func PairConjugates(roots []complex128) ([][2]complex128, error) {
 			}
 		}
 
-		if best == -1 || !IsConjugate(r, roots[best], ConjugateTol) {
+		if best == -1 || !IsConjugate(root, roots[best], ConjugateTol) {
 			return nil, ErrDegeneratePolynomial
 		}
 
 		used[i] = true
 		used[best] = true
-		pairs = append(pairs, [2]complex128{r, roots[best]})
+		pairs = append(pairs, [2]complex128{root, roots[best]})
 	}
 
 	return pairs, nil

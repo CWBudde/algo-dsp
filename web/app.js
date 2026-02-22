@@ -123,6 +123,8 @@ const state = {
     bitCrusherBitDepth: 8,
     bitCrusherDownsample: 4,
     bitCrusherMix: 1,
+    distortionEnabled: false,
+    transformerEnabled: false,
     widenerEnabled: false,
     widenerWidth: 1,
     widenerMix: 0.5,
@@ -251,6 +253,39 @@ const el = {
   bitCrusherDownsampleValue: document.getElementById("bitcrusher-downsample-value"),
   bitCrusherMix: document.getElementById("bitcrusher-mix"),
   bitCrusherMixValue: document.getElementById("bitcrusher-mix-value"),
+  distortionMode: document.getElementById("distortion-mode"),
+  distortionApprox: document.getElementById("distortion-approx"),
+  distortionDrive: document.getElementById("distortion-drive"),
+  distortionDriveValue: document.getElementById("distortion-drive-value"),
+  distortionMix: document.getElementById("distortion-mix"),
+  distortionMixValue: document.getElementById("distortion-mix-value"),
+  distortionOutput: document.getElementById("distortion-output"),
+  distortionOutputValue: document.getElementById("distortion-output-value"),
+  distortionClip: document.getElementById("distortion-clip"),
+  distortionClipValue: document.getElementById("distortion-clip-value"),
+  distortionShape: document.getElementById("distortion-shape"),
+  distortionShapeValue: document.getElementById("distortion-shape-value"),
+  distortionBias: document.getElementById("distortion-bias"),
+  distortionBiasValue: document.getElementById("distortion-bias-value"),
+  distortionChebOrder: document.getElementById("distortion-cheb-order"),
+  distortionChebOrderValue: document.getElementById("distortion-cheb-order-value"),
+  distortionChebHarmonic: document.getElementById("distortion-cheb-harmonic"),
+  distortionChebInvert: document.getElementById("distortion-cheb-invert"),
+  distortionChebGain: document.getElementById("distortion-cheb-gain"),
+  distortionChebGainValue: document.getElementById("distortion-cheb-gain-value"),
+  distortionChebDCBypass: document.getElementById("distortion-cheb-dc-bypass"),
+  transformerQuality: document.getElementById("transformer-quality"),
+  transformerDrive: document.getElementById("transformer-drive"),
+  transformerDriveValue: document.getElementById("transformer-drive-value"),
+  transformerMix: document.getElementById("transformer-mix"),
+  transformerMixValue: document.getElementById("transformer-mix-value"),
+  transformerOutput: document.getElementById("transformer-output"),
+  transformerOutputValue: document.getElementById("transformer-output-value"),
+  transformerHighpass: document.getElementById("transformer-highpass"),
+  transformerHighpassValue: document.getElementById("transformer-highpass-value"),
+  transformerDamping: document.getElementById("transformer-damping"),
+  transformerDampingValue: document.getElementById("transformer-damping-value"),
+  transformerOversampling: document.getElementById("transformer-oversampling"),
   fxFilterFamily: document.getElementById("fx-filter-family"),
   fxFilterKind: document.getElementById("fx-filter-kind"),
   fxFilterOrder: document.getElementById("fx-filter-order"),
@@ -416,6 +451,30 @@ const EFFECT_NODE_DEFAULTS = {
   },
   ringmod: { carrierHz: 440, mix: 1.0 },
   bitcrusher: { bitDepth: 8, downsample: 4, mix: 1.0 },
+  distortion: {
+    mode: "softclip",
+    approx: "exact",
+    drive: 1.8,
+    mix: 1.0,
+    output: 1.0,
+    clip: 1.0,
+    shape: 0.5,
+    bias: 0.0,
+    chebOrder: 3,
+    chebHarmonic: "all",
+    chebInvert: 0,
+    chebGain: 1.0,
+    chebDCBypass: 0,
+  },
+  transformer: {
+    quality: "high",
+    drive: 2.0,
+    mix: 1.0,
+    output: 1.0,
+    highpassHz: 25,
+    dampingHz: 9000,
+    oversampling: 4,
+  },
   filter: { family: "rbj", kind: "lowpass", order: 2, freq: 1200, q: 0.707, gain: 0 },
   "dyn-compressor": {
     thresholdDB: -20,
@@ -509,6 +568,30 @@ function applyNodeParamsToUI(node) {
       el.bitCrusherBits.value = p.bitDepth;
       el.bitCrusherDownsample.value = p.downsample;
       el.bitCrusherMix.value = p.mix;
+      break;
+    case "distortion":
+      el.distortionMode.value = p.mode || "softclip";
+      el.distortionApprox.value = p.approx || "exact";
+      el.distortionDrive.value = p.drive;
+      el.distortionMix.value = p.mix;
+      el.distortionOutput.value = p.output;
+      el.distortionClip.value = p.clip;
+      el.distortionShape.value = p.shape;
+      el.distortionBias.value = p.bias;
+      el.distortionChebOrder.value = p.chebOrder;
+      el.distortionChebHarmonic.value = p.chebHarmonic || "all";
+      el.distortionChebInvert.value = String(Number(p.chebInvert || 0));
+      el.distortionChebGain.value = p.chebGain;
+      el.distortionChebDCBypass.value = String(Number(p.chebDCBypass || 0));
+      break;
+    case "transformer":
+      el.transformerQuality.value = p.quality || "high";
+      el.transformerDrive.value = p.drive;
+      el.transformerMix.value = p.mix;
+      el.transformerOutput.value = p.output;
+      el.transformerHighpass.value = p.highpassHz;
+      el.transformerDamping.value = p.dampingHz;
+      el.transformerOversampling.value = String(p.oversampling ?? 4);
       break;
     case "filter":
       el.fxFilterFamily.value = p.family || "rbj";
@@ -629,6 +712,44 @@ function collectNodeParamsFromUI(nodeType) {
         bitDepth: Number(el.bitCrusherBits.value),
         downsample: Number(el.bitCrusherDownsample.value),
         mix: Number(el.bitCrusherMix.value),
+      };
+    case "distortion": {
+      const chebHarmonic = String(el.distortionChebHarmonic.value || "all");
+      let chebOrder = Math.max(1, Math.min(16, Math.round(Number(el.distortionChebOrder.value))));
+      if (chebHarmonic === "odd" && chebOrder % 2 === 0) {
+        chebOrder = Math.max(1, chebOrder - 1);
+      }
+      if (chebHarmonic === "even" && chebOrder % 2 !== 0) {
+        chebOrder = Math.min(16, chebOrder + 1);
+      }
+      if (Number(el.distortionChebOrder.value) !== chebOrder) {
+        el.distortionChebOrder.value = String(chebOrder);
+      }
+      return {
+        mode: String(el.distortionMode.value || "softclip"),
+        approx: String(el.distortionApprox.value || "exact"),
+        drive: Number(el.distortionDrive.value),
+        mix: Number(el.distortionMix.value),
+        output: Number(el.distortionOutput.value),
+        clip: Number(el.distortionClip.value),
+        shape: Number(el.distortionShape.value),
+        bias: Number(el.distortionBias.value),
+        chebOrder,
+        chebHarmonic,
+        chebInvert: Number(el.distortionChebInvert.value),
+        chebGain: Number(el.distortionChebGain.value),
+        chebDCBypass: Number(el.distortionChebDCBypass.value),
+      };
+    }
+    case "transformer":
+      return {
+        quality: String(el.transformerQuality.value || "high"),
+        drive: Number(el.transformerDrive.value),
+        mix: Number(el.transformerMix.value),
+        output: Number(el.transformerOutput.value),
+        highpassHz: Number(el.transformerHighpass.value),
+        dampingHz: Number(el.transformerDamping.value),
+        oversampling: Number(el.transformerOversampling.value),
       };
     case "filter":
       return {
@@ -1255,6 +1376,8 @@ function readEffectsFromChain() {
     flangerEnabled: enabled.has("flanger"),
     ringModEnabled: enabled.has("ringmod"),
     bitCrusherEnabled: enabled.has("bitcrusher"),
+    distortionEnabled: enabled.has("distortion"),
+    transformerEnabled: enabled.has("transformer"),
     widenerEnabled: enabled.has("widener"),
     phaserEnabled: enabled.has("phaser"),
     tremoloEnabled: enabled.has("tremolo"),
@@ -1285,6 +1408,45 @@ function updateEffectsText() {
   el.bitCrusherBitsValue.textContent = `${Number(el.bitCrusherBits.value).toFixed(1)} bit`;
   el.bitCrusherDownsampleValue.textContent = `${Number(el.bitCrusherDownsample.value).toFixed(0)}x`;
   el.bitCrusherMixValue.textContent = `${Math.round(Number(el.bitCrusherMix.value) * 100)}%`;
+  if (el.distortionDriveValue) {
+    el.distortionDriveValue.textContent = `${Number(el.distortionDrive.value).toFixed(2)}x`;
+  }
+  if (el.distortionMixValue) {
+    el.distortionMixValue.textContent = `${Math.round(Number(el.distortionMix.value) * 100)}%`;
+  }
+  if (el.distortionOutputValue) {
+    el.distortionOutputValue.textContent = `${Number(el.distortionOutput.value).toFixed(2)}x`;
+  }
+  if (el.distortionClipValue) {
+    el.distortionClipValue.textContent = Number(el.distortionClip.value).toFixed(2);
+  }
+  if (el.distortionShapeValue) {
+    el.distortionShapeValue.textContent = Number(el.distortionShape.value).toFixed(2);
+  }
+  if (el.distortionBiasValue) {
+    el.distortionBiasValue.textContent = Number(el.distortionBias.value).toFixed(2);
+  }
+  if (el.distortionChebOrderValue) {
+    el.distortionChebOrderValue.textContent = `${Math.round(Number(el.distortionChebOrder.value))}`;
+  }
+  if (el.distortionChebGainValue) {
+    el.distortionChebGainValue.textContent = `${Number(el.distortionChebGain.value).toFixed(2)}x`;
+  }
+  if (el.transformerDriveValue) {
+    el.transformerDriveValue.textContent = `${Number(el.transformerDrive.value).toFixed(2)}x`;
+  }
+  if (el.transformerMixValue) {
+    el.transformerMixValue.textContent = `${Math.round(Number(el.transformerMix.value) * 100)}%`;
+  }
+  if (el.transformerOutputValue) {
+    el.transformerOutputValue.textContent = `${Number(el.transformerOutput.value).toFixed(2)}x`;
+  }
+  if (el.transformerHighpassValue) {
+    el.transformerHighpassValue.textContent = `${Number(el.transformerHighpass.value).toFixed(0)} Hz`;
+  }
+  if (el.transformerDampingValue) {
+    el.transformerDampingValue.textContent = `${Number(el.transformerDamping.value).toFixed(0)} Hz`;
+  }
   if (el.fxFilterFreqValue) {
     el.fxFilterFreqValue.textContent = `${Number(el.fxFilterFreq.value).toFixed(0)} Hz`;
   }
@@ -1661,6 +1823,26 @@ function bindEvents() {
     el.bitCrusherBits,
     el.bitCrusherDownsample,
     el.bitCrusherMix,
+    el.distortionMode,
+    el.distortionApprox,
+    el.distortionDrive,
+    el.distortionMix,
+    el.distortionOutput,
+    el.distortionClip,
+    el.distortionShape,
+    el.distortionBias,
+    el.distortionChebOrder,
+    el.distortionChebHarmonic,
+    el.distortionChebInvert,
+    el.distortionChebGain,
+    el.distortionChebDCBypass,
+    el.transformerQuality,
+    el.transformerDrive,
+    el.transformerMix,
+    el.transformerOutput,
+    el.transformerHighpass,
+    el.transformerDamping,
+    el.transformerOversampling,
     el.fxFilterFamily,
     el.fxFilterKind,
     el.fxFilterOrder,

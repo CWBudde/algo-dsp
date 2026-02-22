@@ -84,7 +84,7 @@ func BenchmarkOverlapAddReuse(b *testing.B) {
 		signal := makeTestSignal(size.signal)
 		kernel := makeTestKernel(size.kernel)
 
-		oa, err := NewOverlapAdd(kernel, 0)
+		overlapAdd, err := NewOverlapAdd(kernel, 0)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -93,7 +93,7 @@ func BenchmarkOverlapAddReuse(b *testing.B) {
 			b.ReportAllocs()
 
 			for i := 0; i < b.N; i++ {
-				_, _ = oa.Process(signal)
+				_, _ = overlapAdd.Process(signal)
 			}
 		})
 	}

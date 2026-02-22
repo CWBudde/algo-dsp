@@ -60,7 +60,9 @@ func WithSimulatorDiameter(diameter float64) CrosstalkSimulatorOption {
 			return fmt.Errorf("crosstalk simulator diameter must be in [%g, %g]: %f",
 				minSimulatorDiameter, maxSimulatorDiameter, diameter)
 		}
+
 		cfg.diameter = diameter
+
 		return nil
 	}
 }
@@ -71,7 +73,9 @@ func WithSimulatorCrossfeedMix(mix float64) CrosstalkSimulatorOption {
 		if mix < 0 || mix > maxSimulatorCrossfeed || math.IsNaN(mix) || math.IsInf(mix, 0) {
 			return fmt.Errorf("crosstalk simulator crossfeed mix must be in [0, 1]: %f", mix)
 		}
+
 		cfg.crossfeedMix = mix
+
 		return nil
 	}
 }
@@ -84,7 +88,9 @@ func WithSimulatorSpeedOfSound(speed float64) CrosstalkSimulatorOption {
 			return fmt.Errorf("crosstalk simulator speed of sound must be in [%g, %g]: %f",
 				minSimulatorSpeedOfSound, maxSimulatorSpeedOfSound, speed)
 		}
+
 		cfg.speedOfSound = speed
+
 		return nil
 	}
 }
@@ -103,7 +109,9 @@ func WithSimulatorPreset(preset CrosstalkPreset) CrosstalkSimulatorOption {
 		if !validCrosstalkPreset(preset) {
 			return fmt.Errorf("crosstalk simulator preset is invalid: %d", preset)
 		}
+
 		cfg.preset = preset
+
 		return nil
 	}
 }
@@ -130,10 +138,12 @@ func NewCrosstalkSimulator(sampleRate float64, opts ...CrosstalkSimulatorOption)
 	}
 
 	cfg := defaultCrosstalkSimulatorConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -150,6 +160,7 @@ func NewCrosstalkSimulator(sampleRate float64, opts ...CrosstalkSimulatorOption)
 	if err := s.rebuild(); err != nil {
 		return nil, err
 	}
+
 	return s, nil
 }
 
@@ -175,9 +186,11 @@ func (s *CrosstalkSimulator) ProcessInPlace(left, right []float64) error {
 	if len(left) != len(right) {
 		return fmt.Errorf("crosstalk simulator: left and right lengths must match: %d != %d", len(left), len(right))
 	}
+
 	for i := range left {
 		left[i], right[i] = s.ProcessStereo(left[i], right[i])
 	}
+
 	return nil
 }
 
@@ -185,9 +198,11 @@ func (s *CrosstalkSimulator) ProcessInPlace(left, right []float64) error {
 func (s *CrosstalkSimulator) Reset() {
 	s.lineLFromR.reset()
 	s.lineRFromL.reset()
+
 	if s.shapeLFromR != nil {
 		s.shapeLFromR.Reset()
 	}
+
 	if s.shapeRFromL != nil {
 		s.shapeRFromL.Reset()
 	}
@@ -198,7 +213,9 @@ func (s *CrosstalkSimulator) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("crosstalk simulator sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	s.sampleRate = sampleRate
+
 	return s.rebuild()
 }
 
@@ -208,7 +225,9 @@ func (s *CrosstalkSimulator) SetDiameter(diameter float64) error {
 		return fmt.Errorf("crosstalk simulator diameter must be in [%g, %g]: %f",
 			minSimulatorDiameter, maxSimulatorDiameter, diameter)
 	}
+
 	s.diameter = diameter
+
 	return s.rebuild()
 }
 
@@ -219,7 +238,9 @@ func (s *CrosstalkSimulator) SetSpeedOfSound(speed float64) error {
 		return fmt.Errorf("crosstalk simulator speed of sound must be in [%g, %g]: %f",
 			minSimulatorSpeedOfSound, maxSimulatorSpeedOfSound, speed)
 	}
+
 	s.speedOfSound = speed
+
 	return s.rebuild()
 }
 
@@ -228,7 +249,9 @@ func (s *CrosstalkSimulator) SetCrossfeedMix(mix float64) error {
 	if mix < 0 || mix > 1 || math.IsNaN(mix) || math.IsInf(mix, 0) {
 		return fmt.Errorf("crosstalk simulator crossfeed mix must be in [0, 1]: %f", mix)
 	}
+
 	s.crossfeedMix = mix
+
 	return nil
 }
 
@@ -237,7 +260,9 @@ func (s *CrosstalkSimulator) SetPreset(preset CrosstalkPreset) error {
 	if !validCrosstalkPreset(preset) {
 		return fmt.Errorf("crosstalk simulator preset is invalid: %d", preset)
 	}
+
 	s.preset = preset
+
 	return s.rebuild()
 }
 
@@ -253,9 +278,11 @@ func (s *CrosstalkSimulator) rebuild() error {
 	if s.sampleRate <= 0 || math.IsNaN(s.sampleRate) || math.IsInf(s.sampleRate, 0) {
 		return fmt.Errorf("crosstalk simulator sample rate must be > 0 and finite: %f", s.sampleRate)
 	}
+
 	if !validCrosstalkPreset(s.preset) {
 		return fmt.Errorf("crosstalk simulator preset is invalid: %d", s.preset)
 	}
+
 	if s.speedOfSound < minSimulatorSpeedOfSound || s.speedOfSound > maxSimulatorSpeedOfSound ||
 		math.IsNaN(s.speedOfSound) || math.IsInf(s.speedOfSound, 0) {
 		return fmt.Errorf("crosstalk simulator speed of sound must be in [%g, %g]: %f",
@@ -263,10 +290,12 @@ func (s *CrosstalkSimulator) rebuild() error {
 	}
 
 	delaySeconds := s.diameter / s.speedOfSound
+
 	delaySamples := int(math.Round(delaySeconds * s.sampleRate))
 	if delaySamples < minSimulatorDelaySamples {
 		delaySamples = minSimulatorDelaySamples
 	}
+
 	s.delaySamples = delaySamples
 	s.lineLFromR.init(delaySamples)
 	s.lineRFromL.init(delaySamples)

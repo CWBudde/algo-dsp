@@ -60,17 +60,17 @@ func TestAnalyzerAnalyze(t *testing.T) {
 
 func TestSchroederIntegral(t *testing.T) {
 	sampleRate := 48000.0
-	ir := makeExponentialDecay(sampleRate, 1.0, 3.0)
+	impulseResponse := makeExponentialDecay(sampleRate, 1.0, 3.0)
 
 	analyzer := NewAnalyzer(sampleRate)
 
-	schroeder, err := analyzer.SchroederIntegral(ir)
+	schroeder, err := analyzer.SchroederIntegral(impulseResponse)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(schroeder) != len(ir) {
-		t.Fatalf("Schroeder length = %d, want %d", len(schroeder), len(ir))
+	if len(schroeder) != len(impulseResponse) {
+		t.Fatalf("Schroeder length = %d, want %d", len(schroeder), len(impulseResponse))
 	}
 
 	// First sample should be 0 dB (all energy ahead)
@@ -129,14 +129,14 @@ func TestRT60ExponentialDecay(t *testing.T) {
 			ir := makeExponentialDecay(sampleRate, tt.rt60, tt.durSec)
 			analyzer := NewAnalyzer(sampleRate)
 
-			rt, err := analyzer.RT60(ir)
+			rt60, err := analyzer.RT60(ir)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			tolerance := 0.05 * tt.rt60 // 5% tolerance
-			if math.Abs(rt-tt.rt60) > tolerance {
-				t.Errorf("RT60 = %.4f, want %.4f (±5%%)", rt, tt.rt60)
+			if math.Abs(rt60-tt.rt60) > tolerance {
+				t.Errorf("RT60 = %.4f, want %.4f (±5%%)", rt60, tt.rt60)
 			}
 		})
 	}
@@ -300,13 +300,13 @@ func TestCenterTime(t *testing.T) {
 
 		analyzer := NewAnalyzer(sampleRate)
 
-		ct, err := analyzer.CenterTime(ir)
+		centerTime, err := analyzer.CenterTime(ir)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if ct != 0 {
-			t.Errorf("CenterTime = %g, want 0 for impulse at t=0", ct)
+		if centerTime != 0 {
+			t.Errorf("CenterTime = %g, want 0 for impulse at t=0", centerTime)
 		}
 	})
 
@@ -319,14 +319,14 @@ func TestCenterTime(t *testing.T) {
 
 		analyzer := NewAnalyzer(sampleRate)
 
-		ct, err := analyzer.CenterTime(ir)
+		centerTime, err := analyzer.CenterTime(ir)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		expected := 0.05 // 50ms
-		if math.Abs(ct-expected) > 0.001 {
-			t.Errorf("CenterTime = %.4f, want ~%.4f", ct, expected)
+		if math.Abs(centerTime-expected) > 0.001 {
+			t.Errorf("CenterTime = %.4f, want ~%.4f", centerTime, expected)
 		}
 	})
 

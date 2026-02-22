@@ -116,6 +116,7 @@ func TestDistortionAllFormulaModesFiniteAndBounded(t *testing.T) {
 			if math.IsNaN(got) || math.IsInf(got, 0) {
 				t.Fatalf("mode=%d produced non-finite output for in=%g", mode, in)
 			}
+
 			if math.Abs(got) > 1.0000001 {
 				t.Fatalf("mode=%d exceeded output bound: in=%g out=%g", mode, in, got)
 			}
@@ -147,6 +148,7 @@ func TestDistortionTanhApproxCloseToExact(t *testing.T) {
 	for i := -100; i <= 100; i++ {
 		in := float64(i) / 50.0
 		yExact := exact.ProcessSample(in)
+
 		yApprox := approx.ProcessSample(in)
 		if diff := math.Abs(yExact - yApprox); diff > 0.05 {
 			t.Fatalf("approx too far from exact at in=%g: diff=%g", in, diff)
@@ -167,7 +169,9 @@ func TestDistortionChebyshevHarmonicBalance(t *testing.T) {
 	}
 
 	const n = 4096
+
 	in := make([]float64, n)
+
 	out := make([]float64, n)
 	for i := 0; i < n; i++ {
 		in[i] = math.Cos(2 * math.Pi * float64(i) / float64(n))
@@ -181,6 +185,7 @@ func TestDistortionChebyshevHarmonicBalance(t *testing.T) {
 	if amp3 <= amp1 {
 		t.Fatalf("expected 3rd harmonic dominance: h1=%g h3=%g", amp1, amp3)
 	}
+
 	if amp2 > amp3*0.1 {
 		t.Fatalf("expected low even harmonic content in odd mode: h2=%g h3=%g", amp2, amp3)
 	}
@@ -210,6 +215,7 @@ func TestDistortionChebyshevDCBypassReducesDC(t *testing.T) {
 	}
 
 	const n = 4000
+
 	var sumNoDC, sumWithDC float64
 
 	for i := 0; i < n; i++ {
@@ -219,6 +225,7 @@ func TestDistortionChebyshevDCBypassReducesDC(t *testing.T) {
 	}
 
 	meanNoDC := sumNoDC / n
+
 	meanWithDC := sumWithDC / n
 	if math.Abs(meanWithDC) >= math.Abs(meanNoDC)*0.2 {
 		t.Fatalf("expected DC bypass to reduce mean strongly: no_dc=%g with_dc=%g", meanNoDC, meanWithDC)
@@ -266,11 +273,13 @@ func TestDistortionProcessInPlace(t *testing.T) {
 
 func harmonicAmplitude(x []float64, k int) float64 {
 	var re, im float64
+
 	n := float64(len(x))
 	for i := range x {
 		phase := 2 * math.Pi * float64(k) * float64(i) / n
 		re += x[i] * math.Cos(phase)
 		im -= x[i] * math.Sin(phase)
 	}
+
 	return 2 * math.Hypot(re, im) / n
 }

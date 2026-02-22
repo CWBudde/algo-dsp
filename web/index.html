@@ -308,6 +308,145 @@
                 <span id="bitcrusher-mix-value">100%</span>
               </label>
             </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="distortion" hidden>
+              <div class="fx-option-head">
+                <span>Distortion</span>
+              </div>
+              <label>
+                Mode
+                <select id="distortion-mode">
+                  <option value="softclip">Soft Clip</option>
+                  <option value="hardclip">Hard Clip</option>
+                  <option value="tanh">Tanh</option>
+                  <option value="waveshaper1">Waveshaper 1</option>
+                  <option value="waveshaper2">Waveshaper 2</option>
+                  <option value="waveshaper3">Waveshaper 3</option>
+                  <option value="waveshaper4">Waveshaper 4</option>
+                  <option value="waveshaper5">Waveshaper 5</option>
+                  <option value="waveshaper6">Waveshaper 6</option>
+                  <option value="waveshaper7">Waveshaper 7</option>
+                  <option value="waveshaper8">Waveshaper 8</option>
+                  <option value="saturate">Saturate</option>
+                  <option value="saturate2">Saturate 2</option>
+                  <option value="softsat">SoftSat</option>
+                  <option value="chebyshev">Chebyshev</option>
+                </select>
+              </label>
+              <label>
+                Approx
+                <select id="distortion-approx">
+                  <option value="exact">Exact</option>
+                  <option value="polynomial">Polynomial</option>
+                </select>
+              </label>
+              <label>
+                Drive
+                <input id="distortion-drive" type="range" min="0.1" max="20" step="0.01" value="1.8" />
+                <span id="distortion-drive-value">1.80x</span>
+              </label>
+              <label>
+                Mix
+                <input id="distortion-mix" type="range" min="0" max="1" step="0.01" value="1.0" />
+                <span id="distortion-mix-value">100%</span>
+              </label>
+              <label>
+                Output
+                <input id="distortion-output" type="range" min="0" max="4" step="0.01" value="1.0" />
+                <span id="distortion-output-value">1.00x</span>
+              </label>
+              <label>
+                Clip
+                <input id="distortion-clip" type="range" min="0.05" max="1" step="0.01" value="1.0" />
+                <span id="distortion-clip-value">1.00</span>
+              </label>
+              <label>
+                Shape
+                <input id="distortion-shape" type="range" min="0" max="1" step="0.01" value="0.5" />
+                <span id="distortion-shape-value">0.50</span>
+              </label>
+              <label>
+                Bias
+                <input id="distortion-bias" type="range" min="-1" max="1" step="0.01" value="0" />
+                <span id="distortion-bias-value">0.00</span>
+              </label>
+              <label>
+                Cheb Order
+                <input id="distortion-cheb-order" type="range" min="1" max="16" step="1" value="3" />
+                <span id="distortion-cheb-order-value">3</span>
+              </label>
+              <label>
+                Cheb Harmonics
+                <select id="distortion-cheb-harmonic">
+                  <option value="all">All</option>
+                  <option value="odd">Odd</option>
+                  <option value="even">Even</option>
+                </select>
+              </label>
+              <label>
+                Cheb Invert
+                <select id="distortion-cheb-invert">
+                  <option value="0">Off</option>
+                  <option value="1">On</option>
+                </select>
+              </label>
+              <label>
+                Cheb Gain
+                <input id="distortion-cheb-gain" type="range" min="0" max="4" step="0.01" value="1.0" />
+                <span id="distortion-cheb-gain-value">1.00x</span>
+              </label>
+              <label>
+                Cheb DC Bypass
+                <select id="distortion-cheb-dc-bypass">
+                  <option value="0">Off</option>
+                  <option value="1">On</option>
+                </select>
+              </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="transformer" hidden>
+              <div class="fx-option-head">
+                <span>Transformer Saturation</span>
+              </div>
+              <label>
+                Quality
+                <select id="transformer-quality">
+                  <option value="high">High</option>
+                  <option value="lightweight">Lightweight</option>
+                </select>
+              </label>
+              <label>
+                Drive
+                <input id="transformer-drive" type="range" min="0.1" max="20" step="0.01" value="2.0" />
+                <span id="transformer-drive-value">2.00x</span>
+              </label>
+              <label>
+                Mix
+                <input id="transformer-mix" type="range" min="0" max="1" step="0.01" value="1.0" />
+                <span id="transformer-mix-value">100%</span>
+              </label>
+              <label>
+                Output
+                <input id="transformer-output" type="range" min="0" max="4" step="0.01" value="1.0" />
+                <span id="transformer-output-value">1.00x</span>
+              </label>
+              <label>
+                High-pass
+                <input id="transformer-highpass" type="range" min="5" max="400" step="1" value="25" />
+                <span id="transformer-highpass-value">25 Hz</span>
+              </label>
+              <label>
+                Damping
+                <input id="transformer-damping" type="range" min="500" max="18000" step="10" value="9000" />
+                <span id="transformer-damping-value">9000 Hz</span>
+              </label>
+              <label>
+                Oversampling
+                <select id="transformer-oversampling">
+                  <option value="2">2x</option>
+                  <option value="4" selected>4x</option>
+                  <option value="8">8x</option>
+                </select>
+              </label>
+            </div>
             <div class="fx-card chain-detail-card" data-chain-detail="filter" hidden>
               <div class="fx-option-head">
                 <span>Filter</span>

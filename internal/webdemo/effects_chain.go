@@ -119,6 +119,22 @@ func init() {
 
 		return &bitCrusherChainRuntime{fx: fx}, nil
 	})
+	registerChainEffectFactory("distortion", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := effects.NewDistortion(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &distortionChainRuntime{fx: fx}, nil
+	})
+	registerChainEffectFactory("transformer", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := effects.NewTransformerSimulation(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &transformerChainRuntime{fx: fx}, nil
+	})
 	registerChainEffectFactory("widener", func(e *Engine) (chainEffectRuntime, error) {
 		fx, err := spatial.NewStereoWidener(e.sampleRate)
 		if err != nil {
@@ -494,6 +510,135 @@ func configureBitCrusher(fx *effects.BitCrusher, sampleRate, bitDepth float64, d
 	return fx.SetMix(mix)
 }
 
+func configureDistortion(
+	fx *effects.Distortion,
+	sampleRate float64,
+	mode effects.DistortionMode,
+	approx effects.DistortionApproxMode,
+	drive, mix, outputLevel, clipLevel, shape, bias float64,
+	chebOrder int,
+	chebMode effects.ChebyshevHarmonicMode,
+	chebInvert bool,
+	chebGain float64,
+	chebDCBypass bool,
+) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+
+	if chebMode == effects.ChebyshevHarmonicOdd && chebOrder%2 == 0 {
+		chebOrder++
+	}
+
+	if chebMode == effects.ChebyshevHarmonicEven && chebOrder%2 != 0 {
+		chebOrder++
+	}
+
+	if chebOrder > 16 {
+		chebOrder = 16
+	}
+
+	if chebMode == effects.ChebyshevHarmonicOdd && chebOrder%2 == 0 {
+		chebOrder--
+	}
+
+	if chebMode == effects.ChebyshevHarmonicEven && chebOrder%2 != 0 {
+		chebOrder--
+	}
+
+	if chebOrder < 1 {
+		chebOrder = 1
+	}
+
+	if err := fx.SetMode(mode); err != nil {
+		return err
+	}
+
+	if err := fx.SetApproxMode(approx); err != nil {
+		return err
+	}
+
+	if err := fx.SetDrive(drive); err != nil {
+		return err
+	}
+
+	if err := fx.SetMix(mix); err != nil {
+		return err
+	}
+
+	if err := fx.SetOutputLevel(outputLevel); err != nil {
+		return err
+	}
+
+	if err := fx.SetClipLevel(clipLevel); err != nil {
+		return err
+	}
+
+	if err := fx.SetShape(shape); err != nil {
+		return err
+	}
+
+	if err := fx.SetBias(bias); err != nil {
+		return err
+	}
+
+	if err := fx.SetChebyshevOrder(chebOrder); err != nil {
+		return err
+	}
+
+	if err := fx.SetChebyshevHarmonicMode(chebMode); err != nil {
+		return err
+	}
+
+	fx.SetChebyshevInvert(chebInvert)
+
+	if err := fx.SetChebyshevGainLevel(chebGain); err != nil {
+		return err
+	}
+
+	fx.SetChebyshevDCBypass(chebDCBypass)
+
+	return nil
+}
+
+func configureTransformer(
+	fx *effects.TransformerSimulation,
+	sampleRate float64,
+	quality effects.TransformerQuality,
+	drive, mix, outputLevel, highpassHz, dampingHz float64,
+	oversampling int,
+) error {
+	if err := fx.SetSampleRate(sampleRate); err != nil {
+		return err
+	}
+
+	if err := fx.SetQuality(quality); err != nil {
+		return err
+	}
+
+	if err := fx.SetDrive(drive); err != nil {
+		return err
+	}
+
+	if err := fx.SetMix(mix); err != nil {
+		return err
+	}
+
+	if err := fx.SetOutputLevel(outputLevel); err != nil {
+		return err
+	}
+
+	if err := fx.SetHighpassHz(highpassHz); err != nil {
+		return err
+	}
+
+	if err := fx.SetDampingHz(dampingHz); err != nil {
+		return err
+	}
+
+	return fx.SetOversampling(oversampling)
+}
+
 func configureWidener(fx *spatial.StereoWidener, sampleRate, width float64) error {
 	if err := fx.SetSampleRate(sampleRate); err != nil {
 		return err
@@ -767,6 +912,87 @@ func (r *bitCrusherChainRuntime) Configure(e *Engine, node compiledChainNode) er
 }
 
 func (r *bitCrusherChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type distortionChainRuntime struct {
+	fx *effects.Distortion
+}
+
+func (r *distortionChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	mode := normalizeDistortionMode(node.Str["mode"])
+	approx := normalizeDistortionApproxMode(node.Str["approx"])
+	chebMode := normalizeChebyshevHarmonicMode(node.Str["chebHarmonic"])
+
+	chebOrder := int(math.Round(getNodeNum(node, "chebOrder", 3)))
+	if chebOrder < 1 {
+		chebOrder = 1
+	}
+
+	if chebOrder > 16 {
+		chebOrder = 16
+	}
+
+	chebInvert := getNodeNum(node, "chebInvert", 0) >= 0.5
+	chebDCBypass := getNodeNum(node, "chebDCBypass", 0) >= 0.5
+
+	return configureDistortion(
+		r.fx,
+		e.sampleRate,
+		mode,
+		approx,
+		clamp(getNodeNum(node, "drive", 1.8), 0.01, 20),
+		clamp(getNodeNum(node, "mix", 1.0), 0, 1),
+		clamp(getNodeNum(node, "output", 1.0), 0, 4),
+		clamp(getNodeNum(node, "clip", 1.0), 0.05, 1),
+		clamp(getNodeNum(node, "shape", 0.5), 0, 1),
+		clamp(getNodeNum(node, "bias", 0), -1, 1),
+		chebOrder,
+		chebMode,
+		chebInvert,
+		clamp(getNodeNum(node, "chebGain", 1.0), 0, 4),
+		chebDCBypass,
+	)
+}
+
+func (r *distortionChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type transformerChainRuntime struct {
+	fx *effects.TransformerSimulation
+}
+
+func (r *transformerChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	quality := normalizeTransformerQuality(node.Str["quality"])
+
+	oversampling := int(math.Round(getNodeNum(node, "oversampling", 4)))
+	switch oversampling {
+	case 2, 4, 8:
+	default:
+		if oversampling <= 3 {
+			oversampling = 2
+		} else if oversampling <= 6 {
+			oversampling = 4
+		} else {
+			oversampling = 8
+		}
+	}
+
+	return configureTransformer(
+		r.fx,
+		e.sampleRate,
+		quality,
+		clamp(getNodeNum(node, "drive", 2.0), 0.1, 30),
+		clamp(getNodeNum(node, "mix", 1.0), 0, 1),
+		clamp(getNodeNum(node, "output", 1.0), 0, 4),
+		clamp(getNodeNum(node, "highpassHz", 25), 5, e.sampleRate*0.45),
+		clamp(getNodeNum(node, "dampingHz", 9000), 200, e.sampleRate*0.49),
+		oversampling,
+	)
+}
+
+func (r *transformerChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
 	r.fx.ProcessInPlace(block)
 }
 
@@ -1106,4 +1332,76 @@ func (r *gateChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 
 func (r *gateChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
 	r.fx.ProcessInPlace(block)
+}
+
+func normalizeDistortionMode(raw string) effects.DistortionMode {
+	switch raw {
+	case "hardclip":
+		return effects.DistortionModeHardClip
+	case "tanh":
+		return effects.DistortionModeTanh
+	case "waveshaper1":
+		return effects.DistortionModeWaveshaper1
+	case "waveshaper2":
+		return effects.DistortionModeWaveshaper2
+	case "waveshaper3":
+		return effects.DistortionModeWaveshaper3
+	case "waveshaper4":
+		return effects.DistortionModeWaveshaper4
+	case "waveshaper5":
+		return effects.DistortionModeWaveshaper5
+	case "waveshaper6":
+		return effects.DistortionModeWaveshaper6
+	case "waveshaper7":
+		return effects.DistortionModeWaveshaper7
+	case "waveshaper8":
+		return effects.DistortionModeWaveshaper8
+	case "saturate":
+		return effects.DistortionModeSaturate
+	case "saturate2":
+		return effects.DistortionModeSaturate2
+	case "softsat":
+		return effects.DistortionModeSoftSat
+	case "chebyshev":
+		return effects.DistortionModeChebyshev
+	case "softclip":
+		fallthrough
+	default:
+		return effects.DistortionModeSoftClip
+	}
+}
+
+func normalizeDistortionApproxMode(raw string) effects.DistortionApproxMode {
+	switch raw {
+	case "polynomial":
+		return effects.DistortionApproxPolynomial
+	case "exact":
+		fallthrough
+	default:
+		return effects.DistortionApproxExact
+	}
+}
+
+func normalizeChebyshevHarmonicMode(raw string) effects.ChebyshevHarmonicMode {
+	switch raw {
+	case "odd":
+		return effects.ChebyshevHarmonicOdd
+	case "even":
+		return effects.ChebyshevHarmonicEven
+	case "all":
+		fallthrough
+	default:
+		return effects.ChebyshevHarmonicAll
+	}
+}
+
+func normalizeTransformerQuality(raw string) effects.TransformerQuality {
+	switch raw {
+	case "lightweight":
+		return effects.TransformerQualityLightweight
+	case "high":
+		fallthrough
+	default:
+		return effects.TransformerQualityHigh
+	}
 }
