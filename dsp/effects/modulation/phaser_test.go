@@ -6,12 +6,12 @@ import (
 )
 
 func TestPhaserProcessInPlaceMatchesProcess(t *testing.T) {
-	p1, err := NewPhaser(48000)
+	phaser1, err := NewPhaser(48000)
 	if err != nil {
 		t.Fatalf("NewPhaser() error = %v", err)
 	}
 
-	p2, err := NewPhaser(48000)
+	phaser2, err := NewPhaser(48000)
 	if err != nil {
 		t.Fatalf("NewPhaser() error = %v", err)
 	}
@@ -25,13 +25,13 @@ func TestPhaserProcessInPlaceMatchesProcess(t *testing.T) {
 	copy(want, input)
 
 	for i := range want {
-		want[i] = p1.Process(want[i])
+		want[i] = phaser1.Process(want[i])
 	}
 
 	got := make([]float64, len(input))
 	copy(got, input)
 
-	if err := p2.ProcessInPlace(got); err != nil {
+	if err := phaser2.ProcessInPlace(got); err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
 
@@ -43,29 +43,29 @@ func TestPhaserProcessInPlaceMatchesProcess(t *testing.T) {
 }
 
 func TestPhaserResetRestoresState(t *testing.T) {
-	p, err := NewPhaser(48000)
+	phaser, err := NewPhaser(48000)
 	if err != nil {
 		t.Fatalf("NewPhaser() error = %v", err)
 	}
 
-	in := make([]float64, 128)
-	in[0] = 1
+	inData := make([]float64, 128)
+	inData[0] = 1
 
-	out1 := make([]float64, len(in))
-	for i := range in {
-		out1[i] = p.Process(in[i])
+	outData1 := make([]float64, len(inData))
+	for i := range inData {
+		outData1[i] = phaser.Process(inData[i])
 	}
 
-	p.Reset()
+	phaser.Reset()
 
-	out2 := make([]float64, len(in))
-	for i := range in {
-		out2[i] = p.Process(in[i])
+	outData2 := make([]float64, len(inData))
+	for i := range inData {
+		outData2[i] = phaser.Process(inData[i])
 	}
 
-	for i := range out1 {
-		if diff := math.Abs(out1[i] - out2[i]); diff > 1e-12 {
-			t.Fatalf("sample %d mismatch after reset: got=%g want=%g diff=%g", i, out2[i], out1[i], diff)
+	for i := range outData1 {
+		if diff := math.Abs(outData1[i] - outData2[i]); diff > 1e-12 {
+			t.Fatalf("sample %d mismatch after reset: got=%g want=%g diff=%g", i, outData2[i], outData1[i], diff)
 		}
 	}
 }
@@ -89,7 +89,7 @@ func TestPhaserValidation(t *testing.T) {
 }
 
 func TestPhaserFiniteOutputUnderFeedback(t *testing.T) {
-	p, err := NewPhaser(48000,
+	phaser, err := NewPhaser(48000,
 		WithPhaserFeedback(0.85),
 		WithPhaserMix(0.8),
 		WithPhaserStages(8),
@@ -101,7 +101,7 @@ func TestPhaserFiniteOutputUnderFeedback(t *testing.T) {
 	for i := 0; i < 12000; i++ {
 		in := 0.3 * math.Sin(2*math.Pi*440*float64(i)/48000)
 
-		out := p.Process(in)
+		out := phaser.Process(in)
 		if math.IsNaN(out) || math.IsInf(out, 0) {
 			t.Fatalf("non-finite output at sample %d: %v", i, out)
 		}

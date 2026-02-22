@@ -44,14 +44,14 @@ func TestChain_ProcessSample_MatchesManualCascade(t *testing.T) {
 	coeffs := twoSectionCoeffs()
 
 	// Reference: manual two-section cascade.
-	s1 := NewSection(coeffs[0])
-	s2 := NewSection(coeffs[1])
+	section1 := NewSection(coeffs[0])
+	section2 := NewSection(coeffs[1])
 
 	chain := NewChain(coeffs)
 
 	input := []float64{1, 0.5, -0.3, 0.7, 0, -1, 0.2, 0.8}
 	for i, x := range input {
-		ref := s2.ProcessSample(s1.ProcessSample(x))
+		ref := section2.ProcessSample(section1.ProcessSample(x))
 
 		got := chain.ProcessSample(x)
 		if !almostEqual(got, ref, eps) {
@@ -65,14 +65,14 @@ func TestChain_ProcessSample_WithGain(t *testing.T) {
 	gain := 2.0
 
 	// Reference: scale input then cascade.
-	s1 := NewSection(coeffs[0])
-	s2 := NewSection(coeffs[1])
+	section1 := NewSection(coeffs[0])
+	section2 := NewSection(coeffs[1])
 
 	chain := NewChain(coeffs, WithGain(gain))
 
 	input := []float64{1, 0.5, -0.3, 0.7}
 	for i, x := range input {
-		ref := s2.ProcessSample(s1.ProcessSample(x * gain))
+		ref := section2.ProcessSample(section1.ProcessSample(x * gain))
 
 		got := chain.ProcessSample(x)
 		if !almostEqual(got, ref, eps) {
@@ -154,9 +154,9 @@ func TestChain_ThreeSections(t *testing.T) {
 		{B0: 0.1, B1: 0.2, B2: 0.1, A1: -0.5, A2: 0.1},
 		{B0: 0.3, B1: 0.3, B2: 0.3, A1: -0.1, A2: 0.02},
 	}
-	s1 := NewSection(coeffs[0])
-	s2 := NewSection(coeffs[1])
-	s3 := NewSection(coeffs[2])
+	section1 := NewSection(coeffs[0])
+	section2 := NewSection(coeffs[1])
+	section3 := NewSection(coeffs[2])
 	chain := NewChain(coeffs)
 
 	if chain.Order() != 6 {
@@ -165,7 +165,7 @@ func TestChain_ThreeSections(t *testing.T) {
 
 	input := []float64{1, 0, 0, 0, 0, 0, 0, 0}
 	for i, x := range input {
-		ref := s3.ProcessSample(s2.ProcessSample(s1.ProcessSample(x)))
+		ref := section3.ProcessSample(section2.ProcessSample(section1.ProcessSample(x)))
 
 		got := chain.ProcessSample(x)
 		if !almostEqual(got, ref, eps) {

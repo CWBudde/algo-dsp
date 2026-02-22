@@ -186,16 +186,16 @@ func TestSpectralPitchShifterIdentityKeepsDominantFrequency(t *testing.T) {
 	freq := sampleRate * float64(bin) / float64(n)
 	input := testutil.DeterministicSine(freq, sampleRate, 0.8, n)
 
-	s, err := NewSpectralPitchShifter(sampleRate)
+	spectral, err := NewSpectralPitchShifter(sampleRate)
 	if err != nil {
 		t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 	}
 
-	if err := s.SetPitchRatio(1); err != nil {
+	if err := spectral.SetPitchRatio(1); err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
 
-	out := s.Process(input)
+	out := spectral.Process(input)
 	gotFreq := dominantFrequencyHz(t, out[n/4:3*n/4], sampleRate)
 
 	relErr := math.Abs(gotFreq-freq) / freq
@@ -222,14 +222,14 @@ func TestSpectralPitchShifterMovesDominantFrequency(t *testing.T) {
 		{name: "down", ratio: 0.75},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
 			s, err := NewSpectralPitchShifter(sampleRate)
 			if err != nil {
 				t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 			}
 
-			if err := s.SetPitchRatio(tc.ratio); err != nil {
+			if err := s.SetPitchRatio(testCase.ratio); err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
 

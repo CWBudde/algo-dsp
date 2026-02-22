@@ -6,12 +6,12 @@ import (
 )
 
 func TestStereoWidenerInPlaceMatchesProcessStereo(t *testing.T) {
-	w1, err := NewStereoWidener(48000, WithWidth(1.5))
+	widener1, err := NewStereoWidener(48000, WithWidth(1.5))
 	if err != nil {
 		t.Fatalf("NewStereoWidener() error = %v", err)
 	}
 
-	w2, err := NewStereoWidener(48000, WithWidth(1.5))
+	widener2, err := NewStereoWidener(48000, WithWidth(1.5))
 	if err != nil {
 		t.Fatalf("NewStereoWidener() error = %v", err)
 	}
@@ -29,7 +29,7 @@ func TestStereoWidenerInPlaceMatchesProcessStereo(t *testing.T) {
 
 	wantR := make([]float64, n)
 	for i := range inL {
-		wantL[i], wantR[i] = w1.ProcessStereo(inL[i], inR[i])
+		wantL[i], wantR[i] = widener1.ProcessStereo(inL[i], inR[i])
 	}
 
 	gotL := make([]float64, n)
@@ -38,7 +38,7 @@ func TestStereoWidenerInPlaceMatchesProcessStereo(t *testing.T) {
 	copy(gotL, inL)
 	copy(gotR, inR)
 
-	if err := w2.ProcessStereoInPlace(gotL, gotR); err != nil {
+	if err := widener2.ProcessStereoInPlace(gotL, gotR); err != nil {
 		t.Fatalf("ProcessStereoInPlace() error = %v", err)
 	}
 
@@ -54,12 +54,12 @@ func TestStereoWidenerInPlaceMatchesProcessStereo(t *testing.T) {
 }
 
 func TestStereoWidenerInterleavedMatchesProcessStereo(t *testing.T) {
-	w1, err := NewStereoWidener(48000, WithWidth(2.0))
+	widener1, err := NewStereoWidener(48000, WithWidth(2.0))
 	if err != nil {
 		t.Fatalf("NewStereoWidener() error = %v", err)
 	}
 
-	w2, err := NewStereoWidener(48000, WithWidth(2.0))
+	widener2, err := NewStereoWidener(48000, WithWidth(2.0))
 	if err != nil {
 		t.Fatalf("NewStereoWidener() error = %v", err)
 	}
@@ -77,7 +77,7 @@ func TestStereoWidenerInterleavedMatchesProcessStereo(t *testing.T) {
 
 	wantR := make([]float64, n)
 	for i := range inL {
-		wantL[i], wantR[i] = w1.ProcessStereo(inL[i], inR[i])
+		wantL[i], wantR[i] = widener1.ProcessStereo(inL[i], inR[i])
 	}
 
 	interleaved := make([]float64, 2*n)
@@ -86,7 +86,7 @@ func TestStereoWidenerInterleavedMatchesProcessStereo(t *testing.T) {
 		interleaved[2*i+1] = inR[i]
 	}
 
-	if err := w2.ProcessInterleavedInPlace(interleaved); err != nil {
+	if err := widener2.ProcessInterleavedInPlace(interleaved); err != nil {
 		t.Fatalf("ProcessInterleavedInPlace() error = %v", err)
 	}
 
@@ -201,7 +201,7 @@ func TestStereoWidenerMonoInputUnchanged(t *testing.T) {
 }
 
 func TestStereoWidenerResetRestoresState(t *testing.T) {
-	w, err := NewStereoWidener(48000, WithWidth(1.5), WithBassMonoFreq(120))
+	widener, err := NewStereoWidener(48000, WithWidth(1.5), WithBassMonoFreq(120))
 	if err != nil {
 		t.Fatalf("NewStereoWidener() error = %v", err)
 	}
@@ -219,16 +219,16 @@ func TestStereoWidenerResetRestoresState(t *testing.T) {
 
 	outR1 := make([]float64, n)
 	for i := range inL {
-		outL1[i], outR1[i] = w.ProcessStereo(inL[i], inR[i])
+		outL1[i], outR1[i] = widener.ProcessStereo(inL[i], inR[i])
 	}
 
-	w.Reset()
+	widener.Reset()
 
 	outL2 := make([]float64, n)
 
 	outR2 := make([]float64, n)
 	for i := range inL {
-		outL2[i], outR2[i] = w.ProcessStereo(inL[i], inR[i])
+		outL2[i], outR2[i] = widener.ProcessStereo(inL[i], inR[i])
 	}
 
 	for i := range outL1 {
@@ -247,9 +247,9 @@ func TestStereoWidenerBassMonoCollapsesLow(t *testing.T) {
 	// become approximately mono over time (once the filter settles).
 	// Use width=1 so the side residual is not amplified beyond the
 	// natural filter roll-off.
-	const sr = 48000.0
+	const sampleRate = 48000.0
 
-	w, err := NewStereoWidener(sr, WithWidth(1.0), WithBassMonoFreq(200))
+	w, err := NewStereoWidener(sampleRate, WithWidth(1.0), WithBassMonoFreq(200))
 	if err != nil {
 		t.Fatalf("NewStereoWidener() error = %v", err)
 	}
@@ -262,7 +262,7 @@ func TestStereoWidenerBassMonoCollapsesLow(t *testing.T) {
 
 	outR := make([]float64, n)
 	for i := 0; i < n; i++ {
-		phase := 2 * math.Pi * 20 * float64(i) / sr
+		phase := 2 * math.Pi * 20 * float64(i) / sampleRate
 		l := math.Sin(phase)
 		r := -math.Sin(phase) // opposite polarity = pure side
 		outL[i], outR[i] = w.ProcessStereo(l, r)
@@ -281,9 +281,9 @@ func TestStereoWidenerBassMonoCollapsesLow(t *testing.T) {
 
 func TestStereoWidenerBassMonoPreservesHigh(t *testing.T) {
 	// With bass mono enabled, high-frequency content should still be widened.
-	const sr = 48000.0
+	const sampleRate = 48000.0
 
-	w, err := NewStereoWidener(sr, WithWidth(2.0), WithBassMonoFreq(200))
+	widener, err := NewStereoWidener(sampleRate, WithWidth(2.0), WithBassMonoFreq(200))
 	if err != nil {
 		t.Fatalf("NewStereoWidener() error = %v", err)
 	}
@@ -294,10 +294,10 @@ func TestStereoWidenerBassMonoPreservesHigh(t *testing.T) {
 
 	outR := make([]float64, n)
 	for i := 0; i < n; i++ {
-		phase := 2 * math.Pi * 5000 * float64(i) / sr
+		phase := 2 * math.Pi * 5000 * float64(i) / sampleRate
 		l := math.Sin(phase)
 		r := math.Sin(phase + 0.5) // offset phase = stereo content
-		outL[i], outR[i] = w.ProcessStereo(l, r)
+		outL[i], outR[i] = widener.ProcessStereo(l, r)
 	}
 
 	// After settling, L and R should differ (stereo image preserved/widened).
