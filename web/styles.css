@@ -620,8 +620,10 @@ button.active {
 
 /* ---- Pin-to-block button ---- */
 
-.chain-detail-card label {
-  /* pin buttons are inline after the label text */
+.pin-label-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .pin-param {

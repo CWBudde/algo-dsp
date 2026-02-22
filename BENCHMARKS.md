@@ -27,6 +27,24 @@ These are representative checkpoints from the full benchmark run.
 - `BenchmarkProcessSample/taps=128`: `117.0 ns/op`, `0 allocs/op`
 - `BenchmarkProcessBlock/taps=128`: `124720 ns/op`, `65.68 MB/s`, `0 allocs/op`
 
+### `dsp/filter/moog` (2026-02-22)
+
+Command:
+
+```bash
+go test -run=^$ -bench=. -benchmem ./dsp/filter/moog
+```
+
+- `BenchmarkProcessSample/classic`: `77.03 ns/op`, `0 B/op`, `0 allocs/op`
+- `BenchmarkProcessSample/classic_lightweight`: `58.85 ns/op`, `0 B/op`, `0 allocs/op`
+- `BenchmarkProcessSample/improved`: `171.4 ns/op`, `0 B/op`, `0 allocs/op`
+- `BenchmarkProcessSample/huovilainen`: `75.45 ns/op`, `0 B/op`, `0 allocs/op`
+- `BenchmarkProcessSample/huovilainen_os4`: `299.1 ns/op`, `0 B/op`, `0 allocs/op`
+- `BenchmarkProcessInPlace1024/classic`: `381336 ns/op`, `21.48 MB/s`, `0 B/op`, `0 allocs/op`
+- `BenchmarkProcessInPlace1024/classic_lightweight`: `346551 ns/op`, `23.64 MB/s`, `0 B/op`, `0 allocs/op`
+- `BenchmarkProcessInPlace1024/huovilainen`: `720415 ns/op`, `11.37 MB/s`, `0 B/op`, `0 allocs/op`
+- `BenchmarkProcessInPlace1024/huovilainen_os4`: `3621292 ns/op`, `2.26 MB/s`, `0 B/op`, `0 allocs/op`
+
 ### `dsp/conv`
 
 - `BenchmarkConvolve/signal=4096_kernel=32`: `117724 ns/op`, `40960 B/op`, `1 allocs/op`

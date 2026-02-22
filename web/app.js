@@ -2695,14 +2695,18 @@ function initPinButtons() {
         btn.classList.add("pinned");
       }
     });
-    // Insert right after the label's first text node
+    // Wrap the label text node + pin button in a span so they share one grid cell
     const firstText = [...label.childNodes].find(
       (n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim(),
     );
-    if (firstText && firstText.nextSibling) {
-      label.insertBefore(btn, firstText.nextSibling);
+    if (firstText) {
+      const wrapper = document.createElement("span");
+      wrapper.className = "pin-label-wrap";
+      wrapper.textContent = firstText.textContent.trim();
+      wrapper.appendChild(btn);
+      firstText.replaceWith(wrapper);
     } else {
-      label.appendChild(btn);
+      label.prepend(btn);
     }
   }
 }
