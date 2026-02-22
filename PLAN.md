@@ -696,7 +696,7 @@ Exit criteria:
 - [x] Mono and stereo APIs documented with runnable examples.
 - [x] `go test -race ./measure/...` passes with loudness additions.
 
-### Phase 29: Dither and Noise Shaping (Planned)
+### Phase 29: Dither and Noise Shaping (Complete)
 
 Goal:
 
@@ -704,29 +704,29 @@ Goal:
 
 Tasks:
 
-- [ ] Dither core
-  - [ ] Implement bit-depth quantizer core with int/float output modes and optional output limiting.
-  - [ ] Implement dither modes: none, rectangular/equal, triangular, gaussian, fast-gaussian.
-  - [ ] Implement deterministic RNG injection for reproducible testing.
-- [ ] Noise-shaping processors
-  - [ ] Implement FIR error-feedback noise shaper with configurable coefficients and history ring buffer.
-  - [ ] Port predefined coefficient families/presets from legacy (E/F/IE/ME/SBM/sharp variants).
-  - [ ] Implement sample-rate-aware “sharp” preset selection logic.
-  - [ ] Implement optional IIR shelf-based shaping variant for lightweight mode.
-- [ ] Noise-shaping filter design tooling
-  - [ ] Add a filter-designer utility package for psychoacoustically weighted noise-shaper coefficient search (ATH/critical-band weighting based objective).
-  - [ ] Provide deterministic search mode and exportable coefficient outputs for embedding in runtime presets.
-  - [ ] Add guardrails on order/loop-count/runtime and cancellation support for long searches.
-- [ ] Validation and quality
-  - [ ] Add null/error-spectrum tests validating expected in-band noise reduction behavior.
-  - [ ] Add parity checks against legacy presets for representative sample rates.
-  - [ ] Add benchmarks for per-sample quantization path and preset designer runtime.
+- [x] Dither core
+  - [x] Implement bit-depth quantizer core with int/float output modes and optional output limiting.
+  - [x] Implement dither modes: none, rectangular/equal, triangular, gaussian, fast-gaussian.
+  - [x] Implement deterministic RNG injection for reproducible testing.
+- [x] Noise-shaping processors
+  - [x] Implement FIR error-feedback noise shaper with configurable coefficients and history ring buffer.
+  - [x] Port predefined coefficient families/presets from legacy (E/F/IE/ME/SBM/sharp variants).
+  - [x] Implement sample-rate-aware “sharp” preset selection logic.
+  - [x] Implement optional IIR shelf-based shaping variant for lightweight mode.
+- [x] Noise-shaping filter design tooling
+  - [x] Add a filter-designer utility package for psychoacoustically weighted noise-shaper coefficient search (ATH/critical-band weighting based objective).
+  - [x] Provide deterministic search mode and exportable coefficient outputs for embedding in runtime presets.
+  - [x] Add guardrails on order/loop-count/runtime and cancellation support for long searches.
+- [x] Validation and quality
+  - [x] Add null/error-spectrum tests validating expected in-band noise reduction behavior.
+  - [x] Add parity checks against legacy presets for representative sample rates.
+  - [x] Add benchmarks for per-sample quantization path and preset designer runtime.
 
 Exit criteria:
 
-- [ ] Dither + FIR noise-shaper runtime paths are stable and documented.
-- [ ] Preset and designed shapers are validated by spectral tests.
-- [ ] `go test -race ./dsp/...` passes for new quantization/noise-shaping packages.
+- [x] Dither + FIR noise-shaper runtime paths are stable and documented.
+- [x] Preset and designed shapers are validated by spectral tests.
+- [x] `go test -race ./dsp/...` passes for new quantization/noise-shaping packages.
 
 ### Phase 30: Polyphase Hilbert / Analytic Signal (Planned)
 
