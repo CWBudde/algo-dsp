@@ -2695,7 +2695,15 @@ function initPinButtons() {
         btn.classList.add("pinned");
       }
     });
-    label.appendChild(btn);
+    // Insert right after the label's first text node
+    const firstText = [...label.childNodes].find(
+      (n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim(),
+    );
+    if (firstText && firstText.nextSibling) {
+      label.insertBefore(btn, firstText.nextSibling);
+    } else {
+      label.appendChild(btn);
+    }
   }
 }
 

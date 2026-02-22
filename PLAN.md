@@ -595,7 +595,7 @@ Exit criteria:
 
 - [ ] `v1.0.0` tag exists and release notes are published.
 
-### Phase 26: Nonlinear Moog Ladder Filters (Planned)
+### Phase 26: Nonlinear Moog Ladder Filters (In Progress)
 
 Goal:
 
@@ -603,38 +603,38 @@ Goal:
 
 Tasks:
 
-- [ ] Core architecture and API
-  - [ ] Define Moog ladder processor API with constructor+options, sample/block processing, `Reset`, and explicit state type.
-  - [ ] Support mono first; add stereo/frame helper API consistent with existing DSP package style.
-  - [ ] Expose core controls: cutoff, resonance, drive/input gain, output gain/normalization, thermal-voltage-style shaping control (or equivalent musically-meaningful parameterization).
-  - [ ] Define strict parameter validation and numeric guard rails (NaN/Inf handling, cutoff bounds `< Fs/2`, resonance safety limits).
-- [ ] Legacy-faithful implementations (parity track)
-  - [ ] Implement classic 4-stage nonlinear ladder variant matching Pascal structure (per-stage `tanh` nonlinearity and resonant feedback path).
-  - [ ] Implement “improved classic” variant from legacy behavior and verify coefficient/update behavior parity.
-  - [ ] Implement fast-approximation variant(s) for `tanh` equivalent to legacy lightweight mode, guarded behind clear option/strategy flags.
-  - [ ] Reproduce legacy reset/state behavior and gain scaling semantics where practical.
+- [x] Core architecture and API
+  - [x] Define Moog ladder processor API with constructor+options, sample/block processing, `Reset`, and explicit state type.
+  - [x] Support mono first; add stereo/frame helper API consistent with existing DSP package style.
+  - [x] Expose core controls: cutoff, resonance, drive/input gain, output gain/normalization, thermal-voltage-style shaping control (or equivalent musically-meaningful parameterization).
+  - [x] Define strict parameter validation and numeric guard rails (NaN/Inf handling, cutoff bounds `< Fs/2`, resonance safety limits).
+- [x] Legacy-faithful implementations (parity track)
+  - [x] Implement classic 4-stage nonlinear ladder variant matching Pascal structure (per-stage `tanh` nonlinearity and resonant feedback path).
+  - [x] Implement “improved classic” variant from legacy behavior and verify coefficient/update behavior parity.
+  - [x] Implement fast-approximation variant(s) for `tanh` equivalent to legacy lightweight mode, guarded behind clear option/strategy flags.
+  - [x] Reproduce legacy reset/state behavior and gain scaling semantics where practical.
 - [ ] Paper-or-better implementation track
-  - [ ] Implement Huovilainen-style nonlinear ladder reference path (as cited in the Pascal unit header) with documented discretization choices.
+  - [x] Implement Huovilainen-style nonlinear ladder reference path (as cited in the Pascal unit header) with documented discretization choices.
   - [ ] Evaluate and optionally implement a higher-accuracy path (e.g., zero-delay/newton refinement or equivalent) when it measurably improves tuning/resonance behavior at high cutoff/resonance.
-  - [ ] Add optional anti-alias strategy for nonlinear drive path (e.g., oversampling mode) with documented CPU/quality tradeoffs.
-  - [ ] Ensure the “high quality” path meets or exceeds reference behavior in tuning, self-oscillation onset consistency, and modulation robustness.
-- [ ] Validation, parity, and characterization
-  - [ ] Add parity-oriented tests against vectors derived from `legacy/Source/DSP/DAV_DspFilterMoog.pas` (classic + improved + lightweight modes).
-  - [ ] Add frequency-response/tuning tests across sample rates and cutoff/resonance grids.
-  - [ ] Add nonlinear behavior tests (drive sweep, harmonic growth trends, saturation symmetry, self-oscillation sanity).
-  - [ ] Add stability tests under rapid modulation (cutoff/resonance automation) and extreme parameter bounds.
-  - [ ] Add deterministic benchmark suite for scalar and fast modes; track `ns/op`, `allocs/op`, and quality deltas.
-- [ ] Documentation and examples
-  - [ ] Document algorithm variants and tradeoffs (faithful/fast/high-quality) with clear recommendation defaults.
-  - [ ] Add runnable examples: subtractive synth-style sweep, resonance emphasis, and driven saturation comparison.
+  - [x] Add optional anti-alias strategy for nonlinear drive path (e.g., oversampling mode) with documented CPU/quality tradeoffs.
+  - [x] Ensure the “high quality” path meets or exceeds reference behavior in tuning, self-oscillation onset consistency, and modulation robustness.
+- [x] Validation, parity, and characterization
+  - [x] Add parity-oriented tests against vectors derived from `legacy/Source/DSP/DAV_DspFilterMoog.pas` (classic + improved + lightweight modes).
+  - [x] Add frequency-response/tuning tests across sample rates and cutoff/resonance grids.
+  - [x] Add nonlinear behavior tests (drive sweep, harmonic growth trends, saturation symmetry, self-oscillation sanity).
+  - [x] Add stability tests under rapid modulation (cutoff/resonance automation) and extreme parameter bounds.
+  - [x] Add deterministic benchmark suite for scalar and fast modes; track `ns/op`, `allocs/op`, and quality deltas.
+- [x] Documentation and examples
+  - [x] Document algorithm variants and tradeoffs (faithful/fast/high-quality) with clear recommendation defaults.
+  - [x] Add runnable examples: subtractive synth-style sweep, resonance emphasis, and driven saturation comparison.
 
 Exit criteria:
 
-- [ ] Legacy-faithful Moog ladder variants pass parity-oriented tests.
-- [ ] At least one high-quality variant demonstrates equal or better measured behavior than the reference paper/legacy baseline in documented metrics.
-- [ ] `go test -race ./dsp/filter/moog` passes and benchmarks are recorded in `BENCHMARKS.md`.
+- [x] Legacy-faithful Moog ladder variants pass parity-oriented tests.
+- [x] At least one high-quality variant demonstrates equal or better measured behavior than the reference paper/legacy baseline in documented metrics.
+- [x] `go test -race ./dsp/filter/moog` passes and benchmarks are recorded in `BENCHMARKS.md`.
 
-### Phase 27: Goertzel Tone Analysis (Planned)
+### Phase 27: Goertzel Tone Analysis (Complete)
 
 Goal:
 
@@ -642,30 +642,30 @@ Goal:
 
 Tasks:
 
-- [ ] Core Goertzel implementation
-  - [ ] Implement a stateful single-bin Goertzel analyzer (frequency, sample rate, reset, per-sample update).
-  - [ ] Port legacy recurrence and coefficient model (`2*cos(2*pi*f/fs)`) and parity-check power formula.
-  - [ ] Expose outputs: power, magnitude, and dB variants with safe floor handling.
-  - [ ] Add strict input validation (frequency bounds, sample rate sanity, NaN/Inf behavior).
-- [ ] API and processing modes
-  - [ ] Provide one-shot block API and reusable streaming API with zero-alloc hot path.
-  - [ ] Support batched multi-bin processing (shared input block across many target frequencies) for DTMF/pilot-tone style detection.
-  - [ ] Define reset/window semantics clearly (continuous accumulation vs block-finalized metrics).
-- [ ] Numerical and behavioral validation
-  - [ ] Add parity tests against vectors derived from `legacy/Source/DSP/DAV_DspGoertzel.pas`.
-  - [ ] Add correctness tests versus DFT/FFT reference for on-bin and off-bin tones.
-  - [ ] Add edge-case tests (near-DC, near-Nyquist, silence, clipping-level amplitudes, very short blocks).
-  - [ ] Add detection-oriented tests (frequency discrimination and leakage behavior with/without windowing).
-- [ ] Performance and documentation
-  - [ ] Add microbenchmarks for single-bin and multi-bin workloads; track `ns/op` and allocations.
-  - [ ] Add runnable examples for tone detection (single target and DTMF-style dual-tone case).
-  - [ ] Document algorithm limits and recommended block sizes/windowing for robust detection.
+- [x] Core Goertzel implementation
+  - [x] Implement a stateful single-bin Goertzel analyzer (frequency, sample rate, reset, per-sample update).
+  - [x] Port legacy recurrence and coefficient model (`2*cos(2*pi*f/fs)`) and parity-check power formula.
+  - [x] Expose outputs: power, magnitude, and dB variants with safe floor handling.
+  - [x] Add strict input validation (frequency bounds, sample rate sanity, NaN/Inf behavior).
+- [x] API and processing modes
+  - [x] Provide one-shot block API and reusable streaming API with zero-alloc hot path.
+  - [x] Support batched multi-bin processing (shared input block across many target frequencies) for DTMF/pilot-tone style detection.
+  - [x] Define reset/window semantics clearly (continuous accumulation vs block-finalized metrics).
+- [x] Numerical and behavioral validation
+  - [x] Add parity tests against vectors derived from `legacy/Source/DSP/DAV_DspGoertzel.pas`.
+  - [x] Add correctness tests versus DFT/FFT reference for on-bin and off-bin tones.
+  - [x] Add edge-case tests (near-DC, near-Nyquist, silence, clipping-level amplitudes, very short blocks).
+  - [x] Add detection-oriented tests (frequency discrimination and leakage behavior with/without windowing).
+- [x] Performance and documentation
+  - [x] Add microbenchmarks for single-bin and multi-bin workloads; track `ns/op` and allocations.
+  - [x] Add runnable examples for tone detection (single target and DTMF-style dual-tone case).
+  - [x] Document algorithm limits and recommended block sizes/windowing for robust detection.
 
 Exit criteria:
 
-- [ ] Legacy-parity single-bin behavior verified within tolerance.
-- [ ] Multi-bin Goertzel API available and benchmarked.
-- [ ] `go test -race ./dsp/spectrum` passes with Goertzel additions.
+- [x] Legacy-parity single-bin behavior verified within tolerance.
+- [x] Multi-bin Goertzel API available and benchmarked.
+- [x] `go test -race ./dsp/spectrum` passes with Goertzel additions.
 
 ### Phase 28: Loudness Metering (EBU R128 / BS.1770) (Planned)
 
