@@ -80,17 +80,17 @@ func TestGroupDelayFromPhaseConstantDelay(t *testing.T) {
 func TestGroupDelaySeconds(t *testing.T) {
 	phase := []float64{0, -2 * math.Pi / 8, -2 * 2 * math.Pi / 8}
 
-	gd, err := GroupDelaySeconds(phase, 8, 48000)
+	groupDelay, err := GroupDelaySeconds(phase, 8, 48000)
 	if err != nil {
 		t.Fatalf("GroupDelaySeconds error: %v", err)
 	}
 
-	if len(gd) != len(phase) {
+	if len(groupDelay) != len(phase) {
 		t.Fatalf("group delay length mismatch")
 	}
 
-	if math.Abs(gd[1]-1.0/48000.0) > 1e-12 {
-		t.Fatalf("gd[1]=%e want=%e", gd[1], 1.0/48000.0)
+	if math.Abs(groupDelay[1]-1.0/48000.0) > 1e-12 {
+		t.Fatalf("gd[1]=%e want=%e", groupDelay[1], 1.0/48000.0)
 	}
 }
 

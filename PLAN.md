@@ -175,7 +175,7 @@ Phase 15: Effects — High-Priority Modulation          [2 weeks]  📋 Planned
 Phase 16: Effects — High-Priority Dynamics            [2 weeks]  📋 Planned
 Phase 17: Effects — High-Priority Spatial             [1 week]   ✅ Complete
 Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  📋 Planned
-Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  📋 Planned
+Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  ✅ Complete
 Phase 20: Effects — Medium-Priority Dynamics          [2 weeks]  📋 Planned
 Phase 21: Effects — Spatial and Convolution Reverb    [2 weeks]  📋 Planned
 Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  📋 Planned
@@ -436,16 +436,20 @@ Tasks:
   - [ ] Implement bit depth + sample rate reduction.
   - [ ] Add tests + example.
 
-### Phase 19: Effects — Medium-Priority Modulation (Planned)
+### Phase 19: Effects — Medium-Priority Modulation (Complete)
 
 Tasks:
 
-- [ ] Auto-wah
-  - [ ] Implement envelope follower modulating a filter.
-  - [ ] Add tests + example.
-- [ ] Ring modulator
-  - [ ] Implement carrier multiply + mix.
-  - [ ] Add tests + example.
+- [x] Auto-wah
+  - [x] Implement envelope follower modulating a filter.
+  - [x] Add tests + example.
+- [x] Ring modulator
+  - [x] Implement carrier multiply + mix.
+  - [x] Add tests + example.
+
+Web demo:
+
+- Live demo: [https://cwbudde.github.io/algo-dsp/](https://cwbudde.github.io/algo-dsp/)
 
 ### Phase 20: Effects — Medium-Priority Dynamics (Planned)
 

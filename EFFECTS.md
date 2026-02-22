@@ -29,6 +29,7 @@ both single-sample (`Process`) and buffer-based (`ProcessInPlace`) processing.
 
 | Effect             | File                | Description                                                                                                                                    |
 | ------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AutoWah**        | `auto_wah.go`       | Envelope-following band-pass modulation. Configurable center-frequency range, Q, attack/release detector times, sensitivity, and dry/wet mix. |
 | **Chorus**         | `chorus.go`         | Multi-voice modulated delay for ensemble/thickening effects. Hermite interpolation, configurable speed, depth, base delay, and voice count.    |
 | **Flanger**        | `flanger.go`        | Short modulated delay (0.1-10 ms) with feedback for classic jet/sweep sound. Configurable speed, depth, feedback, and base delay.              |
 | **Phaser**         | `phaser.go`         | Cascaded allpass filters with LFO-modulated center frequencies. Configurable stages, speed, depth, feedback, and mix.                          |
@@ -89,7 +90,6 @@ additional DSP building blocks.
 | Effect                         | Category    | Description                                                                               | Notes                                            |
 | ------------------------------ | ----------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | **Distortion / Saturation**    | Waveshaping | Tube, tape, or transistor-style non-linear waveshaping with configurable transfer curves. | Oversampling recommended to control aliasing     |
-| **Auto-Wah / Envelope Filter** | Modulation  | Bandpass filter with cutoff controlled by input envelope.                                 | Envelope follower + biquad bandpass              |
 | **Convolution Reverb**         | Spatial     | IR-based reverb using partitioned convolution.                                            | `conv` package (overlap-add already implemented) |
 | **Transient Shaper**           | Dynamics    | Independent control of attack and sustain portions of transients.                         | Envelope follower with dual time constants       |
 | **Lookahead Limiter**          | Dynamics    | True-peak limiter with lookahead buffer for inter-sample peak detection.                  | Oversampled peak detection, delay compensation   |
