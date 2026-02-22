@@ -477,9 +477,9 @@ Tasks:
 
 Tasks:
 
-- [ ] Spectral freeze
-  - [ ] Implement STFT magnitude hold + phase strategy.
-  - [ ] Add tests + example.
+- [x] Spectral freeze
+  - [x] Implement STFT magnitude hold + phase strategy.
+  - [x] Add tests + example.
 - [ ] Granular
   - [ ] Implement grain scheduling + overlap-add.
   - [ ] Add tests + example.
