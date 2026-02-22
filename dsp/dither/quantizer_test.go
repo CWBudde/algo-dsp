@@ -310,3 +310,183 @@ func TestQuantizerIIRShelf(t *testing.T) {
 		t.Errorf("ProcessInteger(0) = %d", got)
 	}
 }
+
+func TestQuantizerNoiseShapingSpectralEffect(t *testing.T) {
+	// Compare quantization noise spectrum with and without noise shaping.
+	// With shaping, low-frequency energy should be lower.
+	const (
+		sampleRate = 44100.0
+		numSamples = 8192
+		seed       = 42
+	)
+
+	// Generate a low-level test signal (sine at 1 kHz, -20 dBFS).
+	amplitude := math.Pow(10, -20.0/20.0)
+	input := make([]float64, numSamples)
+
+	for idx := range input {
+		input[idx] = amplitude * math.Sin(2*math.Pi*1000*float64(idx)/sampleRate)
+	}
+
+	quantizeWith := func(shaper NoiseShaper) []float64 {
+		quant, err := NewQuantizer(sampleRate,
+			WithBitDepth(8), // aggressive quantization for visible noise
+			WithDitherType(DitherTriangular),
+			WithNoiseShaper(shaper),
+			WithRNG(rand.New(rand.NewPCG(seed, 0))),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		out := make([]float64, len(input))
+		copy(out, input)
+		quant.ProcessInPlace(out)
+
+		return out
+	}
+
+	// Compute quantization noise (output - input).
+	outputUnshaped := quantizeWith(NewFIRShaper(nil))
+	outputShaped := quantizeWith(NewFIRShaper(Preset9FC.Coefficients()))
+
+	noiseUnshaped := make([]float64, numSamples)
+	noiseShaped := make([]float64, numSamples)
+
+	for idx := range numSamples {
+		noiseUnshaped[idx] = outputUnshaped[idx] - input[idx]
+		noiseShaped[idx] = outputShaped[idx] - input[idx]
+	}
+
+	// Compute RMS of low-frequency noise (bins 1..numSamples/8, roughly 0-2.75 kHz).
+	lowBins := numSamples / 8
+
+	rmsLow := func(noise []float64) float64 {
+		var energy float64
+
+		for bin := 1; bin < lowBins; bin++ {
+			var re, im float64
+			omega := 2 * math.Pi * float64(bin) / float64(numSamples)
+
+			for sampleIdx, val := range noise {
+				re += val * math.Cos(omega*float64(sampleIdx))
+				im -= val * math.Sin(omega*float64(sampleIdx))
+			}
+
+			energy += re*re + im*im
+		}
+
+		return math.Sqrt(energy / float64(lowBins))
+	}
+
+	unshaped := rmsLow(noiseUnshaped)
+	shaped := rmsLow(noiseShaped)
+
+	t.Logf("low-freq noise RMS: unshaped=%g, shaped=%g, ratio=%g",
+		unshaped, shaped, shaped/unshaped)
+
+	// Noise shaping should reduce low-frequency noise by at least 6 dB (ratio < 0.5).
+	if shaped >= unshaped*0.5 {
+		t.Errorf("noise shaping did not reduce low-freq noise enough: ratio=%g (want < 0.5)",
+			shaped/unshaped)
+	}
+}
+
+func TestQuantizerSetters(t *testing.T) {
+	quant, _ := NewQuantizer(44100)
+
+	if err := quant.SetBitDepth(24); err != nil {
+		t.Fatal(err)
+	}
+	if quant.BitDepth() != 24 {
+		t.Errorf("BitDepth = %d after Set", quant.BitDepth())
+	}
+
+	if err := quant.SetDitherType(DitherGaussian); err != nil {
+		t.Fatal(err)
+	}
+	if quant.DitherType() != DitherGaussian {
+		t.Errorf("DitherType = %v after Set", quant.DitherType())
+	}
+
+	if err := quant.SetDitherAmplitude(0.5); err != nil {
+		t.Fatal(err)
+	}
+	if quant.DitherAmplitude() != 0.5 {
+		t.Errorf("DitherAmplitude = %v after Set", quant.DitherAmplitude())
+	}
+
+	quant.SetLimit(false)
+	if quant.Limit() {
+		t.Error("Limit should be false after Set")
+	}
+}
+
+func TestQuantizerSetterValidation(t *testing.T) {
+	quant, _ := NewQuantizer(44100)
+
+	if err := quant.SetBitDepth(0); err == nil {
+		t.Error("expected error for SetBitDepth(0)")
+	}
+
+	if err := quant.SetBitDepth(33); err == nil {
+		t.Error("expected error for SetBitDepth(33)")
+	}
+
+	if err := quant.SetDitherType(DitherType(99)); err == nil {
+		t.Error("expected error for invalid DitherType")
+	}
+
+	if err := quant.SetDitherAmplitude(-1); err == nil {
+		t.Error("expected error for negative amplitude")
+	}
+
+	if err := quant.SetDitherAmplitude(math.NaN()); err == nil {
+		t.Error("expected error for NaN amplitude")
+	}
+}
+
+func TestQuantizerAllDitherTypes(t *testing.T) {
+	types := []DitherType{
+		DitherNone, DitherRectangular, DitherTriangular,
+		DitherGaussian, DitherFastGaussian,
+	}
+	for _, ditherType := range types {
+		t.Run(ditherType.String(), func(t *testing.T) {
+			quant, err := NewQuantizer(44100,
+				WithDitherType(ditherType),
+				WithRNG(rand.New(rand.NewPCG(42, 0))),
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Run 1000 samples, verify no NaN/Inf.
+			for idx := range 1000 {
+				val := quant.ProcessSample(0.3)
+				if math.IsNaN(val) || math.IsInf(val, 0) {
+					t.Fatalf("sample %d: %v", idx, val)
+				}
+			}
+		})
+	}
+}
+
+func TestQuantizerBitDepthRange(t *testing.T) {
+	// Verify all valid bit depths work.
+	for bits := 1; bits <= 32; bits++ {
+		quant, err := NewQuantizer(44100,
+			WithBitDepth(bits),
+			WithDitherType(DitherNone),
+			WithFIRPreset(PresetNone),
+		)
+		if err != nil {
+			t.Fatalf("bitDepth=%d: %v", bits, err)
+		}
+
+		got := quant.ProcessInteger(0)
+		if got != 0 {
+			t.Errorf("bitDepth=%d: ProcessInteger(0) = %d", bits, got)
+		}
+	}
+}
