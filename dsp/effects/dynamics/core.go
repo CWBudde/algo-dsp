@@ -213,6 +213,7 @@ func (c *dynamicsCore) ReleaseCoeff() float64 { return c.releaseCoeff }
 func (c *dynamicsCore) ThresholdLog2() float64 {
 	return c.thresholdLog2
 }
+
 func (c *dynamicsCore) KneeWidthLog2() float64 {
 	return c.kneeWidthLog2
 }
