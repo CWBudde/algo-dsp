@@ -16,6 +16,8 @@ func BenchmarkProcessSample(b *testing.B) {
 		{name: "improved", variant: VariantImprovedClassic, os: 1},
 		{name: "huovilainen", variant: VariantHuovilainen, os: 1},
 		{name: "huovilainen_os4", variant: VariantHuovilainen, os: 4},
+		{name: "zdf", variant: VariantZDF, os: 1},
+		{name: "zdf_os4", variant: VariantZDF, os: 4},
 	}
 
 	for _, tc := range tests {
@@ -55,6 +57,8 @@ func BenchmarkProcessInPlace1024(b *testing.B) {
 		{name: "classic_lightweight", variant: VariantClassicLightweight, os: 1},
 		{name: "huovilainen", variant: VariantHuovilainen, os: 1},
 		{name: "huovilainen_os4", variant: VariantHuovilainen, os: 4},
+		{name: "zdf", variant: VariantZDF, os: 1},
+		{name: "zdf_os4", variant: VariantZDF, os: 4},
 	}
 
 	for _, tc := range tests {

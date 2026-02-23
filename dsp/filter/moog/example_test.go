@@ -94,6 +94,31 @@ func ExampleNew_drivenSaturationComparison() {
 	// 4.798519 4.802974
 }
 
+func ExampleNew_zdfHighAccuracy() {
+	// VariantZDF uses Zero-Delay Feedback with Newton-Raphson iteration
+	// for the most accurate cutoff tuning and self-oscillation behavior.
+	f, err := moog.New(48000,
+		moog.WithVariant(moog.VariantZDF),
+		moog.WithCutoffHz(2000),
+		moog.WithResonance(2.5),
+		moog.WithDrive(3.0),
+		moog.WithNewtonIterations(4),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	out := make([]float64, 8)
+	for i := range out {
+		saw := 2*math.Mod(float64(i)/8, 1) - 1
+		out[i] = f.ProcessSample(saw)
+	}
+
+	fmt.Printf("%.6f %.6f %.6f\n", out[0], out[1], out[2])
+	// Output:
+	// -0.000140 -0.001099 -0.004210
+}
+
 func ringPeak(f *moog.Filter, n int) float64 {
 	peak := 0.0
 	for i := 0; i < n; i++ {
