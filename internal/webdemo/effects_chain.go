@@ -2022,12 +2022,12 @@ func (r *multibandChainRuntime) Process(_ *Engine, _ compiledChainNode, block []
 }
 
 func normalizeChainFilterFamily(raw, nodeType string) string {
+	if nodeType == "filter-moog" {
+		return "moog"
+	}
+
 	family := strings.ToLower(strings.TrimSpace(raw))
 	if family == "" {
-		if nodeType == "filter-moog" {
-			return "moog"
-		}
-
 		return "rbj"
 	}
 
@@ -2035,15 +2035,15 @@ func normalizeChainFilterFamily(raw, nodeType string) string {
 	case "rbj", "butterworth", "bessel", "chebyshev1", "chebyshev2", "elliptic", "moog":
 		return family
 	default:
-		if nodeType == "filter-moog" {
-			return "moog"
-		}
-
 		return "rbj"
 	}
 }
 
 func normalizeChainFilterKind(nodeType, raw string) string {
+	if nodeType == "filter-moog" {
+		return "lowpass"
+	}
+
 	kind := normalizeEQType("mid", raw)
 	if strings.TrimSpace(raw) != "" {
 		return kind

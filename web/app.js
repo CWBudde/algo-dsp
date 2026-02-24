@@ -742,6 +742,20 @@ function isFilterNodeType(type) {
   return type === "filter" || (typeof type === "string" && type.startsWith("filter-"));
 }
 
+function updateFilterDetailUI(nodeType) {
+  const isMoogNode = nodeType === "filter-moog";
+  const familyLabel = el.fxFilterFamily?.closest("label");
+  const kindLabel = el.fxFilterKind?.closest("label");
+
+  if (familyLabel) familyLabel.hidden = isMoogNode;
+  if (kindLabel) kindLabel.hidden = isMoogNode;
+
+  if (isMoogNode) {
+    el.fxFilterFamily.value = "moog";
+    el.fxFilterKind.value = "lowpass";
+  }
+}
+
 function chainDetailTypeForNode(node) {
   const nodeType = node?.type;
   if (isFilterNodeType(nodeType)) return "filter";
@@ -763,12 +777,14 @@ function applyNodeParamsToUI(node) {
   const nodeType = node.type;
   const p = { ...defaultNodeParams(nodeType), ...(node.params || {}) };
   if (isFilterNodeType(nodeType)) {
-    el.fxFilterFamily.value = p.family || "rbj";
-    el.fxFilterKind.value = p.kind || "lowpass";
+    const isMoogNode = nodeType === "filter-moog";
+    el.fxFilterFamily.value = isMoogNode ? "moog" : (p.family || "rbj");
+    el.fxFilterKind.value = isMoogNode ? "lowpass" : (p.kind || "lowpass");
     el.fxFilterOrder.value = p.order ?? 2;
     el.fxFilterFreq.value = p.freq;
     el.fxFilterQ.value = p.q;
     el.fxFilterGain.value = p.gain;
+    updateFilterDetailUI(nodeType);
     return;
   }
 
@@ -998,9 +1014,10 @@ function applyNodeParamsToUI(node) {
 
 function collectNodeParamsFromUI(nodeType) {
   if (isFilterNodeType(nodeType)) {
+    const isMoogNode = nodeType === "filter-moog";
     return {
-      family: String(el.fxFilterFamily.value || "rbj"),
-      kind: String(el.fxFilterKind.value || "lowpass"),
+      family: isMoogNode ? "moog" : String(el.fxFilterFamily.value || "rbj"),
+      kind: isMoogNode ? "lowpass" : String(el.fxFilterKind.value || "lowpass"),
       order: Number(el.fxFilterOrder.value),
       freq: Number(el.fxFilterFreq.value),
       q: Number(el.fxFilterQ.value),
