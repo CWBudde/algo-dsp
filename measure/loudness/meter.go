@@ -52,7 +52,7 @@ type Meter struct {
 	blockSamples       int
 	blockSamplesStep   int
 	samplesSinceStep   int
-	
+
 	// Gating blocks
 	blocks []float64 // Linear power blocks (sum of channel powers)
 
@@ -64,13 +64,14 @@ type Meter struct {
 func NewMeter(opts ...MeterOption) *Meter {
 	cfg := ApplyMeterOptions(opts...)
 
-	m := &Meter{
+	meter := &Meter{
 		sampleRate: cfg.SampleRate,
 		channels:   cfg.Channels,
 	}
 
-	m.reconfigure()
-	return m
+	meter.reconfigure()
+
+	return meter
 }
 
 func (m *Meter) reconfigure() {
@@ -90,6 +91,7 @@ func (m *Meter) reconfigure() {
 	m.shortWindowSamples = int(math.Round(shortTermDuration * m.sampleRate))
 
 	m.momHistory = make([][]float64, m.channels)
+
 	m.shortHistory = make([][]float64, m.channels)
 	for i := 0; i < m.channels; i++ {
 		m.momHistory[i] = make([]float64, m.momWindowSamples)
@@ -101,6 +103,7 @@ func (m *Meter) reconfigure() {
 	m.truePeak = make([]float64, m.channels)
 
 	m.blockSamples = m.momWindowSamples
+
 	m.blockSamplesStep = int(math.Round(momentaryDuration * blockStepFactor * m.sampleRate))
 	if m.blockSamplesStep < 1 {
 		m.blockSamplesStep = 1
@@ -114,16 +117,20 @@ func (m *Meter) Reset() {
 	for i := 0; i < m.channels; i++ {
 		m.shelfFilters[i].Reset()
 		m.hpfFilters[i].Reset()
+
 		for j := range m.momHistory[i] {
 			m.momHistory[i][j] = 0
 		}
+
 		for j := range m.shortHistory[i] {
 			m.shortHistory[i][j] = 0
 		}
+
 		m.momRunningSums[i] = 0
 		m.shortRunningSums[i] = 0
 		m.truePeak[i] = 0
 	}
+
 	m.momWriteIdx = 0
 	m.shortWriteIdx = 0
 	m.samplesSinceStep = 0
@@ -148,6 +155,7 @@ func (m *Meter) ProcessSample(samples []float64) {
 	}
 
 	sumCurrentBlock := 0.0
+
 	for i := 0; i < m.channels; i++ {
 		// 1. K-Weighting
 		val := m.shelfFilters[i].ProcessSample(samples[i])
@@ -164,6 +172,7 @@ func (m *Meter) ProcessSample(samples []float64) {
 		// 3. Momentary integration (sliding window)
 		oldMom := m.momHistory[i][m.momWriteIdx]
 		m.momHistory[i][m.momWriteIdx] = sq
+
 		m.momRunningSums[i] += sq - oldMom
 		if m.momRunningSums[i] < 0 {
 			m.momRunningSums[i] = 0
@@ -172,6 +181,7 @@ func (m *Meter) ProcessSample(samples []float64) {
 		// 4. Short-term integration (sliding window)
 		oldShort := m.shortHistory[i][m.shortWriteIdx]
 		m.shortHistory[i][m.shortWriteIdx] = sq
+
 		m.shortRunningSums[i] += sq - oldShort
 		if m.shortRunningSums[i] < 0 {
 			m.shortRunningSums[i] = 0
@@ -186,6 +196,7 @@ func (m *Meter) ProcessSample(samples []float64) {
 
 	if m.integrationRunning {
 		m.totalSamples++
+
 		m.samplesSinceStep++
 		if m.samplesSinceStep >= m.blockSamplesStep {
 			m.samplesSinceStep = 0
@@ -194,11 +205,12 @@ func (m *Meter) ProcessSample(samples []float64) {
 			// The gating block value is the mean of the sum of channel mean squares.
 			// Actually BS.1770-4: z_ij is the mean square of the K-filtered signal for channel i and block j.
 			// l_j = sum_i(G_i * z_ij) where G_i is channel weighting.
-			
+
 			meanSqSum := 0.0
 			for i := 0; i < m.channels; i++ {
 				meanSqSum += m.momRunningSums[i] / float64(m.momWindowSamples)
 			}
+
 			m.blocks = append(m.blocks, meanSqSum)
 		}
 	}
@@ -217,6 +229,7 @@ func (m *Meter) Momentary() float64 {
 	for i := 0; i < m.channels; i++ {
 		meanSqSum += m.momRunningSums[i] / float64(m.momWindowSamples)
 	}
+
 	return toLUFS(meanSqSum)
 }
 
@@ -226,6 +239,7 @@ func (m *Meter) ShortTerm() float64 {
 	for i := 0; i < m.channels; i++ {
 		meanSqSum += m.shortRunningSums[i] / float64(m.shortWindowSamples)
 	}
+
 	return toLUFS(meanSqSum)
 }
 
@@ -237,7 +251,9 @@ func (m *Meter) Integrated() float64 {
 
 	// 1. Absolute gating
 	var absGated []float64
+
 	absGatedSum := 0.0
+
 	for _, b := range m.blocks {
 		l := toLUFS(b)
 		if l > absThreshold {
@@ -252,9 +268,12 @@ func (m *Meter) Integrated() float64 {
 
 	// 2. Relative gating
 	gammaRel := toLUFS(absGatedSum/float64(len(absGated))) + relThreshold
-	
-	var relGatedSum float64
-	var relGatedCount int
+
+	var (
+		relGatedSum   float64
+		relGatedCount int
+	)
+
 	for _, b := range absGated {
 		if toLUFS(b) > gammaRel {
 			relGatedSum += b
@@ -273,6 +292,7 @@ func (m *Meter) Integrated() float64 {
 func (m *Meter) Peaks() []float64 {
 	p := make([]float64, m.channels)
 	copy(p, m.truePeak)
+
 	return p
 }
 
@@ -280,5 +300,6 @@ func toLUFS(meanSquare float64) float64 {
 	if meanSquare <= 0 {
 		return -120.0 // Effective floor
 	}
+
 	return -0.691 + 10.0*math.Log10(meanSquare)
 }

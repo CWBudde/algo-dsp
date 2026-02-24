@@ -23,6 +23,7 @@ func TestSpectralFreezeMixZeroPassthrough(t *testing.T) {
 	if err := freeze.SetMix(0); err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
+
 	freeze.Freeze()
 
 	in := make([]float64, 512)
@@ -56,9 +57,11 @@ func TestSpectralFreezeInPlaceMatchesOutOfPlace(t *testing.T) {
 	if err := f1.SetPhaseMode(SpectralFreezePhaseAdvance); err != nil {
 		t.Fatalf("SetPhaseMode() error = %v", err)
 	}
+
 	if err := f2.SetPhaseMode(SpectralFreezePhaseAdvance); err != nil {
 		t.Fatalf("SetPhaseMode() error = %v", err)
 	}
+
 	f1.Freeze()
 	f2.Freeze()
 
@@ -74,6 +77,7 @@ func TestSpectralFreezeInPlaceMatchesOutOfPlace(t *testing.T) {
 
 	got := make([]float64, len(input))
 	copy(got, input)
+
 	if err := f2.ProcessInPlaceWithError(got); err != nil {
 		t.Fatalf("ProcessInPlaceWithError() error = %v", err)
 	}
@@ -92,6 +96,7 @@ func TestSpectralFreezeResetDeterministic(t *testing.T) {
 	}
 
 	freeze.Freeze()
+
 	in := make([]float64, 2048)
 	for i := range in {
 		if i < 512 {
@@ -105,6 +110,7 @@ func TestSpectralFreezeResetDeterministic(t *testing.T) {
 	}
 
 	freeze.Reset()
+
 	out2, err := freeze.ProcessWithError(in)
 	if err != nil {
 		t.Fatalf("ProcessWithError() error = %v", err)
@@ -126,12 +132,15 @@ func TestSpectralFreezeSustainsEnergyOnSilenceTail(t *testing.T) {
 	if err := freeze.SetFrameSize(256); err != nil {
 		t.Fatalf("SetFrameSize() error = %v", err)
 	}
+
 	if err := freeze.SetHopSize(64); err != nil {
 		t.Fatalf("SetHopSize() error = %v", err)
 	}
+
 	if err := freeze.SetPhaseMode(SpectralFreezePhaseAdvance); err != nil {
 		t.Fatalf("SetPhaseMode() error = %v", err)
 	}
+
 	freeze.Freeze()
 
 	in := make([]float64, 4096)

@@ -199,6 +199,7 @@ func (s *SpectralFreeze) Process(input []float64) []float64 {
 	if err != nil {
 		fallback := make([]float64, len(input))
 		copy(fallback, input)
+
 		return fallback
 	}
 
@@ -229,6 +230,7 @@ func (s *SpectralFreeze) ProcessWithError(input []float64) ([]float64, error) {
 
 		for i := range s.frameSize {
 			x := 0.0
+
 			idx := pos + i
 			if idx < len(input) {
 				x = input[idx]
@@ -242,6 +244,7 @@ func (s *SpectralFreeze) ProcessWithError(input []float64) ([]float64, error) {
 		}
 
 		justCaptured := false
+
 		if s.frozen && !s.hasFrozenFrame {
 			for k := 0; k <= half; k++ {
 				re := real(s.analysisSpectrum[k])
@@ -249,6 +252,7 @@ func (s *SpectralFreeze) ProcessWithError(input []float64) ([]float64, error) {
 				s.heldMagnitude[k] = math.Hypot(re, im)
 				s.phaseAcc[k] = math.Atan2(im, re)
 			}
+
 			s.hasFrozenFrame = true
 			justCaptured = true
 		}
@@ -280,6 +284,7 @@ func (s *SpectralFreeze) ProcessWithError(input []float64) ([]float64, error) {
 		}
 
 		s.synthesisSpectrum[0] = complex(real(s.synthesisSpectrum[0]), 0)
+
 		s.synthesisSpectrum[half] = complex(real(s.synthesisSpectrum[half]), 0)
 		for k := 1; k < half; k++ {
 			v := s.synthesisSpectrum[k]
@@ -304,6 +309,7 @@ func (s *SpectralFreeze) ProcessWithError(input []float64) ([]float64, error) {
 		if norm[i] > spectralFreezeNormFloor {
 			sample /= norm[i]
 		}
+
 		out[i] = input[i]*(1-s.mix) + sample*s.mix
 	}
 
@@ -384,6 +390,7 @@ func (s *SpectralFreeze) rebuildState() error {
 	s.windowCoeffs = coeffs
 
 	bins := s.frameSize/2 + 1
+
 	s.omega = make([]float64, bins)
 	for k := range bins {
 		s.omega[k] = 2 * math.Pi * float64(k) / float64(s.frameSize)

@@ -171,7 +171,7 @@ func NewAutoWah(sampleRate float64, opts ...AutoWahOption) (*AutoWah, error) {
 		}
 	}
 
-	a := &AutoWah{
+	autoWah := &AutoWah{
 		sampleRate:  sampleRate,
 		minFreqHz:   cfg.minFreqHz,
 		maxFreqHz:   cfg.maxFreqHz,
@@ -181,15 +181,15 @@ func NewAutoWah(sampleRate float64, opts ...AutoWahOption) (*AutoWah, error) {
 		releaseMs:   cfg.releaseMs,
 		mix:         cfg.mix,
 	}
-	if err := a.validateParams(); err != nil {
+	if err := autoWah.validateParams(); err != nil {
 		return nil, err
 	}
 
-	a.updateEnvelopeCoefficients()
-	a.currentFreqHz = a.minFreqHz
-	a.updateFilterCoefficients(a.currentFreqHz)
+	autoWah.updateEnvelopeCoefficients()
+	autoWah.currentFreqHz = autoWah.minFreqHz
+	autoWah.updateFilterCoefficients(autoWah.currentFreqHz)
 
-	return a, nil
+	return autoWah, nil
 }
 
 // SetSampleRate updates sample rate.
@@ -228,6 +228,7 @@ func (a *AutoWah) SetFrequencyRangeHz(minFreqHz, maxFreqHz float64) error {
 	if err := a.validateParams(); err != nil {
 		a.minFreqHz = prevMin
 		a.maxFreqHz = prevMax
+
 		return err
 	}
 
@@ -419,6 +420,7 @@ func envelopeSmoothingCoefficient(timeMs, sampleRate float64) float64 {
 	}
 
 	tauSeconds := timeMs / 1000
+
 	coef := 1 - math.Exp(-1/(tauSeconds*sampleRate))
 	if coef < 0 {
 		return 0
@@ -469,5 +471,6 @@ func (a *AutoWah) processBandPass(input float64) float64 {
 	output := a.b0*input + a.z1
 	a.z1 = a.b1*input - a.a1*output + a.z2
 	a.z2 = a.b2*input - a.a2*output
+
 	return output
 }

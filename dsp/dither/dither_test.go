@@ -27,6 +27,7 @@ func TestDitherTypeValid(t *testing.T) {
 	if !DitherTriangular.Valid() {
 		t.Error("DitherTriangular should be valid")
 	}
+
 	if DitherType(99).Valid() {
 		t.Error("DitherType(99) should be invalid")
 	}

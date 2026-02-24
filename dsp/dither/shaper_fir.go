@@ -13,14 +13,16 @@ type FIRShaper struct {
 // A nil or empty slice creates a pass-through (no shaping).
 func NewFIRShaper(coeffs []float64) *FIRShaper {
 	order := len(coeffs)
-	c := make([]float64, order)
-	copy(c, coeffs)
+	coeff := make([]float64, order)
+	copy(coeff, coeffs)
+
 	var hist []float64
 	if order > 0 {
 		hist = make([]float64, order)
 	}
+
 	return &FIRShaper{
-		coeffs:  c,
+		coeffs:  coeff,
 		history: hist,
 		order:   order,
 	}
@@ -39,6 +41,7 @@ func (s *FIRShaper) Shape(input float64) float64 {
 	}
 	// Advance ring buffer position.
 	s.pos = (s.pos + 1) % s.order
+
 	return input
 }
 
@@ -48,6 +51,7 @@ func (s *FIRShaper) RecordError(quantizationError float64) {
 	if s.order == 0 {
 		return
 	}
+
 	s.history[s.pos] = quantizationError
 }
 
@@ -56,5 +60,6 @@ func (s *FIRShaper) Reset() {
 	for i := range s.history {
 		s.history[i] = 0
 	}
+
 	s.pos = 0
 }

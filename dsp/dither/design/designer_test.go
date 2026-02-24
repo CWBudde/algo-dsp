@@ -55,6 +55,7 @@ func TestDesignerConverges(t *testing.T) {
 
 	// Coefficients should not all be zero (optimizer should have found something).
 	allZero := true
+
 	for _, coeff := range coeffs {
 		if coeff != 0 {
 			allZero = false

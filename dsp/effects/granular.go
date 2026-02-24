@@ -67,7 +67,7 @@ func NewGranular(sampleRate float64) (*Granular, error) {
 		return nil, fmt.Errorf("granular sample rate must be > 0: %f", sampleRate)
 	}
 
-	g := &Granular{
+	granular := &Granular{
 		sampleRate:       sampleRate,
 		grainSeconds:     defaultGranularGrainSeconds,
 		overlap:          defaultGranularOverlap,
@@ -79,11 +79,11 @@ func NewGranular(sampleRate float64) (*Granular, error) {
 		rng:              rand.New(rand.NewSource(defaultGranularSeed)),
 	}
 
-	if err := g.reconfigureState(); err != nil {
+	if err := granular.reconfigureState(); err != nil {
 		return nil, err
 	}
 
-	return g, nil
+	return granular, nil
 }
 
 // SampleRate returns sample rate in Hz.
@@ -215,6 +215,7 @@ func (g *Granular) Reset() {
 // ProcessSample processes one sample through the granular engine.
 func (g *Granular) ProcessSample(input float64) float64 {
 	g.ring[g.write] = input
+
 	g.write++
 	if g.write >= len(g.ring) {
 		g.write = 0
@@ -229,6 +230,7 @@ func (g *Granular) ProcessSample(input float64) float64 {
 
 	wet := 0.0
 	norm := 0.0
+
 	for i := range g.grains {
 		grain := &g.grains[i]
 		if !grain.active {
@@ -249,6 +251,7 @@ func (g *Granular) ProcessSample(input float64) float64 {
 		for grain.pos >= float64(len(g.ring)) {
 			grain.pos -= float64(len(g.ring))
 		}
+
 		for grain.pos < 0 {
 			grain.pos += float64(len(g.ring))
 		}
@@ -305,6 +308,7 @@ func (g *Granular) updateDerivedParams() {
 	if interval < 1 {
 		interval = 1
 	}
+
 	g.spawnInterval = interval
 
 	g.baseDelaySamples = int(math.Round(g.baseDelaySeconds * g.sampleRate))
@@ -317,12 +321,14 @@ func (g *Granular) updateDerivedParams() {
 
 func (g *Granular) spawnGrain() {
 	slot := -1
+
 	for i := range g.grains {
 		if !g.grains[i].active {
 			slot = i
 			break
 		}
 	}
+
 	if slot < 0 {
 		return
 	}
@@ -334,9 +340,11 @@ func (g *Granular) spawnGrain() {
 	}
 
 	maxOffset := len(g.ring) - 2
+
 	if offset < 0 {
 		offset = 0
 	}
+
 	if offset > maxOffset {
 		offset = maxOffset
 	}
@@ -345,6 +353,7 @@ func (g *Granular) spawnGrain() {
 	for start < 0 {
 		start += len(g.ring)
 	}
+
 	for start >= len(g.ring) {
 		start -= len(g.ring)
 	}
@@ -360,6 +369,7 @@ func (g *Granular) spawnGrain() {
 func (g *Granular) readLinear(pos float64) float64 {
 	i0 := int(pos)
 	frac := pos - float64(i0)
+
 	i1 := i0 + 1
 	if i1 >= len(g.ring) {
 		i1 = 0
@@ -377,5 +387,6 @@ func hannEnv(age, dur int) float64 {
 	}
 
 	phase := 2 * math.Pi * float64(age) / float64(dur-1)
+
 	return 0.5 * (1 - math.Cos(phase))
 }

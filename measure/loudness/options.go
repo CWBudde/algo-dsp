@@ -40,10 +40,12 @@ func WithChannels(channels int) MeterOption {
 // ApplyMeterOptions applies zero or more options to the default config.
 func ApplyMeterOptions(opts ...MeterOption) MeterConfig {
 	cfg := DefaultMeterConfig()
+
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&cfg)
 		}
 	}
+
 	return cfg
 }

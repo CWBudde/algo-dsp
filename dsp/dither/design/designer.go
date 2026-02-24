@@ -37,7 +37,9 @@ func WithOrder(order int) DesignerOption {
 		if order < 1 {
 			return fmt.Errorf("design: order must be >= 1: %d", order)
 		}
+
 		cfg.order = order
+
 		return nil
 	}
 }
@@ -48,7 +50,9 @@ func WithIterations(iterations int) DesignerOption {
 		if iterations < 1 {
 			return fmt.Errorf("design: iterations must be >= 1: %d", iterations)
 		}
+
 		cfg.iterations = iterations
+
 		return nil
 	}
 }
@@ -66,6 +70,7 @@ func WithSeed(seed uint64) DesignerOption {
 	return func(cfg *designerConfig) error {
 		cfg.seed = seed
 		cfg.hasSeed = true
+
 		return nil
 	}
 }
@@ -96,6 +101,7 @@ func NewDesigner(sampleRate float64, opts ...DesignerOption) (*Designer, error) 
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -173,6 +179,7 @@ func (d *Designer) Run(ctx context.Context) ([]float64, error) {
 				score := d.evaluate(candidate)
 				if score < bestScore {
 					bestScore = score
+
 					copy(best, candidate)
 				}
 			}
@@ -183,6 +190,7 @@ func (d *Designer) Run(ctx context.Context) ([]float64, error) {
 		// Update global best.
 		if bestScore < bestGlobalScore {
 			bestGlobalScore = bestScore
+
 			copy(bestGlobal, best)
 
 			if d.onProgress != nil {
@@ -211,6 +219,7 @@ func (d *Designer) evaluate(coeffs []float64) float64 {
 		omega := 2 * math.Pi * float64(bin) / float64(fftSize)
 
 		re := 1.0
+
 		var im float64
 
 		for idx, coeff := range coeffs {

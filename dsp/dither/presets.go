@@ -37,6 +37,7 @@ func (p Preset) String() string {
 	if p >= 0 && p < presetCount {
 		return presetNames[p]
 	}
+
 	return fmt.Sprintf("Preset(%d)", p)
 }
 
@@ -52,8 +53,10 @@ func (p Preset) Coefficients() []float64 {
 	if len(src) == 0 {
 		return nil
 	}
+
 	out := make([]float64, len(src))
 	copy(out, src)
+
 	return out
 }
 
@@ -182,6 +185,7 @@ var coeff15kSharp96000 = []float64{
 // TDitherSharpNoiseShaper32.ChooseNoiseshaper implementation.
 func SharpPresetForSampleRate(sampleRate float64) []float64 {
 	var src []float64
+
 	switch {
 	case sampleRate < 41000:
 		src = coeff15kSharp40000
@@ -194,7 +198,9 @@ func SharpPresetForSampleRate(sampleRate float64) []float64 {
 	default:
 		src = coeff15kSharp96000
 	}
+
 	out := make([]float64, len(src))
 	copy(out, src)
+
 	return out
 }

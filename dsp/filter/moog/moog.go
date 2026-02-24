@@ -16,6 +16,7 @@ const (
 	defaultOutputGain     = 1.0
 	defaultThermalVoltage = 5.0
 	defaultOversampling   = 1
+	defaultNewtonIters    = 4
 
 	minCutoffHz       = 1.0
 	maxResonance      = 4.0
@@ -27,6 +28,8 @@ const (
 	maxOutputGain     = 24.0
 	minThermalVoltage = 0.1
 	maxThermalVoltage = 10.0
+	minNewtonIters    = 1
+	maxNewtonIters    = 8
 
 	stateLimit = 32.0
 )
@@ -50,6 +53,12 @@ const (
 	// VariantHuovilainen applies Huovilainen-style tuning/resonance
 	// compensation and a half-sample feedback estimate.
 	VariantHuovilainen
+	// VariantZDF uses Zero-Delay Feedback topology with Newton-Raphson
+	// iteration. Based on Zavalishin's Topology-Preserving Transform (TPT)
+	// and D'Angelo & Välimäki's nonlinear ladder refinement. Provides the
+	// highest cutoff-frequency accuracy and most faithful self-oscillation
+	// behavior at the cost of additional computation per sample.
+	VariantZDF
 )
 
 func (v Variant) String() string {
@@ -64,6 +73,8 @@ func (v Variant) String() string {
 		return "improved_classic_lightweight"
 	case VariantHuovilainen:
 		return "huovilainen"
+	case VariantZDF:
+		return "zdf"
 	default:
 		return "unknown"
 	}
@@ -82,6 +93,7 @@ type config struct {
 	thermalVoltage  float64
 	overSampling    int
 	normalizeOutput bool
+	newtonIters     int
 }
 
 func defaultConfig() config {
@@ -95,6 +107,7 @@ func defaultConfig() config {
 		thermalVoltage:  defaultThermalVoltage,
 		overSampling:    defaultOversampling,
 		normalizeOutput: true,
+		newtonIters:     defaultNewtonIters,
 	}
 }
 
@@ -210,6 +223,21 @@ func WithNormalizeOutput(enabled bool) Option {
 	}
 }
 
+// WithNewtonIterations sets the number of Newton-Raphson iterations used by
+// VariantZDF. Values in [1, 8]; default 4. Ignored by other variants.
+func WithNewtonIterations(n int) Option {
+	return func(cfg *config) error {
+		if n < minNewtonIters || n > maxNewtonIters {
+			return fmt.Errorf("moog: newton iterations must be in [%d, %d]: %d",
+				minNewtonIters, maxNewtonIters, n)
+		}
+
+		cfg.newtonIters = n
+
+		return nil
+	}
+}
+
 // State contains explicit ladder runtime state for save/restore workflows.
 type State struct {
 	Stage      [4]float64
@@ -234,11 +262,16 @@ type Filter struct {
 	thermalVoltage  float64
 	overSampling    int
 	normalizeOutput bool
+	newtonIters     int
 
 	coefficient float64
 	feedback    float64
 	driveScale  float64
 	outputScale float64
+
+	// ZDF-specific pre-warped coefficients.
+	zdfG  float64 // tan(π * fc / fs)
+	zdfGK float64 // zdfG / (1 + zdfG)
 
 	state State
 
@@ -253,6 +286,7 @@ func New(sampleRate float64, opts ...Option) (*Filter, error) {
 	}
 
 	cfg := defaultConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
@@ -263,7 +297,7 @@ func New(sampleRate float64, opts ...Option) (*Filter, error) {
 		}
 	}
 
-	f := &Filter{
+	filter := &Filter{
 		sampleRate:      sampleRate,
 		variant:         cfg.variant,
 		cutoffHz:        cfg.cutoffHz,
@@ -274,13 +308,14 @@ func New(sampleRate float64, opts ...Option) (*Filter, error) {
 		thermalVoltage:  cfg.thermalVoltage,
 		overSampling:    cfg.overSampling,
 		normalizeOutput: cfg.normalizeOutput,
+		newtonIters:     cfg.newtonIters,
 	}
 
-	if err := f.rebuild(); err != nil {
+	if err := filter.rebuild(); err != nil {
 		return nil, err
 	}
 
-	return f, nil
+	return filter, nil
 }
 
 // SampleRate returns the sample rate in Hz.
@@ -312,6 +347,9 @@ func (f *Filter) Oversampling() int { return f.overSampling }
 
 // NormalizeOutput reports whether resonance-gain normalization is enabled.
 func (f *Filter) NormalizeOutput() bool { return f.normalizeOutput }
+
+// NewtonIterations returns the number of Newton-Raphson iterations (ZDF only).
+func (f *Filter) NewtonIterations() int { return f.newtonIters }
 
 // SetSampleRate updates sample rate and rebuilds coefficients.
 func (f *Filter) SetSampleRate(sampleRate float64) error {
@@ -420,6 +458,18 @@ func (f *Filter) SetNormalizeOutput(enabled bool) {
 	f.updateOutputScale()
 }
 
+// SetNewtonIterations updates the Newton-Raphson iteration count (ZDF only).
+func (f *Filter) SetNewtonIterations(n int) error {
+	if n < minNewtonIters || n > maxNewtonIters {
+		return fmt.Errorf("moog: newton iterations must be in [%d, %d]: %d",
+			minNewtonIters, maxNewtonIters, n)
+	}
+
+	f.newtonIters = n
+
+	return nil
+}
+
 // Reset clears ladder state.
 func (f *Filter) Reset() {
 	f.state = State{}
@@ -458,6 +508,7 @@ func (f *Filter) ProcessSample(input float64) float64 {
 	if f.overSampling <= 1 {
 		out := f.processCore(input)
 		f.state.PrevInput = input
+
 		return sanitizeOutput(out)
 	}
 
@@ -465,6 +516,7 @@ func (f *Filter) ProcessSample(input float64) float64 {
 	delta := (input - prev) / float64(f.overSampling)
 
 	var out float64
+
 	for i := range f.overSampling {
 		subInput := prev + delta*float64(i+1)
 
@@ -517,14 +569,16 @@ func (f *Filter) processCore(input float64) float64 {
 		return f.processClassic(input, fastTanhApprox, true)
 	case VariantHuovilainen:
 		return f.processHuovilainen(input)
+	case VariantZDF:
+		return f.processZDF(input)
 	default:
 		return 0
 	}
 }
 
 func (f *Filter) processClassic(input float64, tanhFn func(float64) float64, improved bool) float64 {
-	s := &f.state
-	newInput := input*f.inputGain - f.feedback*s.Stage[3]
+	state := &f.state
+	newInput := input*f.inputGain - f.feedback*state.Stage[3]
 
 	stageCoefficient := f.coefficient
 	if improved {
@@ -532,19 +586,19 @@ func (f *Filter) processClassic(input float64, tanhFn func(float64) float64, imp
 	}
 
 	tanhInput := tanhFn(f.driveScale * newInput)
-	s.Stage[0] = clipState(s.Stage[0] + stageCoefficient*(tanhInput-s.TanhLast[0]))
-	s.TanhLast[0] = tanhFn(f.driveScale * s.Stage[0])
+	state.Stage[0] = clipState(state.Stage[0] + stageCoefficient*(tanhInput-state.TanhLast[0]))
+	state.TanhLast[0] = tanhFn(f.driveScale * state.Stage[0])
 
-	s.Stage[1] = clipState(s.Stage[1] + stageCoefficient*(s.TanhLast[0]-s.TanhLast[1]))
-	s.TanhLast[1] = tanhFn(f.driveScale * s.Stage[1])
+	state.Stage[1] = clipState(state.Stage[1] + stageCoefficient*(state.TanhLast[0]-state.TanhLast[1]))
+	state.TanhLast[1] = tanhFn(f.driveScale * state.Stage[1])
 
-	s.Stage[2] = clipState(s.Stage[2] + stageCoefficient*(s.TanhLast[1]-s.TanhLast[2]))
-	s.TanhLast[2] = tanhFn(f.driveScale * s.Stage[2])
+	state.Stage[2] = clipState(state.Stage[2] + stageCoefficient*(state.TanhLast[1]-state.TanhLast[2]))
+	state.TanhLast[2] = tanhFn(f.driveScale * state.Stage[2])
 
-	s.Stage[3] = clipState(s.Stage[3] + stageCoefficient*(s.TanhLast[2]-tanhFn(f.driveScale*s.Stage[3])))
-	s.PrevOutput = s.Stage[3]
+	state.Stage[3] = clipState(state.Stage[3] + stageCoefficient*(state.TanhLast[2]-tanhFn(f.driveScale*state.Stage[3])))
+	state.PrevOutput = state.Stage[3]
 
-	return f.outputScale * s.Stage[3]
+	return f.outputScale * state.Stage[3]
 }
 
 func (f *Filter) processHuovilainen(input float64) float64 {
@@ -574,6 +628,118 @@ func (f *Filter) processHuovilainen(input float64) float64 {
 	s.PrevOutput = s.Stage[3]
 
 	return f.outputScale * s.Stage[3]
+}
+
+// processZDF implements the Zero-Delay Feedback ladder using the
+// Topology-Preserving Transform (Zavalishin 2012) with Newton-Raphson
+// iteration to solve the implicit nonlinear feedback loop (D'Angelo &
+// Välimäki 2014).
+//
+// Each stage models the analog integrator ds/dt = ωc * (f(x) - f(s))
+// where f(x) = tanh(shape*x)/shape is a normalized saturator (f(x) ≈ x for
+// small x). The TPT discretization yields:
+//
+//	v_i = g/((1+g)*shape) * (tanh(shape*x_i) - tanh(shape*s_i))
+//	y_i = v_i + s_i
+//	s_i_new = s_i + 2*v_i
+//
+// The normalization by 1/shape ensures that small-signal behavior matches the
+// linear one-pole (DC gain = 1, -3 dB at cutoff). The feedback path
+// u = input - k*y3 creates an implicit equation solved via Newton-Raphson.
+func (f *Filter) processZDF(input float64) float64 {
+	state := &f.state
+	gk := f.zdfGK // g/(1+g)
+	shape := f.driveScale
+	k := f.feedback
+	inp := input * f.inputGain
+
+	// Normalized coefficient: dividing by shape makes the small-signal gain
+	// equal to gk (matching the linear TPT one-pole).
+	vScale := gk / shape
+
+	// Cache state tanh values (invariant across Newton iterations).
+	s0, s1, s2, s3 := state.Stage[0], state.Stage[1], state.Stage[2], state.Stage[3]
+	tS0 := math.Tanh(shape * s0)
+	tS1 := math.Tanh(shape * s1)
+	tS2 := math.Tanh(shape * s2)
+	tS3 := math.Tanh(shape * s3)
+
+	// Initial estimate: previous output.
+	y3est := state.PrevOutput
+
+	for iter := 0; iter < f.newtonIters; iter++ {
+		u := inp - k*y3est
+
+		// Stage 0: dy0/du = gk * sech²(shape*u) (shape cancels in derivative).
+		tU := math.Tanh(shape * u)
+		v0 := vScale * (tU - tS0)
+		y0 := v0 + s0
+		d0 := gk * (1 - tU*tU)
+
+		// Stage 1
+		tY0 := math.Tanh(shape * y0)
+		v1 := vScale * (tY0 - tS1)
+		y1 := v1 + s1
+		d1 := gk * (1 - tY0*tY0)
+
+		// Stage 2
+		tY1 := math.Tanh(shape * y1)
+		v2 := vScale * (tY1 - tS2)
+		y2 := v2 + s2
+		d2 := gk * (1 - tY1*tY1)
+
+		// Stage 3
+		tY2 := math.Tanh(shape * y2)
+		v3 := vScale * (tY2 - tS3)
+		y3 := v3 + s3
+		d3 := gk * (1 - tY2*tY2)
+
+		// Newton update: F(y3est) = y3 - y3est, J = dF/dy3est.
+		residual := y3 - y3est
+		J := d0*d1*d2*d3*(-k) - 1.0
+
+		if math.Abs(residual) < 1e-15 {
+			y3est = y3
+
+			break
+		}
+
+		if math.Abs(J) < 1e-15 {
+			break
+		}
+
+		y3est -= residual / J
+	}
+
+	// Final forward pass with converged y3est; update states.
+	u := inp - k*y3est
+
+	tU := math.Tanh(shape * u)
+	v0 := vScale * (tU - tS0)
+	y0 := v0 + s0
+
+	tY0 := math.Tanh(shape * y0)
+	v1 := vScale * (tY0 - tS1)
+	y1 := v1 + s1
+
+	tY1 := math.Tanh(shape * y1)
+	v2 := vScale * (tY1 - tS2)
+	y2 := v2 + s2
+
+	tY2 := math.Tanh(shape * y2)
+	v3 := vScale * (tY2 - tS3)
+	y3 := v3 + s3
+
+	state.Stage[0] = clipState(s0 + 2*v0)
+	state.Stage[1] = clipState(s1 + 2*v1)
+	state.Stage[2] = clipState(s2 + 2*v2)
+	state.Stage[3] = clipState(s3 + 2*v3)
+	state.TanhLast[0] = math.Tanh(shape * state.Stage[0])
+	state.TanhLast[1] = math.Tanh(shape * state.Stage[1])
+	state.TanhLast[2] = math.Tanh(shape * state.Stage[2])
+	state.PrevOutput = y3
+
+	return f.outputScale * y3
 }
 
 func (f *Filter) rebuild() error {
@@ -621,7 +787,8 @@ func (f *Filter) rebuild() error {
 	f.feedback = f.resonance
 	f.coefficient = 2 * f.thermalVoltage * (1 - math.Exp(-2*math.Pi*fc))
 
-	if f.variant == VariantHuovilainen {
+	switch f.variant {
+	case VariantHuovilainen:
 		fcr := 1.8730*fc*fc*fc + 0.4955*fc*fc - 0.6490*fc + 0.9988
 		if fcr < 0 {
 			fcr = 0
@@ -635,6 +802,12 @@ func (f *Filter) rebuild() error {
 		}
 
 		f.feedback = f.resonance * resonanceComp
+	case VariantZDF:
+		// Pre-warped coefficient: exact frequency mapping via bilinear transform.
+		// No polynomial correction needed — tan(π*fc/fs) is exact by construction.
+		f.zdfG = math.Tan(math.Pi * fc)
+		f.zdfGK = f.zdfG / (1 + f.zdfG)
+		f.feedback = f.resonance
 	}
 
 	f.updateOutputScale()
@@ -659,10 +832,12 @@ func (f *Filter) buildAntiAliasFilters() {
 	if f.overSampling <= 1 {
 		f.antiAliasUp = nil
 		f.antiAliasDown = nil
+
 		return
 	}
 
 	osRate := f.sampleRate * float64(f.overSampling)
+
 	antiAliasHz := f.sampleRate * 0.225
 	if antiAliasHz >= osRate*0.5 {
 		antiAliasHz = osRate * 0.225
@@ -733,7 +908,7 @@ func (s *Stereo) ProcessFramesInPlace(frames [][2]float64) {
 }
 
 func validVariant(variant Variant) bool {
-	return variant >= VariantClassic && variant <= VariantHuovilainen
+	return variant >= VariantClassic && variant <= VariantZDF
 }
 
 func validOversampling(factor int) bool {

@@ -44,7 +44,9 @@ func WithBitDepth(bits int) Option {
 		if bits < minBitDepth || bits > maxBitDepth {
 			return fmt.Errorf("dither: bit depth must be in [%d, %d]: %d", minBitDepth, maxBitDepth, bits)
 		}
+
 		cfg.bitDepth = bits
+
 		return nil
 	}
 }
@@ -55,7 +57,9 @@ func WithDitherType(dt DitherType) Option {
 		if !dt.Valid() {
 			return fmt.Errorf("dither: invalid dither type: %d", dt)
 		}
+
 		cfg.ditherType = dt
+
 		return nil
 	}
 }
@@ -66,7 +70,9 @@ func WithDitherAmplitude(amp float64) Option {
 		if amp < 0 || math.IsNaN(amp) || math.IsInf(amp, 0) {
 			return fmt.Errorf("dither: amplitude must be >= 0 and finite: %f", amp)
 		}
+
 		cfg.ditherAmplitude = amp
+
 		return nil
 	}
 }
@@ -93,7 +99,9 @@ func WithFIRPreset(p Preset) Option {
 		if !p.Valid() {
 			return fmt.Errorf("dither: invalid preset: %d", p)
 		}
+
 		cfg.shaper = NewFIRShaper(p.Coefficients())
+
 		return nil
 	}
 }
@@ -114,7 +122,9 @@ func WithIIRShelf(freq float64) Option {
 		if freq <= 0 || math.IsNaN(freq) || math.IsInf(freq, 0) {
 			return fmt.Errorf("dither: IIR shelf frequency must be > 0 and finite: %f", freq)
 		}
+
 		cfg.iirShelfFreq = freq
+
 		return nil
 	}
 }

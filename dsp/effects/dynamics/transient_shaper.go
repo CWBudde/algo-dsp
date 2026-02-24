@@ -147,6 +147,7 @@ func (t *TransientShaper) ProcessSample(input float64) float64 {
 	t.envelope = prevEnv + coeff*(x-prevEnv)
 
 	delta := t.envelope - prevEnv
+
 	norm := math.Abs(delta) / (prevEnv + 1e-9)
 	if norm > 1 {
 		norm = 1

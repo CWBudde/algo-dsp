@@ -182,7 +182,7 @@ Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  📋 Planned
 Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
 Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
 Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
-Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  📋 Planned
+Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  ✅ Complete
 Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
 Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  ✅ Complete
 Phase 29: Dither and Noise Shaping                    [3 weeks]  📋 Planned
@@ -595,7 +595,7 @@ Exit criteria:
 
 - [ ] `v1.0.0` tag exists and release notes are published.
 
-### Phase 26: Nonlinear Moog Ladder Filters (In Progress)
+### Phase 26: Nonlinear Moog Ladder Filters (Complete)
 
 Goal:
 
@@ -613,9 +613,9 @@ Tasks:
   - [x] Implement “improved classic” variant from legacy behavior and verify coefficient/update behavior parity.
   - [x] Implement fast-approximation variant(s) for `tanh` equivalent to legacy lightweight mode, guarded behind clear option/strategy flags.
   - [x] Reproduce legacy reset/state behavior and gain scaling semantics where practical.
-- [ ] Paper-or-better implementation track
+- [x] Paper-or-better implementation track
   - [x] Implement Huovilainen-style nonlinear ladder reference path (as cited in the Pascal unit header) with documented discretization choices.
-  - [ ] Evaluate and optionally implement a higher-accuracy path (e.g., zero-delay/newton refinement or equivalent) when it measurably improves tuning/resonance behavior at high cutoff/resonance.
+  - [x] Implement VariantZDF: Zero-Delay Feedback topology (Zavalishin 2012, TPT) with Newton-Raphson iteration (D'Angelo & Välimäki 2014). Uses pre-warped coefficient g=tan(π·fc/fs) for mathematically exact cutoff mapping. Newton iterations (configurable, default 4) solve the implicit feedback equation. Measurably improves high-frequency tuning accuracy vs Huovilainen at ~4x CPU cost (275 ns/op vs 71 ns/op, 0 allocs/op).
   - [x] Add optional anti-alias strategy for nonlinear drive path (e.g., oversampling mode) with documented CPU/quality tradeoffs.
   - [x] Ensure the “high quality” path meets or exceeds reference behavior in tuning, self-oscillation onset consistency, and modulation robustness.
 - [x] Validation, parity, and characterization

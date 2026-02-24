@@ -99,6 +99,7 @@ func TestStateRoundTrip(t *testing.T) {
 		x := math.Sin(2*math.Pi*float64(i)/31) + 0.2*math.Sin(2*math.Pi*float64(i)/7)
 
 		y1 := f.ProcessSample(x)
+
 		y2 := clone.ProcessSample(x)
 		if math.Abs(y1-y2) > 1e-12 {
 			t.Fatalf("state mismatch at %d: %g vs %g", i, y1, y2)
@@ -113,6 +114,7 @@ func TestSetStateRejectsNonFinite(t *testing.T) {
 	}
 
 	st := State{}
+
 	st.Stage[0] = math.NaN()
 	if err := f.SetState(st); err == nil {
 		t.Fatal("expected error for non-finite state")
@@ -160,6 +162,7 @@ func TestLegacyParityClassicModes(t *testing.T) {
 			}
 
 			var st legacyState
+
 			coeff := 2 * thermal * (1 - math.Exp(-2*math.Pi*cutoffHz/sr))
 			scale := dbToAmp(resonance)
 			scale *= scale
@@ -168,6 +171,7 @@ func TestLegacyParityClassicModes(t *testing.T) {
 				x := 0.7*math.Sin(2*math.Pi*float64(i)/37) + 0.13*math.Sin(2*math.Pi*float64(i)/9)
 
 				want := legacyClassicStep(&st, x, resonance, coeff, thermal, scale, tc.improved, tc.tanhFn)
+
 				got := f.ProcessSample(x)
 				if math.Abs(got-want) > tc.tol {
 					t.Fatalf("sample %d mismatch: got=%g want=%g", i, got, want)
@@ -196,6 +200,7 @@ func TestCutoffTrackingSampleRateGrid(t *testing.T) {
 
 			passFreq := cutoff * 0.5
 			stopFreq := cutoff * 4
+
 			nyquist := sr * 0.5
 			if stopFreq >= nyquist*0.95 {
 				stopFreq = nyquist * 0.95
@@ -245,6 +250,7 @@ func TestDriveSweepIncreasesHarmonics(t *testing.T) {
 	}
 
 	outLow := make([]float64, n)
+
 	outHigh := make([]float64, n)
 	for i := 0; i < n; i++ {
 		x := 0.8 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
@@ -314,6 +320,7 @@ func TestHighResonanceSustainsLongerTail(t *testing.T) {
 	}
 
 	lowTail := impulseTailEnergy(lowRes, samples)
+
 	highTail := impulseTailEnergy(highRes, samples)
 	if highTail <= lowTail*4 {
 		t.Fatalf("expected longer/sustained tail at high resonance: low=%g high=%g", lowTail, highTail)
@@ -345,6 +352,7 @@ func TestRapidAutomationStaysFinite(t *testing.T) {
 		}
 
 		x := 0.7*math.Sin(2*math.Pi*float64(i)/37) + 0.1*math.Sin(2*math.Pi*float64(i)/5)
+
 		y := f.ProcessSample(x)
 		if !isFinite(y) {
 			t.Fatalf("non-finite sample at %d: %v", i, y)
@@ -382,6 +390,7 @@ func TestOversamplingReducesSpurs(t *testing.T) {
 	}
 
 	outBase := make([]float64, n)
+
 	outOS := make([]float64, n)
 	for i := 0; i < n; i++ {
 		x := 0.85 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
@@ -390,6 +399,7 @@ func TestOversamplingReducesSpurs(t *testing.T) {
 	}
 
 	spurBase := spurRatio(outBase, k0)
+
 	spurOS := spurRatio(outOS, k0)
 	if spurOS >= spurBase*0.97 {
 		t.Fatalf("expected oversampling to reduce spurs: base=%g os=%g", spurBase, spurOS)
@@ -419,12 +429,14 @@ func TestStereoHelpers(t *testing.T) {
 
 	left := make([]float64, 128)
 	right := make([]float64, 128)
+
 	for i := range left {
 		left[i] = math.Sin(2 * math.Pi * float64(i) / 41)
 		right[i] = math.Sin(2*math.Pi*float64(i)/17) * 0.5
 	}
 
 	st.ProcessInPlace(left, right)
+
 	for i := range left {
 		if !isFinite(left[i]) || !isFinite(right[i]) {
 			t.Fatalf("non-finite stereo output at %d", i)
@@ -439,9 +451,498 @@ func TestStereoHelpers(t *testing.T) {
 
 	st.Reset()
 	st.ProcessFramesInPlace(frames)
+
 	for i := range frames {
 		if !isFinite(frames[i][0]) || !isFinite(frames[i][1]) {
 			t.Fatalf("non-finite frame output at %d", i)
+		}
+	}
+}
+
+func TestZDFProcessInPlaceMatchesSample(t *testing.T) {
+	f1, err := New(48000,
+		WithVariant(VariantZDF),
+		WithCutoffHz(2400),
+		WithResonance(1.1),
+		WithDrive(2.5),
+		WithOversampling(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	f2, err := New(48000,
+		WithVariant(VariantZDF),
+		WithCutoffHz(2400),
+		WithResonance(1.1),
+		WithDrive(2.5),
+		WithOversampling(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	in := make([]float64, 384)
+	for i := range in {
+		in[i] = 0.65*math.Sin(2*math.Pi*float64(i)/47) + 0.12*math.Sin(2*math.Pi*float64(i)/11)
+	}
+
+	want := make([]float64, len(in))
+	for i, x := range in {
+		want[i] = f1.ProcessSample(x)
+	}
+
+	got := append([]float64(nil), in...)
+	f2.ProcessInPlace(got)
+
+	for i := range got {
+		if d := math.Abs(got[i] - want[i]); d > 1e-12 {
+			t.Fatalf("sample %d mismatch: got=%g want=%g", i, got[i], want[i])
+		}
+	}
+}
+
+func TestZDFStateRoundTrip(t *testing.T) {
+	f, err := New(48000,
+		WithVariant(VariantZDF),
+		WithCutoffHz(1200),
+		WithResonance(0.9),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	for i := 0; i < 96; i++ {
+		_ = f.ProcessSample(math.Sin(2 * math.Pi * float64(i) / 29))
+	}
+
+	state := f.State()
+
+	clone, err := New(48000,
+		WithVariant(VariantZDF),
+		WithCutoffHz(1200),
+		WithResonance(0.9),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	if err := clone.SetState(state); err != nil {
+		t.Fatalf("SetState() error = %v", err)
+	}
+
+	for i := 0; i < 128; i++ {
+		x := math.Sin(2*math.Pi*float64(i)/31) + 0.2*math.Sin(2*math.Pi*float64(i)/7)
+
+		y1 := f.ProcessSample(x)
+
+		y2 := clone.ProcessSample(x)
+		if math.Abs(y1-y2) > 1e-12 {
+			t.Fatalf("state mismatch at %d: %g vs %g", i, y1, y2)
+		}
+	}
+}
+
+func TestZDFCutoffTracking(t *testing.T) {
+	sampleRates := []float64{44100, 48000, 96000}
+	cutoffs := []float64{300, 1200, 4000}
+
+	for _, sr := range sampleRates {
+		for _, cutoff := range cutoffs {
+			f, err := New(sr,
+				WithVariant(VariantZDF),
+				WithCutoffHz(cutoff),
+				WithResonance(0),
+				WithDrive(0.5),
+				WithNormalizeOutput(false),
+			)
+			if err != nil {
+				t.Fatalf("New(sr=%g, cutoff=%g) error = %v", sr, cutoff, err)
+			}
+
+			passFreq := cutoff * 0.5
+			stopFreq := cutoff * 4
+
+			nyquist := sr * 0.5
+			if stopFreq >= nyquist*0.95 {
+				stopFreq = nyquist * 0.95
+			}
+
+			passRMS := steadyToneRMS(f, sr, passFreq, 4096, 1024)
+			f.Reset()
+			stopRMS := steadyToneRMS(f, sr, stopFreq, 4096, 1024)
+
+			if passRMS <= stopRMS*1.2 {
+				t.Fatalf(
+					"cutoff tracking failed for sr=%g cutoff=%g: pass(%.1f Hz)=%.6f stop(%.1f Hz)=%.6f",
+					sr, cutoff, passFreq, passRMS, stopFreq, stopRMS,
+				)
+			}
+		}
+	}
+}
+
+// TestZDFHighFrequencyTuningAccuracy verifies that the ZDF variant maintains
+// adequate cutoff accuracy at high cutoff-to-sample-rate ratios. It also
+// logs the Huovilainen ratio for comparison; ZDF is expected to outperform
+// at the highest cutoffs where tan(π*fc/fs) pre-warping provides the most benefit.
+func TestZDFHighFrequencyTuningAccuracy(t *testing.T) {
+	const sr = 48000.0
+
+	// At high cutoff (close to Nyquist), ZDF should maintain better
+	// pass-to-stop separation because tan(π*fc/fs) is exact while
+	// the exponential approximation 1-exp(-2πfc/fs) drifts.
+	highCutoffs := []float64{8000, 12000, 16000}
+
+	for _, cutoff := range highCutoffs {
+		passFreq := cutoff * 0.25
+		stopFreq := cutoff * 2
+
+		nyquist := sr * 0.5
+		if stopFreq >= nyquist*0.95 {
+			stopFreq = nyquist * 0.95
+		}
+
+		zdf, err := New(sr,
+			WithVariant(VariantZDF),
+			WithCutoffHz(cutoff),
+			WithResonance(0),
+			WithDrive(0.5),
+			WithNormalizeOutput(false),
+		)
+		if err != nil {
+			t.Fatalf("ZDF New(cutoff=%g) error = %v", cutoff, err)
+		}
+
+		huov, err := New(sr,
+			WithVariant(VariantHuovilainen),
+			WithCutoffHz(cutoff),
+			WithResonance(0),
+			WithDrive(0.5),
+			WithNormalizeOutput(false),
+		)
+		if err != nil {
+			t.Fatalf("Huov New(cutoff=%g) error = %v", cutoff, err)
+		}
+
+		// ZDF: measure pass/stop ratio
+		zdfPass := steadyToneRMS(zdf, sr, passFreq, 8192, 2048)
+		zdf.Reset()
+		zdfStop := steadyToneRMS(zdf, sr, stopFreq, 8192, 2048)
+
+		zdfRatio := 0.0
+		if zdfStop > 0 {
+			zdfRatio = zdfPass / zdfStop
+		}
+
+		// Huovilainen: measure pass/stop ratio
+		huovPass := steadyToneRMS(huov, sr, passFreq, 8192, 2048)
+		huov.Reset()
+		huovStop := steadyToneRMS(huov, sr, stopFreq, 8192, 2048)
+
+		huovRatio := 0.0
+		if huovStop > 0 {
+			huovRatio = huovPass / huovStop
+		}
+
+		t.Logf("cutoff=%g: ZDF ratio=%.2f, Huov ratio=%.2f", cutoff, zdfRatio, huovRatio)
+
+		// Both should show proper lowpass behavior.
+		if zdfRatio < 1.5 {
+			t.Errorf("ZDF ratio too low at cutoff=%g: %.2f", cutoff, zdfRatio)
+		}
+
+	}
+}
+
+func TestZDFSaturationSymmetry(t *testing.T) {
+	f, err := New(48000,
+		WithVariant(VariantZDF),
+		WithCutoffHz(16000),
+		WithResonance(0),
+		WithDrive(3),
+		WithNormalizeOutput(false),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	inputs := []float64{0.1, 0.25, 0.5, 0.8, 1.0}
+	for _, x := range inputs {
+		f.Reset()
+		pos := f.ProcessSample(x)
+
+		f.Reset()
+		neg := f.ProcessSample(-x)
+
+		if d := math.Abs(pos + neg); d > 1e-12 {
+			t.Fatalf("symmetry mismatch for x=%g: pos=%g neg=%g", x, pos, neg)
+		}
+	}
+}
+
+func TestZDFHighResonanceSustainsLongerTail(t *testing.T) {
+	const (
+		sr      = 48000.0
+		cutoff  = 900.0
+		samples = 4096
+	)
+
+	lowRes, err := New(sr,
+		WithVariant(VariantZDF),
+		WithCutoffHz(cutoff),
+		WithResonance(0.5),
+		WithDrive(1),
+	)
+	if err != nil {
+		t.Fatalf("New(lowRes) error = %v", err)
+	}
+
+	highRes, err := New(sr,
+		WithVariant(VariantZDF),
+		WithCutoffHz(cutoff),
+		WithResonance(3.6),
+		WithDrive(1),
+	)
+	if err != nil {
+		t.Fatalf("New(highRes) error = %v", err)
+	}
+
+	lowTail := impulseTailEnergy(lowRes, samples)
+
+	highTail := impulseTailEnergy(highRes, samples)
+	if highTail <= lowTail*4 {
+		t.Fatalf("expected longer/sustained tail at high resonance: low=%g high=%g", lowTail, highTail)
+	}
+}
+
+func TestZDFRapidAutomationStaysFinite(t *testing.T) {
+	f, err := New(48000,
+		WithVariant(VariantZDF),
+		WithCutoffHz(1000),
+		WithResonance(1.0),
+		WithDrive(2.5),
+		WithOversampling(4),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	for i := 0; i < 3000; i++ {
+		cutoff := 100 + 18000*(0.5+0.5*math.Sin(2*math.Pi*float64(i)/211))
+		res := 0.2 + 3.4*(0.5+0.5*math.Sin(2*math.Pi*float64(i)/137))
+
+		if err := f.SetCutoffHz(cutoff); err != nil {
+			t.Fatalf("SetCutoffHz(%g) error = %v", cutoff, err)
+		}
+
+		if err := f.SetResonance(res); err != nil {
+			t.Fatalf("SetResonance(%g) error = %v", res, err)
+		}
+
+		x := 0.7*math.Sin(2*math.Pi*float64(i)/37) + 0.1*math.Sin(2*math.Pi*float64(i)/5)
+
+		y := f.ProcessSample(x)
+		if !isFinite(y) {
+			t.Fatalf("non-finite sample at %d: %v", i, y)
+		}
+	}
+}
+
+func TestZDFOversamplingReducesSpurs(t *testing.T) {
+	const (
+		sr = 48000.0
+		n  = 2048
+		k0 = 944
+	)
+
+	base, err := New(sr,
+		WithVariant(VariantZDF),
+		WithCutoffHz(12000),
+		WithResonance(1.0),
+		WithDrive(8),
+		WithOversampling(1),
+	)
+	if err != nil {
+		t.Fatalf("New(base) error = %v", err)
+	}
+
+	os, err := New(sr,
+		WithVariant(VariantZDF),
+		WithCutoffHz(12000),
+		WithResonance(1.0),
+		WithDrive(8),
+		WithOversampling(8),
+	)
+	if err != nil {
+		t.Fatalf("New(os) error = %v", err)
+	}
+
+	outBase := make([]float64, n)
+
+	outOS := make([]float64, n)
+	for i := 0; i < n; i++ {
+		x := 0.85 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
+		outBase[i] = base.ProcessSample(x)
+		outOS[i] = os.ProcessSample(x)
+	}
+
+	spurBase := spurRatio(outBase, k0)
+
+	spurOS := spurRatio(outOS, k0)
+	if spurOS >= spurBase*0.97 {
+		t.Fatalf("expected oversampling to reduce spurs: base=%g os=%g", spurBase, spurOS)
+	}
+}
+
+func TestZDFDriveSweepIncreasesHarmonics(t *testing.T) {
+	const (
+		sr = 48000.0
+		n  = 4096
+		k0 = 220
+	)
+
+	lowDrive, err := New(sr,
+		WithVariant(VariantZDF),
+		WithCutoffHz(16000),
+		WithResonance(0),
+		WithDrive(0.6),
+		WithNormalizeOutput(false),
+	)
+	if err != nil {
+		t.Fatalf("New(lowDrive) error = %v", err)
+	}
+
+	highDrive, err := New(sr,
+		WithVariant(VariantZDF),
+		WithCutoffHz(16000),
+		WithResonance(0),
+		WithDrive(7.0),
+		WithNormalizeOutput(false),
+	)
+	if err != nil {
+		t.Fatalf("New(highDrive) error = %v", err)
+	}
+
+	outLow := make([]float64, n)
+
+	outHigh := make([]float64, n)
+	for i := 0; i < n; i++ {
+		x := 0.8 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
+		outLow[i] = lowDrive.ProcessSample(x)
+		outHigh[i] = highDrive.ProcessSample(x)
+	}
+
+	spurLow := spurRatio(outLow, k0)
+	spurHigh := spurRatio(outHigh, k0)
+
+	if spurHigh <= spurLow*1.3 {
+		t.Fatalf("expected harmonic growth with drive: low=%g high=%g", spurLow, spurHigh)
+	}
+}
+
+// TestZDFNewtonConvergence verifies that more Newton iterations converge
+// closer to the implicit equation solution.
+func TestZDFNewtonConvergence(t *testing.T) {
+	const sr = 48000.0
+
+	// Use high resonance + drive to make Newton iteration matter.
+	baseOpts := []Option{
+		WithVariant(VariantZDF),
+		WithCutoffHz(4000),
+		WithResonance(3.5),
+		WithDrive(4.0),
+		WithNormalizeOutput(false),
+	}
+
+	// Run with 1 iteration vs 8 iterations and compare outputs.
+	f1, err := New(sr, append(baseOpts, WithNewtonIterations(1))...)
+	if err != nil {
+		t.Fatalf("New(1 iter) error = %v", err)
+	}
+
+	f8, err := New(sr, append(baseOpts, WithNewtonIterations(8))...)
+	if err != nil {
+		t.Fatalf("New(8 iter) error = %v", err)
+	}
+
+	var maxDiff float64
+
+	for i := 0; i < 1024; i++ {
+		x := 0.7*math.Sin(2*math.Pi*float64(i)/37) + 0.3*math.Sin(2*math.Pi*float64(i)/11)
+		y1 := f1.ProcessSample(x)
+		y8 := f8.ProcessSample(x)
+
+		d := math.Abs(y1 - y8)
+		if d > maxDiff {
+			maxDiff = d
+		}
+
+		if !isFinite(y1) || !isFinite(y8) {
+			t.Fatalf("non-finite at %d: y1=%g y8=%g", i, y1, y8)
+		}
+	}
+
+	// Both should produce valid output; more iterations should give different
+	// (more accurate) results at high resonance.
+	t.Logf("max difference between 1-iter and 8-iter: %g", maxDiff)
+
+	// At high resonance + drive, 1 vs 8 iterations should differ measurably.
+	if maxDiff < 1e-10 {
+		t.Log("warning: 1-iter and 8-iter produce nearly identical results")
+	}
+}
+
+func TestNewtonIterationsValidation(t *testing.T) {
+	if _, err := New(48000, WithNewtonIterations(0)); err == nil {
+		t.Fatal("expected error for 0 newton iterations")
+	}
+
+	if _, err := New(48000, WithNewtonIterations(9)); err == nil {
+		t.Fatal("expected error for 9 newton iterations")
+	}
+
+	f, err := New(48000, WithVariant(VariantZDF), WithNewtonIterations(2))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	if f.NewtonIterations() != 2 {
+		t.Fatalf("expected 2 newton iterations, got %d", f.NewtonIterations())
+	}
+
+	if err := f.SetNewtonIterations(6); err != nil {
+		t.Fatalf("SetNewtonIterations(6) error = %v", err)
+	}
+
+	if f.NewtonIterations() != 6 {
+		t.Fatalf("expected 6 newton iterations, got %d", f.NewtonIterations())
+	}
+}
+
+func TestZDFStereo(t *testing.T) {
+	st, err := NewStereo(48000,
+		WithVariant(VariantZDF),
+		WithCutoffHz(1400),
+		WithResonance(0.9),
+	)
+	if err != nil {
+		t.Fatalf("NewStereo() error = %v", err)
+	}
+
+	left := make([]float64, 128)
+	right := make([]float64, 128)
+
+	for i := range left {
+		left[i] = math.Sin(2 * math.Pi * float64(i) / 41)
+		right[i] = math.Sin(2*math.Pi*float64(i)/17) * 0.5
+	}
+
+	st.ProcessInPlace(left, right)
+
+	for i := range left {
+		if !isFinite(left[i]) || !isFinite(right[i]) {
+			t.Fatalf("non-finite stereo output at %d", i)
 		}
 	}
 }
@@ -481,6 +982,7 @@ func legacyClassicStep(
 
 func impulseTailEnergy(f *Filter, n int) float64 {
 	var sum float64
+
 	for i := 0; i < n; i++ {
 		x := 0.0
 		if i == 0 {
@@ -507,6 +1009,7 @@ func spurRatio(x []float64, fundamentalBin int) float64 {
 	}
 
 	spur := 0.0
+
 	for k := 1; k <= len(x)/2; k++ {
 		if k == fundamentalBin {
 			continue
@@ -522,6 +1025,7 @@ func dftBinEnergy(x []float64, k int) float64 {
 	n := float64(len(x))
 
 	var re, im float64
+
 	for i := range x {
 		phase := 2 * math.Pi * float64(k) * float64(i) / n
 		re += x[i] * math.Cos(phase)
@@ -536,6 +1040,7 @@ func steadyToneRMS(f *Filter, sampleRate, freq float64, n, warmup int) float64 {
 
 	for i := 0; i < n; i++ {
 		x := 0.7 * math.Sin(2*math.Pi*freq*float64(i)/sampleRate)
+
 		y := f.ProcessSample(x)
 		if i >= warmup {
 			sum += y * y

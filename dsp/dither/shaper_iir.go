@@ -30,10 +30,13 @@ func NewIIRShelfShaper(freq, sampleRate float64) (*IIRShelfShaper, error) {
 	if freq <= 0 || math.IsNaN(freq) || math.IsInf(freq, 0) {
 		return nil, fmt.Errorf("dither: IIR shelf frequency must be > 0 and finite: %f", freq)
 	}
+
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return nil, fmt.Errorf("dither: IIR shelf sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	coeffs := design.LowShelf(freq, iirShelfDefaultGainDB, iirShelfDefaultQ, sampleRate)
+
 	return &IIRShelfShaper{
 		filter: biquad.NewSection(coeffs),
 	}, nil
