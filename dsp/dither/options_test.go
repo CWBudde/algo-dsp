@@ -117,7 +117,7 @@ func TestWithFIRPresetCreatesFIRShaper(t *testing.T) {
 	}
 
 	// Verify it's an FIR shaper by checking interface.
-	var _ NoiseShaper = cfg.shaper
+	_ = cfg.shaper
 }
 
 func TestWithNoiseShaper(t *testing.T) {

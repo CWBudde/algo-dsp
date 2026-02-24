@@ -286,6 +286,7 @@ func New(sampleRate float64, opts ...Option) (*Filter, error) {
 	}
 
 	cfg := defaultConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
@@ -296,7 +297,7 @@ func New(sampleRate float64, opts ...Option) (*Filter, error) {
 		}
 	}
 
-	f := &Filter{
+	filter := &Filter{
 		sampleRate:      sampleRate,
 		variant:         cfg.variant,
 		cutoffHz:        cfg.cutoffHz,
@@ -310,11 +311,11 @@ func New(sampleRate float64, opts ...Option) (*Filter, error) {
 		newtonIters:     cfg.newtonIters,
 	}
 
-	if err := f.rebuild(); err != nil {
+	if err := filter.rebuild(); err != nil {
 		return nil, err
 	}
 
-	return f, nil
+	return filter, nil
 }
 
 // SampleRate returns the sample rate in Hz.
@@ -507,6 +508,7 @@ func (f *Filter) ProcessSample(input float64) float64 {
 	if f.overSampling <= 1 {
 		out := f.processCore(input)
 		f.state.PrevInput = input
+
 		return sanitizeOutput(out)
 	}
 
@@ -514,6 +516,7 @@ func (f *Filter) ProcessSample(input float64) float64 {
 	delta := (input - prev) / float64(f.overSampling)
 
 	var out float64
+
 	for i := range f.overSampling {
 		subInput := prev + delta*float64(i+1)
 
@@ -574,8 +577,8 @@ func (f *Filter) processCore(input float64) float64 {
 }
 
 func (f *Filter) processClassic(input float64, tanhFn func(float64) float64, improved bool) float64 {
-	s := &f.state
-	newInput := input*f.inputGain - f.feedback*s.Stage[3]
+	state := &f.state
+	newInput := input*f.inputGain - f.feedback*state.Stage[3]
 
 	stageCoefficient := f.coefficient
 	if improved {
@@ -583,19 +586,19 @@ func (f *Filter) processClassic(input float64, tanhFn func(float64) float64, imp
 	}
 
 	tanhInput := tanhFn(f.driveScale * newInput)
-	s.Stage[0] = clipState(s.Stage[0] + stageCoefficient*(tanhInput-s.TanhLast[0]))
-	s.TanhLast[0] = tanhFn(f.driveScale * s.Stage[0])
+	state.Stage[0] = clipState(state.Stage[0] + stageCoefficient*(tanhInput-state.TanhLast[0]))
+	state.TanhLast[0] = tanhFn(f.driveScale * state.Stage[0])
 
-	s.Stage[1] = clipState(s.Stage[1] + stageCoefficient*(s.TanhLast[0]-s.TanhLast[1]))
-	s.TanhLast[1] = tanhFn(f.driveScale * s.Stage[1])
+	state.Stage[1] = clipState(state.Stage[1] + stageCoefficient*(state.TanhLast[0]-state.TanhLast[1]))
+	state.TanhLast[1] = tanhFn(f.driveScale * state.Stage[1])
 
-	s.Stage[2] = clipState(s.Stage[2] + stageCoefficient*(s.TanhLast[1]-s.TanhLast[2]))
-	s.TanhLast[2] = tanhFn(f.driveScale * s.Stage[2])
+	state.Stage[2] = clipState(state.Stage[2] + stageCoefficient*(state.TanhLast[1]-state.TanhLast[2]))
+	state.TanhLast[2] = tanhFn(f.driveScale * state.Stage[2])
 
-	s.Stage[3] = clipState(s.Stage[3] + stageCoefficient*(s.TanhLast[2]-tanhFn(f.driveScale*s.Stage[3])))
-	s.PrevOutput = s.Stage[3]
+	state.Stage[3] = clipState(state.Stage[3] + stageCoefficient*(state.TanhLast[2]-tanhFn(f.driveScale*state.Stage[3])))
+	state.PrevOutput = state.Stage[3]
 
-	return f.outputScale * s.Stage[3]
+	return f.outputScale * state.Stage[3]
 }
 
 func (f *Filter) processHuovilainen(input float64) float64 {
@@ -644,7 +647,7 @@ func (f *Filter) processHuovilainen(input float64) float64 {
 // linear one-pole (DC gain = 1, -3 dB at cutoff). The feedback path
 // u = input - k*y3 creates an implicit equation solved via Newton-Raphson.
 func (f *Filter) processZDF(input float64) float64 {
-	s := &f.state
+	state := &f.state
 	gk := f.zdfGK // g/(1+g)
 	shape := f.driveScale
 	k := f.feedback
@@ -655,14 +658,14 @@ func (f *Filter) processZDF(input float64) float64 {
 	vScale := gk / shape
 
 	// Cache state tanh values (invariant across Newton iterations).
-	s0, s1, s2, s3 := s.Stage[0], s.Stage[1], s.Stage[2], s.Stage[3]
+	s0, s1, s2, s3 := state.Stage[0], state.Stage[1], state.Stage[2], state.Stage[3]
 	tS0 := math.Tanh(shape * s0)
 	tS1 := math.Tanh(shape * s1)
 	tS2 := math.Tanh(shape * s2)
 	tS3 := math.Tanh(shape * s3)
 
 	// Initial estimate: previous output.
-	y3est := s.PrevOutput
+	y3est := state.PrevOutput
 
 	for iter := 0; iter < f.newtonIters; iter++ {
 		u := inp - k*y3est
@@ -727,15 +730,14 @@ func (f *Filter) processZDF(input float64) float64 {
 	v3 := vScale * (tY2 - tS3)
 	y3 := v3 + s3
 
-	_ = y0
-	_ = y1
-	_ = y2
-
-	s.Stage[0] = clipState(s0 + 2*v0)
-	s.Stage[1] = clipState(s1 + 2*v1)
-	s.Stage[2] = clipState(s2 + 2*v2)
-	s.Stage[3] = clipState(s3 + 2*v3)
-	s.PrevOutput = y3
+	state.Stage[0] = clipState(s0 + 2*v0)
+	state.Stage[1] = clipState(s1 + 2*v1)
+	state.Stage[2] = clipState(s2 + 2*v2)
+	state.Stage[3] = clipState(s3 + 2*v3)
+	state.TanhLast[0] = math.Tanh(shape * state.Stage[0])
+	state.TanhLast[1] = math.Tanh(shape * state.Stage[1])
+	state.TanhLast[2] = math.Tanh(shape * state.Stage[2])
+	state.PrevOutput = y3
 
 	return f.outputScale * y3
 }
@@ -830,10 +832,12 @@ func (f *Filter) buildAntiAliasFilters() {
 	if f.overSampling <= 1 {
 		f.antiAliasUp = nil
 		f.antiAliasDown = nil
+
 		return
 	}
 
 	osRate := f.sampleRate * float64(f.overSampling)
+
 	antiAliasHz := f.sampleRate * 0.225
 	if antiAliasHz >= osRate*0.5 {
 		antiAliasHz = osRate * 0.225

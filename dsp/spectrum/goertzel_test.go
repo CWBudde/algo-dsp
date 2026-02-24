@@ -9,33 +9,36 @@ import (
 )
 
 func TestGoertzel_Basic(t *testing.T) {
-	fs := 48000.0
-	f0 := 1000.0
+	sampleRate := 48000.0
+	freq0 := 1000.0
 	length := 1024
-	sig := testutil.DeterministicSine(f0, fs, 1.0, length)
+	sig := testutil.DeterministicSine(freq0, sampleRate, 1.0, length)
 
-	g, err := NewGoertzel(f0, fs)
+	goertzel, err := NewGoertzel(freq0, sampleRate)
 	if err != nil {
 		t.Fatalf("NewGoertzel: %v", err)
 	}
 
-	g.ProcessBlock(sig)
-	p := g.Power()
+	goertzel.ProcessBlock(sig)
+	pwr := goertzel.Power()
 
 	// Compare with a direct DFT calculation at that exact frequency.
 	var dft complex128
+
 	for n, x := range sig {
-		angle := -2 * math.Pi * f0 / fs * float64(n)
+		angle := -2 * math.Pi * freq0 / sampleRate * float64(n)
 		dft += complex(x, 0) * cmplx.Exp(complex(0, angle))
 	}
+
 	wantP := real(dft)*real(dft) + imag(dft)*imag(dft)
 
 	// Use a relative tolerance for power as it can grow large
-	if math.Abs(p-wantP) > 1e-7*wantP {
-		t.Errorf("Power mismatch: got %v, want %v (diff %v)", p, wantP, math.Abs(p-wantP))
+	if math.Abs(pwr-wantP) > 1e-7*wantP {
+		t.Errorf("Power mismatch: got %v, want %v (diff %v)", pwr, wantP, math.Abs(pwr-wantP))
 	}
 
-	mag := g.Magnitude()
+	mag := goertzel.Magnitude()
+
 	wantMag := cmplx.Abs(dft)
 	if math.Abs(mag-wantMag) > 1e-7*wantMag {
 		t.Errorf("Magnitude mismatch: got %v, want %v (diff %v)", mag, wantMag, math.Abs(mag-wantMag))
@@ -43,54 +46,63 @@ func TestGoertzel_Basic(t *testing.T) {
 }
 
 func TestGoertzel_Reset(t *testing.T) {
-	fs := 48000.0
-	f0 := 1000.0
-	g, _ := NewGoertzel(f0, fs)
-	g.ProcessSample(1.0)
-	if g.Power() == 0 {
+	sampleRate := 48000.0
+	freq0 := 1000.0
+	goertzel, _ := NewGoertzel(freq0, sampleRate)
+	goertzel.ProcessSample(1.0)
+
+	if goertzel.Power() == 0 {
 		t.Error("Power should be non-zero after processing")
 	}
-	g.Reset()
-	if g.Power() != 0 {
+
+	goertzel.Reset()
+
+	if goertzel.Power() != 0 {
 		t.Error("Power should be zero after reset")
 	}
 }
 
 func TestGoertzel_Setters(t *testing.T) {
-	g, _ := NewGoertzel(1000, 48000)
-	if err := g.SetFrequency(2000); err != nil {
+	goertzel, _ := NewGoertzel(1000, 48000)
+	if err := goertzel.SetFrequency(2000); err != nil {
 		t.Errorf("SetFrequency: %v", err)
 	}
-	if g.Frequency() != 2000 {
-		t.Errorf("Frequency: got %v, want 2000", g.Frequency())
-	}
-	if err := g.SetSampleRate(44100); err != nil {
-		t.Errorf("SetSampleRate: %v", err)
-	}
-	if g.SampleRate() != 44100 {
-		t.Errorf("SampleRate: got %v, want 44100", g.SampleRate())
+
+	if goertzel.Frequency() != 2000 {
+		t.Errorf("Frequency: got %v, want 2000", goertzel.Frequency())
 	}
 
-	if err := g.SetFrequency(-1); err == nil {
+	if err := goertzel.SetSampleRate(44100); err != nil {
+		t.Errorf("SetSampleRate: %v", err)
+	}
+
+	if goertzel.SampleRate() != 44100 {
+		t.Errorf("SampleRate: got %v, want 44100", goertzel.SampleRate())
+	}
+
+	if err := goertzel.SetFrequency(-1); err == nil {
 		t.Error("SetFrequency should fail for negative frequency")
 	}
-	if err := g.SetFrequency(22051); err == nil {
+
+	if err := goertzel.SetFrequency(22051); err == nil {
 		t.Error("SetFrequency should fail for frequency > fs/2")
 	}
-	if err := g.SetSampleRate(0); err == nil {
+
+	if err := goertzel.SetSampleRate(0); err == nil {
 		t.Error("SetSampleRate should fail for 0 sample rate")
 	}
 }
 
 func TestMultiGoertzel(t *testing.T) {
-	fs := 48000.0
+	sampleRate := 48000.0
 	freqs := []float64{100, 1000, 5000}
-	mg, err := NewMultiGoertzel(freqs, fs)
+
+	mg, err := NewMultiGoertzel(freqs, sampleRate)
 	if err != nil {
 		t.Fatalf("NewMultiGoertzel: %v", err)
 	}
 
-	sig := testutil.DeterministicSine(1000, fs, 1.0, 1024)
+	sig := testutil.DeterministicSine(1000, sampleRate, 1.0, 1024)
 	mg.ProcessBlock(sig)
 	powers := mg.Powers()
 
@@ -104,6 +116,7 @@ func TestMultiGoertzel(t *testing.T) {
 	}
 
 	mg.Reset()
+
 	powers = mg.Powers()
 	for i, p := range powers {
 		if p != 0 {
@@ -114,16 +127,17 @@ func TestMultiGoertzel(t *testing.T) {
 
 func TestGoertzel_EdgeCases(t *testing.T) {
 	// DC
-	g, _ := NewGoertzel(0, 48000)
-	g.ProcessBlock(testutil.DC(1.0, 100))
-	p := g.Power()
+	goertzel, _ := NewGoertzel(0, 48000)
+	goertzel.ProcessBlock(testutil.DC(1.0, 100))
+	pwr := goertzel.Power()
 	// DFT sum for DC of 1.0 is 100. Power is 100^2 = 10000.
-	if math.Abs(p-10000) > 1e-9 {
-		t.Errorf("DC power mismatch: got %v, want 10000", p)
+	if math.Abs(pwr-10000) > 1e-9 {
+		t.Errorf("DC power mismatch: got %v, want 10000", pwr)
 	}
 
 	// Nyquist
-	g, _ = NewGoertzel(24000, 48000)
+	goertzel, _ = NewGoertzel(24000, 48000)
+
 	sig := make([]float64, 100)
 	for i := range sig {
 		if i%2 == 0 {
@@ -132,16 +146,18 @@ func TestGoertzel_EdgeCases(t *testing.T) {
 			sig[i] = -1.0
 		}
 	}
-	g.ProcessBlock(sig)
-	p = g.Power()
-	if math.Abs(p-10000) > 1e-9 {
-		t.Errorf("Nyquist power mismatch: got %v, want 10000", p)
+
+	goertzel.ProcessBlock(sig)
+
+	pwr = goertzel.Power()
+	if math.Abs(pwr-10000) > 1e-9 {
+		t.Errorf("Nyquist power mismatch: got %v, want 10000", pwr)
 	}
 
 	// dB Power
-	g, _ = NewGoertzel(1000, 48000)
-	if g.PowerDB() != -300 {
-		t.Errorf("Expected -300 dB for zero power, got %v", g.PowerDB())
+	goertzel, _ = NewGoertzel(1000, 48000)
+	if goertzel.PowerDB() != -300 {
+		t.Errorf("Expected -300 dB for zero power, got %v", goertzel.PowerDB())
 	}
 }
 
@@ -149,10 +165,12 @@ func TestAnalyzeBlock(t *testing.T) {
 	fs := 48000.0
 	f0 := 1000.0
 	sig := testutil.DeterministicSine(f0, fs, 1.0, 1024)
+
 	p, err := AnalyzeBlock(sig, f0, fs)
 	if err != nil {
 		t.Fatalf("AnalyzeBlock: %v", err)
 	}
+
 	if p == 0 {
 		t.Error("AnalyzeBlock should return non-zero power")
 	}

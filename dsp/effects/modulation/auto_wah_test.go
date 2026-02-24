@@ -30,6 +30,7 @@ func TestAutoWahProcessInPlaceMatchesProcess(t *testing.T) {
 
 	got := make([]float64, len(input))
 	copy(got, input)
+
 	if err := a2.ProcessInPlace(got); err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
@@ -83,6 +84,7 @@ func TestAutoWahMixZeroIsTransparent(t *testing.T) {
 
 	for i := 0; i < 512; i++ {
 		in := 0.4 * math.Sin(2*math.Pi*330*float64(i)/48000)
+
 		out := autoWah.Process(in)
 		if diff := math.Abs(out - in); diff > 1e-12 {
 			t.Fatalf("sample %d mismatch: got=%g want=%g", i, out, in)
@@ -105,6 +107,7 @@ func TestAutoWahCenterFrequencyTracksEnvelope(t *testing.T) {
 		in := 0.02 * math.Sin(2*math.Pi*440*float64(i)/48000)
 		autoWah.Process(in)
 	}
+
 	lowFreq := autoWah.CurrentCenterHz()
 
 	autoWah.Reset()
@@ -113,6 +116,7 @@ func TestAutoWahCenterFrequencyTracksEnvelope(t *testing.T) {
 		in := 0.9 * math.Sin(2*math.Pi*440*float64(i)/48000)
 		autoWah.Process(in)
 	}
+
 	highFreq := autoWah.CurrentCenterHz()
 
 	if highFreq <= lowFreq+400 {
@@ -132,6 +136,7 @@ func TestAutoWahFiniteOutput(t *testing.T) {
 
 	for i := 0; i < 12000; i++ {
 		in := 0.8 * math.Sin(2*math.Pi*220*float64(i)/48000)
+
 		out := autoWah.Process(in)
 		if math.IsNaN(out) || math.IsInf(out, 0) {
 			t.Fatalf("non-finite output at sample %d: %v", i, out)
@@ -223,18 +228,23 @@ func TestAutoWahGettersAndSetters(t *testing.T) {
 	if err := autoWah.SetFrequencyRangeHz(350, 1800); err != nil {
 		t.Fatalf("SetFrequencyRangeHz() error = %v", err)
 	}
+
 	if err := autoWah.SetQ(1.2); err != nil {
 		t.Fatalf("SetQ() error = %v", err)
 	}
+
 	if err := autoWah.SetSensitivity(3.5); err != nil {
 		t.Fatalf("SetSensitivity() error = %v", err)
 	}
+
 	if err := autoWah.SetAttackMs(3); err != nil {
 		t.Fatalf("SetAttackMs() error = %v", err)
 	}
+
 	if err := autoWah.SetReleaseMs(90); err != nil {
 		t.Fatalf("SetReleaseMs() error = %v", err)
 	}
+
 	if err := autoWah.SetMix(0.7); err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
@@ -242,24 +252,31 @@ func TestAutoWahGettersAndSetters(t *testing.T) {
 	if autoWah.SampleRate() != 48000 {
 		t.Fatalf("SampleRate()=%g want=48000", autoWah.SampleRate())
 	}
+
 	if autoWah.MinFreqHz() != 350 {
 		t.Fatalf("MinFreqHz()=%g want=350", autoWah.MinFreqHz())
 	}
+
 	if autoWah.MaxFreqHz() != 1800 {
 		t.Fatalf("MaxFreqHz()=%g want=1800", autoWah.MaxFreqHz())
 	}
+
 	if autoWah.Q() != 1.2 {
 		t.Fatalf("Q()=%g want=1.2", autoWah.Q())
 	}
+
 	if autoWah.Sensitivity() != 3.5 {
 		t.Fatalf("Sensitivity()=%g want=3.5", autoWah.Sensitivity())
 	}
+
 	if autoWah.AttackMs() != 3 {
 		t.Fatalf("AttackMs()=%g want=3", autoWah.AttackMs())
 	}
+
 	if autoWah.ReleaseMs() != 90 {
 		t.Fatalf("ReleaseMs()=%g want=90", autoWah.ReleaseMs())
 	}
+
 	if autoWah.Mix() != 0.7 {
 		t.Fatalf("Mix()=%g want=0.7", autoWah.Mix())
 	}

@@ -11,13 +11,13 @@ both single-sample (`Process`) and buffer-based (`ProcessInPlace`) processing.
 
 ### Dynamics
 
-| Effect         | File            | Description                                                                                                                                           |
-| -------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Compressor** | `compressor.go` | Soft-knee feed-forward compressor with log2-domain gain calculation. Configurable threshold, ratio, knee width, attack/release, and auto-makeup gain. |
-| **Gate**       | `gate.go`       | Soft-knee noise gate with hold time to prevent chattering. Configurable threshold, expansion ratio, knee width, attack/hold/release, and range.       |
-| **Limiter**    | `limiter.go`    | Peak limiter (compressor preset with 100:1 ratio, 0.1 ms attack, hard knee).                                                                          |
-| **LookaheadLimiter** | `lookahead_limiter.go` | Limiter with delayed program path and optional sidechain detector input for true lookahead peak control.                                               |
-| **TransientShaper** | `transient_shaper.go` | Attack/release envelope-split transient shaper with independent attack and sustain emphasis/attenuation controls.                                     |
+| Effect               | File                   | Description                                                                                                                                           |
+| -------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Compressor**       | `compressor.go`        | Soft-knee feed-forward compressor with log2-domain gain calculation. Configurable threshold, ratio, knee width, attack/release, and auto-makeup gain. |
+| **Gate**             | `gate.go`              | Soft-knee noise gate with hold time to prevent chattering. Configurable threshold, expansion ratio, knee width, attack/hold/release, and range.       |
+| **Limiter**          | `limiter.go`           | Peak limiter (compressor preset with 100:1 ratio, 0.1 ms attack, hard knee).                                                                          |
+| **LookaheadLimiter** | `lookahead_limiter.go` | Limiter with delayed program path and optional sidechain detector input for true lookahead peak control.                                              |
+| **TransientShaper**  | `transient_shaper.go`  | Attack/release envelope-split transient shaper with independent attack and sustain emphasis/attenuation controls.                                     |
 
 ### Time-Based
 
@@ -31,7 +31,7 @@ both single-sample (`Process`) and buffer-based (`ProcessInPlace`) processing.
 
 | Effect             | File                | Description                                                                                                                                    |
 | ------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **AutoWah**        | `auto_wah.go`       | Envelope-following band-pass modulation. Configurable center-frequency range, Q, attack/release detector times, sensitivity, and dry/wet mix. |
+| **AutoWah**        | `auto_wah.go`       | Envelope-following band-pass modulation. Configurable center-frequency range, Q, attack/release detector times, sensitivity, and dry/wet mix.  |
 | **Chorus**         | `chorus.go`         | Multi-voice modulated delay for ensemble/thickening effects. Hermite interpolation, configurable speed, depth, base delay, and voice count.    |
 | **Flanger**        | `flanger.go`        | Short modulated delay (0.1-10 ms) with feedback for classic jet/sweep sound. Configurable speed, depth, feedback, and base delay.              |
 | **Phaser**         | `phaser.go`         | Cascaded allpass filters with LFO-modulated center frequencies. Configurable stages, speed, depth, feedback, and mix.                          |
@@ -56,11 +56,11 @@ Both pitch shifters implement the `PitchProcessor` interface
 
 ### Spectral / Psychoacoustic
 
-| Effect           | File               | Description                                                                                                                                               |
-| ---------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **HarmonicBass** | `harmonic_bass.go` | Psychoacoustic bass enhancer. Crossover filtering with non-linear harmonic generation, configurable frequency/ratio/response/decay, and built-in limiter. |
-| **SpectralFreeze** | `spectral_freeze.go` | STFT spectral freezer that captures a frame and sustains frozen magnitudes with selectable phase-hold/phase-advance strategy and wet/dry mix. |
-| **Granular** | `granular.go` | Mono granular texture processor with grain scheduling, Hann overlap-add envelopes, pitch/spray controls, and wet/dry mix. |
+| Effect             | File                 | Description                                                                                                                                               |
+| ------------------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **HarmonicBass**   | `harmonic_bass.go`   | Psychoacoustic bass enhancer. Crossover filtering with non-linear harmonic generation, configurable frequency/ratio/response/decay, and built-in limiter. |
+| **SpectralFreeze** | `spectral_freeze.go` | STFT spectral freezer that captures a frame and sustains frozen magnitudes with selectable phase-hold/phase-advance strategy and wet/dry mix.             |
+| **Granular**       | `granular.go`        | Mono granular texture processor with grain scheduling, Hann overlap-add envelopes, pitch/spray controls, and wet/dry mix.                                 |
 
 ### Spatial
 
@@ -91,10 +91,10 @@ primitives already in the library (biquad filters, delay lines, LFOs).
 Useful effects that require somewhat more involved implementations or
 additional DSP building blocks.
 
-| Effect                         | Category    | Description                                                                               | Notes                                            |
-| ------------------------------ | ----------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| **Distortion / Saturation**    | Waveshaping | Tube, tape, or transistor-style non-linear waveshaping with configurable transfer curves. | Oversampling recommended to control aliasing     |
-| **Convolution Reverb**         | Spatial     | IR-based reverb using partitioned convolution.                                            | `conv` package (overlap-add already implemented) |
+| Effect                      | Category    | Description                                                                               | Notes                                            |
+| --------------------------- | ----------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **Distortion / Saturation** | Waveshaping | Tube, tape, or transistor-style non-linear waveshaping with configurable transfer curves. | Oversampling recommended to control aliasing     |
+| **Convolution Reverb**      | Spatial     | IR-based reverb using partitioned convolution.                                            | `conv` package (overlap-add already implemented) |
 
 ### Lower Priority / Specialized
 

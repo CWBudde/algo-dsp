@@ -29,6 +29,7 @@ func (dt DitherType) String() string {
 	if dt >= 0 && dt < ditherTypeCount {
 		return ditherTypeNames[dt]
 	}
+
 	return fmt.Sprintf("DitherType(%d)", dt)
 }
 

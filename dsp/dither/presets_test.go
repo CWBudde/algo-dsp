@@ -32,9 +32,11 @@ func TestPresetCoefficients(t *testing.T) {
 			if len(c) != tt.order {
 				t.Fatalf("order = %d, want %d", len(c), tt.order)
 			}
+
 			if c[0] != tt.first {
 				t.Errorf("first coeff = %v, want %v", c[0], tt.first)
 			}
+
 			if c[len(c)-1] != tt.last {
 				t.Errorf("last coeff = %v, want %v", c[len(c)-1], tt.last)
 			}
@@ -53,6 +55,7 @@ func TestPresetString(t *testing.T) {
 	if got := PresetSBM.String(); got != "SBM" {
 		t.Errorf("got %q, want %q", got, "SBM")
 	}
+
 	if got := Preset(99).String(); got != "Preset(99)" {
 		t.Errorf("got %q", got)
 	}
@@ -62,6 +65,7 @@ func TestPresetValid(t *testing.T) {
 	if !Preset9FC.Valid() {
 		t.Error("Preset9FC should be valid")
 	}
+
 	if Preset(99).Valid() {
 		t.Error("Preset(99) should be invalid")
 	}
@@ -83,6 +87,7 @@ func TestSharpPresetForSampleRate(t *testing.T) {
 		if len(c) != 8 {
 			t.Errorf("sr=%g: order = %d, want 8", tt.sr, len(c))
 		}
+
 		if c[0] != tt.first {
 			t.Errorf("sr=%g: first = %v, want %v", tt.sr, c[0], tt.first)
 		}
@@ -92,24 +97,28 @@ func TestSharpPresetForSampleRate(t *testing.T) {
 func TestSharpPresetBoundaries(t *testing.T) {
 	// Verify boundary selection matches legacy thresholds.
 	c40999 := SharpPresetForSampleRate(40999)
+
 	c41000 := SharpPresetForSampleRate(41000)
 	if c40999[0] == c41000[0] {
 		t.Error("40999 and 41000 should use different coefficients")
 	}
 
 	c45999 := SharpPresetForSampleRate(45999)
+
 	c46000 := SharpPresetForSampleRate(46000)
 	if c45999[0] == c46000[0] {
 		t.Error("45999 and 46000 should use different coefficients")
 	}
 
 	c54999 := SharpPresetForSampleRate(54999)
+
 	c55000 := SharpPresetForSampleRate(55000)
 	if c54999[0] == c55000[0] {
 		t.Error("54999 and 55000 should use different coefficients")
 	}
 
 	c75099 := SharpPresetForSampleRate(75099)
+
 	c75100 := SharpPresetForSampleRate(75100)
 	if c75099[0] == c75100[0] {
 		t.Error("75099 and 75100 should use different coefficients")
@@ -120,6 +129,7 @@ func TestPresetCoefficientsReturnsCopy(t *testing.T) {
 	c1 := Preset9FC.Coefficients()
 	c2 := Preset9FC.Coefficients()
 	c1[0] = 999
+
 	if c2[0] == 999 {
 		t.Error("Coefficients() should return a copy, not a reference")
 	}
@@ -129,6 +139,7 @@ func TestSharpPresetReturnsCopy(t *testing.T) {
 	c1 := SharpPresetForSampleRate(44100)
 	c2 := SharpPresetForSampleRate(44100)
 	c1[0] = 999
+
 	if c2[0] == 999 {
 		t.Error("SharpPresetForSampleRate should return a copy")
 	}

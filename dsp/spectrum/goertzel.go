@@ -41,6 +41,7 @@ func NewGoertzel(frequency, sampleRate float64) (*Goertzel, error) {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return nil, fmt.Errorf("goertzel: sample rate must be > 0: %v", sampleRate)
 	}
+
 	if frequency < 0 || frequency > sampleRate/2 || math.IsNaN(frequency) || math.IsInf(frequency, 0) {
 		return nil, fmt.Errorf("goertzel: frequency must be between 0 and sampleRate/2: %v", frequency)
 	}
@@ -50,6 +51,7 @@ func NewGoertzel(frequency, sampleRate float64) (*Goertzel, error) {
 		sampleRate: sampleRate,
 	}
 	g.updateCoeff()
+
 	return g, nil
 }
 
@@ -73,12 +75,14 @@ func (g *Goertzel) ProcessSample(input float64) {
 // ProcessBlock updates the internal state with a block of samples.
 func (g *Goertzel) ProcessBlock(input []float64) {
 	s0, s1 := g.s0, g.s1
+
 	coeff := g.coeff
 	for _, x := range input {
 		s := x + coeff*s0 - s1
 		s1 = s0
 		s0 = s
 	}
+
 	g.s0, g.s1 = s0, s1
 }
 
@@ -96,6 +100,7 @@ func (g *Goertzel) Magnitude() float64 {
 	if p <= 0 {
 		return 0
 	}
+
 	return math.Sqrt(p)
 }
 
@@ -105,6 +110,7 @@ func (g *Goertzel) PowerDB() float64 {
 	if p <= 1e-30 {
 		return -300
 	}
+
 	return 10 * math.Log10(p)
 }
 
@@ -113,8 +119,10 @@ func (g *Goertzel) SetFrequency(frequency float64) error {
 	if frequency < 0 || frequency > g.sampleRate/2 || math.IsNaN(frequency) || math.IsInf(frequency, 0) {
 		return fmt.Errorf("goertzel: frequency must be between 0 and sampleRate/2: %v", frequency)
 	}
+
 	g.frequency = frequency
 	g.updateCoeff()
+
 	return nil
 }
 
@@ -123,8 +131,10 @@ func (g *Goertzel) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("goertzel: sample rate must be > 0: %v", sampleRate)
 	}
+
 	g.sampleRate = sampleRate
 	g.updateCoeff()
+
 	return nil
 }
 
@@ -140,7 +150,9 @@ func AnalyzeBlock(input []float64, frequency, sampleRate float64) (float64, erro
 	if err != nil {
 		return 0, err
 	}
+
 	g.ProcessBlock(input)
+
 	return g.Power(), nil
 }
 
@@ -157,8 +169,10 @@ func NewMultiGoertzel(frequencies []float64, sampleRate float64) (*MultiGoertzel
 		if err != nil {
 			return nil, err
 		}
+
 		analyzers[i] = g
 	}
+
 	return &MultiGoertzel{analyzers: analyzers}, nil
 }
 
@@ -175,6 +189,7 @@ func (m *MultiGoertzel) Powers() []float64 {
 	for i, g := range m.analyzers {
 		p[i] = g.Power()
 	}
+
 	return p
 }
 

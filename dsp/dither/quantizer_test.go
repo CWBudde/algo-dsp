@@ -366,6 +366,7 @@ func TestQuantizerNoiseShapingSpectralEffect(t *testing.T) {
 
 		for bin := 1; bin < lowBins; bin++ {
 			var re, im float64
+
 			omega := 2 * math.Pi * float64(bin) / float64(numSamples)
 
 			for sampleIdx, val := range noise {
@@ -398,6 +399,7 @@ func TestQuantizerSetters(t *testing.T) {
 	if err := quant.SetBitDepth(24); err != nil {
 		t.Fatal(err)
 	}
+
 	if quant.BitDepth() != 24 {
 		t.Errorf("BitDepth = %d after Set", quant.BitDepth())
 	}
@@ -405,6 +407,7 @@ func TestQuantizerSetters(t *testing.T) {
 	if err := quant.SetDitherType(DitherGaussian); err != nil {
 		t.Fatal(err)
 	}
+
 	if quant.DitherType() != DitherGaussian {
 		t.Errorf("DitherType = %v after Set", quant.DitherType())
 	}
@@ -412,11 +415,13 @@ func TestQuantizerSetters(t *testing.T) {
 	if err := quant.SetDitherAmplitude(0.5); err != nil {
 		t.Fatal(err)
 	}
+
 	if quant.DitherAmplitude() != 0.5 {
 		t.Errorf("DitherAmplitude = %v after Set", quant.DitherAmplitude())
 	}
 
 	quant.SetLimit(false)
+
 	if quant.Limit() {
 		t.Error("Limit should be false after Set")
 	}

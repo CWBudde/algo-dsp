@@ -108,6 +108,7 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 	if e.chainSplitHighBuf == nil {
 		e.chainSplitHighBuf = make(map[string][]float64, len(g.Nodes))
 	}
+
 	if e.chainMixBuf == nil {
 		e.chainMixBuf = make([]float64, len(block))
 	}
@@ -175,8 +176,10 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 
 		mainParents := parents
 		sideParents := []compiledChainEdge(nil)
+
 		if node.Type == "dyn-lookahead" {
 			mainParents = mainParents[:0]
+
 			for _, edge := range parents {
 				if edge.ToPortIndex == 1 {
 					sideParents = append(sideParents, edge)
@@ -185,6 +188,7 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 				}
 			}
 		}
+
 		mixParentEdgesInto(mainParents, dst, mixBuf, edgeSrc)
 
 		if node.Type == "split-freq" {
@@ -236,11 +240,13 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 				if lookahead, ok := rt.effect.(*lookaheadLimiterChainRuntime); ok {
 					sideBuf := e.chainMixBuf[:len(dst)]
 					mixParentEdgesInto(sideParents, sideBuf, mixBuf, edgeSrc)
+
 					if len(sideParents) == 0 {
 						copy(sideBuf, dst)
 					}
 
 					lookahead.ProcessWithSidechain(dst, sideBuf)
+
 					continue
 				}
 			}

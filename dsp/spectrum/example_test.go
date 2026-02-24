@@ -55,6 +55,7 @@ func ExampleGoertzel() {
 
 	// Pure sine at 1000 Hz, length 480 (exactly 10 cycles)
 	n := 480
+
 	sig := make([]float64, n)
 	for i := range sig {
 		sig[i] = math.Sin(2 * math.Pi * f0 / fs * float64(i))
@@ -68,9 +69,11 @@ func ExampleGoertzel() {
 
 	// Pure sine at 2000 Hz
 	g.Reset()
+
 	for i := range sig {
 		sig[i] = math.Sin(2 * math.Pi * 2000.0 / fs * float64(i))
 	}
+
 	g.ProcessBlock(sig)
 	mag2 := g.Magnitude()
 	fmt.Printf("Magnitude at 2000Hz: %.1f\n", mag2/float64(n/2))
@@ -87,6 +90,7 @@ func ExampleMultiGoertzel() {
 
 	// Generate 697 Hz + 1209 Hz (Digit '1')
 	n := 480
+
 	sig := make([]float64, n)
 	for i := range sig {
 		sig[i] = 0.5*math.Sin(2*math.Pi*697/fs*float64(i)) +
@@ -97,6 +101,7 @@ func ExampleMultiGoertzel() {
 	powers := mg.Powers()
 
 	fmt.Println("Detected frequencies:")
+
 	for i, f := range freqs {
 		// Thresholding on magnitude (normalized)
 		mag := math.Sqrt(powers[i]) / (float64(n) / 2.0)

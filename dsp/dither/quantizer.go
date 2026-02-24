@@ -33,10 +33,12 @@ func NewQuantizer(sampleRate float64, opts ...Option) (*Quantizer, error) {
 	}
 
 	cfg := defaultConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
+
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
@@ -51,6 +53,7 @@ func NewQuantizer(sampleRate float64, opts ...Option) (*Quantizer, error) {
 		shaper = NewFIRShaper(SharpPresetForSampleRate(sampleRate))
 	case cfg.iirShelfFreq > 0:
 		var err error
+
 		shaper, err = NewIIRShelfShaper(cfg.iirShelfFreq, sampleRate)
 		if err != nil {
 			return nil, err

@@ -182,6 +182,7 @@ func init() {
 	registerChainEffectFactory("delay-simple", func(_ *Engine) (chainEffectRuntime, error) {
 		return &simpleDelayChainRuntime{}, nil
 	})
+
 	filterNodeTypes := []string{
 		"filter",
 		"filter-lowpass",
@@ -200,6 +201,7 @@ func init() {
 			return &filterChainRuntime{fx: biquad.NewChain([]biquad.Coefficients{{B0: 1}})}, nil
 		})
 	}
+
 	registerChainEffectFactory("bass", func(e *Engine) (chainEffectRuntime, error) {
 		fx, err := effects.NewHarmonicBass(e.sampleRate)
 		if err != nil {
@@ -1268,6 +1270,7 @@ type simpleDelayChainRuntime struct {
 func (r *simpleDelayChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	r.sampleRate = e.sampleRate
 	r.delayMs = clamp(getNodeNum(node, "delayMs", 20), 0, 500)
+
 	r.delaySamples = int(math.Round(r.delayMs * r.sampleRate / 1000.0))
 	if r.delaySamples < 0 {
 		r.delaySamples = 0
@@ -1293,6 +1296,7 @@ func (r *simpleDelayChainRuntime) Process(_ *Engine, _ compiledChainNode, block 
 
 	for i := range block {
 		r.buf[r.write] = block[i]
+
 		readPos := r.write + 1
 		if readPos >= len(r.buf) {
 			readPos = 0

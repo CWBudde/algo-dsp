@@ -35,6 +35,7 @@ func TestGranularProcessInPlaceMatchesSample(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = g1.ProcessSample(want[i])
 	}
@@ -94,6 +95,7 @@ func TestGranularMixZeroTransparent(t *testing.T) {
 
 	for i := 0; i < 512; i++ {
 		in := 0.8 * math.Sin(2*math.Pi*440*float64(i)/48000)
+
 		out := g.ProcessSample(in)
 		if diff := math.Abs(out - in); diff > 1e-12 {
 			t.Fatalf("sample %d mismatch: got=%g want=%g", i, out, in)
@@ -143,18 +145,23 @@ func TestGranularSettersValidation(t *testing.T) {
 	if err := g.SetGrainSeconds(0); err == nil {
 		t.Fatalf("SetGrainSeconds(0) expected error")
 	}
+
 	if err := g.SetOverlap(1); err == nil {
 		t.Fatalf("SetOverlap(1) expected error")
 	}
+
 	if err := g.SetMix(-0.1); err == nil {
 		t.Fatalf("SetMix(-0.1) expected error")
 	}
+
 	if err := g.SetPitch(10); err == nil {
 		t.Fatalf("SetPitch(10) expected error")
 	}
+
 	if err := g.SetSpray(2); err == nil {
 		t.Fatalf("SetSpray(2) expected error")
 	}
+
 	if err := g.SetBaseDelay(3); err == nil {
 		t.Fatalf("SetBaseDelay(3) expected error")
 	}

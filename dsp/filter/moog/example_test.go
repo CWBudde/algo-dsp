@@ -121,6 +121,7 @@ func ExampleNew_zdfHighAccuracy() {
 
 func ringPeak(f *moog.Filter, n int) float64 {
 	peak := 0.0
+
 	for i := 0; i < n; i++ {
 		x := 0.0
 		if i == 0 {
@@ -128,6 +129,7 @@ func ringPeak(f *moog.Filter, n int) float64 {
 		}
 
 		y := f.ProcessSample(x)
+
 		a := math.Abs(y)
 		if a > peak {
 			peak = a
