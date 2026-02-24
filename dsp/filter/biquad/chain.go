@@ -85,6 +85,12 @@ func (c *Chain) NumSections() int {
 	return len(c.sections)
 }
 
+// Gain returns the current input gain applied before cascading.
+func (c *Chain) Gain() float64 { return c.gain }
+
+// SetGain updates the input gain applied before cascading.
+func (c *Chain) SetGain(g float64) { c.gain = g }
+
 // Section returns a pointer to the i-th section for inspection or modification.
 func (c *Chain) Section(i int) *Section {
 	return &c.sections[i]

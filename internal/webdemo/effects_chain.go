@@ -1324,6 +1324,15 @@ func (r *simpleDelayChainRuntime) Process(_ *Engine, _ compiledChainNode, block 
 type filterChainRuntime struct {
 	fx     *biquad.Chain
 	moogLP *moog.Filter
+
+	hasConfig      bool
+	lastFamily     string
+	lastKind       string
+	lastOrder      int
+	lastFreq       float64
+	lastGainDB     float64
+	lastShape      float64
+	lastSampleRate float64
 }
 
 func (r *filterChainRuntime) Configure(e *Engine, node compiledChainNode) error {
@@ -1338,6 +1347,16 @@ func (r *filterChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 		oversampling := moogOversamplingFromOrder(order)
 		resonance := clamp(shape, 0, 4)
 		drive := clamp(math.Pow(10, gainDB/20), 0.1, 24)
+		if r.hasConfig &&
+			r.lastFamily == family &&
+			r.lastKind == kind &&
+			r.lastOrder == order &&
+			eqFloat(r.lastFreq, freq) &&
+			eqFloat(r.lastGainDB, gainDB) &&
+			eqFloat(r.lastShape, shape) &&
+			eqFloat(r.lastSampleRate, e.sampleRate) {
+			return nil
+		}
 
 		if r.moogLP == nil {
 			fx, err := moog.New(
@@ -1379,6 +1398,14 @@ func (r *filterChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 		}
 
 		r.fx = nil
+		r.hasConfig = true
+		r.lastFamily = family
+		r.lastKind = kind
+		r.lastOrder = order
+		r.lastFreq = freq
+		r.lastGainDB = gainDB
+		r.lastShape = shape
+		r.lastSampleRate = e.sampleRate
 
 		return nil
 	}
@@ -1389,9 +1416,48 @@ func (r *filterChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 	family = normalizeEQFamilyForType(kind, family)
 	order := normalizeEQOrder(kind, family, int(math.Round(getNodeNum(node, "order", 2))))
 	shape = clampEQShape(kind, family, freq, e.sampleRate, shape)
-	r.fx = buildEQChain(family, kind, order, freq, gainDB, shape, e.sampleRate)
+	if r.hasConfig &&
+		r.lastFamily == family &&
+		r.lastKind == kind &&
+		r.lastOrder == order &&
+		eqFloat(r.lastFreq, freq) &&
+		eqFloat(r.lastGainDB, gainDB) &&
+		eqFloat(r.lastShape, shape) &&
+		eqFloat(r.lastSampleRate, e.sampleRate) {
+		return nil
+	}
+
+	next := buildEQChain(family, kind, order, freq, gainDB, shape, e.sampleRate)
+	if r.fx == nil {
+		r.fx = next
+	} else if r.fx.NumSections() == next.NumSections() {
+		r.fx.SetGain(next.Gain())
+		for i := 0; i < r.fx.NumSections(); i++ {
+			r.fx.Section(i).Coefficients = next.Section(i).Coefficients
+		}
+	} else {
+		// Preserve as much per-section delay state as possible across topology changes.
+		oldState := r.fx.State()
+		newState := make([][2]float64, next.NumSections())
+		copy(newState, oldState)
+		next.SetState(newState)
+		r.fx = next
+	}
+
+	r.hasConfig = true
+	r.lastFamily = family
+	r.lastKind = kind
+	r.lastOrder = order
+	r.lastFreq = freq
+	r.lastGainDB = gainDB
+	r.lastShape = shape
+	r.lastSampleRate = e.sampleRate
 
 	return nil
+}
+
+func eqFloat(a, b float64) bool {
+	return math.Abs(a-b) <= 1e-12
 }
 
 func (r *filterChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
