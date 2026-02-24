@@ -1138,56 +1138,69 @@
                 <span id="granular-mix-value">100%</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="reverb" hidden>
+            <div class="fx-card chain-detail-card" data-chain-detail="reverb-freeverb" hidden>
               <div class="fx-option-head">
-                <span>Reverb</span>
+                <span>Reverb (Freeverb)</span>
               </div>
               <label>
-                Model
-                <select id="reverb-model">
-                  <option value="freeverb" selected>Freeverb</option>
-                  <option value="fdn">FDN</option>
-                </select>
-              </label>
-              <label>
                 Wet
-                <input id="reverb-wet" type="range" min="0" max="1" step="0.01" value="0.22" />
-                <span id="reverb-wet-value">22%</span>
+                <input id="reverb-freeverb-wet" type="range" min="0" max="1" step="0.01" value="0.22" />
+                <span id="reverb-freeverb-wet-value">22%</span>
               </label>
               <label>
                 Dry
-                <input id="reverb-dry" type="range" min="0" max="1.5" step="0.01" value="1" />
-                <span id="reverb-dry-value">1.00</span>
+                <input id="reverb-freeverb-dry" type="range" min="0" max="1.5" step="0.01" value="1" />
+                <span id="reverb-freeverb-dry-value">1.00</span>
               </label>
-              <label class="reverb-freeverb">
+              <label>
                 Room
-                <input id="reverb-room" type="range" min="0" max="0.98" step="0.01" value="0.72" />
-                <span id="reverb-room-value">0.72</span>
+                <input id="reverb-freeverb-room" type="range" min="0" max="0.98" step="0.01" value="0.72" />
+                <span id="reverb-freeverb-room-value">0.72</span>
               </label>
               <label>
                 Damp
-                <input id="reverb-damp" type="range" min="0" max="0.99" step="0.01" value="0.45" />
-                <span id="reverb-damp-value">0.45</span>
+                <input id="reverb-freeverb-damp" type="range" min="0" max="0.99" step="0.01" value="0.45" />
+                <span id="reverb-freeverb-damp-value">0.45</span>
               </label>
-              <label class="reverb-fdn" hidden>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="reverb-fdn" hidden>
+              <div class="fx-option-head">
+                <span>Reverb (FDN)</span>
+              </div>
+              <label>
+                Wet
+                <input id="reverb-fdn-wet" type="range" min="0" max="1" step="0.01" value="0.22" />
+                <span id="reverb-fdn-wet-value">22%</span>
+              </label>
+              <label>
+                Dry
+                <input id="reverb-fdn-dry" type="range" min="0" max="1.5" step="0.01" value="1" />
+                <span id="reverb-fdn-dry-value">1.00</span>
+              </label>
+              <label>
+                Damp
+                <input id="reverb-fdn-damp" type="range" min="0" max="0.99" step="0.01" value="0.45" />
+                <span id="reverb-fdn-damp-value">0.45</span>
+              </label>
+              <label>
                 RT60
-                <input id="reverb-rt60" type="range" min="0.2" max="8" step="0.05" value="1.8" />
-                <span id="reverb-rt60-value">1.80 s</span>
+                <input id="reverb-fdn-rt60" type="range" min="0.2" max="8" step="0.05" value="1.8" />
+                <span id="reverb-fdn-rt60-value">1.80 s</span>
               </label>
-              <label class="reverb-fdn" hidden>
+              <label>
                 Pre-delay
-                <input id="reverb-predelay" type="range" min="0" max="0.08" step="0.001" value="0.01" />
-                <span id="reverb-predelay-value">10.0 ms</span>
+                <input id="reverb-fdn-predelay" type="range" min="0" max="0.08" step="0.001" value="0.01" />
+                <span id="reverb-fdn-predelay-value">10.0 ms</span>
               </label>
-              <label class="reverb-fdn" hidden>
+              <label>
                 Mod depth
-                <input id="reverb-mod-depth" type="range" min="0" max="0.01" step="0.0001" value="0.002" />
-                <span id="reverb-mod-depth-value">2.0 ms</span>
+                <input id="reverb-fdn-mod-depth" type="range" min="0" max="0.01" step="0.0001" value="0.002" />
+                <span id="reverb-fdn-mod-depth-value">2.0 ms</span>
               </label>
-              <label class="reverb-fdn" hidden>
+              <label>
                 Mod rate
-                <input id="reverb-mod-rate" type="range" min="0" max="1" step="0.01" value="0.1" />
-                <span id="reverb-mod-rate-value">0.10 Hz</span>
+                <input id="reverb-fdn-mod-rate" type="range" min="0" max="1" step="0.01" value="0.1" />
+                <span id="reverb-fdn-mod-rate-value">0.10 Hz</span>
               </label>
             </div>
           </div>

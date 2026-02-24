@@ -248,7 +248,21 @@ func init() {
 			return nil, err
 		}
 
-		return &reverbChainRuntime{freeverb: reverb.NewReverb(), fdn: fdn}, nil
+		return &reverbChainRuntime{
+			freeverb: &freeverbChainRuntime{fx: reverb.NewReverb()},
+			fdn:      &fdnReverbChainRuntime{fx: fdn},
+		}, nil
+	})
+	registerChainEffectFactory("reverb-freeverb", func(_ *Engine) (chainEffectRuntime, error) {
+		return &freeverbChainRuntime{fx: reverb.NewReverb()}, nil
+	})
+	registerChainEffectFactory("reverb-fdn", func(e *Engine) (chainEffectRuntime, error) {
+		fdn, err := reverb.NewFDNReverb(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &fdnReverbChainRuntime{fx: fdn}, nil
 	})
 	registerChainEffectFactory("dyn-compressor", func(e *Engine) (chainEffectRuntime, error) {
 		fx, err := dynamics.NewCompressor(e.sampleRate)
@@ -1533,33 +1547,13 @@ func (r *granularChainRuntime) Process(_ *Engine, _ compiledChainNode, block []f
 	r.fx.ProcessInPlace(block)
 }
 
-type reverbChainRuntime struct {
-	freeverb *reverb.Reverb
-	fdn      *reverb.FDNReverb
+type freeverbChainRuntime struct {
+	fx *reverb.Reverb
 }
 
-func (r *reverbChainRuntime) Configure(e *Engine, node compiledChainNode) error {
-	model := node.Str["model"]
-	if model != "fdn" && model != "freeverb" {
-		model = "freeverb"
-	}
-
-	if model == "fdn" {
-		return configureFDNReverb(
-			r.fdn,
-			e.sampleRate,
-			clamp(getNodeNum(node, "wet", 0.22), 0, 1.5),
-			clamp(getNodeNum(node, "dry", 1), 0, 1.5),
-			clamp(getNodeNum(node, "rt60", 1.8), 0.2, 8),
-			clamp(getNodeNum(node, "preDelay", 0.01), 0, 0.1),
-			clamp(getNodeNum(node, "damp", 0.45), 0, 0.99),
-			clamp(getNodeNum(node, "modDepth", 0.002), 0, 0.01),
-			clamp(getNodeNum(node, "modRate", 0.1), 0, 1),
-		)
-	}
-
+func (r *freeverbChainRuntime) Configure(_ *Engine, node compiledChainNode) error {
 	configureFreeverb(
-		r.freeverb,
+		r.fx,
 		clamp(getNodeNum(node, "wet", 0.22), 0, 1.5),
 		clamp(getNodeNum(node, "dry", 1), 0, 1.5),
 		clamp(getNodeNum(node, "roomSize", 0.72), 0, 0.98),
@@ -1570,13 +1564,55 @@ func (r *reverbChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 	return nil
 }
 
-func (r *reverbChainRuntime) Process(_ *Engine, node compiledChainNode, block []float64) {
-	if node.Str["model"] == "fdn" {
-		r.fdn.ProcessInPlace(block)
+func (r *freeverbChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type fdnReverbChainRuntime struct {
+	fx *reverb.FDNReverb
+}
+
+func (r *fdnReverbChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	return configureFDNReverb(
+		r.fx,
+		e.sampleRate,
+		clamp(getNodeNum(node, "wet", 0.22), 0, 1.5),
+		clamp(getNodeNum(node, "dry", 1), 0, 1.5),
+		clamp(getNodeNum(node, "rt60", 1.8), 0.2, 8),
+		clamp(getNodeNum(node, "preDelay", 0.01), 0, 0.1),
+		clamp(getNodeNum(node, "damp", 0.45), 0, 0.99),
+		clamp(getNodeNum(node, "modDepth", 0.002), 0, 0.01),
+		clamp(getNodeNum(node, "modRate", 0.1), 0, 1),
+	)
+}
+
+func (r *fdnReverbChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+// reverbChainRuntime supports legacy "reverb" nodes with a model selector.
+type reverbChainRuntime struct {
+	freeverb *freeverbChainRuntime
+	fdn      *fdnReverbChainRuntime
+}
+
+func (r *reverbChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	model := node.Str["model"]
+	if model == "fdn" {
+		return r.fdn.Configure(e, node)
+	}
+
+	return r.freeverb.Configure(e, node)
+}
+
+func (r *reverbChainRuntime) Process(e *Engine, node compiledChainNode, block []float64) {
+	model := node.Str["model"]
+	if model == "fdn" {
+		r.fdn.Process(e, node, block)
 		return
 	}
 
-	r.freeverb.ProcessInPlace(block)
+	r.freeverb.Process(e, node, block)
 }
 
 type compressorChainRuntime struct {

@@ -493,23 +493,28 @@ const el = {
   harmonicResponseValue: document.getElementById("harmonic-response-value"),
   harmonicHighpass: document.getElementById("harmonic-highpass"),
   harmonicHighpassValue: document.getElementById("harmonic-highpass-value"),
-  reverbModel: document.getElementById("reverb-model"),
-  reverbWet: document.getElementById("reverb-wet"),
-  reverbWetValue: document.getElementById("reverb-wet-value"),
-  reverbDry: document.getElementById("reverb-dry"),
-  reverbDryValue: document.getElementById("reverb-dry-value"),
-  reverbRoom: document.getElementById("reverb-room"),
-  reverbRoomValue: document.getElementById("reverb-room-value"),
-  reverbDamp: document.getElementById("reverb-damp"),
-  reverbDampValue: document.getElementById("reverb-damp-value"),
-  reverbRT60: document.getElementById("reverb-rt60"),
-  reverbRT60Value: document.getElementById("reverb-rt60-value"),
-  reverbPreDelay: document.getElementById("reverb-predelay"),
-  reverbPreDelayValue: document.getElementById("reverb-predelay-value"),
-  reverbModDepth: document.getElementById("reverb-mod-depth"),
-  reverbModDepthValue: document.getElementById("reverb-mod-depth-value"),
-  reverbModRate: document.getElementById("reverb-mod-rate"),
-  reverbModRateValue: document.getElementById("reverb-mod-rate-value"),
+  reverbFreeverbWet: document.getElementById("reverb-freeverb-wet"),
+  reverbFreeverbWetValue: document.getElementById("reverb-freeverb-wet-value"),
+  reverbFreeverbDry: document.getElementById("reverb-freeverb-dry"),
+  reverbFreeverbDryValue: document.getElementById("reverb-freeverb-dry-value"),
+  reverbFreeverbRoom: document.getElementById("reverb-freeverb-room"),
+  reverbFreeverbRoomValue: document.getElementById("reverb-freeverb-room-value"),
+  reverbFreeverbDamp: document.getElementById("reverb-freeverb-damp"),
+  reverbFreeverbDampValue: document.getElementById("reverb-freeverb-damp-value"),
+  reverbFDNWet: document.getElementById("reverb-fdn-wet"),
+  reverbFDNWetValue: document.getElementById("reverb-fdn-wet-value"),
+  reverbFDNDry: document.getElementById("reverb-fdn-dry"),
+  reverbFDNDryValue: document.getElementById("reverb-fdn-dry-value"),
+  reverbFDNDamp: document.getElementById("reverb-fdn-damp"),
+  reverbFDNDampValue: document.getElementById("reverb-fdn-damp-value"),
+  reverbFDNRT60: document.getElementById("reverb-fdn-rt60"),
+  reverbFDNRT60Value: document.getElementById("reverb-fdn-rt60-value"),
+  reverbFDNPreDelay: document.getElementById("reverb-fdn-predelay"),
+  reverbFDNPreDelayValue: document.getElementById("reverb-fdn-predelay-value"),
+  reverbFDNModDepth: document.getElementById("reverb-fdn-mod-depth"),
+  reverbFDNModDepthValue: document.getElementById("reverb-fdn-mod-depth-value"),
+  reverbFDNModRate: document.getElementById("reverb-fdn-mod-rate"),
+  reverbFDNModRateValue: document.getElementById("reverb-fdn-mod-rate-value"),
   compEnabled: document.getElementById("comp-enabled"),
   compThresh: document.getElementById("comp-thresh"),
   compThreshValue: document.getElementById("comp-thresh-value"),
@@ -700,10 +705,26 @@ const EFFECT_NODE_DEFAULTS = {
     mix: 1.0,
   },
   reverb: {
+    // Legacy node type retained for saved-chain compatibility.
     model: "freeverb",
     wet: 0.22,
     dry: 1.0,
     roomSize: 0.72,
+    damp: 0.45,
+    rt60: 1.8,
+    preDelay: 0.01,
+    modDepth: 0.002,
+    modRate: 0.1,
+  },
+  "reverb-freeverb": {
+    wet: 0.22,
+    dry: 1.0,
+    roomSize: 0.72,
+    damp: 0.45,
+  },
+  "reverb-fdn": {
+    wet: 0.22,
+    dry: 1.0,
     damp: 0.45,
     rt60: 1.8,
     preDelay: 0.01,
@@ -721,8 +742,13 @@ function isFilterNodeType(type) {
   return type === "filter" || (typeof type === "string" && type.startsWith("filter-"));
 }
 
-function chainDetailTypeForNode(nodeType) {
+function chainDetailTypeForNode(node) {
+  const nodeType = node?.type;
   if (isFilterNodeType(nodeType)) return "filter";
+  if (nodeType === "reverb") {
+    const model = node?.params?.model === "fdn" ? "fdn" : "freeverb";
+    return model === "fdn" ? "reverb-fdn" : "reverb-freeverb";
+  }
   return nodeType;
 }
 
@@ -934,16 +960,36 @@ function applyNodeParamsToUI(node) {
       el.granularBaseDelay.value = p.baseDelay;
       el.granularMix.value = p.mix;
       break;
+    case "reverb-freeverb":
+      el.reverbFreeverbWet.value = p.wet;
+      el.reverbFreeverbDry.value = p.dry;
+      el.reverbFreeverbRoom.value = p.roomSize;
+      el.reverbFreeverbDamp.value = p.damp;
+      break;
+    case "reverb-fdn":
+      el.reverbFDNWet.value = p.wet;
+      el.reverbFDNDry.value = p.dry;
+      el.reverbFDNDamp.value = p.damp;
+      el.reverbFDNRT60.value = p.rt60;
+      el.reverbFDNPreDelay.value = p.preDelay;
+      el.reverbFDNModDepth.value = p.modDepth;
+      el.reverbFDNModRate.value = p.modRate;
+      break;
     case "reverb":
-      el.reverbModel.value = p.model || "freeverb";
-      el.reverbWet.value = p.wet;
-      el.reverbDry.value = p.dry;
-      el.reverbRoom.value = p.roomSize;
-      el.reverbDamp.value = p.damp;
-      el.reverbRT60.value = p.rt60;
-      el.reverbPreDelay.value = p.preDelay;
-      el.reverbModDepth.value = p.modDepth;
-      el.reverbModRate.value = p.modRate;
+      if (p.model === "fdn") {
+        el.reverbFDNWet.value = p.wet;
+        el.reverbFDNDry.value = p.dry;
+        el.reverbFDNDamp.value = p.damp;
+        el.reverbFDNRT60.value = p.rt60;
+        el.reverbFDNPreDelay.value = p.preDelay;
+        el.reverbFDNModDepth.value = p.modDepth;
+        el.reverbFDNModRate.value = p.modRate;
+      } else {
+        el.reverbFreeverbWet.value = p.wet;
+        el.reverbFreeverbDry.value = p.dry;
+        el.reverbFreeverbRoom.value = p.roomSize;
+        el.reverbFreeverbDamp.value = p.damp;
+      }
       break;
     default:
       break;
@@ -1193,17 +1239,43 @@ function collectNodeParamsFromUI(nodeType) {
         baseDelay: Number(el.granularBaseDelay.value),
         mix: Number(el.granularMix.value),
       };
-    case "reverb":
+    case "reverb-freeverb":
       return {
-        model: String(el.reverbModel.value || "freeverb"),
-        wet: Number(el.reverbWet.value),
-        dry: Number(el.reverbDry.value),
-        roomSize: Number(el.reverbRoom.value),
-        damp: Number(el.reverbDamp.value),
-        rt60: Number(el.reverbRT60.value),
-        preDelay: Number(el.reverbPreDelay.value),
-        modDepth: Number(el.reverbModDepth.value),
-        modRate: Number(el.reverbModRate.value),
+        wet: Number(el.reverbFreeverbWet.value),
+        dry: Number(el.reverbFreeverbDry.value),
+        roomSize: Number(el.reverbFreeverbRoom.value),
+        damp: Number(el.reverbFreeverbDamp.value),
+      };
+    case "reverb-fdn":
+      return {
+        wet: Number(el.reverbFDNWet.value),
+        dry: Number(el.reverbFDNDry.value),
+        damp: Number(el.reverbFDNDamp.value),
+        rt60: Number(el.reverbFDNRT60.value),
+        preDelay: Number(el.reverbFDNPreDelay.value),
+        modDepth: Number(el.reverbFDNModDepth.value),
+        modRate: Number(el.reverbFDNModRate.value),
+      };
+    case "reverb":
+      if (getSelectedEffectNode()?.params?.model === "fdn") {
+        return {
+          model: "fdn",
+          wet: Number(el.reverbFDNWet.value),
+          dry: Number(el.reverbFDNDry.value),
+          damp: Number(el.reverbFDNDamp.value),
+          rt60: Number(el.reverbFDNRT60.value),
+          preDelay: Number(el.reverbFDNPreDelay.value),
+          modDepth: Number(el.reverbFDNModDepth.value),
+          modRate: Number(el.reverbFDNModRate.value),
+        };
+      }
+
+      return {
+        model: "freeverb",
+        wet: Number(el.reverbFreeverbWet.value),
+        dry: Number(el.reverbFreeverbDry.value),
+        roomSize: Number(el.reverbFreeverbRoom.value),
+        damp: Number(el.reverbFreeverbDamp.value),
       };
     default:
       return {};
@@ -1229,6 +1301,29 @@ function saveSettings() {
   } catch (e) {
     // Ignore storage failures.
   }
+}
+
+function migrateLegacyChainState(chainState) {
+  if (!chainState || !Array.isArray(chainState.nodes)) return chainState;
+
+  let changed = false;
+  const nodes = chainState.nodes.map((node) => {
+    if (!node || node.type !== "reverb") return node;
+
+    const params = (node.params && typeof node.params === "object") ? { ...node.params } : {};
+    const model = params.model === "fdn" ? "fdn" : "freeverb";
+    delete params.model;
+
+    changed = true;
+    return {
+      ...node,
+      type: model === "fdn" ? "reverb-fdn" : "reverb-freeverb",
+      params,
+    };
+  });
+
+  if (!changed) return chainState;
+  return { ...chainState, nodes };
 }
 
 function loadSettings() {
@@ -1311,21 +1406,23 @@ function loadSettings() {
       el.harmonicResponse.value = state.effectsParams.harmonicBassResponseMs;
     if (el.harmonicHighpass)
       el.harmonicHighpass.value = state.effectsParams.harmonicBassHighpass;
-    if (el.reverbModel) el.reverbModel.value = state.effectsParams.reverbModel || "freeverb";
-    if (el.reverbWet) el.reverbWet.value = state.effectsParams.reverbWet;
-    if (el.reverbDry) el.reverbDry.value = state.effectsParams.reverbDry;
-    if (el.reverbRoom) el.reverbRoom.value = state.effectsParams.reverbRoomSize;
-    if (el.reverbDamp) el.reverbDamp.value = state.effectsParams.reverbDamp;
-    if (el.reverbRT60) el.reverbRT60.value = state.effectsParams.reverbRT60;
-    if (el.reverbPreDelay) el.reverbPreDelay.value = state.effectsParams.reverbPreDelay;
-    if (el.reverbModDepth) el.reverbModDepth.value = state.effectsParams.reverbModDepth;
-    if (el.reverbModRate) el.reverbModRate.value = state.effectsParams.reverbModRate;
+    if (el.reverbFreeverbWet) el.reverbFreeverbWet.value = state.effectsParams.reverbWet;
+    if (el.reverbFreeverbDry) el.reverbFreeverbDry.value = state.effectsParams.reverbDry;
+    if (el.reverbFreeverbRoom) el.reverbFreeverbRoom.value = state.effectsParams.reverbRoomSize;
+    if (el.reverbFreeverbDamp) el.reverbFreeverbDamp.value = state.effectsParams.reverbDamp;
+    if (el.reverbFDNWet) el.reverbFDNWet.value = state.effectsParams.reverbWet;
+    if (el.reverbFDNDry) el.reverbFDNDry.value = state.effectsParams.reverbDry;
+    if (el.reverbFDNDamp) el.reverbFDNDamp.value = state.effectsParams.reverbDamp;
+    if (el.reverbFDNRT60) el.reverbFDNRT60.value = state.effectsParams.reverbRT60;
+    if (el.reverbFDNPreDelay) el.reverbFDNPreDelay.value = state.effectsParams.reverbPreDelay;
+    if (el.reverbFDNModDepth) el.reverbFDNModDepth.value = state.effectsParams.reverbModDepth;
+    if (el.reverbFDNModRate) el.reverbFDNModRate.value = state.effectsParams.reverbModRate;
     sanitizeFlangerControls();
     updateEffectsText();
   }
 
   if (settings.chainState && state.chain) {
-    state.chain.setState(settings.chainState);
+    state.chain.setState(migrateLegacyChainState(settings.chainState));
     readEffectsFromChain();
   }
 
@@ -1740,7 +1837,8 @@ function readEffectsFromChain() {
     deesserEnabled: enabled.has("dyn-deesser"),
     multibandEnabled: enabled.has("dyn-multiband"),
     harmonicBassEnabled: enabled.has("bass"),
-    reverbEnabled: enabled.has("reverb"),
+    reverbEnabled:
+      enabled.has("reverb") || enabled.has("reverb-freeverb") || enabled.has("reverb-fdn"),
     chainGraphJSON: chainState ? JSON.stringify(chainState) : "",
   };
 }
@@ -2027,34 +2125,25 @@ function updateEffectsText() {
     const labels = ["DC", "1st Order", "2nd Order"];
     el.harmonicHighpassValue.textContent = labels[mode] || "DC";
   }
-  el.reverbWetValue.textContent = `${Math.round(Number(el.reverbWet.value) * 100)}%`;
-  el.reverbDryValue.textContent = Number(el.reverbDry.value).toFixed(2);
-  el.reverbRoomValue.textContent = Number(el.reverbRoom.value).toFixed(2);
-  el.reverbDampValue.textContent = Number(el.reverbDamp.value).toFixed(2);
-  if (el.reverbRT60Value) {
-    el.reverbRT60Value.textContent = `${Number(el.reverbRT60.value).toFixed(2)} s`;
+  el.reverbFreeverbWetValue.textContent = `${Math.round(Number(el.reverbFreeverbWet.value) * 100)}%`;
+  el.reverbFreeverbDryValue.textContent = Number(el.reverbFreeverbDry.value).toFixed(2);
+  el.reverbFreeverbRoomValue.textContent = Number(el.reverbFreeverbRoom.value).toFixed(2);
+  el.reverbFreeverbDampValue.textContent = Number(el.reverbFreeverbDamp.value).toFixed(2);
+  el.reverbFDNWetValue.textContent = `${Math.round(Number(el.reverbFDNWet.value) * 100)}%`;
+  el.reverbFDNDryValue.textContent = Number(el.reverbFDNDry.value).toFixed(2);
+  el.reverbFDNDampValue.textContent = Number(el.reverbFDNDamp.value).toFixed(2);
+  if (el.reverbFDNRT60Value) {
+    el.reverbFDNRT60Value.textContent = `${Number(el.reverbFDNRT60.value).toFixed(2)} s`;
   }
-  if (el.reverbPreDelayValue) {
-    el.reverbPreDelayValue.textContent = `${(Number(el.reverbPreDelay.value) * 1000).toFixed(1)} ms`;
+  if (el.reverbFDNPreDelayValue) {
+    el.reverbFDNPreDelayValue.textContent = `${(Number(el.reverbFDNPreDelay.value) * 1000).toFixed(1)} ms`;
   }
-  if (el.reverbModDepthValue) {
-    el.reverbModDepthValue.textContent = `${(Number(el.reverbModDepth.value) * 1000).toFixed(1)} ms`;
+  if (el.reverbFDNModDepthValue) {
+    el.reverbFDNModDepthValue.textContent = `${(Number(el.reverbFDNModDepth.value) * 1000).toFixed(1)} ms`;
   }
-  if (el.reverbModRateValue) {
-    el.reverbModRateValue.textContent = `${Number(el.reverbModRate.value).toFixed(2)} Hz`;
+  if (el.reverbFDNModRateValue) {
+    el.reverbFDNModRateValue.textContent = `${Number(el.reverbFDNModRate.value).toFixed(2)} Hz`;
   }
-  updateReverbModelUI();
-}
-
-function updateReverbModelUI() {
-  const model = el.reverbModel?.value || "freeverb";
-  const fdnVisible = model === "fdn";
-  document.querySelectorAll(".reverb-fdn").forEach((node) => {
-    node.hidden = !fdnVisible;
-  });
-  document.querySelectorAll(".reverb-freeverb").forEach((node) => {
-    node.hidden = fdnVisible;
-  });
 }
 
 function syncCompressorToDSP() {
@@ -2433,15 +2522,17 @@ function bindEvents() {
     el.harmonicDecay,
     el.harmonicResponse,
     el.harmonicHighpass,
-    el.reverbModel,
-    el.reverbWet,
-    el.reverbDry,
-    el.reverbRoom,
-    el.reverbDamp,
-    el.reverbRT60,
-    el.reverbPreDelay,
-    el.reverbModDepth,
-    el.reverbModRate,
+    el.reverbFreeverbWet,
+    el.reverbFreeverbDry,
+    el.reverbFreeverbRoom,
+    el.reverbFreeverbDamp,
+    el.reverbFDNWet,
+    el.reverbFDNDry,
+    el.reverbFDNDamp,
+    el.reverbFDNRT60,
+    el.reverbFDNPreDelay,
+    el.reverbFDNModDepth,
+    el.reverbFDNModRate,
   ].forEach((control) => {
     const eventName =
       control.tagName === "SELECT" ? "change" : "input";
@@ -2553,7 +2644,7 @@ function showChainDetail(node) {
     return;
   }
   // Map node type to the data-chain-detail attribute
-  const type = chainDetailTypeForNode(node.type);
+  const type = chainDetailTypeForNode(node);
   document.querySelectorAll("[data-chain-detail]").forEach((card) => {
     card.hidden = card.dataset.chainDetail !== type;
   });
@@ -2681,14 +2772,17 @@ const PIN_MAP = {
   "granular-spray": { type: "granular", param: "spray" },
   "granular-base-delay": { type: "granular", param: "baseDelay" },
   "granular-mix": { type: "granular", param: "mix" },
-  "reverb-wet": { type: "reverb", param: "wet" },
-  "reverb-dry": { type: "reverb", param: "dry" },
-  "reverb-room": { type: "reverb", param: "roomSize" },
-  "reverb-damp": { type: "reverb", param: "damp" },
-  "reverb-rt60": { type: "reverb", param: "rt60" },
-  "reverb-predelay": { type: "reverb", param: "preDelay" },
-  "reverb-mod-depth": { type: "reverb", param: "modDepth" },
-  "reverb-mod-rate": { type: "reverb", param: "modRate" },
+  "reverb-freeverb-wet": { type: "reverb-freeverb", param: "wet" },
+  "reverb-freeverb-dry": { type: "reverb-freeverb", param: "dry" },
+  "reverb-freeverb-room": { type: "reverb-freeverb", param: "roomSize" },
+  "reverb-freeverb-damp": { type: "reverb-freeverb", param: "damp" },
+  "reverb-fdn-wet": { type: "reverb-fdn", param: "wet" },
+  "reverb-fdn-dry": { type: "reverb-fdn", param: "dry" },
+  "reverb-fdn-damp": { type: "reverb-fdn", param: "damp" },
+  "reverb-fdn-rt60": { type: "reverb-fdn", param: "rt60" },
+  "reverb-fdn-predelay": { type: "reverb-fdn", param: "preDelay" },
+  "reverb-fdn-mod-depth": { type: "reverb-fdn", param: "modDepth" },
+  "reverb-fdn-mod-rate": { type: "reverb-fdn", param: "modRate" },
 };
 
 const PIN_SVG = `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M9.828 1.172a2 2 0 0 1 2.828 0l2.172 2.172a2 2 0 0 1 0 2.828l-3.5 3.5a1 1 0 0 1-.354.232l-2 .75a1 1 0 0 1-1.118-.226L6.5 9.072 2.354 13.22a.5.5 0 0 1-.708-.708L5.8 8.358 4.572 7.146a1 1 0 0 1-.226-1.118l.75-2a1 1 0 0 1 .232-.354l3.5-3.5z"/></svg>`;
@@ -2737,11 +2831,12 @@ function initPinButtons() {
 /** Update pin button states when a node's detail panel is shown. */
 function updatePinButtonStates(node) {
   if (!node) return;
+  const detailType = chainDetailTypeForNode(node);
   document.querySelectorAll(".pin-param").forEach((btn) => {
     const mapping = PIN_MAP[btn.dataset.inputId];
     if (!mapping) return;
     if (mapping.type === "filter" && !isFilterNodeType(node.type)) return;
-    if (mapping.type !== "filter" && mapping.type !== node.type) return;
+    if (mapping.type !== "filter" && mapping.type !== detailType) return;
     const pinned = state.chain?.isPinned(node.id, mapping.param);
     btn.classList.toggle("pinned", !!pinned);
   });
