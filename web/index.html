@@ -1202,30 +1202,21 @@
                 <input id="reverb-fdn-mod-rate" type="range" min="0" max="1" step="0.01" value="0.1" />
                 <span id="reverb-fdn-mod-rate-value">0.10 Hz</span>
               </label>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel conv-reverb-panel">
-        <h2>Convolution Reverb</h2>
-        <div class="effects-grid">
-          <div class="fx-card">
-            <div class="fx-head">
-              <h3>IR Reverb</h3>
-              <label class="fx-toggle">
-                <input id="conv-reverb-enabled" type="checkbox" />
-                <span>On</span>
+            <div class="fx-card chain-detail-card" data-chain-detail="reverb-conv" hidden>
+              <div class="fx-option-head">
+                <span>Reverb (Convolution)</span>
+              </div>
+              <label>
+                IR
+                <select id="chain-conv-reverb-ir">
+                  <option value="0">Loading…</option>
+                </select>
               </label>
-            </div>
-            <div class="fx-body">
-              <label for="conv-reverb-ir">Impulse Response</label>
-              <select id="conv-reverb-ir">
-                <option value="0">Loading…</option>
-              </select>
-              <label for="conv-reverb-wet">Wet</label>
-              <input id="conv-reverb-wet" type="range" min="0" max="1.5" step="0.01" value="0.35" />
-              <span id="conv-reverb-wet-value">35%</span>
+              <label>
+                Wet
+                <input id="chain-conv-reverb-wet" type="range" min="0" max="1.5" step="0.01" value="0.35" />
+                <span id="chain-conv-reverb-wet-value">35%</span>
+              </label>
             </div>
           </div>
         </div>

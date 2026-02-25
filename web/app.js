@@ -179,11 +179,6 @@ const state = {
     reverbModRate: 0.1,
     chainGraphJSON: "",
   },
-  convReverbParams: {
-    enabled: false,
-    irIndex: 0,
-    wet: 0.35,
-  },
   compParams: {
     enabled: false,
     thresholdDB: -20,
@@ -520,10 +515,9 @@ const el = {
   reverbFDNModDepthValue: document.getElementById("reverb-fdn-mod-depth-value"),
   reverbFDNModRate: document.getElementById("reverb-fdn-mod-rate"),
   reverbFDNModRateValue: document.getElementById("reverb-fdn-mod-rate-value"),
-  convReverbEnabled: document.getElementById("conv-reverb-enabled"),
-  convReverbIR: document.getElementById("conv-reverb-ir"),
-  convReverbWet: document.getElementById("conv-reverb-wet"),
-  convReverbWetValue: document.getElementById("conv-reverb-wet-value"),
+  chainConvReverbIR: document.getElementById("chain-conv-reverb-ir"),
+  chainConvReverbWet: document.getElementById("chain-conv-reverb-wet"),
+  chainConvReverbWetValue: document.getElementById("chain-conv-reverb-wet-value"),
   compEnabled: document.getElementById("comp-enabled"),
   compThresh: document.getElementById("comp-thresh"),
   compThreshValue: document.getElementById("comp-thresh-value"),
@@ -739,6 +733,10 @@ const EFFECT_NODE_DEFAULTS = {
     preDelay: 0.01,
     modDepth: 0.002,
     modRate: 0.1,
+  },
+  "reverb-conv": {
+    irIndex: 0,
+    wet: 0.35,
   },
 };
 
@@ -1015,6 +1013,11 @@ function applyNodeParamsToUI(node) {
         el.reverbFreeverbRoom.value = p.roomSize;
         el.reverbFreeverbDamp.value = p.damp;
       }
+      break;
+    case "reverb-conv":
+      populateChainConvReverbIR();
+      if (el.chainConvReverbIR) el.chainConvReverbIR.value = p.irIndex ?? 0;
+      if (el.chainConvReverbWet) el.chainConvReverbWet.value = p.wet;
       break;
     default:
       break;
@@ -1302,6 +1305,11 @@ function collectNodeParamsFromUI(nodeType) {
         dry: Number(el.reverbFreeverbDry.value),
         roomSize: Number(el.reverbFreeverbRoom.value),
         damp: Number(el.reverbFreeverbDamp.value),
+      };
+    case "reverb-conv":
+      return {
+        irIndex: el.chainConvReverbIR ? Number(el.chainConvReverbIR.value) : 0,
+        wet: el.chainConvReverbWet ? Number(el.chainConvReverbWet.value) : 0.35,
       };
     default:
       return {};
@@ -1697,8 +1705,7 @@ async function ensureDSP(sampleRate) {
   syncCompressorToDSP();
   syncLimiterToDSP();
   syncSpectrumToDSP();
-  populateIRSelector();
-  syncConvReverbToDSP();
+  populateChainConvReverbIR();
 }
 
 async function setupAudio() {
@@ -1818,28 +1825,22 @@ function syncSpectrumToDSP() {
     console.error("setSpectrum failed", err);
 }
 
-function syncConvReverbToDSP() {
-  if (!state.dsp.ready || !state.dsp.api) return;
-  const err = state.dsp.api.setConvReverb(state.convReverbParams);
-  if (typeof err === "string" && err.length > 0)
-    console.error("setConvReverb failed", err);
-}
-
-function populateIRSelector() {
-  if (!state.dsp.ready || !state.dsp.api || !el.convReverbIR) return;
+function populateChainConvReverbIR() {
+  if (!state.dsp.ready || !state.dsp.api || !el.chainConvReverbIR) return;
+  if (el.chainConvReverbIR.dataset.populated === "1") return;
   const names = state.dsp.api.getIRNames();
-  el.convReverbIR.innerHTML = "";
+  el.chainConvReverbIR.innerHTML = "";
   if (!names || names.length === 0) {
-    el.convReverbIR.innerHTML = "<option value='0'>No IRs loaded</option>";
+    el.chainConvReverbIR.innerHTML = "<option value='0'>No IRs loaded</option>";
     return;
   }
   for (let i = 0; i < names.length; i++) {
     const opt = document.createElement("option");
     opt.value = i;
     opt.textContent = names[i];
-    el.convReverbIR.appendChild(opt);
+    el.chainConvReverbIR.appendChild(opt);
   }
-  el.convReverbIR.value = state.convReverbParams.irIndex;
+  el.chainConvReverbIR.dataset.populated = "1";
 }
 
 function readSpectrumFromUI() {
@@ -2195,6 +2196,9 @@ function updateEffectsText() {
   }
   if (el.reverbFDNModRateValue) {
     el.reverbFDNModRateValue.textContent = `${Number(el.reverbFDNModRate.value).toFixed(2)} Hz`;
+  }
+  if (el.chainConvReverbWet && el.chainConvReverbWetValue) {
+    el.chainConvReverbWetValue.textContent = `${Math.round(Number(el.chainConvReverbWet.value) * 100)}%`;
   }
 }
 
@@ -2599,24 +2603,17 @@ function bindEvents() {
     });
   });
 
-  if (el.convReverbEnabled) {
-    el.convReverbEnabled.addEventListener("change", () => {
-      state.convReverbParams.enabled = el.convReverbEnabled.checked;
-      syncConvReverbToDSP();
+  if (el.chainConvReverbIR) {
+    el.chainConvReverbIR.addEventListener("change", () => {
+      commitSelectedNodeParamsFromUI();
     });
   }
-  if (el.convReverbIR) {
-    el.convReverbIR.addEventListener("change", () => {
-      state.convReverbParams.irIndex = Number(el.convReverbIR.value);
-      syncConvReverbToDSP();
-    });
-  }
-  if (el.convReverbWet) {
-    el.convReverbWet.addEventListener("input", () => {
-      state.convReverbParams.wet = Number(el.convReverbWet.value);
-      if (el.convReverbWetValue)
-        el.convReverbWetValue.textContent = Math.round(state.convReverbParams.wet * 100) + "%";
-      syncConvReverbToDSP();
+  if (el.chainConvReverbWet) {
+    el.chainConvReverbWet.addEventListener("input", () => {
+      if (el.chainConvReverbWetValue)
+        el.chainConvReverbWetValue.textContent =
+          Math.round(Number(el.chainConvReverbWet.value) * 100) + "%";
+      commitSelectedNodeParamsFromUI();
     });
   }
 

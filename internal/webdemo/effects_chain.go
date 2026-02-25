@@ -264,6 +264,9 @@ func init() {
 
 		return &fdnReverbChainRuntime{fx: fdn}, nil
 	})
+	registerChainEffectFactory("reverb-conv", func(_ *Engine) (chainEffectRuntime, error) {
+		return &convReverbChainRuntime{irIndex: -1}, nil
+	})
 	registerChainEffectFactory("dyn-compressor", func(e *Engine) (chainEffectRuntime, error) {
 		fx, err := dynamics.NewCompressor(e.sampleRate)
 		if err != nil {
@@ -2273,4 +2276,60 @@ func normalizeDeesserDetector(raw string) dynamics.DeEsserDetector {
 	default:
 		return dynamics.DeEsserDetectBandpass
 	}
+}
+
+// convReverbChainRuntime handles the "reverb-conv" node type using partitioned convolution.
+type convReverbChainRuntime struct {
+	fx      *reverb.ConvolutionReverb
+	irIndex int
+}
+
+func (r *convReverbChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	irIndex := int(getNodeNum(node, "irIndex", 0))
+	wet := getNodeNum(node, "wet", 0.35)
+
+	if r.fx == nil || r.irIndex != irIndex {
+		if e.irLib == nil {
+			return nil
+		}
+
+		ir := e.irLib.GetIR(irIndex)
+		if ir == nil || len(ir.Samples) == 0 {
+			return nil
+		}
+
+		ch0 := ir.Samples[0]
+		kernel := make([]float64, len(ch0))
+		copy(kernel, ch0)
+
+		if len(ir.Samples) > 1 {
+			ch1 := ir.Samples[1]
+			n := min(len(ch0), len(ch1))
+			for i := range n {
+				kernel[i] = (ch0[i] + ch1[i]) * 0.5
+			}
+		}
+
+		cr, err := reverb.NewConvolutionReverb(kernel, 7) // 128-sample latency
+		if err != nil {
+			return err
+		}
+
+		r.fx = cr
+		r.irIndex = irIndex
+	}
+
+	if r.fx != nil {
+		r.fx.SetWetDry(wet, 1.0)
+	}
+
+	return nil
+}
+
+func (r *convReverbChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	if r.fx == nil {
+		return
+	}
+
+	_ = r.fx.ProcessInPlace(block)
 }

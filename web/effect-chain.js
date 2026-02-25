@@ -30,6 +30,7 @@
     reverb:           { label: "Reverb",            hue: 260, category: "Time/Space", hidden: true },
     "reverb-freeverb":{ label: "Reverb (Freeverb)", hue: 260, category: "Time/Space" },
     "reverb-fdn":     { label: "Reverb (FDN)",      hue: 268, category: "Time/Space" },
+    "reverb-conv":    { label: "Reverb (Conv IR)",  hue: 248, category: "Time/Space" },
     widener:          { label: "Stereo Widener",    hue: 286, category: "Spatial" },
     bass:             { label: "Bass Enhancer",     hue: 10,  category: "Spatial" },
     "pitch-time":     { label: "Pitch (Time)",      hue: 190, category: "Pitch" },
@@ -291,6 +292,9 @@
       preDelay: { label: "Pre",  min: 0, max: 0.08, step: 0.001, unit: "ms", scale: 1000 },
       modDepth: { label: "ModD", min: 0, max: 0.01, step: 0.0001, unit: "ms", scale: 1000 },
       modRate:  { label: "ModR", min: 0, max: 1, step: 0.01, unit: "Hz" },
+    },
+    "reverb-conv": {
+      wet: { label: "Wet", min: 0, max: 1.5, step: 0.01, unit: "%", scale: 100 },
     },
   };
 
