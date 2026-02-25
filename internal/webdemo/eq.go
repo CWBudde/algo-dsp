@@ -57,13 +57,31 @@ func (e *Engine) SetEQ(eq EQParams) error {
 }
 
 func (e *Engine) rebuildEQ() error {
-	e.hp = buildEQChain(e.eq.HPFamily, e.eq.HPType, e.eq.HPOrder, e.eq.HPFreq, e.eq.HPGain, e.eq.HPQ, e.sampleRate)
-	e.low = buildEQChain(e.eq.LowFamily, e.eq.LowType, e.eq.LowOrder, e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ, e.sampleRate)
-	e.mid = buildEQChain(e.eq.MidFamily, e.eq.MidType, e.eq.MidOrder, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ, e.sampleRate)
-	e.high = buildEQChain(e.eq.HighFamily, e.eq.HighType, e.eq.HighOrder, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ, e.sampleRate)
-	e.lp = buildEQChain(e.eq.LPFamily, e.eq.LPType, e.eq.LPOrder, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ, e.sampleRate)
+	e.updateEQBand(&e.hp, e.eq.HPFamily, e.eq.HPType, e.eq.HPOrder, e.eq.HPFreq, e.eq.HPGain, e.eq.HPQ)
+	e.updateEQBand(&e.low, e.eq.LowFamily, e.eq.LowType, e.eq.LowOrder, e.eq.LowFreq, e.eq.LowGain, e.eq.LowQ)
+	e.updateEQBand(&e.mid, e.eq.MidFamily, e.eq.MidType, e.eq.MidOrder, e.eq.MidFreq, e.eq.MidGain, e.eq.MidQ)
+	e.updateEQBand(&e.high, e.eq.HighFamily, e.eq.HighType, e.eq.HighOrder, e.eq.HighFreq, e.eq.HighGain, e.eq.HighQ)
+	e.updateEQBand(&e.lp, e.eq.LPFamily, e.eq.LPType, e.eq.LPOrder, e.eq.LPFreq, e.eq.LPGain, e.eq.LPQ)
 
 	return nil
+}
+
+// updateEQBand applies new EQ parameters to an existing biquad chain in-place,
+// preserving delay-line state when the section count is unchanged (same filter
+// family, type, and order).  This avoids the output discontinuity that would
+// occur if the chain were replaced with a freshly-zeroed one.
+func (e *Engine) updateEQBand(dst **biquad.Chain, family, kind string, order int, freq, gainDB, q float64) {
+	fresh := buildEQChain(family, kind, order, freq, gainDB, q, e.sampleRate)
+	if *dst == nil {
+		*dst = fresh
+		return
+	}
+	n := fresh.NumSections()
+	coeffs := make([]biquad.Coefficients, n)
+	for i := range coeffs {
+		coeffs[i] = fresh.Section(i).Coefficients
+	}
+	(*dst).UpdateCoefficients(coeffs, fresh.Gain())
 }
 
 func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate float64) *biquad.Chain {

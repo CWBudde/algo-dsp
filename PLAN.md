@@ -419,9 +419,9 @@ Exit criteria:
 
 Tasks:
 
-- [ ] Convolution reverb
-  - [ ] Implement partitioned convolution wrapper specialized for reverb usage.
-  - [ ] Add tests + example.
+- [x] Convolution reverb
+  - [x] Implement partitioned convolution wrapper specialized for reverb usage.
+  - [x] Add tests + example.
 - [ ] Haas delay
   - [ ] Implement short stereo delay + constraints.
   - [ ] Add tests + example.

@@ -825,7 +825,9 @@ func configureDelay(fx *effects.Delay, sampleRate, time, feedback, mix float64) 
 		return err
 	}
 
-	if err := fx.SetTime(time); err != nil {
+	// Use SetTargetTime so the read-pointer ramps smoothly to the new
+	// delay time during subsequent processing, avoiding an audible click.
+	if err := fx.SetTargetTime(time); err != nil {
 		return err
 	}
 

@@ -91,6 +91,28 @@ func (c *Chain) Gain() float64 { return c.gain }
 // SetGain updates the input gain applied before cascading.
 func (c *Chain) SetGain(g float64) { c.gain = g }
 
+// UpdateCoefficients replaces the filter coefficients and gain.
+// If the number of sections is unchanged the delay-line state of each section
+// is preserved, avoiding the output discontinuity that would result from
+// starting a fresh chain with zero state.
+// If the section count changes the sections are replaced and state is reset.
+func (c *Chain) UpdateCoefficients(coeffs []Coefficients, gain float64) {
+	c.gain = gain
+
+	if len(coeffs) == len(c.sections) {
+		for i := range c.sections {
+			c.sections[i].Coefficients = coeffs[i]
+		}
+
+		return
+	}
+
+	c.sections = make([]Section, len(coeffs))
+	for i := range coeffs {
+		c.sections[i].Coefficients = coeffs[i]
+	}
+}
+
 // Section returns a pointer to the i-th section for inspection or modification.
 func (c *Chain) Section(i int) *Section {
 	return &c.sections[i]

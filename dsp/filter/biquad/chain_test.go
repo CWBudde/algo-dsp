@@ -261,6 +261,87 @@ func TestChain_StabilityLongRun(t *testing.T) {
 	}
 }
 
+func TestChain_UpdateCoefficients_PreservesStateWhenSectionCountMatches(t *testing.T) {
+	// Warm the filter state with some samples.
+	c := NewChain(twoSectionCoeffs())
+	c.ProcessSample(1)
+	c.ProcessSample(0.5)
+	c.ProcessSample(-0.3)
+	savedState := c.State()
+
+	// Update to different coefficients with the same number of sections.
+	newCoeffs := []Coefficients{
+		{B0: 0.3, B1: 0.4, B2: 0.3, A1: -0.3, A2: 0.05},
+		{B0: 0.2, B1: 0.1, B2: 0.2, A1: -0.4, A2: 0.08},
+	}
+	c.UpdateCoefficients(newCoeffs, 1.0)
+
+	// State must be unchanged after the coefficient update.
+	afterState := c.State()
+	for i, s := range afterState {
+		if s != savedState[i] {
+			t.Errorf("section %d state changed: before=%v, after=%v", i, savedState[i], s)
+		}
+	}
+}
+
+func TestChain_UpdateCoefficients_AppliesNewCoefficients(t *testing.T) {
+	// Build two chains, update one to the same coefficients as the other.
+	origCoeffs := twoSectionCoeffs()
+	c := NewChain(origCoeffs)
+
+	newCoeffs := []Coefficients{
+		{B0: 0.3, B1: 0.4, B2: 0.3, A1: -0.3, A2: 0.05},
+		{B0: 0.2, B1: 0.1, B2: 0.2, A1: -0.4, A2: 0.08},
+	}
+	ref := NewChain(newCoeffs)
+
+	c.UpdateCoefficients(newCoeffs, 1.0)
+
+	// Both chains start from zero state; their output must be identical.
+	input := []float64{1, 0.5, -0.3, 0.7, 0, -1, 0.2, 0.8}
+	for i, x := range input {
+		want := ref.ProcessSample(x)
+		got := c.ProcessSample(x)
+		if !almostEqual(got, want, eps) {
+			t.Errorf("sample %d: got %.15f, want %.15f", i, got, want)
+		}
+	}
+}
+
+func TestChain_UpdateCoefficients_UpdatesGain(t *testing.T) {
+	c := NewChain(twoSectionCoeffs(), WithGain(1.0))
+	c.UpdateCoefficients(twoSectionCoeffs(), 0.5)
+
+	if c.Gain() != 0.5 {
+		t.Errorf("gain: got %v, want 0.5", c.Gain())
+	}
+}
+
+func TestChain_UpdateCoefficients_DifferentSectionCountResetsState(t *testing.T) {
+	// Warm a 2-section chain.
+	c := NewChain(twoSectionCoeffs())
+	c.ProcessSample(1)
+	c.ProcessSample(0.5)
+
+	// Change to a 1-section chain — state must be reset.
+	oneSection := []Coefficients{
+		{B0: 0.25, B1: 0.5, B2: 0.25, A1: -0.2, A2: 0.04},
+	}
+	c.UpdateCoefficients(oneSection, 1.0)
+
+	if c.NumSections() != 1 {
+		t.Fatalf("NumSections: got %d, want 1", c.NumSections())
+	}
+
+	for i := range c.sections {
+		st := c.sections[i].State()
+		if st != [2]float64{0, 0} {
+			t.Errorf("section %d state not zero after section-count change: %v", i, st)
+		}
+	}
+}
+
 // Benchmarks
 
 func BenchmarkChain_ProcessSample(b *testing.B) {
