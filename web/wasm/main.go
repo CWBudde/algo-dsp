@@ -358,6 +358,34 @@ func main() {
 		return engine.CurrentStep()
 	}))
 
+	api.Set("setConvReverb", export(func(args []js.Value) any {
+		if engine == nil || len(args) < 1 {
+			return js.Null()
+		}
+		p := args[0]
+		p2 := engine.Effects()
+		p2.ConvReverbEnabled = p.Get("enabled").Bool()
+		p2.ConvReverbIRIndex = p.Get("irIndex").Int()
+		p2.ConvReverbWet = p.Get("wet").Float()
+		err := engine.SetEffects(p2)
+		if err != nil {
+			return err.Error()
+		}
+		return js.Null()
+	}))
+
+	api.Set("getIRNames", export(func(args []js.Value) any {
+		if engine == nil {
+			return js.Global().Get("Array").New(0)
+		}
+		names := engine.GetIRNames()
+		arr := js.Global().Get("Array").New(len(names))
+		for i, name := range names {
+			arr.SetIndex(i, name)
+		}
+		return arr
+	}))
+
 	js.Global().Set("AlgoDSPDemo", api)
 	select {}
 }

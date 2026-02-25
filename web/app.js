@@ -179,6 +179,11 @@ const state = {
     reverbModRate: 0.1,
     chainGraphJSON: "",
   },
+  convReverbParams: {
+    enabled: false,
+    irIndex: 0,
+    wet: 0.35,
+  },
   compParams: {
     enabled: false,
     thresholdDB: -20,
@@ -515,6 +520,10 @@ const el = {
   reverbFDNModDepthValue: document.getElementById("reverb-fdn-mod-depth-value"),
   reverbFDNModRate: document.getElementById("reverb-fdn-mod-rate"),
   reverbFDNModRateValue: document.getElementById("reverb-fdn-mod-rate-value"),
+  convReverbEnabled: document.getElementById("conv-reverb-enabled"),
+  convReverbIR: document.getElementById("conv-reverb-ir"),
+  convReverbWet: document.getElementById("conv-reverb-wet"),
+  convReverbWetValue: document.getElementById("conv-reverb-wet-value"),
   compEnabled: document.getElementById("comp-enabled"),
   compThresh: document.getElementById("comp-thresh"),
   compThreshValue: document.getElementById("comp-thresh-value"),
@@ -1688,6 +1697,8 @@ async function ensureDSP(sampleRate) {
   syncCompressorToDSP();
   syncLimiterToDSP();
   syncSpectrumToDSP();
+  populateIRSelector();
+  syncConvReverbToDSP();
 }
 
 async function setupAudio() {
@@ -1805,6 +1816,30 @@ function syncSpectrumToDSP() {
   const err = state.dsp.api.setSpectrum(state.analyzerParams);
   if (typeof err === "string" && err.length > 0)
     console.error("setSpectrum failed", err);
+}
+
+function syncConvReverbToDSP() {
+  if (!state.dsp.ready || !state.dsp.api) return;
+  const err = state.dsp.api.setConvReverb(state.convReverbParams);
+  if (typeof err === "string" && err.length > 0)
+    console.error("setConvReverb failed", err);
+}
+
+function populateIRSelector() {
+  if (!state.dsp.ready || !state.dsp.api || !el.convReverbIR) return;
+  const names = state.dsp.api.getIRNames();
+  el.convReverbIR.innerHTML = "";
+  if (!names || names.length === 0) {
+    el.convReverbIR.innerHTML = "<option value='0'>No IRs loaded</option>";
+    return;
+  }
+  for (let i = 0; i < names.length; i++) {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = names[i];
+    el.convReverbIR.appendChild(opt);
+  }
+  el.convReverbIR.value = state.convReverbParams.irIndex;
 }
 
 function readSpectrumFromUI() {
@@ -2563,6 +2598,27 @@ function bindEvents() {
       }
     });
   });
+
+  if (el.convReverbEnabled) {
+    el.convReverbEnabled.addEventListener("change", () => {
+      state.convReverbParams.enabled = el.convReverbEnabled.checked;
+      syncConvReverbToDSP();
+    });
+  }
+  if (el.convReverbIR) {
+    el.convReverbIR.addEventListener("change", () => {
+      state.convReverbParams.irIndex = Number(el.convReverbIR.value);
+      syncConvReverbToDSP();
+    });
+  }
+  if (el.convReverbWet) {
+    el.convReverbWet.addEventListener("input", () => {
+      state.convReverbParams.wet = Number(el.convReverbWet.value);
+      if (el.convReverbWetValue)
+        el.convReverbWetValue.textContent = Math.round(state.convReverbParams.wet * 100) + "%";
+      syncConvReverbToDSP();
+    });
+  }
 
   [
     el.compEnabled,

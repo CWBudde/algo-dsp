@@ -134,6 +134,10 @@ type EffectsParams struct {
 	ReverbModDepth float64
 	ReverbModRate  float64
 
+	ConvReverbEnabled bool
+	ConvReverbIRIndex int
+	ConvReverbWet     float64
+
 	HarmonicBassEnabled    bool
 	HarmonicBassFrequency  float64
 	HarmonicBassInputGain  float64
@@ -196,20 +200,24 @@ type Engine struct {
 	high *biquad.Chain
 	lp   *biquad.Chain
 
-	effects EffectsParams
-	chorus  *modulation.Chorus
-	flanger *modulation.Flanger
-	ringMod *modulation.RingModulator
-	crusher *effects.BitCrusher
-	widener *spatial.StereoWidener
-	phaser  *modulation.Phaser
-	tremolo *modulation.Tremolo
-	delay   *effects.Delay
-	reverb  *reverb.Reverb
-	fdn     *reverb.FDNReverb
-	bass    *effects.HarmonicBass
-	tp      *pitch.PitchShifter
-	sp      *pitch.SpectralPitchShifter
+	effects    EffectsParams
+	chorus     *modulation.Chorus
+	flanger    *modulation.Flanger
+	ringMod    *modulation.RingModulator
+	crusher    *effects.BitCrusher
+	widener    *spatial.StereoWidener
+	phaser     *modulation.Phaser
+	tremolo    *modulation.Tremolo
+	delay      *effects.Delay
+	reverb     *reverb.Reverb
+	fdn        *reverb.FDNReverb
+	convReverb        *reverb.ConvolutionReverb
+	convReverbIRIndex int // index of the currently loaded IR (-1 = none)
+	bass              *effects.HarmonicBass
+	tp         *pitch.PitchShifter
+	sp         *pitch.SpectralPitchShifter
+
+	irLib *IRLibrary
 
 	compParams CompressorParams
 	compressor *dynamics.Compressor
@@ -356,6 +364,9 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			HarmonicBassDecay:      0,
 			HarmonicBassResponseMs: 20,
 			HarmonicBassHighpass:   0,
+			ConvReverbEnabled:      false,
+			ConvReverbIRIndex:      0,
+			ConvReverbWet:          0.35,
 		},
 		compParams: CompressorParams{
 			Enabled:      false,
@@ -482,6 +493,11 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 
 	e.limiter = lim
 
+	// Load the embedded IR library (best-effort; demo works without it).
+	if lib, err := loadEmbeddedIRLib(); err == nil {
+		e.irLib = lib
+	}
+
 	if err := e.rebuildEffects(); err != nil {
 		return nil, err
 	}
@@ -510,6 +526,19 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 // CurrentStep returns the currently playing step index.
 func (e *Engine) CurrentStep() int {
 	return e.currentStep
+}
+
+// Effects returns a copy of the current effects parameters.
+func (e *Engine) Effects() EffectsParams {
+	return e.effects
+}
+
+// GetIRNames returns the names of available impulse responses, or nil if none loaded.
+func (e *Engine) GetIRNames() []string {
+	if e.irLib == nil {
+		return nil
+	}
+	return e.irLib.IRNames()
 }
 
 // Render fills dst with mono PCM samples in [-1, 1].

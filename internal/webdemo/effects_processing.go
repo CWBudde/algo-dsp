@@ -75,6 +75,10 @@ func (e *Engine) processEffectsLegacyInPlace(block []float64) {
 			e.reverb.ProcessInPlace(block)
 		}
 	}
+
+	if e.effects.ConvReverbEnabled && e.convReverb != nil {
+		_ = e.convReverb.ProcessInPlace(block)
+	}
 }
 
 // processEffectsByGraphInPlace traverses the DAG in topological order and applies

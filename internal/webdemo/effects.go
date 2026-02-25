@@ -1,5 +1,7 @@
 package webdemo
 
+import "github.com/cwbudde/algo-dsp/dsp/effects/reverb"
+
 // SetCompressor updates compressor parameters.
 func (e *Engine) SetCompressor(param CompressorParams) error {
 	prevEnabled := e.compParams.Enabled
@@ -42,6 +44,8 @@ func (e *Engine) SetLimiter(p LimiterParams) error {
 
 // SetEffects updates effect settings.
 func (e *Engine) SetEffects(p EffectsParams) error {
+	prevConvReverbEnabled := e.effects.ConvReverbEnabled
+	prevConvReverbIRIndex := e.effects.ConvReverbIRIndex
 	prevChorusEnabled := e.effects.ChorusEnabled
 	prevFlangerEnabled := e.effects.FlangerEnabled
 	prevRingModEnabled := e.effects.RingModEnabled
@@ -140,6 +144,8 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 		p.ReverbModel = "freeverb"
 	}
 
+	p.ConvReverbWet = clamp(p.ConvReverbWet, 0, 1.5)
+
 	p.ReverbWet = clamp(p.ReverbWet, 0, 1.5)
 	p.ReverbDry = clamp(p.ReverbDry, 0, 1.5)
 	p.ReverbRoomSize = clamp(p.ReverbRoomSize, 0, 0.98)
@@ -221,6 +227,12 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	if prevReverbModel != p.ReverbModel {
 		e.reverb.Reset()
 		e.fdn.Reset()
+	}
+
+	if (prevConvReverbEnabled && !p.ConvReverbEnabled) || prevConvReverbIRIndex != p.ConvReverbIRIndex {
+		if e.convReverb != nil {
+			e.convReverb.Reset()
+		}
 	}
 
 	if prevBassEnabled && !p.HarmonicBassEnabled {
@@ -306,6 +318,7 @@ func (e *Engine) rebuildEffects() error {
 		e.rebuildSpectralPitchEffect,
 		e.rebuildReverbEffect,
 		e.rebuildHarmonicBassEffect,
+		e.rebuildConvReverbEffect,
 	}
 	for _, step := range steps {
 		if err := step(); err != nil {
@@ -487,6 +500,45 @@ func (e *Engine) rebuildHarmonicBassEffect() error {
 		e.effects.HarmonicBassResponseMs,
 		e.effects.HarmonicBassHighpass,
 	)
+}
+
+func (e *Engine) rebuildConvReverbEffect() error {
+	if !e.effects.ConvReverbEnabled || e.irLib == nil {
+		return nil
+	}
+
+	ir := e.irLib.GetIR(e.effects.ConvReverbIRIndex)
+	if ir == nil || len(ir.Samples) == 0 {
+		return nil
+	}
+
+	// Mix stereo channels to mono for the convolution kernel.
+	ch0 := ir.Samples[0]
+	kernel := make([]float64, len(ch0))
+	copy(kernel, ch0)
+
+	if len(ir.Samples) > 1 {
+		ch1 := ir.Samples[1]
+		n := min(len(ch0), len(ch1))
+		for i := range n {
+			kernel[i] = (ch0[i] + ch1[i]) * 0.5
+		}
+	}
+
+	// Only rebuild the engine if the IR changed.
+	if e.convReverb == nil || e.convReverbIRIndex != e.effects.ConvReverbIRIndex {
+		cr, err := reverb.NewConvolutionReverb(kernel, 7) // 128-sample latency
+		if err != nil {
+			return err
+		}
+
+		e.convReverb = cr
+		e.convReverbIRIndex = e.effects.ConvReverbIRIndex
+	}
+
+	e.convReverb.SetWetDry(e.effects.ConvReverbWet, 1.0)
+
+	return nil
 }
 
 func sanitizeSpectralPitchFrameSize(n int) int {
