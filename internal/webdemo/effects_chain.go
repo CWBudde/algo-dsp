@@ -139,6 +139,14 @@ func init() {
 
 		return &distortionChainRuntime{fx: fx}, nil
 	})
+	registerChainEffectFactory("dist-cheb", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := effects.NewDistortion(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &distChebChainRuntime{fx: fx}, nil
+	})
 	registerChainEffectFactory("transformer", func(e *Engine) (chainEffectRuntime, error) {
 		fx, err := effects.NewTransformerSimulation(e.sampleRate)
 		if err != nil {
@@ -1122,19 +1130,6 @@ type distortionChainRuntime struct {
 func (r *distortionChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	mode := normalizeDistortionMode(node.Str["mode"])
 	approx := normalizeDistortionApproxMode(node.Str["approx"])
-	chebMode := normalizeChebyshevHarmonicMode(node.Str["chebHarmonic"])
-
-	chebOrder := int(math.Round(getNodeNum(node, "chebOrder", 3)))
-	if chebOrder < 1 {
-		chebOrder = 1
-	}
-
-	if chebOrder > 16 {
-		chebOrder = 16
-	}
-
-	chebInvert := getNodeNum(node, "chebInvert", 0) >= 0.5
-	chebDCBypass := getNodeNum(node, "chebDCBypass", 0) >= 0.5
 
 	return configureDistortion(
 		r.fx,
@@ -1147,15 +1142,58 @@ func (r *distortionChainRuntime) Configure(e *Engine, node compiledChainNode) er
 		clamp(getNodeNum(node, "clip", 1.0), 0.05, 1),
 		clamp(getNodeNum(node, "shape", 0.5), 0, 1),
 		clamp(getNodeNum(node, "bias", 0), -1, 1),
-		chebOrder,
-		chebMode,
-		chebInvert,
-		clamp(getNodeNum(node, "chebGain", 1.0), 0, 4),
-		chebDCBypass,
+		3,
+		effects.ChebyshevHarmonicAll,
+		false,
+		1.0,
+		false,
 	)
 }
 
 func (r *distortionChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	r.fx.ProcessInPlace(block)
+}
+
+type distChebChainRuntime struct {
+	fx *effects.Distortion
+}
+
+func (r *distChebChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	approx := normalizeDistortionApproxMode(node.Str["approx"])
+	chebMode := normalizeChebyshevHarmonicMode(node.Str["harmonic"])
+
+	chebOrder := int(math.Round(getNodeNum(node, "order", 3)))
+	if chebOrder < 1 {
+		chebOrder = 1
+	}
+
+	if chebOrder > 16 {
+		chebOrder = 16
+	}
+
+	chebInvert := getNodeNum(node, "invert", 0) >= 0.5
+	chebDCBypass := getNodeNum(node, "dcBypass", 0) >= 0.5
+
+	return configureDistortion(
+		r.fx,
+		e.sampleRate,
+		effects.DistortionModeChebyshev,
+		approx,
+		clamp(getNodeNum(node, "drive", 1.0), 0.01, 20),
+		clamp(getNodeNum(node, "mix", 1.0), 0, 1),
+		clamp(getNodeNum(node, "output", 1.0), 0, 4),
+		1.0,
+		0.5,
+		0.0,
+		chebOrder,
+		chebMode,
+		chebInvert,
+		clamp(getNodeNum(node, "gain", 1.0), 0, 4),
+		chebDCBypass,
+	)
+}
+
+func (r *distChebChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
 	r.fx.ProcessInPlace(block)
 }
 

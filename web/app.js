@@ -841,11 +841,17 @@ function applyNodeParamsToUI(node) {
       el.distortionClip.value = p.clip;
       el.distortionShape.value = p.shape;
       el.distortionBias.value = p.bias;
-      el.distortionChebOrder.value = p.chebOrder;
-      el.distortionChebHarmonic.value = p.chebHarmonic || "all";
-      el.distortionChebInvert.value = String(Number(p.chebInvert || 0));
-      el.distortionChebGain.value = p.chebGain;
-      el.distortionChebDCBypass.value = String(Number(p.chebDCBypass || 0));
+      break;
+    case "dist-cheb":
+      el.distChebOrder.value = p.order ?? 3;
+      el.distChebHarmonic.value = p.harmonic || "all";
+      el.distChebInvert.value = String(Number(p.invert || 0));
+      el.distChebGain.value = p.gain ?? 1.0;
+      el.distChebDCBypass.value = String(Number(p.dcBypass || 0));
+      el.distChebDrive.value = p.drive ?? 1.0;
+      el.distChebMix.value = p.mix ?? 1.0;
+      el.distChebOutput.value = p.output ?? 1.0;
+      el.distChebApprox.value = p.approx || "exact";
       break;
     case "transformer":
       el.transformerQuality.value = p.quality || "high";
@@ -1079,18 +1085,7 @@ function collectNodeParamsFromUI(nodeType) {
         downsample: Number(el.bitCrusherDownsample.value),
         mix: Number(el.bitCrusherMix.value),
       };
-    case "distortion": {
-      const chebHarmonic = String(el.distortionChebHarmonic.value || "all");
-      let chebOrder = Math.max(1, Math.min(16, Math.round(Number(el.distortionChebOrder.value))));
-      if (chebHarmonic === "odd" && chebOrder % 2 === 0) {
-        chebOrder = Math.max(1, chebOrder - 1);
-      }
-      if (chebHarmonic === "even" && chebOrder % 2 !== 0) {
-        chebOrder = Math.min(16, chebOrder + 1);
-      }
-      if (Number(el.distortionChebOrder.value) !== chebOrder) {
-        el.distortionChebOrder.value = String(chebOrder);
-      }
+    case "distortion":
       return {
         mode: String(el.distortionMode.value || "softclip"),
         approx: String(el.distortionApprox.value || "exact"),
@@ -1100,11 +1095,29 @@ function collectNodeParamsFromUI(nodeType) {
         clip: Number(el.distortionClip.value),
         shape: Number(el.distortionShape.value),
         bias: Number(el.distortionBias.value),
-        chebOrder,
-        chebHarmonic,
-        chebInvert: Number(el.distortionChebInvert.value),
-        chebGain: Number(el.distortionChebGain.value),
-        chebDCBypass: Number(el.distortionChebDCBypass.value),
+      };
+    case "dist-cheb": {
+      const harmonic = String(el.distChebHarmonic.value || "all");
+      let order = Math.max(1, Math.min(16, Math.round(Number(el.distChebOrder.value))));
+      if (harmonic === "odd" && order % 2 === 0) {
+        order = Math.max(1, order - 1);
+      }
+      if (harmonic === "even" && order % 2 !== 0) {
+        order = Math.min(16, order + 1);
+      }
+      if (Number(el.distChebOrder.value) !== order) {
+        el.distChebOrder.value = String(order);
+      }
+      return {
+        order,
+        harmonic,
+        invert: Number(el.distChebInvert.value),
+        gain: Number(el.distChebGain.value),
+        dcBypass: Number(el.distChebDCBypass.value),
+        drive: Number(el.distChebDrive.value),
+        mix: Number(el.distChebMix.value),
+        output: Number(el.distChebOutput.value),
+        approx: String(el.distChebApprox.value || "exact"),
       };
     }
     case "transformer":
@@ -1945,11 +1958,20 @@ function updateEffectsText() {
   if (el.distortionBiasValue) {
     el.distortionBiasValue.textContent = Number(el.distortionBias.value).toFixed(2);
   }
-  if (el.distortionChebOrderValue) {
-    el.distortionChebOrderValue.textContent = `${Math.round(Number(el.distortionChebOrder.value))}`;
+  if (el.distChebOrderValue) {
+    el.distChebOrderValue.textContent = `${Math.round(Number(el.distChebOrder.value))}`;
   }
-  if (el.distortionChebGainValue) {
-    el.distortionChebGainValue.textContent = `${Number(el.distortionChebGain.value).toFixed(2)}x`;
+  if (el.distChebGainValue) {
+    el.distChebGainValue.textContent = `${Number(el.distChebGain.value).toFixed(2)}x`;
+  }
+  if (el.distChebDriveValue) {
+    el.distChebDriveValue.textContent = `${Number(el.distChebDrive.value).toFixed(2)}x`;
+  }
+  if (el.distChebMixValue) {
+    el.distChebMixValue.textContent = `${Math.round(Number(el.distChebMix.value) * 100)}%`;
+  }
+  if (el.distChebOutputValue) {
+    el.distChebOutputValue.textContent = `${Number(el.distChebOutput.value).toFixed(2)}x`;
   }
   if (el.transformerDriveValue) {
     el.transformerDriveValue.textContent = `${Number(el.transformerDrive.value).toFixed(2)}x`;
