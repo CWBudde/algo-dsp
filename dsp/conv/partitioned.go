@@ -54,12 +54,12 @@ type PartitionedConvolution32 = PartitionedConvolutionT[float32, complex64]
 // partStageT is a single partition stage used internally.
 type partStageT[F algofft.Float, C algofft.Complex] struct {
 	fftOrder  int
-	fftSize   int    // = 1 << (fftOrder+1), double the partition size
-	partSize  int    // = 1 << fftOrder
-	outputPos int    // offset into output buffer for overlap-add
-	latency   int    // system latency = 1 << minBlockOrder
-	mod       int    // current modulo counter
-	modAnd    int    // (partSize/latency - 1), bitmask for mod
+	fftSize   int // = 1 << (fftOrder+1), double the partition size
+	partSize  int // = 1 << fftOrder
+	outputPos int // offset into output buffer for overlap-add
+	latency   int // system latency = 1 << minBlockOrder
+	mod       int // current modulo counter
+	modAnd    int // (partSize/latency - 1), bitmask for mod
 
 	irSpectra  [][]C
 	fft        *fftEngine[C]

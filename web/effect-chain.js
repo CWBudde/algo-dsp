@@ -14,6 +14,7 @@
     tremolo:          { label: "Tremolo",           hue: 270, category: "Modulation" },
     bitcrusher:       { label: "Bit Crusher",       hue: 24,  category: "Color" },
     distortion:       { label: "Distortion",        hue: 6,   category: "Color" },
+    "dist-cheb":      { label: "Chebyshev WS",      hue: 18,  category: "Color" },
     transformer:      { label: "Transformer Sat",   hue: 44,  category: "Color" },
     filter:           { label: "Filter",            hue: 188, category: "Filters", hidden: true },
     "filter-lowpass": { label: "Lowpass",           hue: 188, category: "Filters" },
@@ -124,6 +125,12 @@
       clip:   { label: "Clip",   min: 0.05, max: 1, step: 0.01, unit: "" },
       shape:  { label: "Shape",  min: 0, max: 1, step: 0.01, unit: "" },
       bias:   { label: "Bias",   min: -1, max: 1, step: 0.01, unit: "" },
+    },
+    "dist-cheb": {
+      order:  { label: "Order",  min: 1, max: 16, step: 1, unit: "" },
+      gain:   { label: "Gain",   min: 0, max: 4, step: 0.01, unit: "x" },
+      drive:  { label: "Drive",  min: 0.1, max: 20, step: 0.01, unit: "x" },
+      mix:    { label: "Mix",    min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     transformer: {
       drive:      { label: "Drive", min: 0.1, max: 20, step: 0.01, unit: "x" },
@@ -1579,6 +1586,75 @@
           this.draw();
         });
         menu.appendChild(bypassItem);
+
+        const replaceTitle = document.createElement("div");
+        replaceTitle.className = "chain-menu-title";
+        replaceTitle.textContent = "Replace with";
+        menu.appendChild(replaceTitle);
+
+        {
+          const grouped = new Map();
+          for (const [type, def] of Object.entries(FX_TYPES)) {
+            if (def.hidden) continue;
+            const category = def.category || "Other";
+            if (!grouped.has(category)) grouped.set(category, []);
+            grouped.get(category).push([type, def]);
+          }
+          const categoryOrder = ["Filters", "Dynamics", "Modulation", "Time/Space", "Pitch", "Spatial", "Color", "Routing", "Other"];
+          const hideSubmenu = () => {
+            if (this._submenu) { this._submenu.remove(); this._submenu = null; }
+          };
+          const placeSubmenu = (submenu, anchor) => {
+            const ar = anchor.getBoundingClientRect();
+            const sr = submenu.getBoundingClientRect();
+            let left = ar.right + 6;
+            let top  = ar.top - 4;
+            if (left + sr.width  > window.innerWidth  - 8) left = ar.left - sr.width - 6;
+            if (left < 8) left = 8;
+            if (top  + sr.height > window.innerHeight - 8) top  = window.innerHeight - sr.height - 8;
+            if (top  < 8) top  = 8;
+            submenu.style.left = left + "px";
+            submenu.style.top  = top  + "px";
+          };
+          const showTypesFlyout = (category, anchor) => {
+            hideSubmenu();
+            const submenu = document.createElement("div");
+            submenu.className = "chain-context-menu chain-context-submenu";
+            const title2 = document.createElement("div");
+            title2.className = "chain-menu-title";
+            title2.textContent = category;
+            submenu.appendChild(title2);
+            const entries = grouped.get(category) || [];
+            for (const [type, def] of entries) {
+              const item = document.createElement("button");
+              item.className = "chain-menu-item";
+              item.textContent = def.label;
+              item.addEventListener("click", () => {
+                const newParams = this.opts.createParams?.(type) || {};
+                nodeUnderCursor.type   = type;
+                nodeUnderCursor.label  = def.label;
+                nodeUnderCursor.params = newParams;
+                this._emitChange();
+                this._hideMenu();
+                this.draw();
+              });
+              submenu.appendChild(item);
+            }
+            document.body.appendChild(submenu);
+            placeSubmenu(submenu, anchor);
+            this._submenu = submenu;
+          };
+          for (const category of categoryOrder) {
+            const entries = grouped.get(category);
+            if (!entries || entries.length === 0) continue;
+            const item = document.createElement("button");
+            item.className = "chain-menu-item chain-menu-item--submenu";
+            item.textContent = category;
+            item.addEventListener("mouseenter", () => showTypesFlyout(category, item));
+            item.addEventListener("click",      () => showTypesFlyout(category, item));
+            menu.appendChild(item);
+          }
+        }
 
         const removeItem = document.createElement("button");
         removeItem.className = "chain-menu-item chain-menu-item--danger";

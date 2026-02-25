@@ -339,7 +339,6 @@
                   <option value="saturate">Saturate</option>
                   <option value="saturate2">Saturate 2</option>
                   <option value="softsat">SoftSat</option>
-                  <option value="chebyshev">Chebyshev</option>
                 </select>
               </label>
               <label>
@@ -379,36 +378,63 @@
                 <input id="distortion-bias" type="range" min="-1" max="1" step="0.01" value="0" />
                 <span id="distortion-bias-value">0.00</span>
               </label>
+            </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="dist-cheb" hidden>
+              <div class="fx-option-head">
+                <span>Chebyshev Waveshaper</span>
+              </div>
               <label>
-                Cheb Order
-                <input id="distortion-cheb-order" type="range" min="1" max="16" step="1" value="3" />
-                <span id="distortion-cheb-order-value">3</span>
+                Order
+                <input id="dist-cheb-order" type="range" min="1" max="16" step="1" value="3" />
+                <span id="dist-cheb-order-value">3</span>
               </label>
               <label>
-                Cheb Harmonics
-                <select id="distortion-cheb-harmonic">
+                Harmonics
+                <select id="dist-cheb-harmonic">
                   <option value="all">All</option>
                   <option value="odd">Odd</option>
                   <option value="even">Even</option>
                 </select>
               </label>
               <label>
-                Cheb Invert
-                <select id="distortion-cheb-invert">
+                Invert
+                <select id="dist-cheb-invert">
                   <option value="0">Off</option>
                   <option value="1">On</option>
                 </select>
               </label>
               <label>
-                Cheb Gain
-                <input id="distortion-cheb-gain" type="range" min="0" max="4" step="0.01" value="1.0" />
-                <span id="distortion-cheb-gain-value">1.00x</span>
+                Gain
+                <input id="dist-cheb-gain" type="range" min="0" max="4" step="0.01" value="1.0" />
+                <span id="dist-cheb-gain-value">1.00x</span>
               </label>
               <label>
-                Cheb DC Bypass
-                <select id="distortion-cheb-dc-bypass">
+                DC Bypass
+                <select id="dist-cheb-dc-bypass">
                   <option value="0">Off</option>
                   <option value="1">On</option>
+                </select>
+              </label>
+              <label>
+                Drive
+                <input id="dist-cheb-drive" type="range" min="0.1" max="20" step="0.01" value="1.0" />
+                <span id="dist-cheb-drive-value">1.00x</span>
+              </label>
+              <label>
+                Mix
+                <input id="dist-cheb-mix" type="range" min="0" max="1" step="0.01" value="1.0" />
+                <span id="dist-cheb-mix-value">100%</span>
+              </label>
+              <label>
+                Output
+                <input id="dist-cheb-output" type="range" min="0" max="4" step="0.01" value="1.0" />
+                <span id="dist-cheb-output-value">1.00x</span>
+              </label>
+              <label>
+                Approx
+                <select id="dist-cheb-approx">
+                  <option value="exact">Exact</option>
+                  <option value="polynomial">Polynomial</option>
                 </select>
               </label>
             </div>
@@ -1202,6 +1228,7 @@
                 <input id="reverb-fdn-mod-rate" type="range" min="0" max="1" step="0.01" value="0.1" />
                 <span id="reverb-fdn-mod-rate-value">0.10 Hz</span>
               </label>
+            </div>
             <div class="fx-card chain-detail-card" data-chain-detail="reverb-conv" hidden>
               <div class="fx-option-head">
                 <span>Reverb (Convolution)</span>

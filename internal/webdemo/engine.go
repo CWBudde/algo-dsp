@@ -196,20 +196,20 @@ type Engine struct {
 	high *biquad.Chain
 	lp   *biquad.Chain
 
-	effects    EffectsParams
-	chorus     *modulation.Chorus
-	flanger    *modulation.Flanger
-	ringMod    *modulation.RingModulator
-	crusher    *effects.BitCrusher
-	widener    *spatial.StereoWidener
-	phaser     *modulation.Phaser
-	tremolo    *modulation.Tremolo
-	delay      *effects.Delay
-	reverb     *reverb.Reverb
-	fdn        *reverb.FDNReverb
-	bass              *effects.HarmonicBass
-	tp         *pitch.PitchShifter
-	sp         *pitch.SpectralPitchShifter
+	effects EffectsParams
+	chorus  *modulation.Chorus
+	flanger *modulation.Flanger
+	ringMod *modulation.RingModulator
+	crusher *effects.BitCrusher
+	widener *spatial.StereoWidener
+	phaser  *modulation.Phaser
+	tremolo *modulation.Tremolo
+	delay   *effects.Delay
+	reverb  *reverb.Reverb
+	fdn     *reverb.FDNReverb
+	bass    *effects.HarmonicBass
+	tp      *pitch.PitchShifter
+	sp      *pitch.SpectralPitchShifter
 
 	irLib *IRLibrary
 
