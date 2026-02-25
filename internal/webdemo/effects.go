@@ -44,8 +44,6 @@ func (e *Engine) SetLimiter(p LimiterParams) error {
 
 // SetEffects updates effect settings.
 func (e *Engine) SetEffects(p EffectsParams) error {
-	prevConvReverbEnabled := e.effects.ConvReverbEnabled
-	prevConvReverbIRIndex := e.effects.ConvReverbIRIndex
 	prevChorusEnabled := e.effects.ChorusEnabled
 	prevFlangerEnabled := e.effects.FlangerEnabled
 	prevRingModEnabled := e.effects.RingModEnabled
