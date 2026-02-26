@@ -284,6 +284,7 @@ const el = {
   distChebOutput: document.getElementById("dist-cheb-output"),
   distChebOutputValue: document.getElementById("dist-cheb-output-value"),
   distChebApprox: document.getElementById("dist-cheb-approx"),
+  distChebCanvas: document.getElementById("dist-cheb-canvas"),
   distChebW1: document.getElementById("dist-cheb-w1"),
   distChebW1Value: document.getElementById("dist-cheb-w1-value"),
   distChebW2: document.getElementById("dist-cheb-w2"),
@@ -833,6 +834,23 @@ function updateDistChebWeightVisibility(order) {
   }
 }
 
+function drawDistChebGraph() {
+  if (!state.distChebGraph || !el.distChebCanvas) return;
+  const order = Math.round(Number(el.distChebOrder.value));
+  const weights = [];
+  for (let k = 1; k <= 16; k++) {
+    const w = el[`distChebW${k}`];
+    weights.push(w ? Number(w.value) : 0);
+  }
+  state.distChebGraph.draw({
+    order,
+    gain:   Number(el.distChebGain.value),
+    invert: Number(el.distChebInvert.value) >= 0.5,
+    drive:  Number(el.distChebDrive.value),
+    weights,
+  });
+}
+
 function applyNodeParamsToUI(node) {
   if (!node || node.fixed) return;
   const nodeType = node.type;
@@ -898,6 +916,7 @@ function applyNodeParamsToUI(node) {
         if (wEl) wEl.value = p[`w${k}`] ?? 0;
       }
       updateDistChebWeightVisibility(Math.round(Number(p.order ?? 3)));
+      drawDistChebGraph();
       break;
     case "transformer":
       el.transformerQuality.value = p.quality || "high";
@@ -2717,6 +2736,17 @@ function bindEvents() {
 
   el.distChebOrder.addEventListener("input", () => {
     updateDistChebWeightVisibility(Math.round(Number(el.distChebOrder.value)));
+    drawDistChebGraph();
+  });
+
+  // Redraw Chebyshev waveform on any parameter change (separate from commit loop).
+  [
+    el.distChebHarmonic, el.distChebInvert, el.distChebGain,
+    el.distChebDCBypass, el.distChebDrive, el.distChebMix,
+    el.distChebOutput, el.distChebApprox,
+    ...Array.from({ length: 16 }, (_, k) => el[`distChebW${k + 1}`]),
+  ].forEach((ctrl) => {
+    ctrl.addEventListener(ctrl.tagName === "SELECT" ? "change" : "input", drawDistChebGraph);
   });
 
   if (el.chainConvReverbIR) {
@@ -3030,6 +3060,9 @@ function updatePinButtonStates(node) {
 
 buildStepUI();
 initDynamicsGraphs();
+if (el.distChebCanvas && window.DistChebGraph) {
+  state.distChebGraph = new window.DistChebGraph(el.distChebCanvas);
+}
 initEQCanvas();
 startEQDrawLoop();
 initTheme();

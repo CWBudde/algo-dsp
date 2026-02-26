@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="eq-canvas.js" defer></script>
     <script src="dynamics-graph.js" defer></script>
+    <script src="dist-cheb-graph.js" defer></script>
     <script src="effect-chain.js" defer></script>
     <script src="wasm_exec.js" defer></script>
     <script src="app.js" defer></script>
@@ -383,6 +384,8 @@
               <div class="fx-option-head">
                 <span>Chebyshev Waveshaper</span>
               </div>
+              <div class="dist-cheb-layout">
+              <div class="dist-cheb-params">
               <label>
                 Order
                 <input id="dist-cheb-order" type="range" min="1" max="16" step="1" value="3" />
@@ -518,6 +521,12 @@
                 <input id="dist-cheb-w16" type="range" min="-2" max="2" step="0.01" value="0" />
                 <span id="dist-cheb-w16-value">0.00</span>
               </label>
+              </div><!-- dist-cheb-params -->
+              <div class="dist-cheb-viz">
+                <canvas id="dist-cheb-canvas" width="220" height="160"></canvas>
+                <span class="plot-label">Waveform</span>
+              </div>
+              </div><!-- dist-cheb-layout -->
             </div>
             <div class="fx-card chain-detail-card" data-chain-detail="transformer" hidden>
               <div class="fx-option-head">
