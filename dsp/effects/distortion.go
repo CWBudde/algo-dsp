@@ -85,6 +85,7 @@ type distortionConfig struct {
 	chebyshevInvert   bool
 	chebyshevGain     float64
 	chebyshevDCBypass bool
+	chebyshevWeights  [16]float64
 }
 
 func defaultDistortionConfig() distortionConfig {
@@ -267,6 +268,29 @@ func WithChebyshevDCBypass(enabled bool) DistortionOption {
 	}
 }
 
+// WithChebyshevWeights sets per-harmonic blend weights w1..wN for the Chebyshev
+// waveshaper. The output becomes sum(weights[k]*T_{k+1}(x), k=0..N-1)*gain.
+// When all weights are zero (the default), the legacy T_N-only path is used.
+// At most 16 weights may be provided; all values must be finite.
+func WithChebyshevWeights(weights []float64) DistortionOption {
+	return func(cfg *distortionConfig) error {
+		if len(weights) > 16 {
+			return fmt.Errorf("chebyshev weights length must be <= 16: %d", len(weights))
+		}
+
+		for i, w := range weights {
+			if !isFinite(w) {
+				return fmt.Errorf("chebyshev weight[%d] must be finite: %v", i, w)
+			}
+		}
+
+		cfg.chebyshevWeights = [16]float64{}
+		copy(cfg.chebyshevWeights[:], weights)
+
+		return nil
+	}
+}
+
 // Distortion is a configurable waveshaper that supports baseline clipping,
 // legacy-style formula shapers, and a Chebyshev harmonic core.
 type Distortion struct {
@@ -286,6 +310,7 @@ type Distortion struct {
 	chebyshevInvert   bool
 	chebyshevGain     float64
 	chebyshevDCBypass bool
+	chebyshevWeights  [16]float64
 
 	dcPrevIn  float64
 	dcPrevOut float64
@@ -324,6 +349,7 @@ func NewDistortion(sampleRate float64, opts ...DistortionOption) (*Distortion, e
 		chebyshevInvert:   cfg.chebyshevInvert,
 		chebyshevGain:     cfg.chebyshevGain,
 		chebyshevDCBypass: cfg.chebyshevDCBypass,
+		chebyshevWeights:  cfg.chebyshevWeights,
 	}
 	if err := d.validate(); err != nil {
 		return nil, err
@@ -475,6 +501,28 @@ func (d *Distortion) SetChebyshevGainLevel(gain float64) error {
 // SetChebyshevDCBypass toggles DC blocking for Chebyshev output.
 func (d *Distortion) SetChebyshevDCBypass(enabled bool) {
 	d.chebyshevDCBypass = enabled
+}
+
+// SetChebyshevWeights sets per-harmonic blend weights w1..wN for the Chebyshev
+// waveshaper. At most 16 weights may be provided; all values must be finite.
+// All 16 internal weight slots are zeroed before the provided values are copied,
+// so passing a shorter slice effectively clears the remaining slots.
+// When all weights are zero the legacy T_N-only path is used automatically.
+func (d *Distortion) SetChebyshevWeights(weights []float64) error {
+	if len(weights) > 16 {
+		return fmt.Errorf("chebyshev weights length must be <= 16: %d", len(weights))
+	}
+
+	for i, w := range weights {
+		if !isFinite(w) {
+			return fmt.Errorf("chebyshev weight[%d] must be finite: %v", i, w)
+		}
+	}
+
+	d.chebyshevWeights = [16]float64{}
+	copy(d.chebyshevWeights[:], weights)
+
+	return nil
 }
 
 // Reset clears internal state.
@@ -630,26 +678,41 @@ func (d *Distortion) softSat(x float64) float64 {
 
 func (d *Distortion) chebyshevShape(x float64) float64 {
 	x = clamp(x, -1, 1)
-	if d.chebyshevOrder == 1 {
-		out := x
-		if d.chebyshevInvert {
-			out = -out
-		}
 
-		return clampUnitDist(out * d.chebyshevGain)
+	// Determine whether per-harmonic weights are active.
+	hasWeights := false
+	for k := 0; k < d.chebyshevOrder; k++ {
+		if d.chebyshevWeights[k] != 0 {
+			hasWeights = true
+			break
+		}
 	}
 
-	t0 := 1.0
-	t1 := x
-	tn := t1
+	// T_0=1, T_1=x; recurrence T_n = 2x·T_{n-1} − T_{n-2}
+	t0 := 1.0 // T_0
+	t1 := x   // T_1
 
+	weightedSum := 0.0
+	if hasWeights {
+		weightedSum = d.chebyshevWeights[0] * t1 // T_1 contribution
+	}
+
+	tn := t1
 	for n := 2; n <= d.chebyshevOrder; n++ {
 		tn = 2*x*t1 - t0
-		t0 = t1
-		t1 = tn
+		if hasWeights {
+			weightedSum += d.chebyshevWeights[n-1] * tn
+		}
+		t0, t1 = t1, tn
 	}
 
-	out := tn * d.chebyshevGain
+	var out float64
+	if hasWeights {
+		out = weightedSum * d.chebyshevGain
+	} else {
+		out = tn * d.chebyshevGain
+	}
+
 	if d.chebyshevInvert {
 		out = -out
 	}

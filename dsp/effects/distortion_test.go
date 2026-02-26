@@ -271,6 +271,166 @@ func TestDistortionProcessInPlace(t *testing.T) {
 	}
 }
 
+func TestChebyshevWeightsDefaultIsLegacyTN(t *testing.T) {
+	// With all-zero weights (default), ProcessSample should equal T_N(x)*gain.
+	// T_3(0.5) = 4*(0.5)^3 - 3*(0.5) = 0.5 - 1.5 = -1.0; clampUnitDist(-1.0) = -1.0
+	d, err := NewDistortion(48000,
+		WithDistortionMode(DistortionModeChebyshev),
+		WithChebyshevOrder(3),
+		WithDistortionDrive(1),
+		WithDistortionMix(1),
+		WithDistortionOutputLevel(1),
+		WithChebyshevGainLevel(1),
+	)
+	if err != nil {
+		t.Fatalf("NewDistortion() error = %v", err)
+	}
+
+	got := d.ProcessSample(0.5)
+	want := -1.0 // clampUnitDist(T_3(0.5)) = clampUnitDist(-1.0) = -1.0
+
+	if math.Abs(got-want) > 1e-10 {
+		t.Fatalf("legacy T_N mismatch: got=%g want=%g", got, want)
+	}
+}
+
+func TestChebyshevWeightsAdditiveBlend(t *testing.T) {
+	const x = 0.3
+	const tol = 1e-10
+
+	baseOpts := []DistortionOption{
+		WithDistortionMode(DistortionModeChebyshev),
+		WithChebyshevOrder(3),
+		WithDistortionDrive(1),
+		WithDistortionMix(1),
+		WithDistortionOutputLevel(1),
+		WithChebyshevGainLevel(1),
+	}
+
+	cases := []struct {
+		weights []float64
+		want    float64
+		label   string
+	}{
+		// weights=[1,0,0] -> T_1(x) = x
+		{[]float64{1, 0, 0}, x, "T_1"},
+		// weights=[0,1,0] -> T_2(x) = 2x^2-1
+		{[]float64{0, 1, 0}, 2*x*x - 1, "T_2"},
+		// weights=[0,0,1] -> T_3(x) = 4x^3-3x
+		{[]float64{0, 0, 1}, clampUnitDistHelper(4*x*x*x - 3*x), "T_3"},
+	}
+
+	for _, tc := range cases {
+		opts := append(baseOpts, WithChebyshevWeights(tc.weights))
+		d, err := NewDistortion(48000, opts...)
+		if err != nil {
+			t.Fatalf("[%s] NewDistortion() error = %v", tc.label, err)
+		}
+
+		got := d.ProcessSample(x)
+		if math.Abs(got-tc.want) > tol {
+			t.Fatalf("[%s] mismatch: got=%g want=%g", tc.label, got, tc.want)
+		}
+	}
+}
+
+// clampUnitDistHelper is a test helper mirroring clampUnitDist for expected value calculation.
+func clampUnitDistHelper(v float64) float64 {
+	if v < -1 {
+		return -1
+	}
+
+	if v > 1 {
+		return 1
+	}
+
+	return v
+}
+
+func TestSetChebyshevWeightsValidation(t *testing.T) {
+	d, err := NewDistortion(48000,
+		WithDistortionMode(DistortionModeChebyshev),
+		WithChebyshevOrder(3),
+		WithDistortionDrive(1),
+		WithDistortionMix(1),
+		WithDistortionOutputLevel(1),
+		WithChebyshevGainLevel(1),
+	)
+	if err != nil {
+		t.Fatalf("NewDistortion() error = %v", err)
+	}
+
+	// Too many weights (>16) must return an error.
+	if err := d.SetChebyshevWeights(make([]float64, 17)); err == nil {
+		t.Fatal("expected error for >16 weights")
+	}
+
+	// NaN weight must return an error.
+	if err := d.SetChebyshevWeights([]float64{math.NaN()}); err == nil {
+		t.Fatal("expected error for NaN weight")
+	}
+
+	// Inf weight must return an error.
+	if err := d.SetChebyshevWeights([]float64{math.Inf(1)}); err == nil {
+		t.Fatal("expected error for Inf weight")
+	}
+
+	// Valid 3-element weights must succeed.
+	if err := d.SetChebyshevWeights([]float64{1, 0, 0}); err != nil {
+		t.Fatalf("unexpected error for valid weights: %v", err)
+	}
+
+	// Verify the weights are applied: with [1,0,0] output should equal T_1(x)=x.
+	const x = 0.4
+	got := d.ProcessSample(x)
+	want := x // T_1(x)*gain=1 with mix=1, output=1, drive=1
+
+	if math.Abs(got-want) > 1e-10 {
+		t.Fatalf("weights not applied: got=%g want=%g", got, want)
+	}
+}
+
+func TestChebyshevWeightsZeroAfterSet(t *testing.T) {
+	// Create distortion with order=3, set weights to [1,0,0] (selects T_1).
+	d, err := NewDistortion(48000,
+		WithDistortionMode(DistortionModeChebyshev),
+		WithChebyshevOrder(3),
+		WithDistortionDrive(1),
+		WithDistortionMix(1),
+		WithDistortionOutputLevel(1),
+		WithChebyshevGainLevel(1),
+	)
+	if err != nil {
+		t.Fatalf("NewDistortion() error = %v", err)
+	}
+
+	if err := d.SetChebyshevWeights([]float64{1, 0, 0}); err != nil {
+		t.Fatalf("SetChebyshevWeights([1,0,0]) error = %v", err)
+	}
+
+	const x = 0.5
+	const tol = 1e-10
+
+	// With weights=[1,0,0], output should equal T_1(0.5)=0.5.
+	got := d.ProcessSample(x)
+	if math.Abs(got-x) > tol {
+		t.Fatalf("expected T_1 output %g, got %g", x, got)
+	}
+
+	// Reset weights to all zeros -> legacy T_3 path.
+	if err := d.SetChebyshevWeights([]float64{0, 0, 0}); err != nil {
+		t.Fatalf("SetChebyshevWeights([0,0,0]) error = %v", err)
+	}
+
+	// Legacy T_3(0.5) = -1.0
+	got = d.ProcessSample(x)
+	want := -1.0
+
+	if math.Abs(got-want) > tol {
+		t.Fatalf("expected legacy T_3 output %g after weight reset, got %g", want, got)
+	}
+}
+
 func harmonicAmplitude(x []float64, k int) float64 {
 	var re, im float64
 

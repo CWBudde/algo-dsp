@@ -1174,7 +1174,7 @@ func (r *distChebChainRuntime) Configure(e *Engine, node compiledChainNode) erro
 	chebInvert := getNodeNum(node, "invert", 0) >= 0.5
 	chebDCBypass := getNodeNum(node, "dcBypass", 0) >= 0.5
 
-	return configureDistortion(
+	if err := configureDistortion(
 		r.fx,
 		e.sampleRate,
 		effects.DistortionModeChebyshev,
@@ -1190,7 +1190,17 @@ func (r *distChebChainRuntime) Configure(e *Engine, node compiledChainNode) erro
 		chebInvert,
 		clamp(getNodeNum(node, "gain", 1.0), 0, 4),
 		chebDCBypass,
-	)
+	); err != nil {
+		return err
+	}
+
+	// Per-harmonic weights w1..w16
+	weights := make([]float64, 16)
+	for k := 0; k < 16; k++ {
+		weights[k] = getNodeNum(node, fmt.Sprintf("w%d", k+1), 0)
+	}
+
+	return r.fx.SetChebyshevWeights(weights)
 }
 
 func (r *distChebChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {

@@ -284,6 +284,38 @@ const el = {
   distChebOutput: document.getElementById("dist-cheb-output"),
   distChebOutputValue: document.getElementById("dist-cheb-output-value"),
   distChebApprox: document.getElementById("dist-cheb-approx"),
+  distChebW1: document.getElementById("dist-cheb-w1"),
+  distChebW1Value: document.getElementById("dist-cheb-w1-value"),
+  distChebW2: document.getElementById("dist-cheb-w2"),
+  distChebW2Value: document.getElementById("dist-cheb-w2-value"),
+  distChebW3: document.getElementById("dist-cheb-w3"),
+  distChebW3Value: document.getElementById("dist-cheb-w3-value"),
+  distChebW4: document.getElementById("dist-cheb-w4"),
+  distChebW4Value: document.getElementById("dist-cheb-w4-value"),
+  distChebW5: document.getElementById("dist-cheb-w5"),
+  distChebW5Value: document.getElementById("dist-cheb-w5-value"),
+  distChebW6: document.getElementById("dist-cheb-w6"),
+  distChebW6Value: document.getElementById("dist-cheb-w6-value"),
+  distChebW7: document.getElementById("dist-cheb-w7"),
+  distChebW7Value: document.getElementById("dist-cheb-w7-value"),
+  distChebW8: document.getElementById("dist-cheb-w8"),
+  distChebW8Value: document.getElementById("dist-cheb-w8-value"),
+  distChebW9: document.getElementById("dist-cheb-w9"),
+  distChebW9Value: document.getElementById("dist-cheb-w9-value"),
+  distChebW10: document.getElementById("dist-cheb-w10"),
+  distChebW10Value: document.getElementById("dist-cheb-w10-value"),
+  distChebW11: document.getElementById("dist-cheb-w11"),
+  distChebW11Value: document.getElementById("dist-cheb-w11-value"),
+  distChebW12: document.getElementById("dist-cheb-w12"),
+  distChebW12Value: document.getElementById("dist-cheb-w12-value"),
+  distChebW13: document.getElementById("dist-cheb-w13"),
+  distChebW13Value: document.getElementById("dist-cheb-w13-value"),
+  distChebW14: document.getElementById("dist-cheb-w14"),
+  distChebW14Value: document.getElementById("dist-cheb-w14-value"),
+  distChebW15: document.getElementById("dist-cheb-w15"),
+  distChebW15Value: document.getElementById("dist-cheb-w15-value"),
+  distChebW16: document.getElementById("dist-cheb-w16"),
+  distChebW16Value: document.getElementById("dist-cheb-w16-value"),
   transformerQuality: document.getElementById("transformer-quality"),
   transformerDrive: document.getElementById("transformer-drive"),
   transformerDriveValue: document.getElementById("transformer-drive-value"),
@@ -592,6 +624,8 @@ const EFFECT_NODE_DEFAULTS = {
     mix: 1.0,
     output: 1.0,
     approx: "exact",
+    w1: 0, w2: 0, w3: 0, w4: 0, w5: 0, w6: 0, w7: 0, w8: 0,
+    w9: 0, w10: 0, w11: 0, w12: 0, w13: 0, w14: 0, w15: 0, w16: 0,
   },
   transformer: {
     quality: "high",
@@ -792,6 +826,13 @@ function getSelectedEffectNode() {
   return node;
 }
 
+function updateDistChebWeightVisibility(order) {
+  for (let k = 1; k <= 16; k++) {
+    const row = document.getElementById(`dist-cheb-w${k}-row`);
+    if (row) row.hidden = k > order;
+  }
+}
+
 function applyNodeParamsToUI(node) {
   if (!node || node.fixed) return;
   const nodeType = node.type;
@@ -852,6 +893,11 @@ function applyNodeParamsToUI(node) {
       el.distChebMix.value = p.mix ?? 1.0;
       el.distChebOutput.value = p.output ?? 1.0;
       el.distChebApprox.value = p.approx || "exact";
+      for (let k = 1; k <= 16; k++) {
+        const wEl = el[`distChebW${k}`];
+        if (wEl) wEl.value = p[`w${k}`] ?? 0;
+      }
+      updateDistChebWeightVisibility(Math.round(Number(p.order ?? 3)));
       break;
     case "transformer":
       el.transformerQuality.value = p.quality || "high";
@@ -1118,6 +1164,22 @@ function collectNodeParamsFromUI(nodeType) {
         mix: Number(el.distChebMix.value),
         output: Number(el.distChebOutput.value),
         approx: String(el.distChebApprox.value || "exact"),
+        w1: Number(el.distChebW1.value),
+        w2: Number(el.distChebW2.value),
+        w3: Number(el.distChebW3.value),
+        w4: Number(el.distChebW4.value),
+        w5: Number(el.distChebW5.value),
+        w6: Number(el.distChebW6.value),
+        w7: Number(el.distChebW7.value),
+        w8: Number(el.distChebW8.value),
+        w9: Number(el.distChebW9.value),
+        w10: Number(el.distChebW10.value),
+        w11: Number(el.distChebW11.value),
+        w12: Number(el.distChebW12.value),
+        w13: Number(el.distChebW13.value),
+        w14: Number(el.distChebW14.value),
+        w15: Number(el.distChebW15.value),
+        w16: Number(el.distChebW16.value),
       };
     }
     case "transformer":
@@ -1973,6 +2035,13 @@ function updateEffectsText() {
   if (el.distChebOutputValue) {
     el.distChebOutputValue.textContent = `${Number(el.distChebOutput.value).toFixed(2)}x`;
   }
+  for (let k = 1; k <= 16; k++) {
+    const wVal = el[`distChebW${k}Value`];
+    const wInput = el[`distChebW${k}`];
+    if (wVal && wInput) {
+      wVal.textContent = Number(wInput.value).toFixed(2);
+    }
+  }
   if (el.transformerDriveValue) {
     el.transformerDriveValue.textContent = `${Number(el.transformerDrive.value).toFixed(2)}x`;
   }
@@ -2502,6 +2571,10 @@ function bindEvents() {
     el.distChebMix,
     el.distChebOutput,
     el.distChebApprox,
+    el.distChebW1, el.distChebW2, el.distChebW3, el.distChebW4,
+    el.distChebW5, el.distChebW6, el.distChebW7, el.distChebW8,
+    el.distChebW9, el.distChebW10, el.distChebW11, el.distChebW12,
+    el.distChebW13, el.distChebW14, el.distChebW15, el.distChebW16,
     el.transformerQuality,
     el.transformerDrive,
     el.transformerMix,
@@ -2640,6 +2713,10 @@ function bindEvents() {
         saveSettings();
       }
     });
+  });
+
+  el.distChebOrder.addEventListener("input", () => {
+    updateDistChebWeightVisibility(Math.round(Number(el.distChebOrder.value)));
   });
 
   if (el.chainConvReverbIR) {
