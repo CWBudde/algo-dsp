@@ -143,7 +143,9 @@ func TestReadFractionalNegativeClamped(t *testing.T) {
 
 // fillRamp fills a delay line with a linear ramp [0, 1, 2, ..., size-1].
 func fillRamp(d *Line) {
-	for i := 0; i < d.Len(); i++ {
+	length := d.Len()
+
+	for i := range length {
 		d.Write(float64(i))
 	}
 }

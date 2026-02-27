@@ -83,6 +83,8 @@ type chainEffectFactory func(e *Engine) (chainEffectRuntime, error)
 
 var chainEffectRegistry = map[string]chainEffectFactory{}
 
+var errUnknownChainEffect = errors.New("unknown chain effect type")
+
 func registerChainEffectFactory(effectType string, factory chainEffectFactory) {
 	if effectType == "" {
 		panic("chain effect registry: empty effect type")
@@ -349,7 +351,7 @@ func init() {
 // (Kahn's algorithm). Returns nil, nil for an empty string.
 func parseChainGraph(raw string) (*compiledChainGraph, error) {
 	if raw == "" {
-		return nil, nil
+		return &compiledChainGraph{}, nil
 	}
 
 	var state chainGraphState
@@ -376,11 +378,11 @@ func parseChainGraph(raw string) (*compiledChainGraph, error) {
 	}
 
 	if _, ok := nodes["_input"]; !ok {
-		return nil, nil
+		return &compiledChainGraph{}, nil
 	}
 
 	if _, ok := nodes["_output"]; !ok {
-		return nil, nil
+		return &compiledChainGraph{}, nil
 	}
 
 	incoming := make(map[string][]compiledChainEdge, len(nodes))
@@ -525,6 +527,10 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 		if rt == nil || rt.effectType != node.Type {
 			effect, err := e.newChainEffectRuntime(node.Type)
 			if err != nil {
+				if errors.Is(err, errUnknownChainEffect) {
+					continue
+				}
+
 				return err
 			}
 
@@ -560,7 +566,7 @@ func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 func (e *Engine) newChainEffectRuntime(effectType string) (chainEffectRuntime, error) {
 	factory := chainEffectRegistry[effectType]
 	if factory == nil {
-		return nil, nil
+		return nil, fmt.Errorf("%w: %s", errUnknownChainEffect, effectType)
 	}
 
 	return factory(e)
