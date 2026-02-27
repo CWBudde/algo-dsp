@@ -308,20 +308,7 @@ var fixedCosineWindowCoeffs = map[Type][]float64{
 }
 
 func normalizeEvalX(x float64, slope Slope) float64 {
-	switch slope {
-	case SlopeLeft:
-		if x >= 0.5 {
-			return 1
-		}
-
-		x *= 2
-	case SlopeRight:
-		if x <= 0.5 {
-			return 1
-		}
-
-		x = 2*x - 1
-	}
+	_ = slope
 
 	if x < 0 {
 		return 0
@@ -335,6 +322,17 @@ func normalizeEvalX(x float64, slope Slope) float64 {
 }
 
 func evalWindow(t Type, x float64, cfg config) float64 {
+	switch cfg.slope {
+	case SlopeLeft:
+		if x >= 0.5 {
+			return 1
+		}
+	case SlopeRight:
+		if x <= 0.5 {
+			return 1
+		}
+	}
+
 	x = normalizeEvalX(x, cfg.slope)
 
 	if coeffs, ok := fixedCosineWindowCoeffs[t]; ok {
