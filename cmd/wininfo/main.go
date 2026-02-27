@@ -166,12 +166,15 @@ func resolveEntries(names []string, alphaFlag float64) []resolvedEntry {
 
 func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) {
 	tabWriter := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintf(tabWriter, "Window\tSize\tCoherent Gain\tENBW [bins]\tBW 3dB [bins]\tSidelobe [dB]\t1st Min [bins]\tScallop [dB]\n"); err != nil {
+
+	_, err := fmt.Fprintf(tabWriter, "Window\tSize\tCoherent Gain\tENBW [bins]\tBW 3dB [bins]\tSidelobe [dB]\t1st Min [bins]\tScallop [dB]\n")
+	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output header: %v\n", err)
 		return
 	}
 
-	if _, err := fmt.Fprintf(tabWriter, "------\t----\t-------------\t----------\t-------------\t-------------\t--------------\t-----------\n"); err != nil {
+	_, err = fmt.Fprintf(tabWriter, "------\t----\t-------------\t----------\t-------------\t-------------\t--------------\t-----------\n")
+	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output header: %v\n", err)
 		return
 	}
@@ -190,7 +193,7 @@ func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) 
 			label = fmt.Sprintf("%s (a=%.2f)", entry.name, entry.alphaOverride)
 		}
 
-		if _, err := fmt.Fprintf(tabWriter, "%s\t%d\t%.6f\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\n",
+		_, err = fmt.Fprintf(tabWriter, "%s\t%d\t%.6f\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\n",
 			label,
 			size,
 			analyze.CoherentGain,
@@ -199,13 +202,14 @@ func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) 
 			analyze.HighestSidelobedB,
 			analyze.FirstMinimumBins,
 			analyze.ScallopLossdB,
-		); err != nil {
+		)
+		if err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "error: failed to write output row: %v\n", err)
 			return
 		}
 	}
 
-	err := tabWriter.Flush()
+	err = tabWriter.Flush()
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to flush output: %v\n", err)
 	}

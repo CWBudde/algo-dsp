@@ -294,27 +294,33 @@ func TestBitCrusherSetterValidation(t *testing.T) {
 		t.Fatalf("NewBitCrusher() error = %v", err)
 	}
 
-	if err := bc.SetSampleRate(0); err == nil {
+	err = bc.SetSampleRate(0)
+	if err == nil {
 		t.Error("SetSampleRate(0) expected error")
 	}
 
-	if err := bc.SetSampleRate(math.NaN()); err == nil {
+	err = bc.SetSampleRate(math.NaN())
+	if err == nil {
 		t.Error("SetSampleRate(NaN) expected error")
 	}
 
-	if err := bc.SetBitDepth(0.5); err == nil {
+	err = bc.SetBitDepth(0.5)
+	if err == nil {
 		t.Error("SetBitDepth(0.5) expected error")
 	}
 
-	if err := bc.SetBitDepth(33); err == nil {
+	err = bc.SetBitDepth(33)
+	if err == nil {
 		t.Error("SetBitDepth(33) expected error")
 	}
 
-	if err := bc.SetDownsample(0); err == nil {
+	err = bc.SetDownsample(0)
+	if err == nil {
 		t.Error("SetDownsample(0) expected error")
 	}
 
-	if err := bc.SetDownsample(257); err == nil {
+	err = bc.SetDownsample(257)
+	if err == nil {
 		t.Error("SetDownsample(257) expected error")
 	}
 

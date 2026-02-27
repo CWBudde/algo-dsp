@@ -119,7 +119,10 @@ func TestDesignerProgressCallback(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	designer.Run(ctx)
+	_, err = designer.Run(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if callCount == 0 {
 		t.Error("progress callback was never called")

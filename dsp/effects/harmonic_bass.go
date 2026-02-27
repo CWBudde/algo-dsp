@@ -69,7 +69,7 @@ func NewHarmonicBass(sampleRate float64) (*HarmonicBass, error) {
 		return nil, fmt.Errorf("harmonic bass: create limiter: %w", err)
 	}
 
-	b := &HarmonicBass{
+	harmonicBass := &HarmonicBass{
 		sampleRate:        sampleRate,
 		frequency:         defaultHarmonicBassFrequency,
 		ratio:             defaultHarmonicBassRatio,
@@ -82,15 +82,18 @@ func NewHarmonicBass(sampleRate float64) (*HarmonicBass, error) {
 		highpassSelect:    HighpassDC,
 		limiter:           l,
 	}
-	if err := b.rebuildFilters(); err != nil {
+
+	err = harmonicBass.rebuildFilters()
+	if err != nil {
 		return nil, err
 	}
 
-	if err := b.applyResponse(); err != nil {
+	err = harmonicBass.applyResponse()
+	if err != nil {
 		return nil, err
 	}
 
-	return b, nil
+	return harmonicBass, nil
 }
 
 // SampleRate returns the current sample rate in Hz.

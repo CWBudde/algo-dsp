@@ -567,7 +567,8 @@ func (s *SpectralPitchShifter) validate() error {
 }
 
 func (s *SpectralPitchShifter) rebuildState() error {
-	if err := s.validate(); err != nil {
+	err := s.validate()
+	if err != nil {
 		return err
 	}
 

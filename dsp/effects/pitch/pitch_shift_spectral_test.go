@@ -69,11 +69,13 @@ func TestSpectralPitchShifterSettersValidate(t *testing.T) {
 		t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 	}
 
-	if err := s.SetPitchRatio(0); err == nil {
+	err = s.SetPitchRatio(0)
+	if err == nil {
 		t.Fatal("expected error for zero pitch ratio")
 	}
 
-	if err := s.SetPitchRatio(0.1); err == nil {
+	err = s.SetPitchRatio(0.1)
+	if err == nil {
 		t.Fatal("expected error for too-small pitch ratio")
 	}
 
