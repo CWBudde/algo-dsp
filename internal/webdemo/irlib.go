@@ -109,7 +109,9 @@ func readString(r io.Reader) (string, error) {
 	}
 
 	buf := make([]byte, length)
-	if _, err := io.ReadFull(r, buf); err != nil {
+
+	_, err = io.ReadFull(r, buf)
+	if err != nil {
 		return "", fmt.Errorf("irlib: reading string bytes: %w", err)
 	}
 
@@ -130,7 +132,9 @@ type indexEntry struct {
 func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 	// --- File header (18 bytes) ---
 	var magic [4]byte
-	if _, err := io.ReadFull(r, magic[:]); err != nil {
+
+	_, err := io.ReadFull(r, magic[:])
+	if err != nil {
 		return nil, fmt.Errorf("irlib: reading magic: %w", err)
 	}
 
@@ -140,7 +144,7 @@ func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 
 	var version uint16
 
-	err := binary.Read(r, binary.LittleEndian, &version)
+	err = binary.Read(r, binary.LittleEndian, &version)
 	if err != nil {
 		return nil, fmt.Errorf("irlib: reading version: %w", err)
 	}

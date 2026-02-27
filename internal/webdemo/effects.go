@@ -176,11 +176,14 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	}
 
 	e.effects = p
-	if err := e.rebuildEffects(); err != nil {
+
+	err = e.rebuildEffects()
+	if err != nil {
 		return err
 	}
 
-	if err := e.syncChainEffectNodes(graph); err != nil {
+	err = e.syncChainEffectNodes(graph)
+	if err != nil {
 		return err
 	}
 

@@ -166,8 +166,9 @@ func TestHRTFCrosstalkSimulatorProviderReload(t *testing.T) {
 func TestHRTFCrosstalkSimulatorProviderError(t *testing.T) {
 	provider := fixedHRTFProvider{err: errors.New("load failed")}
 
-	if _, err := NewHRTFCrosstalkSimulator(48000,
-		WithHRTFProvider(provider)); err == nil {
+	_, err := NewHRTFCrosstalkSimulator(48000,
+		WithHRTFProvider(provider))
+	if err == nil {
 		t.Fatal("expected provider error")
 	}
 }

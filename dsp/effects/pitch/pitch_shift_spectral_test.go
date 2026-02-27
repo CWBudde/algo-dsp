@@ -99,15 +99,18 @@ func TestSpectralPitchShifterSettersValidate(t *testing.T) {
 		t.Fatal("expected error for NaN semitones")
 	}
 
-	if err := s.SetPitchSemitones(7); err != nil {
+	err = s.SetPitchSemitones(7)
+	if err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
 
-	if err := s.SetSampleRate(0); err == nil {
+	err = s.SetSampleRate(0)
+	if err == nil {
 		t.Fatal("expected error for invalid sample rate")
 	}
 
-	if err := s.SetSampleRate(96000); err != nil {
+	err = s.SetSampleRate(96000)
+	if err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
 

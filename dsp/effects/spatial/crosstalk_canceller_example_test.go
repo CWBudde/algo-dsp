@@ -29,7 +29,8 @@ func ExampleCrosstalkCanceller_ProcessInPlace() {
 	left := []float64{0.2, 0.4, 0.6}
 	right := []float64{0.6, 0.4, 0.2}
 
-	if err := c.ProcessInPlace(left, right); err != nil {
+	err = c.ProcessInPlace(left, right)
+	if err != nil {
 		panic(err)
 	}
 

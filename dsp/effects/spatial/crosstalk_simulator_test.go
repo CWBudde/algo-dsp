@@ -6,15 +6,18 @@ import (
 )
 
 func TestCrosstalkSimulatorValidation(t *testing.T) {
-	if _, err := NewCrosstalkSimulator(0); err == nil {
+	_, err := NewCrosstalkSimulator(0)
+	if err == nil {
 		t.Fatal("expected error for zero sample rate")
 	}
 
-	if _, err := NewCrosstalkSimulator(48000, WithSimulatorDiameter(0.01)); err == nil {
+	_, err = NewCrosstalkSimulator(48000, WithSimulatorDiameter(0.01))
+	if err == nil {
 		t.Fatal("expected error for small diameter")
 	}
 
-	if _, err := NewCrosstalkSimulator(48000, WithSimulatorCrossfeedMix(2)); err == nil {
+	_, err = NewCrosstalkSimulator(48000, WithSimulatorCrossfeedMix(2))
+	if err == nil {
 		t.Fatal("expected error for invalid mix")
 	}
 
@@ -40,7 +43,9 @@ func TestCrosstalkSimulatorDelayCalculation(t *testing.T) {
 	}
 
 	before := s.DelaySamples()
-	if err := s.SetSpeedOfSound(320); err != nil {
+
+	err = s.SetSpeedOfSound(320)
+	if err != nil {
 		t.Fatalf("SetSpeedOfSound() error = %v", err)
 	}
 
@@ -106,7 +111,7 @@ func TestCrosstalkSimulatorPolarityInvert(t *testing.T) {
 	}
 
 	// Prime delay.
-	for i := 0; i < s1.DelaySamples(); i++ {
+	for range s1.DelaySamples() {
 		s1.ProcessStereo(0, 0)
 		s2.ProcessStereo(0, 0)
 	}
@@ -147,9 +152,10 @@ func TestCrosstalkSimulatorInPlaceMatchesSampleBySample(t *testing.T) {
 	}
 
 	gotL := append([]float64(nil), inL...)
-
 	gotR := append([]float64(nil), inR...)
-	if err := s2.ProcessInPlace(gotL, gotR); err != nil {
+
+	err = s2.ProcessInPlace(gotL, gotR)
+	if err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
 

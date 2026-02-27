@@ -138,7 +138,9 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 	}
 
 	out := make([]complex128, fftSize)
-	if err := plan.Forward(out, inData); err != nil {
+
+	err = plan.Forward(out, inData)
+	if err != nil {
 		return Result{}
 	}
 

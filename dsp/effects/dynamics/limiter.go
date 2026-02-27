@@ -14,23 +14,28 @@ func NewLimiter(sampleRate float64) (*Limiter, error) {
 		return nil, err
 	}
 	// Configure as limiter
-	if err := c.SetRatio(100.0); err != nil {
+	err = c.SetRatio(100.0)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := c.SetAttack(0.1); err != nil { // 0.1 ms fast attack
+	err = c.SetAttack(0.1)
+	if err != nil { // 0.1 ms fast attack
 		return nil, err
 	}
 
-	if err := c.SetKnee(0.0); err != nil { // Hard knee
+	err = c.SetKnee(0.0)
+	if err != nil { // Hard knee
 		return nil, err
 	}
 
-	if err := c.SetAutoMakeup(false); err != nil {
+	err = c.SetAutoMakeup(false)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := c.SetMakeupGain(0.0); err != nil {
+	err = c.SetMakeupGain(0.0)
+	if err != nil {
 		return nil, err
 	}
 

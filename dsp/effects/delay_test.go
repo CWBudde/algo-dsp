@@ -18,14 +18,16 @@ func TestDelay_SetTargetTime_RampsGradually(t *testing.T) {
 	}
 
 	// Start with a long delay (250ms = 250 samples) and snap it.
-	if err := d.SetTime(0.25); err != nil {
+	err = d.SetTime(0.25)
+	if err != nil {
 		t.Fatalf("SetTime: %v", err)
 	}
 
 	startSamples := d.CurrentDelaySamples()
 
 	// Now request a short delay (10ms = 10 samples) via the smooth setter.
-	if err := d.SetTargetTime(0.01); err != nil {
+	err = d.SetTargetTime(0.01)
+	if err != nil {
 		t.Fatalf("SetTargetTime: %v", err)
 	}
 
@@ -56,12 +58,15 @@ func TestDelay_SetTargetTime_ConvergesToTarget(t *testing.T) {
 		t.Fatalf("NewDelay: %v", err)
 	}
 
-	if err := d.SetTime(0.25); err != nil {
+	err = d.SetTime(0.25)
+	if err != nil {
 		t.Fatalf("SetTime: %v", err)
 	}
 
 	targetSeconds := 0.01
-	if err := d.SetTargetTime(targetSeconds); err != nil {
+
+	err = d.SetTargetTime(targetSeconds)
+	if err != nil {
 		t.Fatalf("SetTargetTime: %v", err)
 	}
 
@@ -88,11 +93,13 @@ func TestDelay_SetTime_SnapsImmediately(t *testing.T) {
 		t.Fatalf("NewDelay: %v", err)
 	}
 
-	if err := d.SetTime(0.25); err != nil {
+	err = d.SetTime(0.25)
+	if err != nil {
 		t.Fatalf("SetTime: %v", err)
 	}
 
-	if err := d.SetTime(0.01); err != nil {
+	err = d.SetTime(0.01)
+	if err != nil {
 		t.Fatalf("SetTime 0.01: %v", err)
 	}
 
@@ -174,15 +181,18 @@ func TestDelayImpulseAtConfiguredTime(t *testing.T) {
 		t.Fatalf("NewDelay() error = %v", err)
 	}
 
-	if err := d.SetTime(0.01); err != nil {
+	err = d.SetTime(0.01)
+	if err != nil {
 		t.Fatalf("SetTime() error = %v", err)
 	}
 
-	if err := d.SetMix(1); err != nil {
+	err = d.SetMix(1)
+	if err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
 
-	if err := d.SetFeedback(0); err != nil {
+	err = d.SetFeedback(0)
+	if err != nil {
 		t.Fatalf("SetFeedback() error = %v", err)
 	}
 

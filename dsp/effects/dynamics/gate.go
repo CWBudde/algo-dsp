@@ -81,7 +81,8 @@ type Gate struct {
 
 // NewGate creates a soft-knee noise gate with professional defaults.
 func NewGate(sampleRate float64) (*Gate, error) {
-	if err := validateSampleRate(sampleRate); err != nil {
+	err := validateSampleRate(sampleRate)
+	if err != nil {
 		return nil, fmt.Errorf("gate %w", err)
 	}
 

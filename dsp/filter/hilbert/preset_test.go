@@ -27,7 +27,8 @@ func TestPresetConfig(t *testing.T) {
 		}
 	}
 
-	if _, _, err := PresetConfig(Preset(999)); err == nil {
+	_, _, err := PresetConfig(Preset(999))
+	if err == nil {
 		t.Fatal("expected error for invalid preset")
 	}
 }

@@ -139,11 +139,13 @@ func TestProcessBlockLengthMismatch64(t *testing.T) {
 		t.Fatalf("New64Default() error = %v", err)
 	}
 
-	if err := p.ProcessBlock(make([]float64, 4), make([]float64, 3), make([]float64, 4)); err == nil {
+	err = p.ProcessBlock(make([]float64, 4), make([]float64, 3), make([]float64, 4))
+	if err == nil {
 		t.Fatal("expected length mismatch error")
 	}
 
-	if err := p.ProcessEnvelopeBlock(make([]float64, 4), make([]float64, 3)); err == nil {
+	err = p.ProcessEnvelopeBlock(make([]float64, 4), make([]float64, 3))
+	if err == nil {
 		t.Fatal("expected envelope length mismatch error")
 	}
 }

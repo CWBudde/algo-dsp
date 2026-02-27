@@ -53,7 +53,8 @@ func BenchmarkDefinition(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := a.Definition(impulseResponse, 50); err != nil {
+		_, err := a.Definition(impulseResponse, 50)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -66,7 +67,8 @@ func BenchmarkClarity(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := a.Clarity(impulseResponse, 80); err != nil {
+		_, err := a.Clarity(impulseResponse, 80)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -79,7 +81,8 @@ func BenchmarkCenterTime(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := a.CenterTime(impulseResponse); err != nil {
+		_, err := a.CenterTime(impulseResponse)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -92,7 +95,8 @@ func BenchmarkFindImpulseStart(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := a.FindImpulseStart(impulseResponse); err != nil {
+		_, err := a.FindImpulseStart(impulseResponse)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}

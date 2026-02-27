@@ -75,7 +75,8 @@ type Compressor struct {
 
 // NewCompressor creates a compressor with professional defaults.
 func NewCompressor(sampleRate float64) (*Compressor, error) {
-	if err := validateSampleRate(sampleRate); err != nil {
+	err := validateSampleRate(sampleRate)
+	if err != nil {
 		return nil, fmt.Errorf("compressor %w", err)
 	}
 

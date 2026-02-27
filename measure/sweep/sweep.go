@@ -127,6 +127,7 @@ func (s *LogSweep) InverseFilter() ([]float64, error) {
 		j := n - 1 - i
 
 		// Time in the original sweep for sample j
+
 		t := float64(j) / s.SampleRate
 
 		// Instantaneous frequency at time t
@@ -158,6 +159,7 @@ func (s *LogSweep) InverseFilter() ([]float64, error) {
 // Given a system response to the log sweep, this performs FFT-based
 // deconvolution by dividing the response spectrum by the sweep spectrum
 // (with regularization). The result is the system's impulse response.
+
 func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 	err := s.Validate()
 	if err != nil {
@@ -202,7 +204,9 @@ func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 	}
 
 	invFreq := make([]complex128, fftSize)
-	if err := plan.Forward(invFreq, invPadded); err != nil {
+
+	err = plan.Forward(invFreq, invPadded)
+	if err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
 	}
 
@@ -214,7 +218,9 @@ func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 
 	// Inverse FFT
 	resultTime := make([]complex128, fftSize)
-	if err := plan.Inverse(resultTime, resultFreq); err != nil {
+
+	err = plan.Inverse(resultTime, resultFreq)
+	if err != nil {
 		return nil, fmt.Errorf("sweep: inverse FFT failed: %w", err)
 	}
 
@@ -242,7 +248,8 @@ func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 // maxHarmonic specifies the highest harmonic to extract (e.g., 5 for H2-H5).
 // Returns a slice of IRs: [linear IR, H2 IR, H3 IR, ...].
 func (s *LogSweep) ExtractHarmonicIRs(response []float64, maxHarmonic int) ([][]float64, error) {
-	if err := s.Validate(); err != nil {
+	err := s.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -391,7 +398,8 @@ func (s *LinearSweep) Generate() ([]float64, error) {
 // InverseFilter creates an inverse filter for the linear sweep using
 // spectral division with regularization.
 func (s *LinearSweep) InverseFilter() ([]float64, error) {
-	if err := s.Validate(); err != nil {
+	err := s.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -415,7 +423,9 @@ func (s *LinearSweep) InverseFilter() ([]float64, error) {
 	}
 
 	sweepFreq := make([]complex128, fftSize)
-	if err := plan.Forward(sweepFreq, sweepPadded); err != nil {
+
+	err = plan.Forward(sweepFreq, sweepPadded)
+	if err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
 	}
 
@@ -431,7 +441,9 @@ func (s *LinearSweep) InverseFilter() ([]float64, error) {
 
 	// Inverse FFT
 	invTime := make([]complex128, fftSize)
-	if err := plan.Inverse(invTime, invFreq); err != nil {
+
+	err = plan.Inverse(invTime, invFreq)
+	if err != nil {
 		return nil, fmt.Errorf("sweep: inverse FFT failed: %w", err)
 	}
 
@@ -445,7 +457,8 @@ func (s *LinearSweep) InverseFilter() ([]float64, error) {
 
 // Deconvolve recovers the impulse response from a recorded linear sweep response.
 func (s *LinearSweep) Deconvolve(response []float64) ([]float64, error) {
-	if err := s.Validate(); err != nil {
+	err := s.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -472,7 +485,9 @@ func (s *LinearSweep) Deconvolve(response []float64) ([]float64, error) {
 	}
 
 	respFreq := make([]complex128, fftSize)
-	if err := plan.Forward(respFreq, respPadded); err != nil {
+
+	err = plan.Forward(respFreq, respPadded)
+	if err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
 	}
 
@@ -482,7 +497,9 @@ func (s *LinearSweep) Deconvolve(response []float64) ([]float64, error) {
 	}
 
 	invFreq := make([]complex128, fftSize)
-	if err := plan.Forward(invFreq, invPadded); err != nil {
+
+	err = plan.Forward(invFreq, invPadded)
+	if err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
 	}
 

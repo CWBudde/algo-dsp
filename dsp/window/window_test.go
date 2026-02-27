@@ -167,35 +167,43 @@ func TestMetadataParametricDefaultsPopulated(t *testing.T) {
 }
 
 func TestCompatibilityWrappers(t *testing.T) {
-	if _, err := Hann(64); err != nil {
+	_, err := Hann(64)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := Hamming(64); err != nil {
+	_, err = Hamming(64)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := Blackman(64); err != nil {
+	_, err = Blackman(64)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := FlatTop(64); err != nil {
+	_, err = FlatTop(64)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := Kaiser(64, 8); err != nil {
+	_, err = Kaiser(64, 8)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := Tukey(64, 0.5); err != nil {
+	_, err = Tukey(64, 0.5)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := Gaussian(64, 0.4); err != nil {
+	_, err = Gaussian(64, 0.4)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := Lanczos(64); err != nil {
+	_, err = Lanczos(64)
+	if err != nil {
 		t.Fatal(err)
 	}
 }
@@ -213,7 +221,8 @@ func TestApplyCoefficientsHelpers(t *testing.T) {
 		t.Fatalf("out[2]=%v", out[2])
 	}
 
-	if err := ApplyCoefficientsInPlace(samples, coeffs); err != nil {
+	err = ApplyCoefficientsInPlace(samples, coeffs)
+	if err != nil {
 		t.Fatal(err)
 	}
 

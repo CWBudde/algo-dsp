@@ -381,7 +381,9 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			Smoothing: 0.65,
 		},
 	}
-	if err := e.initSpectrumAnalyzer(); err != nil {
+
+	err := e.initSpectrumAnalyzer()
+	if err != nil {
 		return nil, err
 	}
 
@@ -485,19 +487,23 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 	e.limiter = lim
 
 	// Load the embedded IR library (best-effort; demo works without it).
-	if lib, err := loadEmbeddedIRLib(); err == nil {
+	lib, err := loadEmbeddedIRLib()
+	if err == nil {
 		e.irLib = lib
 	}
 
-	if err := e.rebuildEffects(); err != nil {
+	err = e.rebuildEffects()
+	if err != nil {
 		return nil, err
 	}
 
-	if err := e.rebuildCompressor(); err != nil {
+	err = e.rebuildCompressor()
+	if err != nil {
 		return nil, err
 	}
 
-	if err := e.rebuildLimiter(); err != nil {
+	err = e.rebuildLimiter()
+	if err != nil {
 		return nil, err
 	}
 
@@ -505,7 +511,8 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		e.steps[i] = StepConfig{Enabled: i%4 == 0, FreqHz: defaultStepFreq(i)}
 	}
 
-	if err := e.rebuildEQ(); err != nil {
+	err = e.rebuildEQ()
+	if err != nil {
 		return nil, err
 	}
 

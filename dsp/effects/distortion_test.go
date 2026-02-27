@@ -6,15 +6,18 @@ import (
 )
 
 func TestDistortionValidation(t *testing.T) {
-	if _, err := NewDistortion(0); err == nil {
+	_, err := NewDistortion(0)
+	if err == nil {
 		t.Fatal("expected error for invalid sample rate")
 	}
 
-	if _, err := NewDistortion(48000, WithDistortionDrive(100)); err == nil {
+	_, err = NewDistortion(48000, WithDistortionDrive(100))
+	if err == nil {
 		t.Fatal("expected error for invalid drive")
 	}
 
-	if _, err := NewDistortion(48000, WithDistortionMode(DistortionMode(999))); err == nil {
+	_, err = NewDistortion(48000, WithDistortionMode(DistortionMode(999)))
+	if err == nil {
 		t.Fatal("expected error for invalid mode")
 	}
 

@@ -24,11 +24,13 @@ func TestPeakRaw_InvalidParams(t *testing.T) {
 		t.Fatal("expected error for w0 >= pi")
 	}
 
-	if _, err := PeakRaw(1, 1, 1, 1, 1, 0); err == nil {
+	_, err = PeakRaw(1, 1, 1, 1, 1, 0)
+	if err == nil {
 		t.Fatal("expected error for dw <= 0")
 	}
 
-	if _, err := PeakRaw(1, 1, 1, 1, 1, math.Pi); err == nil {
+	_, err = PeakRaw(1, 1, 1, 1, 1, math.Pi)
+	if err == nil {
 		t.Fatal("expected error for dw >= pi")
 	}
 }
@@ -105,7 +107,8 @@ func TestPeakCascade_ResponseAtF0(t *testing.T) {
 }
 
 func TestPeakCascade_InvalidParams(t *testing.T) {
-	if _, err := PeakCascade(48000, 1000, 0.707, 6, 0); err == nil {
+	_, err := PeakCascade(48000, 1000, 0.707, 6, 0)
+	if err == nil {
 		t.Fatal("expected error for sections <= 0")
 	}
 }

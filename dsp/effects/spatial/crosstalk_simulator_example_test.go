@@ -29,7 +29,8 @@ func ExampleCrosstalkSimulator_ProcessInPlace() {
 	left := []float64{0, 1, 0, 0}
 	right := []float64{1, 0, 0, 0}
 
-	if err := s.ProcessInPlace(left, right); err != nil {
+	err = s.ProcessInPlace(left, right)
+	if err != nil {
 		panic(err)
 	}
 

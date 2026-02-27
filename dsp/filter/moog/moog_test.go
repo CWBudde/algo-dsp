@@ -6,15 +6,18 @@ import (
 )
 
 func TestNewValidation(t *testing.T) {
-	if _, err := New(0); err == nil {
+	_, err := New(0)
+	if err == nil {
 		t.Fatal("expected error for invalid sample rate")
 	}
 
-	if _, err := New(48000, WithCutoffHz(24000)); err == nil {
+	_, err = New(48000, WithCutoffHz(24000))
+	if err == nil {
 		t.Fatal("expected error for cutoff at Nyquist")
 	}
 
-	if _, err := New(48000, WithResonance(5)); err == nil {
+	_, err = New(48000, WithResonance(5))
+	if err == nil {
 		t.Fatal("expected error for resonance out of range")
 	}
 

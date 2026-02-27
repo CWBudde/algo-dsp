@@ -192,15 +192,18 @@ func TestAutoWahSetterValidation(t *testing.T) {
 		t.Fatalf("NewAutoWah() error = %v", err)
 	}
 
-	if err := autoWah.SetSampleRate(0); err == nil {
+	err = autoWah.SetSampleRate(0)
+	if err == nil {
 		t.Fatal("SetSampleRate(0) expected error")
 	}
 
-	if err := autoWah.SetFrequencyRangeHz(1200, 700); err == nil {
+	err = autoWah.SetFrequencyRangeHz(1200, 700)
+	if err == nil {
 		t.Fatal("SetFrequencyRangeHz() expected error")
 	}
 
-	if err := autoWah.SetQ(0); err == nil {
+	err = autoWah.SetQ(0)
+	if err == nil {
 		t.Fatal("SetQ(0) expected error")
 	}
 

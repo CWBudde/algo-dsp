@@ -64,7 +64,8 @@ type Expander struct {
 
 // NewExpander creates a downward expander with production defaults.
 func NewExpander(sampleRate float64) (*Expander, error) {
-	if err := validateSampleRate(sampleRate); err != nil {
+	err := validateSampleRate(sampleRate)
+	if err != nil {
 		return nil, fmt.Errorf("expander %w", err)
 	}
 
