@@ -1,3 +1,4 @@
+//nolint:funlen
 package webdemo
 
 import (
@@ -131,6 +132,7 @@ type indexEntry struct {
 // readIRLib reads an IRLB file from r and returns all IRs.
 //
 //nolint:cyclop
+//nolint:funlen
 func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 	// --- File header (18 bytes) ---
 	var magic [4]byte

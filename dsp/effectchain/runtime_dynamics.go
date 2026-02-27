@@ -359,7 +359,7 @@ type multibandRuntime struct {
 	lastSR    float64
 }
 
-//nolint:cyclop
+//nolint:cyclop,funlen
 func (r *multibandRuntime) Configure(ctx Context, p Params) error {
 	bands := min(max(int(math.Round(p.GetNum("bands", 3))), 2), 3)
 

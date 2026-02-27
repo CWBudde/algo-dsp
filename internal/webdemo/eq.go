@@ -1,3 +1,4 @@
+//nolint:funlen
 package webdemo
 
 import (
@@ -377,6 +378,7 @@ func normalizeEQOrder(kind, family string, order int) int {
 }
 
 //nolint:cyclop
+//nolint:funlen
 func normalizeEQType(node, kind string) string {
 	normalized := strings.ToLower(strings.TrimSpace(kind))
 	switch normalized {

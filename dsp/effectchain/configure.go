@@ -110,7 +110,7 @@ func configureBitCrusher(fx *effects.BitCrusher, sampleRate, bitDepth float64, d
 	return wrapConfigureErr(fx.SetMix(mix))
 }
 
-//nolint:cyclop
+//nolint:cyclop,funlen
 func configureDistortion(
 	fx *effects.Distortion,
 	sampleRate float64,

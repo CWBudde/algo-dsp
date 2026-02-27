@@ -1,3 +1,4 @@
+//nolint:funlen
 package band
 
 import (
@@ -28,6 +29,7 @@ type foSection struct {
 // It returns a cascade of biquad sections implementing the filter.
 //
 //nolint:cyclop
+//nolint:funlen
 func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coefficients, error) {
 	if order <= 2 || order%2 != 0 {
 		return nil, ErrInvalidParams

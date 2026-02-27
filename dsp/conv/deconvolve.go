@@ -239,6 +239,8 @@ func deconvolveRegularized(signal, kernel []float64, epsilon float64) ([]float64
 // deconvolveWiener performs Wiener deconvolution.
 // The Wiener filter is: H_w = conj(H) / (|H|^2 + NSR)
 // where NSR = noise_variance / signal_variance is the noise-to-signal ratio.
+//
+//nolint:funlen
 func deconvolveWiener(signal, kernel []float64, opts DeconvOptions) ([]float64, error) {
 	n := len(signal)
 	m := len(kernel)

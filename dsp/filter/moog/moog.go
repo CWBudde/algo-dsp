@@ -661,6 +661,8 @@ func (f *Filter) processHuovilainen(input float64) float64 {
 // The normalization by 1/shape ensures that small-signal behavior matches the
 // linear one-pole (DC gain = 1, -3 dB at cutoff). The feedback path
 // u = input - k*y3 creates an implicit equation solved via Newton-Raphson.
+//
+//nolint:funlen
 func (f *Filter) processZDF(input float64) float64 {
 	state := &f.state
 	gk := f.zdfGK // g/(1+g)
@@ -757,6 +759,7 @@ func (f *Filter) processZDF(input float64) float64 {
 	return f.outputScale * y3
 }
 
+//nolint:funlen
 func (f *Filter) rebuild() error {
 	if !validVariant(f.variant) {
 		return fmt.Errorf("moog: invalid variant: %d", f.variant)

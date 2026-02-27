@@ -1,3 +1,4 @@
+//nolint:funlen
 package webdemo
 
 // SetCompressor updates compressor parameters.

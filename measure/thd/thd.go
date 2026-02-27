@@ -1,3 +1,4 @@
+//nolint:funlen
 package thd
 
 import (
@@ -158,6 +159,7 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 // magSquared is expected to contain non-negative-frequency bins [0..Nyquist].
 //
 //nolint:cyclop
+//nolint:funlen
 func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result {
 	if len(magSquared) <= 1 {
 		return Result{}

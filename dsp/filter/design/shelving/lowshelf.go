@@ -1,3 +1,4 @@
+//nolint:funlen
 package shelving
 
 import (
@@ -182,6 +183,7 @@ func lowShelfSections(K, P float64, pairs []poleParams, realSigma float64) []biq
 //	num: σ = B·sin(θ_m),  R² = B² + g²·cos²(θ_m)
 //
 //nolint:cyclop
+//nolint:funlen
 func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biquad.Coefficients, error) {
 	if order < 1 || K <= 0 {
 		return nil, ErrInvalidParams

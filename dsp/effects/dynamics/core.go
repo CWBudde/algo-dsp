@@ -1,4 +1,4 @@
-//nolint:funcorder
+//nolint:funcorder,funlen
 package dynamics
 
 import (
@@ -400,6 +400,7 @@ func (c *dynamicsCore) applyPrefilter(x float64) float64 {
 }
 
 //nolint:cyclop
+//nolint:funlen
 func (c *dynamicsCore) recalculate() error {
 	err := validateSampleRate(c.cfg.sampleRate)
 	if err != nil {

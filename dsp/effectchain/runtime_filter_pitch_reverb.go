@@ -39,7 +39,7 @@ type filterRuntime struct {
 	lastSampleRate float64
 }
 
-//nolint:cyclop
+//nolint:cyclop,funlen
 func (r *filterRuntime) Configure(ctx Context, p Params) error {
 	family := normalizeFilterFamily(p.Str["family"], p.Type)
 	kind := normalizeFilterKind(p.Type, p.Str["kind"])

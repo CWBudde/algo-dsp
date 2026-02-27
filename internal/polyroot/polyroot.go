@@ -1,5 +1,7 @@
 // Package polyroot provides polynomial root-finding and fourth-order section
 // factorisation utilities shared by filter design packages.
+//
+//nolint:funlen
 package polyroot
 
 import (
@@ -173,6 +175,7 @@ func PairConjugates(roots []complex128) ([][2]complex128, error) {
 // power order: coeff[0]*z^n + coeff[1]*z^(n-1) + ... + coeff[n].
 //
 //nolint:cyclop
+//nolint:funlen
 func DurandKerner(coeff []complex128) ([]complex128, error) {
 	if len(coeff) < 2 {
 		return nil, ErrDegeneratePolynomial

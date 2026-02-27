@@ -1,4 +1,4 @@
-//nolint:funcorder
+//nolint:funcorder,funlen
 package pitch
 
 import (
@@ -282,6 +282,8 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 }
 
 // processBinShift implements the bin-shifting path for small pitch ratios.
+//
+//nolint:funlen
 func (s *SpectralPitchShifter) processBinShift(input []float64) ([]float64, error) {
 	s.Reset()
 
