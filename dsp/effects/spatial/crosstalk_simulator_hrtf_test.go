@@ -20,11 +20,13 @@ func (p fixedHRTFProvider) ImpulseResponses(_ float64) (HRTFImpulseResponseSet, 
 }
 
 func TestHRTFCrosstalkSimulatorValidation(t *testing.T) {
-	if _, err := NewHRTFCrosstalkSimulator(0); err == nil {
+	_, err := NewHRTFCrosstalkSimulator(0)
+	if err == nil {
 		t.Fatal("expected error for invalid sample rate")
 	}
 
-	if _, err := NewHRTFCrosstalkSimulator(48000); err == nil {
+	_, err = NewHRTFCrosstalkSimulator(48000)
+	if err == nil {
 		t.Fatal("expected error for missing provider")
 	}
 
@@ -33,9 +35,10 @@ func TestHRTFCrosstalkSimulatorValidation(t *testing.T) {
 		RightCross: []float64{0.1},
 	}}
 
-	if _, err := NewHRTFCrosstalkSimulator(48000,
+	_, err = NewHRTFCrosstalkSimulator(48000,
 		WithHRTFProvider(provider),
-		WithHRTFMode(HRTFModeComplete)); err == nil {
+		WithHRTFMode(HRTFModeComplete))
+	if err == nil {
 		t.Fatal("expected error for complete mode without direct IR")
 	}
 }
@@ -149,7 +152,8 @@ func TestHRTFCrosstalkSimulatorProviderReload(t *testing.T) {
 
 	outL1, _ := s.ProcessStereo(0, 1)
 
-	if err := s.SetProvider(providerB); err != nil {
+	err = s.SetProvider(providerB)
+	if err != nil {
 		t.Fatalf("SetProvider() error = %v", err)
 	}
 

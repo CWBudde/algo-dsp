@@ -101,7 +101,8 @@ func (s *LogSweep) Generate() ([]float64, error) {
 // This ensures that convolution of the sweep with its inverse yields
 // an impulse (Dirac delta).
 func (s *LogSweep) InverseFilter() ([]float64, error) {
-	if err := s.Validate(); err != nil {
+	err := s.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -158,7 +159,8 @@ func (s *LogSweep) InverseFilter() ([]float64, error) {
 // deconvolution by dividing the response spectrum by the sweep spectrum
 // (with regularization). The result is the system's impulse response.
 func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
-	if err := s.Validate(); err != nil {
+	err := s.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -187,7 +189,9 @@ func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 	}
 
 	respFreq := make([]complex128, fftSize)
-	if err := plan.Forward(respFreq, respPadded); err != nil {
+
+	err = plan.Forward(respFreq, respPadded)
+	if err != nil {
 		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
 	}
 

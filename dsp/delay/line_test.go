@@ -14,11 +14,13 @@ func approxEqual(a, b, eps float64) bool {
 // --- construction and validation ---
 
 func TestNewValidation(t *testing.T) {
-	if _, err := New(0); err == nil {
+	_, err := New(0)
+	if err == nil {
 		t.Fatal("expected error for size=0")
 	}
 
-	if _, err := New(-1); err == nil {
+	_, err = New(-1)
+	if err == nil {
 		t.Fatal("expected error for size=-1")
 	}
 }

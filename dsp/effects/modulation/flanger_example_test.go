@@ -20,7 +20,9 @@ func ExampleFlanger_ProcessInPlace() {
 	}
 
 	buf := []float64{1, 0, 0, 0}
-	if err := flanger.ProcessInPlace(buf); err != nil {
+
+	err = flanger.ProcessInPlace(buf)
+	if err != nil {
 		fmt.Println("error")
 		return
 	}

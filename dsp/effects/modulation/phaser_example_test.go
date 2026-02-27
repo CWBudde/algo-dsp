@@ -20,7 +20,9 @@ func ExamplePhaser_ProcessInPlace() {
 	}
 
 	buf := []float64{1, 0, 0, 0}
-	if err := phaser.ProcessInPlace(buf); err != nil {
+
+	err = phaser.ProcessInPlace(buf)
+	if err != nil {
 		fmt.Println("error")
 		return
 	}

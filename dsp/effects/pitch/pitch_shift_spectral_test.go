@@ -79,19 +79,23 @@ func TestSpectralPitchShifterSettersValidate(t *testing.T) {
 		t.Fatal("expected error for too-small pitch ratio")
 	}
 
-	if err := s.SetPitchRatio(6); err == nil {
+	err = s.SetPitchRatio(6)
+	if err == nil {
 		t.Fatal("expected error for too-large pitch ratio")
 	}
 
-	if err := s.SetPitchRatio(math.NaN()); err == nil {
+	err = s.SetPitchRatio(math.NaN())
+	if err == nil {
 		t.Fatal("expected error for NaN pitch ratio")
 	}
 
-	if err := s.SetPitchRatio(math.Inf(1)); err == nil {
+	err = s.SetPitchRatio(math.Inf(1))
+	if err == nil {
 		t.Fatal("expected error for Inf pitch ratio")
 	}
 
-	if err := s.SetPitchSemitones(math.NaN()); err == nil {
+	err = s.SetPitchSemitones(math.NaN())
+	if err == nil {
 		t.Fatal("expected error for NaN semitones")
 	}
 

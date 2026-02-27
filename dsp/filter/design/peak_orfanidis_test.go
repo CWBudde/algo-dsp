@@ -9,15 +9,18 @@ import (
 )
 
 func TestPeakRaw_InvalidParams(t *testing.T) {
-	if _, err := PeakRaw(0, 1, 1, 1, 1, 1); err == nil {
+	_, err := PeakRaw(0, 1, 1, 1, 1, 1)
+	if err == nil {
 		t.Fatal("expected error for G0 <= 0")
 	}
 
-	if _, err := PeakRaw(1, 1, 1, 1, 0, 1); err == nil {
+	_, err = PeakRaw(1, 1, 1, 1, 0, 1)
+	if err == nil {
 		t.Fatal("expected error for w0 <= 0")
 	}
 
-	if _, err := PeakRaw(1, 1, 1, 1, math.Pi, 1); err == nil {
+	_, err = PeakRaw(1, 1, 1, 1, math.Pi, 1)
+	if err == nil {
 		t.Fatal("expected error for w0 >= pi")
 	}
 

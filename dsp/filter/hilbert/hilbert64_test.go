@@ -38,15 +38,18 @@ func TestDesignCoefficientsDefaultLegacyValues(t *testing.T) {
 }
 
 func TestDesignValidation(t *testing.T) {
-	if _, err := DesignCoefficients(0, 0.1); err == nil {
+	_, err := DesignCoefficients(0, 0.1)
+	if err == nil {
 		t.Fatal("expected error for coefficient count < 1")
 	}
 
-	if _, err := DesignCoefficients(8, 0); err == nil {
+	_, err = DesignCoefficients(8, 0)
+	if err == nil {
 		t.Fatal("expected error for transition=0")
 	}
 
-	if _, err := DesignCoefficients(8, 0.5); err == nil {
+	_, err = DesignCoefficients(8, 0.5)
+	if err == nil {
 		t.Fatal("expected error for transition >= 0.5")
 	}
 }
@@ -57,11 +60,13 @@ func TestSetCoefficientsValidation64(t *testing.T) {
 		t.Fatalf("New64Default() error = %v", err)
 	}
 
-	if err := p.SetCoefficients(nil); err == nil {
+	err = p.SetCoefficients(nil)
+	if err == nil {
 		t.Fatal("expected error for empty coefficients")
 	}
 
-	if err := p.SetCoefficients([]float64{1.01}); err == nil {
+	err = p.SetCoefficients([]float64{1.01})
+	if err == nil {
 		t.Fatal("expected error for unstable coefficient")
 	}
 }
@@ -87,7 +92,9 @@ func TestProcessBlockMatchesSample64(t *testing.T) {
 	gotA := make([]float64, n)
 
 	gotB := make([]float64, n)
-	if err := pBlock.ProcessBlock(input, gotA, gotB); err != nil {
+
+	err = pBlock.ProcessBlock(input, gotA, gotB)
+	if err != nil {
 		t.Fatalf("ProcessBlock() error = %v", err)
 	}
 

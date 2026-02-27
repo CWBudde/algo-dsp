@@ -174,14 +174,18 @@ func TestPartitionedConvolutionReset(t *testing.T) {
 	}
 
 	out1 := make([]float64, len(signal))
-	if err := pc.ProcessBlock(signal, out1); err != nil {
+
+	err = pc.ProcessBlock(signal, out1)
+	if err != nil {
 		t.Fatalf("first ProcessBlock: %v", err)
 	}
 
 	pc.Reset()
 
 	out2 := make([]float64, len(signal))
-	if err := pc.ProcessBlock(signal, out2); err != nil {
+
+	err = pc.ProcessBlock(signal, out2)
+	if err != nil {
 		t.Fatalf("second ProcessBlock after Reset: %v", err)
 	}
 
@@ -302,7 +306,8 @@ func TestPartitionedConvolutionDiracDelta(t *testing.T) {
 	copy(padded, signal)
 	out := make([]float64, len(padded))
 
-	if err := pc.ProcessBlock(padded, out); err != nil {
+	err = pc.ProcessBlock(padded, out)
+	if err != nil {
 		t.Fatalf("ProcessBlock: %v", err)
 	}
 

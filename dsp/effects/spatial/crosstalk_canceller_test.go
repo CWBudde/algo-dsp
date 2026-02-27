@@ -82,7 +82,9 @@ func TestCrosstalkCancellerInPlaceMatchesSampleBySample(t *testing.T) {
 	gotL := append([]float64(nil), inL...)
 
 	gotR := append([]float64(nil), inR...)
-	if err := c2.ProcessInPlace(gotL, gotR); err != nil {
+
+	err = c2.ProcessInPlace(gotL, gotR)
+	if err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
 

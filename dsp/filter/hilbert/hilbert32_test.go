@@ -43,7 +43,9 @@ func TestProcessBlockMatchesSample32(t *testing.T) {
 	gotA := make([]float32, n)
 
 	gotB := make([]float32, n)
-	if err := pBlock.ProcessBlock(input, gotA, gotB); err != nil {
+
+	err = pBlock.ProcessBlock(input, gotA, gotB)
+	if err != nil {
 		t.Fatalf("ProcessBlock() error = %v", err)
 	}
 

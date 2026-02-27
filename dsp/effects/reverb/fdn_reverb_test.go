@@ -73,7 +73,8 @@ func TestFDNReverbImpulseTailExists(t *testing.T) {
 		t.Fatalf("NewFDNReverb: %v", err)
 	}
 
-	if err := r.SetDry(0); err != nil {
+	err = r.SetDry(0)
+	if err != nil {
 		t.Fatalf("SetDry: %v", err)
 	}
 

@@ -6,11 +6,13 @@ import (
 )
 
 func TestNewRationalValidation(t *testing.T) {
-	if _, err := NewRational(0, 1); err == nil {
+	_, err := NewRational(0, 1)
+	if err == nil {
 		t.Fatal("expected error for up=0")
 	}
 
-	if _, err := NewRational(1, 0); err == nil {
+	_, err = NewRational(1, 0)
+	if err == nil {
 		t.Fatal("expected error for down=0")
 	}
 }

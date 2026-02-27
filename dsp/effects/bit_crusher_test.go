@@ -324,11 +324,13 @@ func TestBitCrusherSetterValidation(t *testing.T) {
 		t.Error("SetDownsample(257) expected error")
 	}
 
-	if err := bc.SetMix(-0.1); err == nil {
+	err = bc.SetMix(-0.1)
+	if err == nil {
 		t.Error("SetMix(-0.1) expected error")
 	}
 
-	if err := bc.SetMix(1.1); err == nil {
+	err = bc.SetMix(1.1)
+	if err == nil {
 		t.Error("SetMix(1.1) expected error")
 	}
 }
@@ -366,7 +368,8 @@ func TestBitCrusherSettersUpdateState(t *testing.T) {
 		t.Fatalf("NewBitCrusher() error = %v", err)
 	}
 
-	if err := bc.SetSampleRate(96000); err != nil {
+	err = bc.SetSampleRate(96000)
+	if err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
 
@@ -374,7 +377,8 @@ func TestBitCrusherSettersUpdateState(t *testing.T) {
 		t.Errorf("SampleRate() = %g, want 96000", bc.SampleRate())
 	}
 
-	if err := bc.SetBitDepth(16); err != nil {
+	err = bc.SetBitDepth(16)
+	if err != nil {
 		t.Fatalf("SetBitDepth() error = %v", err)
 	}
 
@@ -382,7 +386,8 @@ func TestBitCrusherSettersUpdateState(t *testing.T) {
 		t.Errorf("BitDepth() = %g, want 16", bc.BitDepth())
 	}
 
-	if err := bc.SetDownsample(8); err != nil {
+	err = bc.SetDownsample(8)
+	if err != nil {
 		t.Fatalf("SetDownsample() error = %v", err)
 	}
 
@@ -390,7 +395,8 @@ func TestBitCrusherSettersUpdateState(t *testing.T) {
 		t.Errorf("Downsample() = %d, want 8", bc.Downsample())
 	}
 
-	if err := bc.SetMix(0.5); err != nil {
+	err = bc.SetMix(0.5)
+	if err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
 
