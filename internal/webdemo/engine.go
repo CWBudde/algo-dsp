@@ -247,6 +247,8 @@ type Engine struct {
 }
 
 // NewEngine creates a configured audio engine.
+//
+//nolint:cyclop
 func NewEngine(sampleRate float64) (*Engine, error) {
 	if sampleRate <= 0 {
 		return nil, fmt.Errorf("sample rate must be > 0: %f", sampleRate)

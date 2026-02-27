@@ -313,6 +313,7 @@ func (f *Flanger) Feedback() float64 { return f.feedback }
 // Mix returns wet amount in [0, 1].
 func (f *Flanger) Mix() float64 { return f.mix }
 
+//nolint:cyclop
 func (f *Flanger) validateParams() error {
 	if f.sampleRate <= 0 || math.IsNaN(f.sampleRate) || math.IsInf(f.sampleRate, 0) {
 		return fmt.Errorf("flanger sample rate must be > 0 and finite: %f", f.sampleRate)

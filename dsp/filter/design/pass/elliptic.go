@@ -341,6 +341,7 @@ func bilinearZPK(z, p []complex128, kGain, k float64) ([]complex128, []complex12
 	return zd, pd, kd, true
 }
 
+//nolint:cyclop
 func zpkToSections(z, p []complex128, gain float64) []biquad.Coefficients {
 	if len(p) == 0 {
 		return nil

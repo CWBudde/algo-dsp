@@ -30,9 +30,10 @@ func ExampleStereoWidener_ProcessStereoInPlace() {
 	}
 
 	left := []float64{1, 0, -1, 0}
-
 	right := []float64{0, 1, 0, -1}
-	if err := w.ProcessStereoInPlace(left, right); err != nil {
+
+	err = w.ProcessStereoInPlace(left, right)
+	if err != nil {
 		fmt.Println("error:", err)
 		return
 	}
@@ -56,7 +57,9 @@ func ExampleStereoWidener_ProcessInterleavedInPlace() {
 
 	// Interleaved: L, R, L, R, ...
 	buf := []float64{0.8, 0.2, 0.6, 0.4}
-	if err := w.ProcessInterleavedInPlace(buf); err != nil {
+
+	err = w.ProcessInterleavedInPlace(buf)
+	if err != nil {
 		fmt.Println("error:", err)
 		return
 	}

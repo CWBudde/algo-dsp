@@ -376,6 +376,7 @@ func normalizeEQOrder(kind, family string, order int) int {
 	return int(clamp(float64(order), 1, maxOrder))
 }
 
+//nolint:cyclop
 func normalizeEQType(node, kind string) string {
 	normalized := strings.ToLower(strings.TrimSpace(kind))
 	switch normalized {

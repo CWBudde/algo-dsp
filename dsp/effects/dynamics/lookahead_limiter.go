@@ -43,11 +43,13 @@ func NewLookaheadLimiter(sampleRate float64) (*LookaheadLimiter, error) {
 		return nil, fmt.Errorf("lookahead limiter compressor init: %w", err)
 	}
 
-	if err := c.SetRatio(100.0); err != nil {
+	err = c.SetRatio(100.0)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := c.SetAttack(0.1); err != nil {
+	err = c.SetAttack(0.1)
+	if err != nil {
 		return nil, err
 	}
 

@@ -398,6 +398,7 @@ func (c *dynamicsCore) applyPrefilter(x float64) float64 {
 	return x
 }
 
+//nolint:cyclop
 func (c *dynamicsCore) recalculate() error {
 	err := validateSampleRate(c.cfg.sampleRate)
 	if err != nil {

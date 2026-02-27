@@ -319,6 +319,7 @@ func (p *Phaser) Feedback() float64 { return p.feedback }
 // Mix returns wet amount in [0, 1].
 func (p *Phaser) Mix() float64 { return p.mix }
 
+//nolint:cyclop
 func (p *Phaser) validateParams() error {
 	if p.sampleRate <= 0 || math.IsNaN(p.sampleRate) || math.IsInf(p.sampleRate, 0) {
 		return fmt.Errorf("phaser sample rate must be > 0 and finite: %f", p.sampleRate)

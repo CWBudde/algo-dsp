@@ -21,10 +21,11 @@ func TestDistortionValidation(t *testing.T) {
 		t.Fatal("expected error for invalid mode")
 	}
 
-	if _, err := NewDistortion(48000,
+	_, err = NewDistortion(48000,
 		WithDistortionMode(DistortionModeChebyshev),
 		WithChebyshevOrder(4),
-		WithChebyshevHarmonicMode(ChebyshevHarmonicOdd)); err == nil {
+		WithChebyshevHarmonicMode(ChebyshevHarmonicOdd))
+	if err == nil {
 		t.Fatal("expected error for odd-mode with even order")
 	}
 
@@ -33,7 +34,8 @@ func TestDistortionValidation(t *testing.T) {
 		t.Fatalf("NewDistortion() error = %v", err)
 	}
 
-	if err := d.SetChebyshevHarmonicMode(ChebyshevHarmonicEven); err == nil {
+	err = d.SetChebyshevHarmonicMode(ChebyshevHarmonicEven)
+	if err == nil {
 		t.Fatal("expected parity validation error for default odd order")
 	}
 }

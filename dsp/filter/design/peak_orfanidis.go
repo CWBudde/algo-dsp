@@ -25,51 +25,85 @@ var ErrInvalidPeakParams = errors.New("design: invalid peaking parameters")
 // Returns biquad.Coefficients in the DF-II-T sign convention with a0
 // normalized to 1.
 func PeakRaw(G0, G1, G, GB, w0, dw float64) (biquad.Coefficients, error) {
-	if !(G0 > 0 && G1 > 0 && G > 0 && GB > 0) {
+	if err := validatePeakRawInputs(G0, G1, G, GB, w0, dw); err != nil {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
+	}
+
+	state, err := computePeakRawState(G0, G1, G, GB, w0, dw)
+	if err != nil {
+		return biquad.Coefficients{}, ErrInvalidPeakParams
+	}
+
+	b0 := (G1 + G0*state.W2 + state.B) / state.Den
+	b1 := -2 * (G1 - G0*state.W2) / state.Den
+	b2 := (G1 + G0*state.W2 - state.B) / state.Den
+	a1 := -2 * (1 - state.W2) / state.Den
+	a2 := (1 + state.W2 - state.A) / state.Den
+
+	if hasInvalidFloat(b0, b1, b2, a1, a2) {
+		return biquad.Coefficients{}, ErrInvalidPeakParams
+	}
+
+	return biquad.Coefficients{B0: b0, B1: b1, B2: b2, A1: a1, A2: a2}, nil
+}
+
+type peakRawState struct {
+	W2  float64
+	A   float64
+	B   float64
+	Den float64
+}
+
+func validatePeakRawInputs(G0, G1, G, GB, w0, dw float64) error {
+	if !(G0 > 0 && G1 > 0 && G > 0 && GB > 0) {
+		return ErrInvalidPeakParams
 	}
 
 	if !(w0 > 0 && w0 < math.Pi) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return ErrInvalidPeakParams
 	}
 
 	if !(dw > 0 && dw < math.Pi) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return ErrInvalidPeakParams
 	}
 
 	if hasInvalidFloat(G0, G1, G, GB, w0, dw) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return ErrInvalidPeakParams
 	}
 
+	return nil
+}
+
+//nolint:cyclop
+func computePeakRawState(G0, G1, G, GB, w0, dw float64) (peakRawState, error) {
 	Omega0 := math.Tan(w0 / 2)
 	if Omega0 == 0 || math.IsNaN(Omega0) || math.IsInf(Omega0, 0) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return peakRawState{}, ErrInvalidPeakParams
 	}
 
 	gb2, g02, g12, g2 := GB*GB, G0*G0, G1*G1, G*G
-
 	den1 := gb2 - g12
 	den2 := g2 - g02
 	num1 := gb2 - g02
 
 	num2 := g2 - g12
 	if den1 == 0 || den2 == 0 || num1 == 0 || num2 == 0 {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return peakRawState{}, ErrInvalidPeakParams
 	}
 
 	radicand := (num1 / den1) * (num2 / den2) * (Omega0 * Omega0)
 	if radicand <= 0 || math.IsNaN(radicand) || math.IsInf(radicand, 0) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return peakRawState{}, ErrInvalidPeakParams
 	}
 
 	DeltaOmega := (1 + math.Sqrt(radicand)) * math.Tan(dw/2)
 	if DeltaOmega <= 0 || math.IsNaN(DeltaOmega) || math.IsInf(DeltaOmega, 0) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return peakRawState{}, ErrInvalidPeakParams
 	}
 
 	W2 := (num2 / den2) * (Omega0 * Omega0)
 	if W2 <= 0 || math.IsNaN(W2) || math.IsInf(W2, 0) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return peakRawState{}, ErrInvalidPeakParams
 	}
 
 	q := 1.0
@@ -83,32 +117,22 @@ func PeakRaw(G0, G1, G, GB, w0, dw float64) (biquad.Coefficients, error) {
 
 	denAB := abs(g2 - gb2)
 	if denAB == 0 || (C+D) <= 0 {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return peakRawState{}, ErrInvalidPeakParams
 	}
 
 	A := math.Sqrt((C + D) / denAB)
 
 	B := math.Sqrt((g2*C + gb2*D) / denAB)
 	if math.IsNaN(A) || math.IsInf(A, 0) || math.IsNaN(B) || math.IsInf(B, 0) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return peakRawState{}, ErrInvalidPeakParams
 	}
 
 	den := 1 + W2 + A
 	if den == 0 || math.IsNaN(den) || math.IsInf(den, 0) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
+		return peakRawState{}, ErrInvalidPeakParams
 	}
 
-	b0 := (G1 + G0*W2 + B) / den
-	b1 := -2 * (G1 - G0*W2) / den
-	b2 := (G1 + G0*W2 - B) / den
-	a1 := -2 * (1 - W2) / den
-	a2 := (1 + W2 - A) / den
-
-	if hasInvalidFloat(b0, b1, b2, a1, a2) {
-		return biquad.Coefficients{}, ErrInvalidPeakParams
-	}
-
-	return biquad.Coefficients{B0: b0, B1: b1, B2: b2, A1: a1, A2: a2}, nil
+	return peakRawState{W2: W2, A: A, B: B, Den: den}, nil
 }
 
 // PeakCascade builds an N-section cascade approximating a higher-order peaking

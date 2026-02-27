@@ -655,6 +655,7 @@ func (mc *MultibandCompressor) applyBandConfig(band int, cfg BandConfig) error {
 	return nil
 }
 
+//nolint:cyclop
 func validateMultibandParams(freqs []float64, order int, sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("multiband compressor: sample rate must be positive and finite: %v", sampleRate)

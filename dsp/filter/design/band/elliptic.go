@@ -26,6 +26,8 @@ type foSection struct {
 // w0 is the center frequency in radians, wb the bandwidth in radians,
 // gainDB the peak gain, gbDB the bandwidth-edge gain, and order the filter order (must be even and > 2).
 // It returns a cascade of biquad sections implementing the filter.
+//
+//nolint:cyclop
 func ellipticBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coefficients, error) {
 	if order <= 2 || order%2 != 0 {
 		return nil, ErrInvalidParams

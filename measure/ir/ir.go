@@ -134,6 +134,8 @@ func (a *Analyzer) schroederIntegral(ir []float64) []float64 {
 // For EDT: startDB=0, endDB=-10 → extrapolate by factor 6
 // For T20: startDB=-5, endDB=-25 → extrapolate by factor 3
 // For T30: startDB=-5, endDB=-35 → extrapolate by factor 2.
+//
+//nolint:cyclop
 func (a *Analyzer) reverbTime(schroeder []float64, startDB, endDB float64) float64 {
 	if len(schroeder) == 0 || a.SampleRate <= 0 {
 		return 0

@@ -156,6 +156,8 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 
 // CalculateFromMagnitude computes THD metrics from a squared-magnitude spectrum.
 // magSquared is expected to contain non-negative-frequency bins [0..Nyquist].
+//
+//nolint:cyclop
 func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result {
 	if len(magSquared) <= 1 {
 		return Result{}

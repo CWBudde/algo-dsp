@@ -3,7 +3,7 @@ package window
 import (
 	"math"
 
-	"github.com/cwbudde/algo-vecmath"
+	vecmath "github.com/cwbudde/algo-vecmath"
 )
 
 // Type identifies a window function.
@@ -280,8 +280,35 @@ func ApplyCoefficientsInPlace(samples, coeffs []float64) error {
 	return nil
 }
 
-func evalWindow(t Type, x float64, cfg config) float64 {
-	switch cfg.slope {
+var fixedCosineWindowCoeffs = map[Type][]float64{
+	TypeHann:                 hannCoeffs,
+	TypeHamming:              hammingCoeffs,
+	TypeBlackman:             blackmanCoeffs,
+	TypeBlackmanHarris4Term:  blackmanHarris4Coeffs,
+	TypeFlatTop:              flatTopCoeffs,
+	TypeExactBlackman:        exactBlackmanCoeffs,
+	TypeBlackmanHarris3Term:  blackmanHarris3Coeffs,
+	TypeBlackmanNuttall:      blackmanNuttallCoeffs,
+	TypeNuttallCTD:           nuttallCTDCoeffs,
+	TypeNuttallCFD:           nuttallCFDCoeffs,
+	TypeLawrey5Term:          lawrey5Coeffs,
+	TypeLawrey6Term:          lawrey6Coeffs,
+	TypeBurgessOptimized59dB: burgess59Coeffs,
+	TypeBurgessOptimized71dB: burgess71Coeffs,
+	TypeAlbrecht2Term:        albrecht2Coeffs,
+	TypeAlbrecht3Term:        albrecht3Coeffs,
+	TypeAlbrecht4Term:        albrecht4Coeffs,
+	TypeAlbrecht5Term:        albrecht5Coeffs,
+	TypeAlbrecht6Term:        albrecht6Coeffs,
+	TypeAlbrecht7Term:        albrecht7Coeffs,
+	TypeAlbrecht8Term:        albrecht8Coeffs,
+	TypeAlbrecht9Term:        albrecht9Coeffs,
+	TypeAlbrecht10Term:       albrecht10Coeffs,
+	TypeAlbrecht11Term:       albrecht11Coeffs,
+}
+
+func normalizeEvalX(x float64, slope Slope) float64 {
+	switch slope {
 	case SlopeLeft:
 		if x >= 0.5 {
 			return 1
@@ -297,26 +324,26 @@ func evalWindow(t Type, x float64, cfg config) float64 {
 	}
 
 	if x < 0 {
-		x = 0
+		return 0
 	}
 
 	if x > 1 {
-		x = 1
+		return 1
+	}
+
+	return x
+}
+
+func evalWindow(t Type, x float64, cfg config) float64 {
+	x = normalizeEvalX(x, cfg.slope)
+
+	if coeffs, ok := fixedCosineWindowCoeffs[t]; ok {
+		return cosineFromCoeffs(x, coeffs)
 	}
 
 	switch t {
 	case TypeRectangular:
 		return 1
-	case TypeHann:
-		return cosineFromCoeffs(x, hannCoeffs)
-	case TypeHamming:
-		return cosineFromCoeffs(x, hammingCoeffs)
-	case TypeBlackman:
-		return cosineFromCoeffs(x, blackmanCoeffs)
-	case TypeBlackmanHarris4Term:
-		return cosineFromCoeffs(x, blackmanHarris4Coeffs)
-	case TypeFlatTop:
-		return cosineFromCoeffs(x, flatTopCoeffs)
 	case TypeKaiser:
 		return kaiserAt(x, cfg.alpha)
 	case TypeTukey:
@@ -333,44 +360,6 @@ func evalWindow(t Type, x float64, cfg config) float64 {
 	case TypeGauss:
 		v := (2*x - 1) * cfg.alpha
 		return math.Exp(-math.Ln2 * v * v)
-	case TypeExactBlackman:
-		return cosineFromCoeffs(x, exactBlackmanCoeffs)
-	case TypeBlackmanHarris3Term:
-		return cosineFromCoeffs(x, blackmanHarris3Coeffs)
-	case TypeBlackmanNuttall:
-		return cosineFromCoeffs(x, blackmanNuttallCoeffs)
-	case TypeNuttallCTD:
-		return cosineFromCoeffs(x, nuttallCTDCoeffs)
-	case TypeNuttallCFD:
-		return cosineFromCoeffs(x, nuttallCFDCoeffs)
-	case TypeLawrey5Term:
-		return cosineFromCoeffs(x, lawrey5Coeffs)
-	case TypeLawrey6Term:
-		return cosineFromCoeffs(x, lawrey6Coeffs)
-	case TypeBurgessOptimized59dB:
-		return cosineFromCoeffs(x, burgess59Coeffs)
-	case TypeBurgessOptimized71dB:
-		return cosineFromCoeffs(x, burgess71Coeffs)
-	case TypeAlbrecht2Term:
-		return cosineFromCoeffs(x, albrecht2Coeffs)
-	case TypeAlbrecht3Term:
-		return cosineFromCoeffs(x, albrecht3Coeffs)
-	case TypeAlbrecht4Term:
-		return cosineFromCoeffs(x, albrecht4Coeffs)
-	case TypeAlbrecht5Term:
-		return cosineFromCoeffs(x, albrecht5Coeffs)
-	case TypeAlbrecht6Term:
-		return cosineFromCoeffs(x, albrecht6Coeffs)
-	case TypeAlbrecht7Term:
-		return cosineFromCoeffs(x, albrecht7Coeffs)
-	case TypeAlbrecht8Term:
-		return cosineFromCoeffs(x, albrecht8Coeffs)
-	case TypeAlbrecht9Term:
-		return cosineFromCoeffs(x, albrecht9Coeffs)
-	case TypeAlbrecht10Term:
-		return cosineFromCoeffs(x, albrecht10Coeffs)
-	case TypeAlbrecht11Term:
-		return cosineFromCoeffs(x, albrecht11Coeffs)
 	case TypeFreeCosine:
 		if len(cfg.customCoeffs) == 0 {
 			return 1

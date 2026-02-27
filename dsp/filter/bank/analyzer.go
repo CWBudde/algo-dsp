@@ -131,6 +131,8 @@ func WithoutAnalyzerResampling() AnalyzerOption {
 // NewOctaveAnalyzer builds an octave or fractional-octave analyzer.
 // The fraction parameter controls the bandwidth: fraction=1 gives full octave
 // bands, fraction=3 gives 1/3-octave bands, etc.
+//
+//nolint:cyclop
 func NewOctaveAnalyzer(fraction int, sampleRate float64, opts ...AnalyzerOption) (*Analyzer, error) {
 	if fraction <= 0 {
 		fraction = 1

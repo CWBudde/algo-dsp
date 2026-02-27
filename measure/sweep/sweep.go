@@ -509,7 +509,9 @@ func (s *LinearSweep) Deconvolve(response []float64) ([]float64, error) {
 	}
 
 	resultTime := make([]complex128, fftSize)
-	if err := plan.Inverse(resultTime, resultFreq); err != nil {
+
+	err = plan.Inverse(resultTime, resultFreq)
+	if err != nil {
 		return nil, fmt.Errorf("sweep: inverse FFT failed: %w", err)
 	}
 

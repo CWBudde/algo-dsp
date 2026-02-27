@@ -493,6 +493,8 @@ func parseNodeParams(raw any) (map[string]float64, map[string]string) {
 
 // syncChainEffectNodes synchronises runtime effect instances with the compiled graph topology.
 // Nodes that are no longer present are removed; new or type-changed nodes are (re)created and configured.
+//
+//nolint:cyclop
 func (e *Engine) syncChainEffectNodes(graph *compiledChainGraph) error {
 	if graph == nil {
 		e.chainNodes = nil
@@ -670,6 +672,7 @@ func configureBitCrusher(fx *effects.BitCrusher, sampleRate, bitDepth float64, d
 	return fx.SetMix(mix)
 }
 
+//nolint:cyclop
 func configureDistortion(
 	fx *effects.Distortion,
 	sampleRate float64,
@@ -1450,6 +1453,7 @@ type filterChainRuntime struct {
 	lastSampleRate float64
 }
 
+//nolint:cyclop
 func (r *filterChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	family := normalizeChainFilterFamily(node.Str["family"], node.Type)
 	kind := normalizeChainFilterKind(node.Type, node.Str["kind"])
@@ -2112,6 +2116,7 @@ type multibandChainRuntime struct {
 	lastSR    float64
 }
 
+//nolint:cyclop
 func (r *multibandChainRuntime) Configure(e *Engine, node compiledChainNode) error {
 	bands := min(max(int(math.Round(getNodeNum(node, "bands", 3))), 2), 3)
 
@@ -2292,6 +2297,7 @@ func moogOversamplingFromOrder(order int) int {
 	}
 }
 
+//nolint:cyclop
 func normalizeDistortionMode(raw string) effects.DistortionMode {
 	switch raw {
 	case "hardclip":

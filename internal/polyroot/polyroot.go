@@ -171,6 +171,8 @@ func PairConjugates(roots []complex128) ([][2]complex128, error) {
 // DurandKerner finds all roots of a polynomial using the Durand-Kerner
 // (Weierstrass) simultaneous iteration method. Coefficients are in descending
 // power order: coeff[0]*z^n + coeff[1]*z^(n-1) + ... + coeff[n].
+//
+//nolint:cyclop
 func DurandKerner(coeff []complex128) ([]complex128, error) {
 	if len(coeff) < 2 {
 		return nil, ErrDegeneratePolynomial

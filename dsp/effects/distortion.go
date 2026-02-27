@@ -604,6 +604,7 @@ func (d *Distortion) validate() error {
 	return nil
 }
 
+//nolint:cyclop
 func (d *Distortion) shapeSample(x float64) float64 {
 	switch d.mode {
 	case DistortionModeSoftClip:

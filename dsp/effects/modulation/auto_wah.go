@@ -374,6 +374,7 @@ func (a *AutoWah) Mix() float64 { return a.mix }
 // CurrentCenterHz returns the instantaneous modulated center frequency in Hz.
 func (a *AutoWah) CurrentCenterHz() float64 { return a.currentFreqHz }
 
+//nolint:cyclop
 func (a *AutoWah) validateParams() error {
 	if a.sampleRate <= 0 || math.IsNaN(a.sampleRate) || math.IsInf(a.sampleRate, 0) {
 		return fmt.Errorf("auto-wah sample rate must be > 0 and finite: %f", a.sampleRate)

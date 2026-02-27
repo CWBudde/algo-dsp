@@ -245,6 +245,7 @@ func (t *Tremolo) SmoothingMs() float64 { return t.smoothing }
 // Mix returns wet amount in [0, 1].
 func (t *Tremolo) Mix() float64 { return t.mix }
 
+//nolint:cyclop
 func (t *Tremolo) validateParams() error {
 	if t.sampleRate <= 0 || math.IsNaN(t.sampleRate) || math.IsInf(t.sampleRate, 0) {
 		return fmt.Errorf("tremolo sample rate must be > 0 and finite: %f", t.sampleRate)
