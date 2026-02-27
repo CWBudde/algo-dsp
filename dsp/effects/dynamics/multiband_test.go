@@ -604,7 +604,7 @@ func TestMultibandProcessInPlace(t *testing.T) {
 	}
 }
 
-func TestMultibandProcessInPlaceEmpty(t *testing.T) {
+func TestMultibandProcessInPlaceEmpty(_ *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{1000}, 4, 48000)
 	// Must not panic
 	mc.ProcessInPlace([]float64{})

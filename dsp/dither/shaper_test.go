@@ -101,7 +101,7 @@ func TestFIRShaperStability(t *testing.T) {
 	}
 }
 
-func TestFIRShaperImplementsInterface(t *testing.T) {
+func TestFIRShaperImplementsInterface(_ *testing.T) {
 	var (
 		_ NoiseShaper = NewFIRShaper(nil)
 		_ NoiseShaper = NewFIRShaper([]float64{1.0})

@@ -31,7 +31,8 @@ func TestAutoWahProcessInPlaceMatchesProcess(t *testing.T) {
 	got := make([]float64, len(input))
 	copy(got, input)
 
-	if err := a2.ProcessInPlace(got); err != nil {
+	err = a2.ProcessInPlace(got)
+	if err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
 

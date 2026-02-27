@@ -4,6 +4,8 @@ package pitch
 //
 // Implementations include [PitchShifter] (time-domain WSOLA-style) and
 // [SpectralPitchShifter] (frequency-domain phase-vocoder).
+//
+//nolint:revive
 type PitchProcessor interface {
 	SampleRate() float64
 	SetSampleRate(sampleRate float64) error

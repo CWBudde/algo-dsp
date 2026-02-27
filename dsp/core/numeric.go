@@ -4,18 +4,18 @@ import "math"
 
 const defaultEpsilon = 1e-12
 
-// Clamp limits value to the inclusive range [min, max].
-func Clamp(value, min, max float64) float64 {
-	if min > max {
-		min, max = max, min
+// Clamp limits value to the inclusive range [minValue, maxValue].
+func Clamp(value, minValue, maxValue float64) float64 {
+	if minValue > maxValue {
+		minValue, maxValue = maxValue, minValue
 	}
 
-	if value < min {
-		return min
+	if value < minValue {
+		return minValue
 	}
 
-	if value > max {
-		return max
+	if value > maxValue {
+		return maxValue
 	}
 
 	return value

@@ -39,6 +39,8 @@ const (
 //   - 0.5 = one octave down
 //
 // This processor is mono and block-based.
+//
+//nolint:revive
 type PitchShifter struct {
 	sampleRate float64
 	pitchRatio float64

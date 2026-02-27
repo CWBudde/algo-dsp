@@ -3,6 +3,8 @@ package dither
 import "fmt"
 
 // DitherType selects the probability distribution used for dither noise.
+//
+//nolint:revive
 type DitherType int
 
 const (

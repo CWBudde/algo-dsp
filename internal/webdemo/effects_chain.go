@@ -31,8 +31,8 @@ type chainGraphNode struct {
 type chainGraphConnection struct {
 	From          string `json:"from"`
 	To            string `json:"to"`
-	FromPortIndex int    `json:"fromPortIndex,omitempty"`
-	ToPortIndex   int    `json:"toPortIndex,omitempty"`
+	FromPortIndex int    `json:"fromPortIndex,omitempty"` //nolint:tagliatelle
+	ToPortIndex   int    `json:"toPortIndex,omitempty"`   //nolint:tagliatelle
 }
 
 // chainGraphState is the root JSON structure for the effect chain graph.

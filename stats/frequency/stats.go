@@ -6,6 +6,8 @@ import (
 )
 
 // Stats holds frequency-domain statistics computed from a magnitude spectrum.
+//
+//nolint:revive
 type Stats struct {
 	BinCount   int
 	DC         float64 // bin 0 magnitude

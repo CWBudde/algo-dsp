@@ -19,7 +19,8 @@ import (
 // Cut filters are formed as the exact inverse of the corresponding boost
 // design to enforce boost/cut reciprocity.
 func Chebyshev2LowShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order int) ([]biquad.Coefficients, error) {
-	if err := validateParams(sampleRate, freqHz, order); err != nil {
+	err := validateParams(sampleRate, freqHz, order)
+	if err != nil {
 		return nil, err
 	}
 
@@ -55,7 +56,8 @@ func Chebyshev2LowShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order in
 // be > 0 and < |gainDB| (typical values 0.1–1.0 dB).
 // order must be >= 1.
 func Chebyshev2HighShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order int) ([]biquad.Coefficients, error) {
-	if err := validateParams(sampleRate, freqHz, order); err != nil {
+	err := validateParams(sampleRate, freqHz, order)
+	if err != nil {
 		return nil, err
 	}
 

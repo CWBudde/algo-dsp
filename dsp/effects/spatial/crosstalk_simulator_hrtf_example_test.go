@@ -8,7 +8,7 @@ import (
 
 type exampleHRTFProvider struct{}
 
-func (exampleHRTFProvider) ImpulseResponses(sampleRate float64) (spatial.HRTFImpulseResponseSet, error) {
+func (exampleHRTFProvider) ImpulseResponses(_ float64) (spatial.HRTFImpulseResponseSet, error) {
 	return spatial.HRTFImpulseResponseSet{
 		LeftDirect:  []float64{1.0},
 		LeftCross:   []float64{0.15},

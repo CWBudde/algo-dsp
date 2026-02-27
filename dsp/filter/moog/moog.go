@@ -936,13 +936,13 @@ func validOversampling(factor int) bool {
 	return factor == 1 || factor == 2 || factor == 4 || factor == 8
 }
 
-func validateFiniteRange(value, min, max float64, name string) error {
+func validateFiniteRange(value, minValue, maxValue float64, name string) error {
 	if !isFinite(value) {
 		return fmt.Errorf("moog: %s must be finite: %v", name, value)
 	}
 
-	if value < min || value > max {
-		return fmt.Errorf("moog: %s must be in [%g, %g]: %f", name, min, max, value)
+	if value < minValue || value > maxValue {
+		return fmt.Errorf("moog: %s must be in [%g, %g]: %f", name, minValue, maxValue, value)
 	}
 
 	return nil

@@ -95,15 +95,18 @@ func TestGroupDelaySeconds(t *testing.T) {
 }
 
 func TestGroupDelayErrors(t *testing.T) {
-	if _, err := GroupDelayFromPhase([]float64{1}, 8); err == nil {
+	_, err := GroupDelayFromPhase([]float64{1}, 8)
+	if err == nil {
 		t.Fatalf("expected error for short phase")
 	}
 
-	if _, err := GroupDelayFromPhase([]float64{1, 2}, 0); err == nil {
+	_, err = GroupDelayFromPhase([]float64{1, 2}, 0)
+	if err == nil {
 		t.Fatalf("expected error for invalid fft size")
 	}
 
-	if _, err := GroupDelaySeconds([]float64{1, 2}, 8, 0); err == nil {
+	_, err = GroupDelaySeconds([]float64{1, 2}, 8, 0)
+	if err == nil {
 		t.Fatalf("expected error for invalid sample rate")
 	}
 }

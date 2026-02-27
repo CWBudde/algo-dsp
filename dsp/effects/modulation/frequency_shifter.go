@@ -47,7 +47,8 @@ func WithFrequencyShiftHz(shiftHz float64) FrequencyShifterOption {
 // WithFrequencyShifterHilbertPreset selects a Hilbert design preset.
 func WithFrequencyShifterHilbertPreset(preset hilbert.Preset) FrequencyShifterOption {
 	return func(cfg *frequencyShifterConfig) error {
-		if _, _, err := hilbert.PresetConfig(preset); err != nil {
+		_, _, err := hilbert.PresetConfig(preset)
+		if err != nil {
 			return fmt.Errorf("frequency shifter: invalid hilbert preset: %w", err)
 		}
 
@@ -61,7 +62,8 @@ func WithFrequencyShifterHilbertPreset(preset hilbert.Preset) FrequencyShifterOp
 // WithFrequencyShifterHilbertDesign selects an explicit Hilbert design.
 func WithFrequencyShifterHilbertDesign(numberOfCoeffs int, transition float64) FrequencyShifterOption {
 	return func(cfg *frequencyShifterConfig) error {
-		if _, err := hilbert.DesignCoefficients(numberOfCoeffs, transition); err != nil {
+		_, err := hilbert.DesignCoefficients(numberOfCoeffs, transition)
+		if err != nil {
 			return fmt.Errorf("frequency shifter: invalid hilbert design: %w", err)
 		}
 

@@ -3,6 +3,8 @@ package time
 import "math"
 
 // Stats holds time-domain signal statistics.
+//
+//nolint:revive
 type Stats struct {
 	Length         int
 	DC             float64 // mean

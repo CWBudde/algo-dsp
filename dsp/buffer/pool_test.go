@@ -39,7 +39,7 @@ func TestPoolReuseIsZeroed(t *testing.T) {
 	p.Put(b2)
 }
 
-func TestPoolPutNilSafe(t *testing.T) {
+func TestPoolPutNilSafe(_ *testing.T) {
 	p := NewPool()
 	p.Put(nil) // must not panic
 }

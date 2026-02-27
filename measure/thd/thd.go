@@ -27,6 +27,8 @@ type Config struct {
 }
 
 // Result holds THD measurement results.
+//
+//nolint:revive
 type Result struct {
 	FundamentalFreq  float64
 	FundamentalLevel float64

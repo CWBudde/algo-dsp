@@ -113,10 +113,10 @@ func WithAnalyzerResampleQuality(q resample.Quality) AnalyzerOption {
 }
 
 // WithAnalyzerMaxDownsample caps the maximum downsample factor (power of two).
-func WithAnalyzerMaxDownsample(max int) AnalyzerOption {
+func WithAnalyzerMaxDownsample(maxFactor int) AnalyzerOption {
 	return func(cfg *analyzerConfig) {
-		if max > 0 {
-			cfg.maxDownsample = max
+		if maxFactor > 0 {
+			cfg.maxDownsample = maxFactor
 		}
 	}
 }

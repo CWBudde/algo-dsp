@@ -448,13 +448,13 @@ func TestOverlapSaveProcessTo(t *testing.T) {
 	}
 }
 
-func TestOverlapAddReset(t *testing.T) {
+func TestOverlapAddReset(_ *testing.T) {
 	kernel := []float64{1, 0}
 	oa, _ := NewOverlapAdd(kernel, 8)
 	oa.Reset() // Should not panic
 }
 
-func TestOverlapSaveReset(t *testing.T) {
+func TestOverlapSaveReset(_ *testing.T) {
 	kernel := []float64{1, 0}
 	os, _ := NewOverlapSave(kernel, 0)
 	os.Reset() // Should not panic

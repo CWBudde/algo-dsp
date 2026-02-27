@@ -13,6 +13,8 @@ const (
 )
 
 // DynamicsTopology selects where detector control is measured from.
+//
+//nolint:revive
 type DynamicsTopology int
 
 const (
@@ -325,7 +327,7 @@ func (c *dynamicsCore) GainForLevel(level float64) float64 {
 	return mathPower2(gainLog2)
 }
 
-func (c *dynamicsCore) detectorSource(input, sidechain float64) float64 {
+func (c *dynamicsCore) detectorSource(_, sidechain float64) float64 {
 	if c.cfg.topology == DynamicsTopologyFeedback {
 		return c.previousAbsSample
 	}

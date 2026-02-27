@@ -11,7 +11,7 @@ type fixedHRTFProvider struct {
 	err error
 }
 
-func (p fixedHRTFProvider) ImpulseResponses(sampleRate float64) (HRTFImpulseResponseSet, error) {
+func (p fixedHRTFProvider) ImpulseResponses(_ float64) (HRTFImpulseResponseSet, error) {
 	if p.err != nil {
 		return HRTFImpulseResponseSet{}, p.err
 	}

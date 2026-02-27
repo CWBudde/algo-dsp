@@ -38,7 +38,8 @@ func New32(numberOfCoeffs int, transition float64) (*Processor32, error) {
 		transition:    transition,
 		attenuationDB: attenuationDB,
 	}
-	if err := p.SetCoefficients(coeffs); err != nil {
+	err = p.SetCoefficients(coeffs)
+	if err != nil {
 		return nil, err
 	}
 
@@ -82,7 +83,8 @@ func (p *Processor32) SetDesign(numberOfCoeffs int, transition float64) error {
 		return err
 	}
 
-	if err := p.SetCoefficients(coeffs); err != nil {
+	err = p.SetCoefficients(coeffs)
+	if err != nil {
 		return err
 	}
 

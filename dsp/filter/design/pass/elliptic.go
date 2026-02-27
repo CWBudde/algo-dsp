@@ -574,7 +574,7 @@ func jacobiComplement(k complex128) complex128 {
 	return cmplx.Sqrt((1.0 - k) * (1.0 + k))
 }
 
-func arcJacSN(w complex128, m, tol float64) complex128 {
+func arcJacSN(w complex128, m, _ float64) complex128 {
 	if m < 0 || m > 1 {
 		return complex(math.NaN(), math.NaN())
 	}
