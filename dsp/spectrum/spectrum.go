@@ -1,13 +1,14 @@
 package spectrum
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"math/cmplx"
 	"sort"
 	"sync"
 
-	"github.com/cwbudde/algo-vecmath"
+	vecmath "github.com/cwbudde/algo-vecmath"
 )
 
 // scratchBuf holds pooled scratch memory for complex-to-real unpacking.
@@ -209,7 +210,7 @@ func GroupDelayFromPhase(unwrapped []float64, fftSize int) ([]float64, error) {
 
 	dw := 2 * math.Pi / float64(fftSize)
 	if dw == 0 || math.IsInf(dw, 0) || math.IsNaN(dw) {
-		return nil, fmt.Errorf("group delay invalid frequency spacing")
+		return nil, errors.New("group delay invalid frequency spacing")
 	}
 
 	out := make([]float64, len(unwrapped))
@@ -255,7 +256,7 @@ func GroupDelaySeconds(unwrapped []float64, fftSize int, sampleRate float64) ([]
 // x must be strictly increasing and have the same length as y.
 func InterpolateLinear(x, y, queryX []float64) ([]float64, error) {
 	if len(x) == 0 || len(y) == 0 {
-		return nil, fmt.Errorf("interpolate requires non-empty x and y")
+		return nil, errors.New("interpolate requires non-empty x and y")
 	}
 
 	if len(x) != len(y) {
@@ -296,7 +297,7 @@ func InterpolateLinear(x, y, queryX []float64) ([]float64, error) {
 // increasing with positive values.
 func SmoothFractionalOctave(freqHz, values []float64, fraction int) ([]float64, error) {
 	if len(freqHz) == 0 || len(values) == 0 {
-		return nil, fmt.Errorf("fractional-octave smoothing requires non-empty inputs")
+		return nil, errors.New("fractional-octave smoothing requires non-empty inputs")
 	}
 
 	if len(freqHz) != len(values) {

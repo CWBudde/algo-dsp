@@ -39,7 +39,8 @@ func NewQuantizer(sampleRate float64, opts ...Option) (*Quantizer, error) {
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}

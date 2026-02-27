@@ -82,7 +82,7 @@ func TestBitCrusherMixZeroIsTransparent(t *testing.T) {
 		t.Fatalf("NewBitCrusher() error = %v", err)
 	}
 
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		in := 0.5 * math.Sin(2*math.Pi*440*float64(i)/48000)
 
 		out := bc.ProcessSample(in)
@@ -104,7 +104,7 @@ func TestBitCrusherHighBitDepthIsTransparent(t *testing.T) {
 		t.Fatalf("NewBitCrusher() error = %v", err)
 	}
 
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		in := 0.75 * math.Sin(2*math.Pi*440*float64(i)/48000)
 		out := bc.ProcessSample(in)
 		// 2^31 levels → quantization step ≈ 4.66e-10
@@ -181,7 +181,7 @@ func TestBitCrusherDownsampleHold(t *testing.T) {
 	// Sample 7: counter 3→4 (>=4), hold=quant(0.8), counter→0 → out=quant(0.8)
 
 	// First 3 samples should be 0 (initial hold value).
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if output[i] != 0 {
 			t.Errorf("sample %d: expected 0 (initial hold), got %g", i, output[i])
 		}
@@ -211,7 +211,7 @@ func TestBitCrusherSilenceProducesSilence(t *testing.T) {
 		t.Fatalf("NewBitCrusher() error = %v", err)
 	}
 
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		out := bc.ProcessSample(0)
 		if out != 0 {
 			t.Fatalf("sample %d: silent input should produce 0, got=%g", i, out)
@@ -280,7 +280,8 @@ func TestBitCrusherValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.fn(); err == nil {
+			err := tt.fn()
+			if err == nil {
 				t.Error("expected validation error, got nil")
 			}
 		})
@@ -419,7 +420,7 @@ func TestBitCrusherQuantizationError(t *testing.T) {
 		step := 1.0 / math.Exp2(bits-1)
 		maxErr := step / 2
 
-		for i := 0; i < 1000; i++ {
+		for i := range 1000 {
 			in := 2.0*float64(i)/999.0 - 1.0 // sweep [-1, 1]
 
 			bc.Reset()
@@ -446,7 +447,7 @@ func BenchmarkBitCrusherProcessSample(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		bc.ProcessSample(0.5)
 	}
 }
@@ -469,7 +470,7 @@ func BenchmarkBitCrusherProcessInPlace(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		bc.ProcessInPlace(buf)
 	}
 }

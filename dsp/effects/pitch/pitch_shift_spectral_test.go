@@ -293,10 +293,7 @@ func TestSpectralPitchShifterSignalQuality(t *testing.T) {
 			out := s.Process(input)
 
 			// Windowed FFT analysis of the output center.
-			mid := len(out)/2 - fftLen/2
-			if mid < 0 {
-				mid = 0
-			}
+			mid := max(len(out)/2-fftLen/2, 0)
 
 			chunk := out[mid : mid+fftLen]
 
@@ -417,10 +414,7 @@ func TestSpectralPitchShifterSignalQualityOverlap(t *testing.T) {
 func measureSNR(t *testing.T, out []float64, targetFreq, sampleRate float64, fftLen int) float64 {
 	t.Helper()
 
-	mid := len(out)/2 - fftLen/2
-	if mid < 0 {
-		mid = 0
-	}
+	mid := max(len(out)/2-fftLen/2, 0)
 
 	chunk := out[mid : mid+fftLen]
 

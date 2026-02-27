@@ -294,7 +294,8 @@ func TestGateCoefficientCalculations(t *testing.T) {
 	g, _ := NewGate(48000)
 
 	// Test threshold conversion to log2
-	if err := g.SetThreshold(-40); err != nil {
+	err := g.SetThreshold(-40)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -304,7 +305,8 @@ func TestGateCoefficientCalculations(t *testing.T) {
 	}
 
 	// Test knee width calculation
-	if err := g.SetKnee(6); err != nil {
+	err = g.SetKnee(6)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -324,7 +326,8 @@ func TestGateCoefficientCalculations(t *testing.T) {
 	}
 
 	// Test hold samples calculation
-	if err := g.SetHold(50); err != nil {
+	err = g.SetHold(50)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -334,7 +337,8 @@ func TestGateCoefficientCalculations(t *testing.T) {
 	}
 
 	// Test range conversion to linear
-	if err := g.SetRange(-80); err != nil {
+	err = g.SetRange(-80)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -347,7 +351,9 @@ func TestGateCoefficientCalculations(t *testing.T) {
 // TestGateGainAboveThreshold verifies no attenuation above threshold.
 func TestGateGainAboveThreshold(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetThreshold(-40); err != nil {
+
+	err := g.SetThreshold(-40)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -364,15 +370,19 @@ func TestGateGainAboveThreshold(t *testing.T) {
 // TestGateGainBelowThreshold verifies attenuation below threshold.
 func TestGateGainBelowThreshold(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetThreshold(-20); err != nil {
+
+	err := g.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetRatio(10); err != nil {
+	err = g.SetRatio(10)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetKnee(0); err != nil { // Hard knee for predictable testing
+	err = g.SetKnee(0)
+	if err != nil { // Hard knee for predictable testing
 		t.Fatal(err)
 	}
 
@@ -400,19 +410,24 @@ func TestGateGainRatios(t *testing.T) {
 
 	for i, ratio := range ratios {
 		g, _ := NewGate(48000)
-		if err := g.SetThreshold(-20); err != nil {
+
+		err := g.SetThreshold(-20)
+		if err != nil {
 			t.Fatal(err)
 		}
 
-		if err := g.SetRatio(ratio); err != nil {
+		err = g.SetRatio(ratio)
+		if err != nil {
 			t.Fatal(err)
 		}
 
-		if err := g.SetKnee(0); err != nil {
+		err = g.SetKnee(0)
+		if err != nil {
 			t.Fatal(err)
 		}
 
-		if err := g.SetRange(-120); err != nil { // Wide range so it doesn't clamp
+		err = g.SetRange(-120)
+		if err != nil { // Wide range so it doesn't clamp
 			t.Fatal(err)
 		}
 
@@ -444,19 +459,24 @@ func TestGateGainSilence(t *testing.T) {
 // TestGateRangeClamp verifies that gain never drops below rangeLin.
 func TestGateRangeClamp(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetThreshold(-10); err != nil {
+
+	err := g.SetThreshold(-10)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetRatio(100); err != nil {
+	err = g.SetRatio(100)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetRange(-40); err != nil {
+	err = g.SetRange(-40)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetKnee(0); err != nil {
+	err = g.SetKnee(0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -472,15 +492,19 @@ func TestGateRangeClamp(t *testing.T) {
 // TestGateSoftKneeTransition verifies smooth transition in the knee region.
 func TestGateSoftKneeTransition(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetThreshold(-20); err != nil {
+
+	err := g.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetRatio(10); err != nil {
+	err = g.SetRatio(10)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetKnee(12); err != nil {
+	err = g.SetKnee(12)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -511,7 +535,7 @@ func TestGateProcessSampleZero(t *testing.T) {
 	g, _ := NewGate(48000)
 	g.Reset()
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		output := g.ProcessSample(0)
 		if output != 0 {
 			t.Errorf("ProcessSample(0) = %f, want 0", output)
@@ -568,7 +592,7 @@ func TestGateReset(t *testing.T) {
 	g, _ := NewGate(48000)
 
 	// Process some samples to build up state
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		g.ProcessSample(0.5)
 	}
 
@@ -598,18 +622,21 @@ func TestGateReset(t *testing.T) {
 // TestGateMetricsTracking verifies metrics are tracked correctly.
 func TestGateMetricsTracking(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetThreshold(-10); err != nil {
+
+	err := g.SetThreshold(-10)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetHold(0); err != nil { // Disable hold for this test
+	err = g.SetHold(0)
+	if err != nil { // Disable hold for this test
 		t.Fatal(err)
 	}
 
 	g.ResetMetrics()
 
 	// Process quiet samples (below threshold) to trigger gating
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		g.ProcessSample(0.01)
 	}
 
@@ -629,30 +656,36 @@ func TestGateMetricsTracking(t *testing.T) {
 // TestGateHoldBehavior verifies that the hold mechanism prevents premature closing.
 func TestGateHoldBehavior(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetThreshold(-20); err != nil {
+
+	err := g.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetAttack(0.1); err != nil { // Very fast attack
+	err = g.SetAttack(0.1)
+	if err != nil { // Very fast attack
 		t.Fatal(err)
 	}
 
-	if err := g.SetRelease(1); err != nil { // Very fast release so envelope decays quickly
+	err = g.SetRelease(1)
+	if err != nil { // Very fast release so envelope decays quickly
 		t.Fatal(err)
 	}
 
-	if err := g.SetHold(10); err != nil { // 10 ms hold = 480 samples
+	err = g.SetHold(10)
+	if err != nil { // 10 ms hold = 480 samples
 		t.Fatal(err)
 	}
 
-	if err := g.SetKnee(0); err != nil {
+	err = g.SetKnee(0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	g.Reset()
 
 	// Build up envelope above threshold
-	for i := 0; i < 2000; i++ {
+	for range 2000 {
 		g.ProcessSample(0.5) // Well above threshold
 	}
 
@@ -667,7 +700,7 @@ func TestGateHoldBehavior(t *testing.T) {
 	// With 1ms release at 48kHz, the envelope drops very quickly (< 100 samples),
 	// then 480 hold samples need to count down.
 	totalSamples := 1000 + g.holdSamples // Generous margin for envelope decay + hold
-	for i := 0; i < totalSamples; i++ {
+	for range totalSamples {
 		g.ProcessSample(0)
 	}
 
@@ -680,29 +713,33 @@ func TestGateHoldBehavior(t *testing.T) {
 // TestGateHoldCounterResets verifies hold counter resets when signal returns above threshold.
 func TestGateHoldCounterResets(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetThreshold(-20); err != nil {
+
+	err := g.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetHold(100); err != nil { // Long hold
+	err = g.SetHold(100)
+	if err != nil { // Long hold
 		t.Fatal(err)
 	}
 
-	if err := g.SetAttack(0.1); err != nil {
+	err = g.SetAttack(0.1)
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	g.Reset()
 
 	// Build up above threshold
-	for i := 0; i < 2000; i++ {
+	for range 2000 {
 		g.ProcessSample(0.5)
 	}
 
 	initialHold := g.holdCounter
 
 	// Process a few silence samples to start decrementing hold
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		g.ProcessSample(0)
 	}
 
@@ -710,7 +747,7 @@ func TestGateHoldCounterResets(t *testing.T) {
 	// due to release, but once it drops, hold starts counting down)
 
 	// Return to loud signal
-	for i := 0; i < 2000; i++ {
+	for range 2000 {
 		g.ProcessSample(0.5)
 	}
 
@@ -723,7 +760,9 @@ func TestGateHoldCounterResets(t *testing.T) {
 // TestGateEnvelopeFollowerAttack verifies gate opening behavior.
 func TestGateEnvelopeFollowerAttack(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetAttack(1); err != nil { // Fast 1ms attack
+
+	err := g.SetAttack(1)
+	if err != nil { // Fast 1ms attack
 		t.Fatal(err)
 	}
 
@@ -734,7 +773,7 @@ func TestGateEnvelopeFollowerAttack(t *testing.T) {
 
 	prevPeak := 0.0
 
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		g.ProcessSample(level)
 
 		if g.peakLevel < prevPeak-1e-10 {
@@ -754,22 +793,26 @@ func TestGateEnvelopeFollowerAttack(t *testing.T) {
 // TestGateEnvelopeFollowerRelease verifies gate closing behavior.
 func TestGateEnvelopeFollowerRelease(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetAttack(1); err != nil {
+
+	err := g.SetAttack(1)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetRelease(50); err != nil {
+	err = g.SetRelease(50)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetHold(0); err != nil { // Disable hold for this test
+	err = g.SetHold(0)
+	if err != nil { // Disable hold for this test
 		t.Fatal(err)
 	}
 
 	g.Reset()
 
 	// Build up peak
-	for i := 0; i < 2000; i++ {
+	for range 2000 {
 		g.ProcessSample(0.5)
 	}
 
@@ -782,7 +825,7 @@ func TestGateEnvelopeFollowerRelease(t *testing.T) {
 	// Process silence for release
 	prevPeak := peakAfterAttack
 
-	for i := 0; i < 5000; i++ {
+	for i := range 5000 {
 		g.ProcessSample(0)
 
 		if g.peakLevel > prevPeak+1e-10 {
@@ -802,15 +845,19 @@ func TestGateEnvelopeFollowerRelease(t *testing.T) {
 // TestGateCalculateOutputLevel verifies static curve visualization helper.
 func TestGateCalculateOutputLevel(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetThreshold(-20); err != nil {
+
+	err := g.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetRatio(10); err != nil {
+	err = g.SetRatio(10)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetKnee(0); err != nil {
+	err = g.SetKnee(0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -864,11 +911,14 @@ func TestGateSetSampleRate(t *testing.T) {
 // TestGateRatioOnePassthrough verifies ratio 1:1 produces no gating.
 func TestGateRatioOnePassthrough(t *testing.T) {
 	g, _ := NewGate(48000)
-	if err := g.SetRatio(1.0); err != nil {
+
+	err := g.SetRatio(1.0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetKnee(0); err != nil {
+	err = g.SetKnee(0)
+	if err != nil {
 		t.Fatal(err)
 	}
 

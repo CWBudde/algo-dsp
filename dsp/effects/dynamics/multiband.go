@@ -1,6 +1,7 @@
 package dynamics
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -8,7 +9,7 @@ import (
 )
 
 const (
-	// Parameter validation
+	// Parameter validation.
 	minMultibandOrder     = 2
 	maxMultibandOrder     = 24
 	maxMultibandBands     = 8
@@ -137,7 +138,8 @@ func NewMultibandCompressorWithConfig(freqs []float64, order int, sampleRate flo
 	}
 
 	for i, cfg := range configs {
-		if err := mc.applyBandConfig(i, cfg); err != nil {
+		err := mc.applyBandConfig(i, cfg)
+		if err != nil {
 			return nil, fmt.Errorf("multiband compressor: band %d config: %w", i, err)
 		}
 	}
@@ -185,7 +187,8 @@ func (mc *MultibandCompressor) Crossover() *crossover.MultiBand {
 
 // SetBandThreshold sets the compression threshold for the specified band.
 func (mc *MultibandCompressor) SetBandThreshold(band int, dB float64) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -194,7 +197,8 @@ func (mc *MultibandCompressor) SetBandThreshold(band int, dB float64) error {
 
 // SetBandRatio sets the compression ratio for the specified band.
 func (mc *MultibandCompressor) SetBandRatio(band int, ratio float64) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -203,7 +207,8 @@ func (mc *MultibandCompressor) SetBandRatio(band int, ratio float64) error {
 
 // SetBandKnee sets the soft-knee width for the specified band.
 func (mc *MultibandCompressor) SetBandKnee(band int, kneeDB float64) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -212,7 +217,8 @@ func (mc *MultibandCompressor) SetBandKnee(band int, kneeDB float64) error {
 
 // SetBandAttack sets the attack time for the specified band.
 func (mc *MultibandCompressor) SetBandAttack(band int, ms float64) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -221,7 +227,8 @@ func (mc *MultibandCompressor) SetBandAttack(band int, ms float64) error {
 
 // SetBandRelease sets the release time for the specified band.
 func (mc *MultibandCompressor) SetBandRelease(band int, ms float64) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -231,7 +238,8 @@ func (mc *MultibandCompressor) SetBandRelease(band int, ms float64) error {
 // SetBandMakeupGain sets manual makeup gain for the specified band and
 // disables auto makeup for that band.
 func (mc *MultibandCompressor) SetBandMakeupGain(band int, dB float64) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -240,7 +248,8 @@ func (mc *MultibandCompressor) SetBandMakeupGain(band int, dB float64) error {
 
 // SetBandAutoMakeup enables or disables auto makeup gain for the specified band.
 func (mc *MultibandCompressor) SetBandAutoMakeup(band int, enable bool) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -249,7 +258,8 @@ func (mc *MultibandCompressor) SetBandAutoMakeup(band int, enable bool) error {
 
 // SetBandTopology sets detector topology for the specified band.
 func (mc *MultibandCompressor) SetBandTopology(band int, topology DynamicsTopology) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -258,7 +268,8 @@ func (mc *MultibandCompressor) SetBandTopology(band int, topology DynamicsTopolo
 
 // SetBandDetectorMode sets detector mode for the specified band.
 func (mc *MultibandCompressor) SetBandDetectorMode(band int, mode DetectorMode) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -267,7 +278,8 @@ func (mc *MultibandCompressor) SetBandDetectorMode(band int, mode DetectorMode) 
 
 // SetBandFeedbackRatioScale toggles legacy feedback ratio-dependent time scaling.
 func (mc *MultibandCompressor) SetBandFeedbackRatioScale(band int, enable bool) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -276,7 +288,8 @@ func (mc *MultibandCompressor) SetBandFeedbackRatioScale(band int, enable bool) 
 
 // SetBandRMSWindow sets RMS detector window length in milliseconds.
 func (mc *MultibandCompressor) SetBandRMSWindow(band int, ms float64) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -285,7 +298,8 @@ func (mc *MultibandCompressor) SetBandRMSWindow(band int, ms float64) error {
 
 // SetBandSidechainLowCut sets detector-only low-cut frequency in Hz (0 disables).
 func (mc *MultibandCompressor) SetBandSidechainLowCut(band int, hz float64) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -294,7 +308,8 @@ func (mc *MultibandCompressor) SetBandSidechainLowCut(band int, hz float64) erro
 
 // SetBandSidechainHighCut sets detector-only high-cut frequency in Hz (0 disables).
 func (mc *MultibandCompressor) SetBandSidechainHighCut(band int, hz float64) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -303,7 +318,8 @@ func (mc *MultibandCompressor) SetBandSidechainHighCut(band int, hz float64) err
 
 // SetBandConfig applies a full BandConfig to the specified band.
 func (mc *MultibandCompressor) SetBandConfig(band int, cfg BandConfig) error {
-	if err := mc.checkBand(band); err != nil {
+	err := mc.checkBand(band)
+	if err != nil {
 		return err
 	}
 
@@ -313,7 +329,8 @@ func (mc *MultibandCompressor) SetBandConfig(band int, cfg BandConfig) error {
 // SetAllBandsThreshold sets the same threshold for all bands.
 func (mc *MultibandCompressor) SetAllBandsThreshold(dB float64) error {
 	for i := range mc.compressors {
-		if err := mc.compressors[i].SetThreshold(dB); err != nil {
+		err := mc.compressors[i].SetThreshold(dB)
+		if err != nil {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
@@ -324,7 +341,8 @@ func (mc *MultibandCompressor) SetAllBandsThreshold(dB float64) error {
 // SetAllBandsRatio sets the same ratio for all bands.
 func (mc *MultibandCompressor) SetAllBandsRatio(ratio float64) error {
 	for i := range mc.compressors {
-		if err := mc.compressors[i].SetRatio(ratio); err != nil {
+		err := mc.compressors[i].SetRatio(ratio)
+		if err != nil {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
@@ -335,7 +353,8 @@ func (mc *MultibandCompressor) SetAllBandsRatio(ratio float64) error {
 // SetAllBandsKnee sets the same knee width for all bands.
 func (mc *MultibandCompressor) SetAllBandsKnee(kneeDB float64) error {
 	for i := range mc.compressors {
-		if err := mc.compressors[i].SetKnee(kneeDB); err != nil {
+		err := mc.compressors[i].SetKnee(kneeDB)
+		if err != nil {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
@@ -346,7 +365,8 @@ func (mc *MultibandCompressor) SetAllBandsKnee(kneeDB float64) error {
 // SetAllBandsAttack sets the same attack time for all bands.
 func (mc *MultibandCompressor) SetAllBandsAttack(ms float64) error {
 	for i := range mc.compressors {
-		if err := mc.compressors[i].SetAttack(ms); err != nil {
+		err := mc.compressors[i].SetAttack(ms)
+		if err != nil {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
@@ -357,7 +377,8 @@ func (mc *MultibandCompressor) SetAllBandsAttack(ms float64) error {
 // SetAllBandsRelease sets the same release time for all bands.
 func (mc *MultibandCompressor) SetAllBandsRelease(ms float64) error {
 	for i := range mc.compressors {
-		if err := mc.compressors[i].SetRelease(ms); err != nil {
+		err := mc.compressors[i].SetRelease(ms)
+		if err != nil {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
@@ -368,7 +389,8 @@ func (mc *MultibandCompressor) SetAllBandsRelease(ms float64) error {
 // SetAllBandsTopology sets detector topology for all bands.
 func (mc *MultibandCompressor) SetAllBandsTopology(topology DynamicsTopology) error {
 	for i := range mc.compressors {
-		if err := mc.compressors[i].SetTopology(topology); err != nil {
+		err := mc.compressors[i].SetTopology(topology)
+		if err != nil {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
@@ -379,7 +401,8 @@ func (mc *MultibandCompressor) SetAllBandsTopology(topology DynamicsTopology) er
 // SetAllBandsDetectorMode sets detector mode for all bands.
 func (mc *MultibandCompressor) SetAllBandsDetectorMode(mode DetectorMode) error {
 	for i := range mc.compressors {
-		if err := mc.compressors[i].SetDetectorMode(mode); err != nil {
+		err := mc.compressors[i].SetDetectorMode(mode)
+		if err != nil {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
@@ -390,7 +413,8 @@ func (mc *MultibandCompressor) SetAllBandsDetectorMode(mode DetectorMode) error 
 // SetAllBandsFeedbackRatioScale sets feedback ratio scaling for all bands.
 func (mc *MultibandCompressor) SetAllBandsFeedbackRatioScale(enable bool) error {
 	for i := range mc.compressors {
-		if err := mc.compressors[i].SetFeedbackRatioScale(enable); err != nil {
+		err := mc.compressors[i].SetFeedbackRatioScale(enable)
+		if err != nil {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
@@ -401,7 +425,8 @@ func (mc *MultibandCompressor) SetAllBandsFeedbackRatioScale(enable bool) error 
 // SetAllBandsRMSWindow sets RMS window in milliseconds for all bands.
 func (mc *MultibandCompressor) SetAllBandsRMSWindow(ms float64) error {
 	for i := range mc.compressors {
-		if err := mc.compressors[i].SetRMSWindow(ms); err != nil {
+		err := mc.compressors[i].SetRMSWindow(ms)
+		if err != nil {
 			return fmt.Errorf("band %d: %w", i, err)
 		}
 	}
@@ -537,79 +562,92 @@ func (mc *MultibandCompressor) applyBandConfig(band int, cfg BandConfig) error {
 	c := mc.compressors[band]
 
 	if cfg.ThresholdDB != nil {
-		if err := c.SetThreshold(*cfg.ThresholdDB); err != nil {
+		err := c.SetThreshold(*cfg.ThresholdDB)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.Ratio != 0 {
-		if err := c.SetRatio(cfg.Ratio); err != nil {
+		err := c.SetRatio(cfg.Ratio)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.KneeDB != nil {
-		if err := c.SetKnee(*cfg.KneeDB); err != nil {
+		err := c.SetKnee(*cfg.KneeDB)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.AttackMs != 0 {
-		if err := c.SetAttack(cfg.AttackMs); err != nil {
+		err := c.SetAttack(cfg.AttackMs)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.ReleaseMs != 0 {
-		if err := c.SetRelease(cfg.ReleaseMs); err != nil {
+		err := c.SetRelease(cfg.ReleaseMs)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.MakeupGainDB != nil {
-		if err := c.SetMakeupGain(*cfg.MakeupGainDB); err != nil {
+		err := c.SetMakeupGain(*cfg.MakeupGainDB)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.AutoMakeup != nil {
-		if err := c.SetAutoMakeup(*cfg.AutoMakeup); err != nil {
+		err := c.SetAutoMakeup(*cfg.AutoMakeup)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.Topology != nil {
-		if err := c.SetTopology(*cfg.Topology); err != nil {
+		err := c.SetTopology(*cfg.Topology)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.DetectorMode != nil {
-		if err := c.SetDetectorMode(*cfg.DetectorMode); err != nil {
+		err := c.SetDetectorMode(*cfg.DetectorMode)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.FeedbackRatioScale != nil {
-		if err := c.SetFeedbackRatioScale(*cfg.FeedbackRatioScale); err != nil {
+		err := c.SetFeedbackRatioScale(*cfg.FeedbackRatioScale)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.RMSWindowMs != nil {
-		if err := c.SetRMSWindow(*cfg.RMSWindowMs); err != nil {
+		err := c.SetRMSWindow(*cfg.RMSWindowMs)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.SidechainLowCutHz != nil {
-		if err := c.SetSidechainLowCut(*cfg.SidechainLowCutHz); err != nil {
+		err := c.SetSidechainLowCut(*cfg.SidechainLowCutHz)
+		if err != nil {
 			return err
 		}
 	}
 
 	if cfg.SidechainHighCutHz != nil {
-		if err := c.SetSidechainHighCut(*cfg.SidechainHighCutHz); err != nil {
+		err := c.SetSidechainHighCut(*cfg.SidechainHighCutHz)
+		if err != nil {
 			return err
 		}
 	}
@@ -623,7 +661,7 @@ func validateMultibandParams(freqs []float64, order int, sampleRate float64) err
 	}
 
 	if len(freqs) < 1 {
-		return fmt.Errorf("multiband compressor: at least one crossover frequency is required (got 0)")
+		return errors.New("multiband compressor: at least one crossover frequency is required (got 0)")
 	}
 
 	numBands := len(freqs) + 1

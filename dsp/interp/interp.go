@@ -104,7 +104,7 @@ func lanczosWindow(x float64, a int) float64 {
 func LanczosN(t float64, samples []float64, a int) float64 {
 	var sum, wsum float64
 
-	for i := 0; i < 2*a; i++ {
+	for i := range 2 * a {
 		// distance from sample i to the fractional point
 		d := float64(i-(a-1)) - t
 		w := sincNormalized(d) * lanczosWindow(d, a)
@@ -136,7 +136,7 @@ func SincInterp(t float64, samples []float64, n int) float64 {
 
 	var sum, wsum float64
 
-	for i := 0; i < taps; i++ {
+	for i := range taps {
 		d := float64(i-(n-1)) - t
 		// Blackman window over the kernel span.
 		wpos := float64(i) + (1 - t)

@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"errors"
 	"math"
 	"testing"
 )
@@ -107,7 +108,7 @@ func TestSchroederIntegralEmpty(t *testing.T) {
 	analyzer := NewAnalyzer(48000)
 
 	_, err := analyzer.SchroederIntegral(nil)
-	if err != ErrEmptyIR {
+	if !errors.Is(err, ErrEmptyIR) {
 		t.Errorf("SchroederIntegral(nil) = %v, want ErrEmptyIR", err)
 	}
 }
@@ -149,7 +150,7 @@ func TestRT60NoDecay(t *testing.T) {
 	analyzer := NewAnalyzer(48000)
 
 	_, err := analyzer.RT60(ir)
-	if err != ErrNoDecay {
+	if !errors.Is(err, ErrNoDecay) {
 		t.Errorf("RT60(single sample) = %v, want ErrNoDecay", err)
 	}
 }
@@ -160,7 +161,7 @@ func TestRT60TooShortForRegression(t *testing.T) {
 	analyzer := NewAnalyzer(48000)
 
 	_, err := analyzer.RT60(ir)
-	if err != ErrNoDecay {
+	if !errors.Is(err, ErrNoDecay) {
 		t.Errorf("RT60(2 samples) = %v, want ErrNoDecay", err)
 	}
 }
@@ -216,17 +217,17 @@ func TestDefinition(t *testing.T) {
 		analyzer := NewAnalyzer(48000)
 
 		_, err := analyzer.Definition(nil, 50)
-		if err != ErrEmptyIR {
+		if !errors.Is(err, ErrEmptyIR) {
 			t.Errorf("Definition(nil) = %v, want ErrEmptyIR", err)
 		}
 
 		_, err = analyzer.Definition([]float64{1}, 0)
-		if err != ErrInvalidTime {
+		if !errors.Is(err, ErrInvalidTime) {
 			t.Errorf("Definition(t=0) = %v, want ErrInvalidTime", err)
 		}
 
 		_, err = analyzer.Definition([]float64{1}, -10)
-		if err != ErrInvalidTime {
+		if !errors.Is(err, ErrInvalidTime) {
 			t.Errorf("Definition(t=-10) = %v, want ErrInvalidTime", err)
 		}
 	})
@@ -279,12 +280,12 @@ func TestClarity(t *testing.T) {
 		analyzer := NewAnalyzer(48000)
 
 		_, err := analyzer.Clarity(nil, 80)
-		if err != ErrEmptyIR {
+		if !errors.Is(err, ErrEmptyIR) {
 			t.Errorf("Clarity(nil) = %v, want ErrEmptyIR", err)
 		}
 
 		_, err = analyzer.Clarity([]float64{1}, 0)
-		if err != ErrInvalidTime {
+		if !errors.Is(err, ErrInvalidTime) {
 			t.Errorf("Clarity(t=0) = %v, want ErrInvalidTime", err)
 		}
 	})
@@ -334,7 +335,7 @@ func TestCenterTime(t *testing.T) {
 		analyzer := NewAnalyzer(48000)
 
 		_, err := analyzer.CenterTime(nil)
-		if err != ErrEmptyIR {
+		if !errors.Is(err, ErrEmptyIR) {
 			t.Errorf("CenterTime(nil) = %v, want ErrEmptyIR", err)
 		}
 	})
@@ -380,7 +381,7 @@ func TestFindImpulseStart(t *testing.T) {
 	t.Run("noise_floor", func(t *testing.T) {
 		ir := make([]float64, 10000)
 		// Low-level noise before the impulse
-		for i := 0; i < 5000; i++ {
+		for i := range 5000 {
 			ir[i] = 0.001 * float64(i%2*2-1)
 		}
 
@@ -402,7 +403,7 @@ func TestFindImpulseStart(t *testing.T) {
 		analyzer := NewAnalyzer(48000)
 
 		_, err := analyzer.FindImpulseStart(nil)
-		if err != ErrEmptyIR {
+		if !errors.Is(err, ErrEmptyIR) {
 			t.Errorf("FindImpulseStart(nil) = %v, want ErrEmptyIR", err)
 		}
 	})
@@ -412,21 +413,21 @@ func TestAnalyzeValidation(t *testing.T) {
 	analyzer := NewAnalyzer(48000)
 
 	_, err := analyzer.Analyze(nil)
-	if err != ErrEmptyIR {
+	if !errors.Is(err, ErrEmptyIR) {
 		t.Errorf("Analyze(nil) = %v, want ErrEmptyIR", err)
 	}
 
 	analyzer2 := NewAnalyzer(0)
 
 	_, err = analyzer2.Analyze([]float64{1})
-	if err != ErrInvalidSampleRate {
+	if !errors.Is(err, ErrInvalidSampleRate) {
 		t.Errorf("Analyze(sr=0) = %v, want ErrInvalidSampleRate", err)
 	}
 
 	analyzer3 := NewAnalyzer(-1)
 
 	_, err = analyzer3.Analyze([]float64{1})
-	if err != ErrInvalidSampleRate {
+	if !errors.Is(err, ErrInvalidSampleRate) {
 		t.Errorf("Analyze(sr=-1) = %v, want ErrInvalidSampleRate", err)
 	}
 }

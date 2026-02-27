@@ -28,7 +28,7 @@ func Chebyshev2LP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 	mu := cheby2Mu(order, rippleDB)
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
 
-	for i := 0; i < order/2; i++ {
+	for i := range order / 2 {
 		phi := math.Pi * float64(2*i+1) / float64(2*order)
 
 		// Chebyshev Type I analog prototype pole components
@@ -104,7 +104,7 @@ func Chebyshev2HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 	mu := cheby2Mu(order, rippleDB)
 	sections := make([]biquad.Coefficients, 0, (order+1)/2)
 
-	for i := 0; i < order/2; i++ {
+	for i := range order / 2 {
 		phi := math.Pi * float64(2*i+1) / float64(2*order)
 
 		// Type I prototype components

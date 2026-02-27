@@ -57,7 +57,7 @@ func TestReadWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		delayLine.Write(float64(i))
 	}
 	// delay=1 => most recently written (7)
@@ -76,7 +76,7 @@ func TestReadWraparound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		delayLine.Write(float64(i))
 	}
 	// buffer should contain [8, 9, 6, 7], writePos=2
@@ -96,7 +96,7 @@ func TestReset(t *testing.T) {
 	delayLine.Write(2)
 	delayLine.Reset()
 
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		if got := delayLine.Read(i); got != 0 {
 			t.Fatalf("after reset Read(%d): got %v want 0", i, got)
 		}
@@ -126,7 +126,7 @@ func TestReadFractionalNegativeClamped(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		delayLine.Write(float64(i + 1))
 	}
 
@@ -232,7 +232,7 @@ func TestReadFractionalAllpass(t *testing.T) {
 		delayLine.Write(50.0)
 	}
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		delayLine.ReadFractional(10.5)
 	}
 	// Now fill with ramp and verify the output is finite and in range.
@@ -295,7 +295,7 @@ func TestAllpassDCConvergence(t *testing.T) {
 	}
 	// Read multiple times at the same delay to let the allpass state settle.
 	var got float64
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		got = delayLine.ReadFractional(5.3)
 	}
 
@@ -330,7 +330,7 @@ func TestAllModesSineQuality(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		for i := 0; i < size; i++ {
+		for i := range size {
 			delayLine.Write(math.Sin(2 * math.Pi * freq * float64(i)))
 		}
 
@@ -389,7 +389,7 @@ func BenchmarkReadFractionalHermite(b *testing.B) {
 	fillRamp(delayLine)
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		delayLine.ReadFractional(100.37)
 	}
 }
@@ -399,7 +399,7 @@ func BenchmarkReadFractionalLanczos(b *testing.B) {
 	fillRamp(delayLine)
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		delayLine.ReadFractional(100.37)
 	}
 }

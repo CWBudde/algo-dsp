@@ -33,10 +33,7 @@ func TestCrosstalkSimulatorDelayCalculation(t *testing.T) {
 		t.Fatalf("NewCrosstalkSimulator() error = %v", err)
 	}
 
-	expected := int(math.Round((0.18 / defaultSimulatorSpeed) * 48000))
-	if expected < 1 {
-		expected = 1
-	}
+	expected := max(int(math.Round((0.18/defaultSimulatorSpeed)*48000)), 1)
 
 	if s.DelaySamples() != expected {
 		t.Fatalf("delay samples mismatch: got=%d want=%d", s.DelaySamples(), expected)
@@ -72,7 +69,7 @@ func TestCrosstalkSimulatorPresetsDifferentResponse(t *testing.T) {
 
 	var handEnergy, ircamEnergy float64
 
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		inL := 0.0
 
 		inR := 0.0

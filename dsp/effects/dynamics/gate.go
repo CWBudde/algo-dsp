@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	// Default gate parameters
+	// Default gate parameters.
 	defaultGateThresholdDB = -40.0
 	defaultGateRatio       = 10.0
 	defaultGateKneeDB      = 6.0
@@ -16,7 +16,7 @@ const (
 	defaultGateRangeDB     = -80.0
 	defaultGateRMSWindowMs = 30.0
 
-	// Gate parameter validation ranges
+	// Gate parameter validation ranges.
 	minGateRatio     = 1.0
 	maxGateRatio     = 100.0
 	minGateAttackMs  = 0.1
@@ -129,7 +129,8 @@ func NewGate(sampleRate float64) (*Gate, error) {
 
 // SetThreshold sets the gate threshold in dB.
 func (g *Gate) SetThreshold(dB float64) error {
-	if err := g.core.SetThreshold(dB); err != nil {
+	err := g.core.SetThreshold(dB)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -145,7 +146,8 @@ func (g *Gate) SetRatio(ratio float64) error {
 		return fmt.Errorf("gate ratio must be in [%f, %f]: %f", minGateRatio, maxGateRatio, ratio)
 	}
 
-	if err := g.core.SetRatio(ratio); err != nil {
+	err := g.core.SetRatio(ratio)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -161,7 +163,8 @@ func (g *Gate) SetKnee(kneeDB float64) error {
 		return fmt.Errorf("gate knee must be in [%f, %f]: %f", minGateKneeDB, maxGateKneeDB, kneeDB)
 	}
 
-	if err := g.core.SetKnee(kneeDB); err != nil {
+	err := g.core.SetKnee(kneeDB)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -177,7 +180,8 @@ func (g *Gate) SetAttack(ms float64) error {
 		return fmt.Errorf("gate attack must be in [%f, %f]: %f", minGateAttackMs, maxGateAttackMs, ms)
 	}
 
-	if err := g.core.SetAttack(ms); err != nil {
+	err := g.core.SetAttack(ms)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -205,7 +209,8 @@ func (g *Gate) SetRelease(ms float64) error {
 		return fmt.Errorf("gate release must be in [%f, %f]: %f", minGateReleaseMs, maxGateReleaseMs, ms)
 	}
 
-	if err := g.core.SetRelease(ms); err != nil {
+	err := g.core.SetRelease(ms)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -229,7 +234,8 @@ func (g *Gate) SetRange(dB float64) error {
 
 // SetSampleRate updates sample rate and recalculates time constants.
 func (g *Gate) SetSampleRate(sampleRate float64) error {
-	if err := g.core.SetSampleRate(sampleRate); err != nil {
+	err := g.core.SetSampleRate(sampleRate)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -241,7 +247,8 @@ func (g *Gate) SetSampleRate(sampleRate float64) error {
 
 // SetTopology selects feedforward or feedback detector topology.
 func (g *Gate) SetTopology(topology DynamicsTopology) error {
-	if err := g.core.SetTopology(topology); err != nil {
+	err := g.core.SetTopology(topology)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -252,7 +259,8 @@ func (g *Gate) SetTopology(topology DynamicsTopology) error {
 
 // SetDetectorMode selects peak or RMS detector mode.
 func (g *Gate) SetDetectorMode(mode DetectorMode) error {
-	if err := g.core.SetDetectorMode(mode); err != nil {
+	err := g.core.SetDetectorMode(mode)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -263,7 +271,8 @@ func (g *Gate) SetDetectorMode(mode DetectorMode) error {
 
 // SetRMSWindow sets RMS detector window in milliseconds.
 func (g *Gate) SetRMSWindow(ms float64) error {
-	if err := g.core.SetRMSWindow(ms); err != nil {
+	err := g.core.SetRMSWindow(ms)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -274,7 +283,8 @@ func (g *Gate) SetRMSWindow(ms float64) error {
 
 // SetSidechainLowCut configures detector-only low-cut filter in Hz (0 disables).
 func (g *Gate) SetSidechainLowCut(hz float64) error {
-	if err := g.core.SetSidechainLowCut(hz); err != nil {
+	err := g.core.SetSidechainLowCut(hz)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 
@@ -285,7 +295,8 @@ func (g *Gate) SetSidechainLowCut(hz float64) error {
 
 // SetSidechainHighCut configures detector-only high-cut filter in Hz (0 disables).
 func (g *Gate) SetSidechainHighCut(hz float64) error {
-	if err := g.core.SetSidechainHighCut(hz); err != nil {
+	err := g.core.SetSidechainHighCut(hz)
+	if err != nil {
 		return fmt.Errorf("gate %w", err)
 	}
 

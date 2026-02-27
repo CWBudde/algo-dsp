@@ -27,7 +27,7 @@ func BenchmarkMagnitude(b *testing.B) {
 			b.SetBytes(int64(testCase.size * 16)) // complex128 = 16 bytes
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = Magnitude(inData)
 			}
 		})
@@ -56,7 +56,7 @@ func BenchmarkPower(b *testing.B) {
 			b.SetBytes(int64(testCase.size * 16)) // complex128 = 16 bytes
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = Power(inData)
 			}
 		})
@@ -89,7 +89,7 @@ func BenchmarkMagnitudeFromParts(b *testing.B) {
 			b.SetBytes(int64(testCase.size * 16)) // re+im = 16 bytes per element
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				MagnitudeFromParts(dst, re, im)
 			}
 		})
@@ -122,14 +122,14 @@ func BenchmarkPowerFromParts(b *testing.B) {
 			b.SetBytes(int64(testCase.size * 16)) // re+im = 16 bytes per element
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				PowerFromParts(dst, re, im)
 			}
 		})
 	}
 }
 
-// Benchmark the old implementation for comparison
+// Benchmark the old implementation for comparison.
 func magnitudeNaive(inData []complex128) []float64 {
 	if len(inData) == 0 {
 		return nil
@@ -181,7 +181,7 @@ func BenchmarkMagnitudeNaive(b *testing.B) {
 			b.SetBytes(int64(testCase.size * 16)) // complex128 = 16 bytes
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = magnitudeNaive(inData)
 			}
 		})
@@ -210,7 +210,7 @@ func BenchmarkPowerNaive(b *testing.B) {
 			b.SetBytes(int64(testCase.size * 16)) // complex128 = 16 bytes
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = powerNaive(inData)
 			}
 		})

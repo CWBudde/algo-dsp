@@ -99,7 +99,9 @@ func WithBandLayout(layout BandLayout) VocoderOption {
 		if layout != BandLayoutThirdOctave && layout != BandLayoutBark {
 			return fmt.Errorf("vocoder: invalid band layout: %d", layout)
 		}
+
 		cfg.layout = layout
+
 		return nil
 	}
 }
@@ -111,8 +113,10 @@ func WithVocoderSynthesisQ(q float64) VocoderOption {
 			return fmt.Errorf("vocoder: synthesis Q must be in [%g, %g]: %g",
 				minVocoderSynthQ, maxVocoderSynthQ, q)
 		}
+
 		cfg.synthQ = q
 		cfg.synthQSet = true
+
 		return nil
 	}
 }
@@ -124,7 +128,9 @@ func WithVocoderAttack(ms float64) VocoderOption {
 			return fmt.Errorf("vocoder: attack must be in [%g, %g] ms: %g",
 				minVocoderAttackMs, maxVocoderAttackMs, ms)
 		}
+
 		cfg.attackMs = ms
+
 		return nil
 	}
 }
@@ -136,7 +142,9 @@ func WithVocoderRelease(ms float64) VocoderOption {
 			return fmt.Errorf("vocoder: release must be in [%g, %g] ms: %g",
 				minVocoderReleaseMs, maxVocoderReleaseMs, ms)
 		}
+
 		cfg.releaseMs = ms
+
 		return nil
 	}
 }
@@ -148,7 +156,9 @@ func WithVocoderInputLevel(level float64) VocoderOption {
 			return fmt.Errorf("vocoder: input level must be in [%g, %g]: %g",
 				minVocoderLevel, maxVocoderLevel, level)
 		}
+
 		cfg.inputLevel = level
+
 		return nil
 	}
 }
@@ -160,7 +170,9 @@ func WithVocoderSynthLevel(level float64) VocoderOption {
 			return fmt.Errorf("vocoder: synth level must be in [%g, %g]: %g",
 				minVocoderLevel, maxVocoderLevel, level)
 		}
+
 		cfg.synthLevel = level
+
 		return nil
 	}
 }
@@ -172,7 +184,9 @@ func WithVocoderLevel(level float64) VocoderOption {
 			return fmt.Errorf("vocoder: vocoder level must be in [%g, %g]: %g",
 				minVocoderLevel, maxVocoderLevel, level)
 		}
+
 		cfg.vocoderLevel = level
+
 		return nil
 	}
 }
@@ -229,11 +243,14 @@ func NewVocoder(sampleRate float64, opts ...VocoderOption) (*Vocoder, error) {
 	}
 
 	cfg := defaultVocoderConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
-		if err := opt(&cfg); err != nil {
+
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -253,7 +270,8 @@ func NewVocoder(sampleRate float64, opts ...VocoderOption) (*Vocoder, error) {
 
 	v.computeEnvelopeCoeffs()
 
-	if err := v.buildFilterBanks(); err != nil {
+	err := v.buildFilterBanks()
+	if err != nil {
 		return nil, err
 	}
 
@@ -267,6 +285,7 @@ func (v *Vocoder) computeEnvelopeCoeffs() {
 	} else {
 		v.attackCoeff = 1.0
 	}
+
 	if v.releaseMs > 0 {
 		v.releaseCoeff = math.Exp(-1.0 / (v.releaseMs * 0.001 * sr))
 	} else {
@@ -290,11 +309,13 @@ func (v *Vocoder) buildThirdOctaveBanks() error {
 
 	// Count usable bands (center frequency below 90% of Nyquist).
 	n := 0
+
 	for _, f := range thirdOctaveFrequencies {
 		if f < nyquist*0.9 {
 			n++
 		}
 	}
+
 	if n == 0 {
 		return fmt.Errorf("vocoder: no usable bands at sample rate %g Hz", v.sampleRate)
 	}
@@ -305,7 +326,7 @@ func (v *Vocoder) buildThirdOctaveBanks() error {
 	v.envelopes = make([]float64, n)
 	analysisQ := make([]float64, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		freq := thirdOctaveFrequencies[i]
 		analysisQ[i] = thirdOctaveQ
 
@@ -329,11 +350,13 @@ func (v *Vocoder) buildBarkBanks() error {
 	nyquist := v.sampleRate / 2
 
 	n := 0
+
 	for _, f := range barkFrequencies {
 		if f < nyquist*0.9 {
 			n++
 		}
 	}
+
 	if n == 0 {
 		return fmt.Errorf("vocoder: no usable Bark bands at sample rate %g Hz", v.sampleRate)
 	}
@@ -344,7 +367,7 @@ func (v *Vocoder) buildBarkBanks() error {
 	v.envelopes = make([]float64, n)
 	analysisQ := make([]float64, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		freq := barkFrequencies[i]
 		q := barkBandQ(i)
 		analysisQ[i] = q
@@ -358,6 +381,7 @@ func (v *Vocoder) buildBarkBanks() error {
 		if v.synthQOverridden {
 			synthQ = v.synthQ
 		}
+
 		sc := cpgBandpass(freq, synthQ, v.sampleRate)
 		v.synthesisFilters[i] = *biquad.NewSection(sc)
 	}
@@ -379,27 +403,34 @@ func (v *Vocoder) computeDownsampleFactors(freqs, analysisQ []float64) {
 	v.downsampleAttackCoeffs = make([]float64, v.numBands)
 	v.downsampleReleaseCoeffs = make([]float64, v.numBands)
 	maxFactor := 1
+
 	threshold := 0.1 * v.sampleRate
-	for i := 0; i < v.numBands; i++ {
+	for i := range v.numBands {
 		factor := 1
 		for float64(2*(factor<<1))*freqs[i] < threshold {
 			factor <<= 1
 		}
+
 		v.downsampleFactors[i] = factor
 		if factor > maxFactor {
 			maxFactor = factor
 		}
 	}
+
 	v.buildDownsampleGroups()
-	for i := 0; i < v.numBands; i++ {
+
+	for i := range v.numBands {
 		dsRate := v.sampleRate / float64(v.downsampleFactors[i])
+
 		ac := cpgBandpass(freqs[i], analysisQ[i], dsRate)
 		if ac == (biquad.Coefficients{}) {
 			// Fallback to full-rate analysis if the decimated rate is invalid.
 			ac = cpgBandpass(freqs[i], analysisQ[i], v.sampleRate)
 		}
+
 		v.downsampleAnalysisFilters[i] = *biquad.NewSection(ac)
 	}
+
 	v.downsampleMax = maxFactor // counter wraps at largest factor
 	v.downsampleCount = 0
 	v.computeDownsampleEnvelopeCoeffs()
@@ -415,6 +446,7 @@ func (v *Vocoder) buildDownsampleGroups() {
 	for factor := range factorSet {
 		factors = append(factors, factor)
 	}
+
 	sort.Ints(factors)
 	v.downsampleGroupFactors = factors
 	v.downsampleGroupMasks = make([]int, len(factors))
@@ -427,6 +459,7 @@ func (v *Vocoder) buildDownsampleGroups() {
 		v.downsampleGroupAAFilters[i] = *biquad.NewSection(antiAliasDecimatorLowpass(v.sampleRate, factor))
 		groupIndex[factor] = i
 	}
+
 	for band, factor := range v.downsampleFactors {
 		g := groupIndex[factor]
 		v.downsampleGroupBands[g] = append(v.downsampleGroupBands[g], band)
@@ -437,6 +470,7 @@ func (v *Vocoder) computeDownsampleEnvelopeCoeffs() {
 	if len(v.downsampleFactors) == 0 {
 		return
 	}
+
 	for i, factor := range v.downsampleFactors {
 		scale := float64(factor)
 		if v.attackMs > 0 {
@@ -444,6 +478,7 @@ func (v *Vocoder) computeDownsampleEnvelopeCoeffs() {
 		} else {
 			v.downsampleAttackCoeffs[i] = 1.0
 		}
+
 		if v.releaseMs > 0 {
 			v.downsampleReleaseCoeffs[i] = math.Exp(-scale / (v.releaseMs * 0.001 * v.sampleRate))
 		} else {
@@ -458,18 +493,23 @@ func antiAliasDecimatorLowpass(sampleRate float64, factor int) biquad.Coefficien
 	if factor <= 1 {
 		return biquad.Coefficients{B0: 1}
 	}
+
 	cutoff := 0.35 * sampleRate / float64(factor)
 	if cutoff <= 0 || cutoff >= 0.5*sampleRate {
 		return biquad.Coefficients{B0: 1}
 	}
+
 	w0 := 2 * math.Pi * cutoff / sampleRate
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
+
 	const q = 0.7071067811865476 // Butterworth
+
 	alpha := sw / (2 * q)
 
 	a0 := 1 + alpha
 	inv := 1.0 / a0
+
 	return biquad.Coefficients{
 		B0: ((1 - cw) * 0.5) * inv,
 		B1: (1 - cw) * inv,
@@ -488,12 +528,14 @@ func cpgBandpass(freq, q, sampleRate float64) biquad.Coefficients {
 	if w0 <= 0 || w0 >= math.Pi {
 		return biquad.Coefficients{}
 	}
+
 	cw := math.Cos(w0)
 	sw := math.Sin(w0)
 	alpha := sw / (2 * q)
 
 	a0 := 1 + alpha
 	inv := 1.0 / a0
+
 	return biquad.Coefficients{
 		B0: alpha * inv,
 		B1: 0,
@@ -506,21 +548,25 @@ func cpgBandpass(freq, q, sampleRate float64) biquad.Coefficients {
 // barkBandQ computes a Bark-band Q value from spacing to adjacent bands.
 func barkBandQ(i int) float64 {
 	freqs := barkFrequencies[:]
+
 	var lower, upper float64
 	if i == 0 {
 		lower = freqs[0] * 0.5
 	} else {
 		lower = (freqs[i-1] + freqs[i]) / 2
 	}
+
 	if i >= len(freqs)-1 {
 		upper = freqs[i] * 1.25
 	} else {
 		upper = (freqs[i] + freqs[i+1]) / 2
 	}
+
 	bw := upper - lower
 	if bw <= 0 {
 		return thirdOctaveQ
 	}
+
 	return freqs[i] / bw
 }
 
@@ -538,36 +584,42 @@ func (v *Vocoder) ProcessSample(modulator, carrier float64) float64 {
 			if cnt&v.downsampleGroupMasks[g] != 0 {
 				continue
 			}
+
 			for _, i := range v.downsampleGroupBands[g] {
 				bandSignal := v.downsampleAnalysisFilters[i].ProcessSample(decimated)
 				abs := math.Abs(bandSignal)
+
 				env := v.envelopes[i]
 				if abs > env {
 					env += (abs - env) * v.downsampleAttackCoeffs[i]
 				} else {
 					env = abs + (env-abs)*v.downsampleReleaseCoeffs[i]
 				}
+
 				v.envelopes[i] = env
 			}
 		}
 		// Synthesis always runs at full rate.
-		for i := 0; i < v.numBands; i++ {
+		for i := range v.numBands {
 			vocoded += v.envelopes[i] * v.synthesisFilters[i].ProcessSample(carrier)
 		}
+
 		v.downsampleCount++
 		if v.downsampleCount >= v.downsampleMax {
 			v.downsampleCount = 0
 		}
 	} else {
-		for i := 0; i < v.numBands; i++ {
+		for i := range v.numBands {
 			bandSignal := v.analysisFilters[i].ProcessSample(modulator)
 			abs := math.Abs(bandSignal)
+
 			env := v.envelopes[i]
 			if abs > env {
 				env += (abs - env) * v.attackCoeff
 			} else {
 				env = abs + (env-abs)*v.releaseCoeff
 			}
+
 			v.envelopes[i] = env
 			vocoded += env * v.synthesisFilters[i].ProcessSample(carrier)
 		}
@@ -583,9 +635,11 @@ func (v *Vocoder) ProcessBlock(modulator, carrier, output []float64) error {
 		return fmt.Errorf("vocoder: buffer length mismatch: modulator=%d carrier=%d output=%d",
 			len(modulator), len(carrier), len(output))
 	}
+
 	for i := range modulator {
 		output[i] = v.ProcessSample(modulator[i], carrier[i])
 	}
+
 	return nil
 }
 
@@ -594,18 +648,23 @@ func (v *Vocoder) Reset() {
 	for i := range v.envelopes {
 		v.envelopes[i] = 0
 	}
+
 	for i := range v.analysisFilters {
 		v.analysisFilters[i].Reset()
 	}
+
 	for i := range v.downsampleAnalysisFilters {
 		v.downsampleAnalysisFilters[i].Reset()
 	}
+
 	for i := range v.downsampleGroupAAFilters {
 		v.downsampleGroupAAFilters[i].Reset()
 	}
+
 	for i := range v.synthesisFilters {
 		v.synthesisFilters[i].Reset()
 	}
+
 	v.downsampleCount = 0
 }
 
@@ -614,9 +673,11 @@ func (v *Vocoder) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("vocoder: sample rate must be > 0: %f", sampleRate)
 	}
+
 	v.sampleRate = sampleRate
 	v.computeEnvelopeCoeffs()
 	v.envelopes = nil
+
 	return v.buildFilterBanks()
 }
 
@@ -661,8 +722,10 @@ func (v *Vocoder) DownsampleFactors() []int {
 	if !v.downsample || v.downsampleFactors == nil {
 		return nil
 	}
+
 	out := make([]int, len(v.downsampleFactors))
 	copy(out, v.downsampleFactors)
+
 	return out
 }
 
@@ -680,12 +743,14 @@ func (v *Vocoder) SetDownsampling(enabled bool) {
 			for i := range qs {
 				qs[i] = thirdOctaveQ
 			}
+
 			v.computeDownsampleFactors(thirdOctaveFrequencies[:v.numBands], qs)
 		case BandLayoutBark:
 			qs := make([]float64, v.numBands)
 			for i := range qs {
 				qs[i] = barkBandQ(i)
 			}
+
 			v.computeDownsampleFactors(barkFrequencies[:v.numBands], qs)
 		}
 	} else {
@@ -708,9 +773,11 @@ func (v *Vocoder) SetAttack(ms float64) error {
 		return fmt.Errorf("vocoder: attack must be in [%g, %g] ms: %g",
 			minVocoderAttackMs, maxVocoderAttackMs, ms)
 	}
+
 	v.attackMs = ms
 	v.computeEnvelopeCoeffs()
 	v.computeDownsampleEnvelopeCoeffs()
+
 	return nil
 }
 
@@ -720,9 +787,11 @@ func (v *Vocoder) SetRelease(ms float64) error {
 		return fmt.Errorf("vocoder: release must be in [%g, %g] ms: %g",
 			minVocoderReleaseMs, maxVocoderReleaseMs, ms)
 	}
+
 	v.releaseMs = ms
 	v.computeEnvelopeCoeffs()
 	v.computeDownsampleEnvelopeCoeffs()
+
 	return nil
 }
 
@@ -732,7 +801,9 @@ func (v *Vocoder) SetInputLevel(level float64) error {
 		return fmt.Errorf("vocoder: input level must be in [%g, %g]: %g",
 			minVocoderLevel, maxVocoderLevel, level)
 	}
+
 	v.inputLevel = level
+
 	return nil
 }
 
@@ -742,7 +813,9 @@ func (v *Vocoder) SetSynthLevel(level float64) error {
 		return fmt.Errorf("vocoder: synth level must be in [%g, %g]: %g",
 			minVocoderLevel, maxVocoderLevel, level)
 	}
+
 	v.synthLevel = level
+
 	return nil
 }
 
@@ -752,6 +825,8 @@ func (v *Vocoder) SetVocoderLevel(level float64) error {
 		return fmt.Errorf("vocoder: vocoder level must be in [%g, %g]: %g",
 			minVocoderLevel, maxVocoderLevel, level)
 	}
+
 	v.vocoderLevel = level
+
 	return nil
 }

@@ -22,7 +22,9 @@ func ExampleNew_subtractiveSweep() {
 	out := make([]float64, 8)
 	for i := range out {
 		cutoff := 300 + float64(i)*500
-		if err := f.SetCutoffHz(cutoff); err != nil {
+
+		err := f.SetCutoffHz(cutoff)
+		if err != nil {
 			panic(err)
 		}
 
@@ -122,7 +124,7 @@ func ExampleNew_zdfHighAccuracy() {
 func ringPeak(f *moog.Filter, n int) float64 {
 	peak := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.0
 		if i == 0 {
 			x = 1.0

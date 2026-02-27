@@ -47,7 +47,7 @@ func SplitFourthOrder(b, a [5]float64) ([]biquad.Coefficients, error) {
 	sections := make([]biquad.Coefficients, 2)
 	scale := b[0]
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		b0, b1, b2, err := QuadFromRoots(numPairs[i])
 		if err != nil {
 			return nil, err
@@ -200,7 +200,7 @@ func DurandKerner(coeff []complex128) ([]complex128, error) {
 	}
 
 	roots := make([]complex128, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		angle := 2*math.Pi*float64(i)/float64(n) + 0.3
 		r := radius * (1 + 0.1*float64(i)/float64(n))
 		roots[i] = complex(r*math.Cos(angle), r*math.Sin(angle))
@@ -211,13 +211,13 @@ func DurandKerner(coeff []complex128) ([]complex128, error) {
 		tol     = 1e-12
 	)
 
-	for iter := 0; iter < maxIter; iter++ {
+	for range maxIter {
 		maxDelta := 0.0
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			den := complex(1, 0)
 
-			for j := 0; j < n; j++ {
+			for j := range n {
 				if i == j {
 					continue
 				}

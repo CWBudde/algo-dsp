@@ -45,7 +45,7 @@ func TestCompressorTopologyAndDetectorModes(t *testing.T) {
 	}
 
 	var outFeedback float64
-	for i := 0; i < 512; i++ {
+	for range 512 {
 		outFeedback = c.ProcessSample(0.8)
 	}
 
@@ -56,7 +56,7 @@ func TestCompressorTopologyAndDetectorModes(t *testing.T) {
 	}
 
 	var outFeedforward float64
-	for i := 0; i < 512; i++ {
+	for range 512 {
 		outFeedforward = c.ProcessSample(0.8)
 	}
 
@@ -120,7 +120,7 @@ func TestCompressorSidechainProcessingPath(t *testing.T) {
 
 	// Silent program material should still be attenuated if sidechain drives detection.
 	var out float64
-	for i := 0; i < 1024; i++ {
+	for range 1024 {
 		out = c.ProcessSampleSidechain(0.2, 1.0)
 	}
 
@@ -156,7 +156,7 @@ func TestGateTopologyAndDetectorModes(t *testing.T) {
 	}
 
 	var fb float64
-	for i := 0; i < 512; i++ {
+	for range 512 {
 		fb = g.ProcessSample(0.05)
 	}
 
@@ -167,7 +167,7 @@ func TestGateTopologyAndDetectorModes(t *testing.T) {
 	}
 
 	var ff float64
-	for i := 0; i < 512; i++ {
+	for range 512 {
 		ff = g.ProcessSample(0.05)
 	}
 
@@ -199,7 +199,7 @@ func TestGateSidechainProcessingPath(t *testing.T) {
 	}
 
 	var out float64
-	for i := 0; i < 512; i++ {
+	for range 512 {
 		out = g.ProcessSampleSidechain(0.2, 0.001)
 	}
 

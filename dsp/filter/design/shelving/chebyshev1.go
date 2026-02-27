@@ -15,7 +15,8 @@ import (
 // Compared to Butterworth, Chebyshev I provides a steeper transition for
 // the same order at the cost of ripple in the transition region.
 func Chebyshev1LowShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int) ([]biquad.Coefficients, error) {
-	if err := validateParams(sampleRate, freqHz, order); err != nil {
+	err := validateParams(sampleRate, freqHz, order)
+	if err != nil {
 		return nil, err
 	}
 
@@ -41,7 +42,8 @@ func Chebyshev1LowShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int)
 // (positive for boost, negative for cut). rippleDB controls the passband
 // ripple and must be > 0 (typical values 0.5–1.0 dB). order must be >= 1.
 func Chebyshev1HighShelf(sampleRate, freqHz, gainDB, rippleDB float64, order int) ([]biquad.Coefficients, error) {
-	if err := validateParams(sampleRate, freqHz, order); err != nil {
+	err := validateParams(sampleRate, freqHz, order)
+	if err != nil {
 		return nil, err
 	}
 

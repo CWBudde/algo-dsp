@@ -166,7 +166,8 @@ func NewAutoWah(sampleRate float64, opts ...AutoWahOption) (*AutoWah, error) {
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -181,7 +182,9 @@ func NewAutoWah(sampleRate float64, opts ...AutoWahOption) (*AutoWah, error) {
 		releaseMs:   cfg.releaseMs,
 		mix:         cfg.mix,
 	}
-	if err := autoWah.validateParams(); err != nil {
+
+	err := autoWah.validateParams()
+	if err != nil {
 		return nil, err
 	}
 
@@ -199,7 +202,9 @@ func (a *AutoWah) SetSampleRate(sampleRate float64) error {
 	}
 
 	a.sampleRate = sampleRate
-	if err := a.validateParams(); err != nil {
+
+	err := a.validateParams()
+	if err != nil {
 		return err
 	}
 
@@ -225,7 +230,8 @@ func (a *AutoWah) SetFrequencyRangeHz(minFreqHz, maxFreqHz float64) error {
 	a.minFreqHz = minFreqHz
 	a.maxFreqHz = maxFreqHz
 
-	if err := a.validateParams(); err != nil {
+	err := a.validateParams()
+	if err != nil {
 		a.minFreqHz = prevMin
 		a.maxFreqHz = prevMax
 

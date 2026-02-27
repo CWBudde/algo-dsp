@@ -2,13 +2,14 @@ package spectrum
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 )
 
 func BenchmarkGoertzel_ProcessBlock(b *testing.B) {
 	sizes := []int{64, 256, 1024, 4096}
 	for _, size := range sizes {
-		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+		b.Run(strconv.Itoa(size), func(b *testing.B) {
 			g, _ := NewGoertzel(1000, 48000)
 
 			sig := make([]float64, size)
@@ -19,7 +20,7 @@ func BenchmarkGoertzel_ProcessBlock(b *testing.B) {
 			b.SetBytes(int64(size * 8))
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				g.ProcessBlock(sig)
 			}
 		})
@@ -43,7 +44,7 @@ func BenchmarkMultiGoertzel_ProcessBlock(b *testing.B) {
 				b.SetBytes(int64(size * 8))
 				b.ResetTimer()
 
-				for i := 0; i < b.N; i++ {
+				for range b.N {
 					mg.ProcessBlock(sig)
 				}
 			})

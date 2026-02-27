@@ -21,7 +21,7 @@ func ExampleGranular_ProcessInPlace() {
 	_ = granular.SetMix(0.8)
 
 	buf := make([]float64, 512)
-	for i := 0; i < 128; i++ {
+	for i := range 128 {
 		buf[i] = math.Sin(2 * math.Pi * 330 * float64(i) / 48000)
 	}
 

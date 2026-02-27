@@ -167,7 +167,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{1000}, 4, 48000)
 
 	t.Run("valid band index", func(t *testing.T) {
-		if err := mc.SetBandThreshold(0, -30); err != nil {
+		err := mc.SetBandThreshold(0, -30)
+		if err != nil {
 			t.Errorf("SetBandThreshold: %v", err)
 		}
 
@@ -175,7 +176,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Errorf("threshold = %f, want -30", mc.Band(0).Threshold())
 		}
 
-		if err := mc.SetBandRatio(1, 8.0); err != nil {
+		err = mc.SetBandRatio(1, 8.0)
+		if err != nil {
 			t.Errorf("SetBandRatio: %v", err)
 		}
 
@@ -183,7 +185,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Errorf("ratio = %f, want 8.0", mc.Band(1).Ratio())
 		}
 
-		if err := mc.SetBandKnee(0, 12.0); err != nil {
+		err = mc.SetBandKnee(0, 12.0)
+		if err != nil {
 			t.Errorf("SetBandKnee: %v", err)
 		}
 
@@ -191,7 +194,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Errorf("knee = %f, want 12.0", mc.Band(0).Knee())
 		}
 
-		if err := mc.SetBandAttack(0, 5.0); err != nil {
+		err = mc.SetBandAttack(0, 5.0)
+		if err != nil {
 			t.Errorf("SetBandAttack: %v", err)
 		}
 
@@ -199,7 +203,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Errorf("attack = %f, want 5.0", mc.Band(0).Attack())
 		}
 
-		if err := mc.SetBandRelease(1, 200.0); err != nil {
+		err = mc.SetBandRelease(1, 200.0)
+		if err != nil {
 			t.Errorf("SetBandRelease: %v", err)
 		}
 
@@ -207,7 +212,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Errorf("release = %f, want 200.0", mc.Band(1).Release())
 		}
 
-		if err := mc.SetBandMakeupGain(0, 3.0); err != nil {
+		err = mc.SetBandMakeupGain(0, 3.0)
+		if err != nil {
 			t.Errorf("SetBandMakeupGain: %v", err)
 		}
 
@@ -219,7 +225,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Error("auto makeup should be disabled after SetBandMakeupGain")
 		}
 
-		if err := mc.SetBandAutoMakeup(0, true); err != nil {
+		err = mc.SetBandAutoMakeup(0, true)
+		if err != nil {
 			t.Errorf("SetBandAutoMakeup: %v", err)
 		}
 
@@ -227,7 +234,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Error("auto makeup should be re-enabled")
 		}
 
-		if err := mc.SetBandTopology(0, DynamicsTopologyFeedback); err != nil {
+		err = mc.SetBandTopology(0, DynamicsTopologyFeedback)
+		if err != nil {
 			t.Errorf("SetBandTopology: %v", err)
 		}
 
@@ -235,7 +243,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Errorf("topology = %v, want %v", mc.Band(0).Topology(), DynamicsTopologyFeedback)
 		}
 
-		if err := mc.SetBandDetectorMode(0, DetectorModeRMS); err != nil {
+		err = mc.SetBandDetectorMode(0, DetectorModeRMS)
+		if err != nil {
 			t.Errorf("SetBandDetectorMode: %v", err)
 		}
 
@@ -243,7 +252,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Errorf("detector mode = %v, want %v", mc.Band(0).DetectorMode(), DetectorModeRMS)
 		}
 
-		if err := mc.SetBandFeedbackRatioScale(0, false); err != nil {
+		err = mc.SetBandFeedbackRatioScale(0, false)
+		if err != nil {
 			t.Errorf("SetBandFeedbackRatioScale: %v", err)
 		}
 
@@ -251,7 +261,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Error("feedback ratio scale should be false")
 		}
 
-		if err := mc.SetBandRMSWindow(0, 25); err != nil {
+		err = mc.SetBandRMSWindow(0, 25)
+		if err != nil {
 			t.Errorf("SetBandRMSWindow: %v", err)
 		}
 
@@ -259,11 +270,13 @@ func TestMultibandSetBandParams(t *testing.T) {
 			t.Errorf("rms window = %f, want 25", mc.Band(0).RMSWindow())
 		}
 
-		if err := mc.SetBandSidechainLowCut(0, 300); err != nil {
+		err = mc.SetBandSidechainLowCut(0, 300)
+		if err != nil {
 			t.Errorf("SetBandSidechainLowCut: %v", err)
 		}
 
-		if err := mc.SetBandSidechainHighCut(0, 5000); err != nil {
+		err = mc.SetBandSidechainHighCut(0, 5000)
+		if err != nil {
 			t.Errorf("SetBandSidechainHighCut: %v", err)
 		}
 
@@ -277,73 +290,90 @@ func TestMultibandSetBandParams(t *testing.T) {
 	})
 
 	t.Run("invalid band index", func(t *testing.T) {
-		if err := mc.SetBandThreshold(-1, -20); err == nil {
+		err := mc.SetBandThreshold(-1, -20)
+		if err == nil {
 			t.Error("expected error for negative band index")
 		}
 
-		if err := mc.SetBandThreshold(2, -20); err == nil {
+		err = mc.SetBandThreshold(2, -20)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandRatio(-1, 2.0); err == nil {
+		err = mc.SetBandRatio(-1, 2.0)
+		if err == nil {
 			t.Error("expected error for negative band index")
 		}
 
-		if err := mc.SetBandKnee(5, 6.0); err == nil {
+		err = mc.SetBandKnee(5, 6.0)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandAttack(5, 10.0); err == nil {
+		err = mc.SetBandAttack(5, 10.0)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandRelease(5, 100.0); err == nil {
+		err = mc.SetBandRelease(5, 100.0)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandMakeupGain(5, 3.0); err == nil {
+		err = mc.SetBandMakeupGain(5, 3.0)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandAutoMakeup(5, true); err == nil {
+		err = mc.SetBandAutoMakeup(5, true)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandTopology(5, DynamicsTopologyFeedback); err == nil {
+		err = mc.SetBandTopology(5, DynamicsTopologyFeedback)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandDetectorMode(5, DetectorModeRMS); err == nil {
+		err = mc.SetBandDetectorMode(5, DetectorModeRMS)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandFeedbackRatioScale(5, true); err == nil {
+		err = mc.SetBandFeedbackRatioScale(5, true)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandRMSWindow(5, 20); err == nil {
+		err = mc.SetBandRMSWindow(5, 20)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandSidechainLowCut(5, 100); err == nil {
+		err = mc.SetBandSidechainLowCut(5, 100)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandSidechainHighCut(5, 1000); err == nil {
+		err = mc.SetBandSidechainHighCut(5, 1000)
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 
-		if err := mc.SetBandConfig(5, BandConfig{}); err == nil {
+		err = mc.SetBandConfig(5, BandConfig{})
+		if err == nil {
 			t.Error("expected error for out-of-range band index")
 		}
 	})
 
 	t.Run("invalid parameter value", func(t *testing.T) {
-		if err := mc.SetBandRatio(0, 0.5); err == nil {
+		err := mc.SetBandRatio(0, 0.5)
+		if err == nil {
 			t.Error("expected error for invalid ratio")
 		}
 
-		if err := mc.SetBandThreshold(0, math.NaN()); err == nil {
+		err = mc.SetBandThreshold(0, math.NaN())
+		if err == nil {
 			t.Error("expected error for NaN threshold")
 		}
 	})
@@ -352,7 +382,8 @@ func TestMultibandSetBandParams(t *testing.T) {
 func TestMultibandSetAllBands(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{500, 5000}, 4, 48000)
 
-	if err := mc.SetAllBandsThreshold(-15); err != nil {
+	err := mc.SetAllBandsThreshold(-15)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -362,7 +393,8 @@ func TestMultibandSetAllBands(t *testing.T) {
 		}
 	}
 
-	if err := mc.SetAllBandsRatio(3.0); err != nil {
+	err = mc.SetAllBandsRatio(3.0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -372,7 +404,8 @@ func TestMultibandSetAllBands(t *testing.T) {
 		}
 	}
 
-	if err := mc.SetAllBandsKnee(10.0); err != nil {
+	err = mc.SetAllBandsKnee(10.0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -382,7 +415,8 @@ func TestMultibandSetAllBands(t *testing.T) {
 		}
 	}
 
-	if err := mc.SetAllBandsAttack(15.0); err != nil {
+	err = mc.SetAllBandsAttack(15.0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -392,7 +426,8 @@ func TestMultibandSetAllBands(t *testing.T) {
 		}
 	}
 
-	if err := mc.SetAllBandsRelease(250.0); err != nil {
+	err = mc.SetAllBandsRelease(250.0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -402,19 +437,23 @@ func TestMultibandSetAllBands(t *testing.T) {
 		}
 	}
 
-	if err := mc.SetAllBandsTopology(DynamicsTopologyFeedback); err != nil {
+	err = mc.SetAllBandsTopology(DynamicsTopologyFeedback)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := mc.SetAllBandsDetectorMode(DetectorModeRMS); err != nil {
+	err = mc.SetAllBandsDetectorMode(DetectorModeRMS)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := mc.SetAllBandsFeedbackRatioScale(false); err != nil {
+	err = mc.SetAllBandsFeedbackRatioScale(false)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := mc.SetAllBandsRMSWindow(30); err != nil {
+	err = mc.SetAllBandsRMSWindow(30)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -440,27 +479,33 @@ func TestMultibandSetAllBands(t *testing.T) {
 func TestMultibandSetAllBandsInvalid(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{1000}, 4, 48000)
 
-	if err := mc.SetAllBandsRatio(0.5); err == nil {
+	err := mc.SetAllBandsRatio(0.5)
+	if err == nil {
 		t.Error("expected error for invalid ratio")
 	}
 
-	if err := mc.SetAllBandsThreshold(math.NaN()); err == nil {
+	err = mc.SetAllBandsThreshold(math.NaN())
+	if err == nil {
 		t.Error("expected error for NaN threshold")
 	}
 
-	if err := mc.SetAllBandsKnee(-1); err == nil {
+	err = mc.SetAllBandsKnee(-1)
+	if err == nil {
 		t.Error("expected error for negative knee")
 	}
 
-	if err := mc.SetAllBandsAttack(0.01); err == nil {
+	err = mc.SetAllBandsAttack(0.01)
+	if err == nil {
 		t.Error("expected error for too-small attack")
 	}
 
-	if err := mc.SetAllBandsRelease(0.1); err == nil {
+	err = mc.SetAllBandsRelease(0.1)
+	if err == nil {
 		t.Error("expected error for too-small release")
 	}
 
-	if err := mc.SetAllBandsRMSWindow(0.5); err == nil {
+	err = mc.SetAllBandsRMSWindow(0.5)
+	if err == nil {
 		t.Error("expected error for too-small rms window")
 	}
 }
@@ -471,7 +516,7 @@ func TestMultibandProcessSampleZero(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{1000}, 4, 48000)
 	mc.Reset()
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		output := mc.ProcessSample(0)
 		if output != 0 {
 			t.Errorf("ProcessSample(0) = %f, want 0 at sample %d", output, i)
@@ -484,7 +529,7 @@ func TestMultibandProcessSampleFinite(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{500, 5000}, 4, 48000)
 
 	// Process an impulse followed by zeros
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		x := 0.0
 		if i == 0 {
 			x = 0.5
@@ -575,11 +620,13 @@ func TestMultibandProcessStereoInPlace(t *testing.T) {
 		right[i] = 0.3 * math.Sin(2*math.Pi*880*float64(i)/48000)
 	}
 
-	if err := mc.ProcessStereoInPlace(left, right); err != nil {
+	err := mc.ProcessStereoInPlace(left, right)
+	if err != nil {
 		t.Fatalf("ProcessStereoInPlace unexpected error: %v", err)
 	}
 
-	if err := mc.ProcessStereoInPlace(left, right[:64]); err == nil {
+	err = mc.ProcessStereoInPlace(left, right[:64])
+	if err == nil {
 		t.Fatal("expected length mismatch error")
 	}
 }
@@ -634,7 +681,7 @@ func TestMultibandCompressesLoudSignal(t *testing.T) {
 
 	// Feed loud signal for many samples to let the envelope settle
 	var lastOutput float64
-	for i := 0; i < 5000; i++ {
+	for range 5000 {
 		lastOutput = mc.ProcessSample(0.8)
 	}
 
@@ -671,7 +718,7 @@ func TestMultibandReset(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{1000}, 4, 48000)
 
 	// Process some samples
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		mc.ProcessSample(0.5)
 	}
 
@@ -695,7 +742,7 @@ func TestMultibandMetrics(t *testing.T) {
 	mc.ResetMetrics()
 
 	// Process loud signal
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		mc.ProcessSample(0.8)
 	}
 
@@ -774,7 +821,7 @@ func TestMultibandEnergyPreservation(t *testing.T) {
 	n := 8192
 	energy := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.0
 		if i == 0 {
 			x = 1.0
@@ -836,7 +883,7 @@ func TestMultibandPhaseLatencySanity(t *testing.T) {
 	const n = 2048
 
 	out := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.0
 		if i == 0 {
 			x = 1.0
@@ -854,7 +901,7 @@ func TestMultibandPhaseLatencySanity(t *testing.T) {
 	total := 0.0
 	early := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		e := out[i] * out[i]
 
 		total += e
@@ -890,7 +937,8 @@ func TestSetBandConfig(t *testing.T) {
 		SidechainHighCutHz: Float64Ptr(6000.0),
 	}
 
-	if err := mc.SetBandConfig(0, cfg); err != nil {
+	err := mc.SetBandConfig(0, cfg)
+	if err != nil {
 		t.Fatal(err)
 	}
 

@@ -550,10 +550,7 @@ func TestPitchShifterTwoToneCloselySpaced(t *testing.T) {
 func measureTimeDomainTwoToneSNR(t *testing.T, out []float64, freq1, freq2, sampleRate float64, fftLen int) float64 {
 	t.Helper()
 
-	mid := len(out)/2 - fftLen/2
-	if mid < 0 {
-		mid = 0
-	}
+	mid := max(len(out)/2-fftLen/2, 0)
 
 	chunk := out[mid : mid+fftLen]
 
@@ -602,10 +599,7 @@ func measureTimeDomainTwoToneSNR(t *testing.T, out []float64, freq1, freq2, samp
 func measureTimeDomainSNR(t *testing.T, out []float64, targetFreq, sampleRate float64, fftLen int) float64 {
 	t.Helper()
 
-	mid := len(out)/2 - fftLen/2
-	if mid < 0 {
-		mid = 0
-	}
+	mid := max(len(out)/2-fftLen/2, 0)
 
 	chunk := out[mid : mid+fftLen]
 
@@ -658,7 +652,7 @@ func normalizedAutocorrelation(x []float64, lag int) float64 {
 	e0 := 0.0
 	e1 := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		a := x[i]
 		b := x[i+lag]
 		dot += a * b

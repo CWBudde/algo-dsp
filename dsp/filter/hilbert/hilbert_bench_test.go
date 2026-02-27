@@ -12,9 +12,11 @@ func BenchmarkProcessSample64(b *testing.B) {
 	}
 
 	x := 0.0
+
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for i := range b.N {
 		x = math.Sin(float64(i) * 2 * math.Pi / 97)
 		_, _ = p.ProcessSample(x)
 	}
@@ -27,17 +29,21 @@ func BenchmarkProcessBlock64(b *testing.B) {
 	}
 
 	const n = 1024
+
 	input := make([]float64, n)
 	outA := make([]float64, n)
 	outB := make([]float64, n)
+
 	for i := range input {
 		input[i] = math.Sin(2 * math.Pi * float64(i) / 127)
 	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		if err := p.ProcessBlock(input, outA, outB); err != nil {
+
+	for range b.N {
+		err := p.ProcessBlock(input, outA, outB)
+		if err != nil {
 			b.Fatalf("ProcessBlock() error = %v", err)
 		}
 	}
@@ -50,9 +56,11 @@ func BenchmarkProcessSample32(b *testing.B) {
 	}
 
 	x := float32(0)
+
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for i := range b.N {
 		x = float32(math.Sin(float64(i) * 2 * math.Pi / 97))
 		_, _ = p.ProcessSample(x)
 	}

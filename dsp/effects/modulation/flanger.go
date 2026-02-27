@@ -133,7 +133,8 @@ func NewFlanger(sampleRate float64, opts ...FlangerOption) (*Flanger, error) {
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -146,11 +147,14 @@ func NewFlanger(sampleRate float64, opts ...FlangerOption) (*Flanger, error) {
 		feedback:   cfg.feedback,
 		mix:        cfg.mix,
 	}
-	if err := f.validateParams(); err != nil {
+
+	err := f.validateParams()
+	if err != nil {
 		return nil, err
 	}
 
-	if err := f.reconfigureDelayLine(); err != nil {
+	err = f.reconfigureDelayLine()
+	if err != nil {
 		return nil, err
 	}
 
@@ -188,7 +192,9 @@ func (f *Flanger) SetDepthSeconds(depth float64) error {
 	prev := f.depth
 
 	f.depth = depth
-	if err := f.reconfigureDelayLine(); err != nil {
+
+	err := f.reconfigureDelayLine()
+	if err != nil {
 		f.depth = prev
 		return err
 	}
@@ -207,7 +213,9 @@ func (f *Flanger) SetBaseDelaySeconds(baseDelay float64) error {
 	prev := f.baseDelay
 
 	f.baseDelay = baseDelay
-	if err := f.reconfigureDelayLine(); err != nil {
+
+	err := f.reconfigureDelayLine()
+	if err != nil {
 		f.baseDelay = prev
 		return err
 	}
@@ -341,14 +349,12 @@ func (f *Flanger) validateParams() error {
 }
 
 func (f *Flanger) reconfigureDelayLine() error {
-	if err := f.validateParams(); err != nil {
+	err := f.validateParams()
+	if err != nil {
 		return err
 	}
 
-	needed := int(math.Ceil((f.baseDelay+f.depth)*f.sampleRate)) + 3
-	if needed < 4 {
-		needed = 4
-	}
+	needed := max(int(math.Ceil((f.baseDelay+f.depth)*f.sampleRate))+3, 4)
 
 	if needed == len(f.delayLine) {
 		f.maxDelay = needed - 3
@@ -362,12 +368,9 @@ func (f *Flanger) reconfigureDelayLine() error {
 	f.maxDelay = needed - 3
 
 	if len(old) > 0 {
-		copyCount := len(old)
-		if copyCount > len(f.delayLine) {
-			copyCount = len(f.delayLine)
-		}
+		copyCount := min(len(old), len(f.delayLine))
 
-		for i := 0; i < copyCount; i++ {
+		for i := range copyCount {
 			src := oldWrite - 1 - i
 			if src < 0 {
 				src += len(old)

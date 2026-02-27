@@ -305,7 +305,7 @@ func TestAllpassTickDCPassthrough(t *testing.T) {
 	dc := 5.0
 
 	var last float64
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		last = AllpassTick(0.3, dc, dc, &state)
 	}
 
@@ -324,7 +324,7 @@ func TestAllpassTickUnityMagnitude(t *testing.T) {
 
 	var sumSqIn, sumSqOut float64
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x0 := math.Sin(2 * math.Pi * freq * float64(i))
 		x1 := math.Sin(2 * math.Pi * freq * float64(i+1))
 
@@ -373,26 +373,26 @@ func TestModeValues(t *testing.T) {
 // --- Benchmarks ---
 
 func BenchmarkLinear2(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Linear2(0.3, 1.0, 2.0)
 	}
 }
 
 func BenchmarkHermite4(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Hermite4(0.3, -1, 0, 1, 2)
 	}
 }
 
 func BenchmarkLagrange4(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Lagrange4(0.3, -1, 0, 1, 2)
 	}
 }
 
 func BenchmarkLanczos6(b *testing.B) {
 	s := []float64{-2, -1, 0, 1, 2, 3}
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Lanczos6(0.3, s)
 	}
 }
@@ -407,14 +407,14 @@ func BenchmarkSincInterp8(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		SincInterp(0.3, s, n)
 	}
 }
 
 func BenchmarkAllpassTick(b *testing.B) {
 	state := 0.0
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		AllpassTick(0.3, 1.0, 2.0, &state)
 	}
 }

@@ -78,7 +78,7 @@ func TestRingModulatorMixZeroIsTransparent(t *testing.T) {
 		t.Fatalf("NewRingModulator() error = %v", err)
 	}
 
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		in := 0.5 * math.Sin(2*math.Pi*440*float64(i)/48000)
 
 		out := ringModulator.Process(in)
@@ -105,7 +105,7 @@ func TestRingModulatorDCInputProducesSine(t *testing.T) {
 		t.Fatalf("NewRingModulator() error = %v", err)
 	}
 
-	for i := 0; i < nSamples; i++ {
+	for i := range nSamples {
 		got := ringModulator.Process(1.0)
 		phase := 2 * math.Pi * carrierHz * float64(i) / sampleRate
 
@@ -125,7 +125,7 @@ func TestRingModulatorSilenceInputProducesSilence(t *testing.T) {
 		t.Fatalf("NewRingModulator() error = %v", err)
 	}
 
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		out := ringModulator.Process(0)
 		if out != 0 {
 			t.Fatalf("sample %d: silent input should produce 0, got=%g", i, out)
@@ -242,7 +242,8 @@ func TestRingModulatorValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.fn(); err == nil {
+			err := tt.fn()
+			if err == nil {
 				t.Error("expected validation error, got nil")
 			}
 		})
@@ -356,7 +357,7 @@ func BenchmarkRingModulatorProcessSample(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		ringModulator.Process(0.5)
 	}
 }
@@ -378,7 +379,7 @@ func BenchmarkRingModulatorProcessInPlace(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		ringModulator.ProcessInPlace(buf)
 	}
 }

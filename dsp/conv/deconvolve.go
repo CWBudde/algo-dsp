@@ -25,7 +25,7 @@ const (
 	DeconvNaive DeconvMethod = iota
 
 	// DeconvRegularized adds a small epsilon to prevent division by zero.
-	// output = IFFT(FFT(signal) * conj(FFT(kernel)) / (|FFT(kernel)|^2 + epsilon))
+	// output = IFFT(FFT(signal) * conj(FFT(kernel)) / (|FFT(kernel)|^2 + epsilon)).
 	DeconvRegularized
 
 	// DeconvWiener applies Wiener deconvolution with noise estimation.
@@ -117,11 +117,11 @@ func deconvolveNaive(signal, kernel []float64) ([]float64, error) {
 	signalPadded := make([]complex128, fftSize)
 	kernelPadded := make([]complex128, fftSize)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		signalPadded[i] = complex(signal[i], 0)
 	}
 
-	for i := 0; i < m; i++ {
+	for i := range m {
 		kernelPadded[i] = complex(kernel[i], 0)
 	}
 
@@ -168,7 +168,7 @@ func deconvolveNaive(signal, kernel []float64) ([]float64, error) {
 }
 
 // deconvolveRegularized performs regularized spectral division.
-// output = IFFT(FFT(signal) * conj(FFT(kernel)) / (|FFT(kernel)|^2 + epsilon))
+// output = IFFT(FFT(signal) * conj(FFT(kernel)) / (|FFT(kernel)|^2 + epsilon)).
 func deconvolveRegularized(signal, kernel []float64, epsilon float64) ([]float64, error) {
 	n := len(signal)
 	m := len(kernel)
@@ -189,11 +189,11 @@ func deconvolveRegularized(signal, kernel []float64, epsilon float64) ([]float64
 	signalPadded := make([]complex128, fftSize)
 	kernelPadded := make([]complex128, fftSize)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		signalPadded[i] = complex(signal[i], 0)
 	}
 
-	for i := 0; i < m; i++ {
+	for i := range m {
 		kernelPadded[i] = complex(kernel[i], 0)
 	}
 
@@ -279,11 +279,11 @@ func deconvolveWiener(signal, kernel []float64, opts DeconvOptions) ([]float64, 
 	signalPadded := make([]complex128, fftSize)
 	kernelPadded := make([]complex128, fftSize)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		signalPadded[i] = complex(signal[i], 0)
 	}
 
-	for i := 0; i < m; i++ {
+	for i := range m {
 		kernelPadded[i] = complex(kernel[i], 0)
 	}
 

@@ -5,6 +5,7 @@ import "github.com/cwbudde/algo-dsp/dsp/core"
 // MeterConfig defines configuration for the loudness meter.
 type MeterConfig struct {
 	core.ProcessorConfig
+
 	Channels int
 }
 

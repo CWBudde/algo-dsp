@@ -1,6 +1,7 @@
 package spatial
 
 import (
+	"errors"
 	"fmt"
 	"math"
 )
@@ -59,7 +60,7 @@ func WithHRTFMode(mode HRTFMode) HRTFCrosstalkSimulatorOption {
 func WithHRTFProvider(provider HRTFProvider) HRTFCrosstalkSimulatorOption {
 	return func(cfg *hrtfCrosstalkConfig) error {
 		if provider == nil {
-			return fmt.Errorf("hrtf crosstalk simulator provider must not be nil")
+			return errors.New("hrtf crosstalk simulator provider must not be nil")
 		}
 
 		cfg.provider = provider
@@ -93,13 +94,14 @@ func NewHRTFCrosstalkSimulator(sampleRate float64, opts ...HRTFCrosstalkSimulato
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
 
 	if cfg.provider == nil {
-		return nil, fmt.Errorf("hrtf crosstalk simulator provider must not be nil")
+		return nil, errors.New("hrtf crosstalk simulator provider must not be nil")
 	}
 
 	s := &HRTFCrosstalkSimulator{
@@ -107,7 +109,9 @@ func NewHRTFCrosstalkSimulator(sampleRate float64, opts ...HRTFCrosstalkSimulato
 		mode:       cfg.mode,
 		provider:   cfg.provider,
 	}
-	if err := s.reloadIR(); err != nil {
+
+	err := s.reloadIR()
+	if err != nil {
 		return nil, err
 	}
 
@@ -178,7 +182,7 @@ func (s *HRTFCrosstalkSimulator) SetSampleRate(sampleRate float64) error {
 // SetProvider updates HRTF provider and reloads IR state.
 func (s *HRTFCrosstalkSimulator) SetProvider(provider HRTFProvider) error {
 	if provider == nil {
-		return fmt.Errorf("hrtf crosstalk simulator provider must not be nil")
+		return errors.New("hrtf crosstalk simulator provider must not be nil")
 	}
 
 	s.provider = provider
@@ -216,20 +220,20 @@ func (s *HRTFCrosstalkSimulator) reloadIR() error {
 
 func validateIRSet(irSet HRTFImpulseResponseSet, mode HRTFMode) error {
 	if len(irSet.LeftCross) == 0 {
-		return fmt.Errorf("hrtf crosstalk simulator left crossfeed IR must not be empty")
+		return errors.New("hrtf crosstalk simulator left crossfeed IR must not be empty")
 	}
 
 	if len(irSet.RightCross) == 0 {
-		return fmt.Errorf("hrtf crosstalk simulator right crossfeed IR must not be empty")
+		return errors.New("hrtf crosstalk simulator right crossfeed IR must not be empty")
 	}
 
 	if mode == HRTFModeComplete {
 		if len(irSet.LeftDirect) == 0 {
-			return fmt.Errorf("hrtf crosstalk simulator left direct IR must not be empty in complete mode")
+			return errors.New("hrtf crosstalk simulator left direct IR must not be empty in complete mode")
 		}
 
 		if len(irSet.RightDirect) == 0 {
-			return fmt.Errorf("hrtf crosstalk simulator right direct IR must not be empty in complete mode")
+			return errors.New("hrtf crosstalk simulator right direct IR must not be empty in complete mode")
 		}
 	}
 
@@ -278,7 +282,7 @@ func (f *firPath) process(x float64) float64 {
 	sum := 0.0
 
 	idx := f.write
-	for i := 0; i < len(f.ir); i++ {
+	for i := range len(f.ir) {
 		sum += f.ir[i] * f.hist[idx]
 
 		idx--

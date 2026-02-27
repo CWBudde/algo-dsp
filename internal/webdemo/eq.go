@@ -76,11 +76,14 @@ func (e *Engine) updateEQBand(dst **biquad.Chain, family, kind string, order int
 		*dst = fresh
 		return
 	}
+
 	n := fresh.NumSections()
+
 	coeffs := make([]biquad.Coefficients, n)
 	for i := range coeffs {
 		coeffs[i] = fresh.Section(i).Coefficients
 	}
+
 	(*dst).UpdateCoefficients(coeffs, fresh.Gain())
 }
 

@@ -54,7 +54,9 @@ func TestOptionValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := defaultConfig()
-			if err := tt.opt(&cfg); err == nil {
+
+			err := tt.opt(&cfg)
+			if err == nil {
 				t.Error("expected validation error")
 			}
 		})
@@ -74,7 +76,8 @@ func TestOptionHappyPaths(t *testing.T) {
 	}
 
 	for _, opt := range opts {
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	}

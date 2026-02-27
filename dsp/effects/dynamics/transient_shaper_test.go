@@ -58,19 +58,23 @@ func TestTransientShaperDefaults(t *testing.T) {
 func TestTransientShaperParameterValidation(t *testing.T) {
 	ts, _ := NewTransientShaper(48000)
 
-	if err := ts.SetAttackAmount(-1.1); err == nil {
+	err := ts.SetAttackAmount(-1.1)
+	if err == nil {
 		t.Fatal("expected attack amount error")
 	}
 
-	if err := ts.SetSustainAmount(1.1); err == nil {
+	err = ts.SetSustainAmount(1.1)
+	if err == nil {
 		t.Fatal("expected sustain amount error")
 	}
 
-	if err := ts.SetAttack(0.05); err == nil {
+	err = ts.SetAttack(0.05)
+	if err == nil {
 		t.Fatal("expected attack time error")
 	}
 
-	if err := ts.SetRelease(0.5); err == nil {
+	err = ts.SetRelease(0.5)
+	if err == nil {
 		t.Fatal("expected release time error")
 	}
 }
@@ -84,7 +88,7 @@ func TestTransientShaperProcessInPlaceMatchesSamplePath(t *testing.T) {
 	_ = b.SetSustainAmount(-0.4)
 
 	input := make([]float64, 512)
-	for i := 0; i < len(input); i++ {
+	for i := range input {
 		input[i] = 0.5 * math.Sin(2*math.Pi*220*float64(i)/48000)
 	}
 
@@ -112,7 +116,7 @@ func TestTransientShaperAttackBoostsRisingEdge(t *testing.T) {
 	_ = boosted.SetAttackAmount(1.0)
 
 	// Precondition the detector with silence.
-	for i := 0; i < 128; i++ {
+	for range 128 {
 		neutral.ProcessSample(0)
 		boosted.ProcessSample(0)
 	}
@@ -136,7 +140,7 @@ func TestTransientShaperNegativeSustainReducesDecayTail(t *testing.T) {
 
 	count := 0
 
-	for i := 0; i < 600; i++ {
+	for i := range 600 {
 		in := 0.8
 		if i >= 300 {
 			in = 0.15

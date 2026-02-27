@@ -37,7 +37,9 @@ func WithFrequencyShiftHz(shiftHz float64) FrequencyShifterOption {
 		if shiftHz <= 0 || math.IsNaN(shiftHz) || math.IsInf(shiftHz, 0) {
 			return fmt.Errorf("frequency shifter shift Hz must be > 0 and finite: %f", shiftHz)
 		}
+
 		cfg.shiftHz = shiftHz
+
 		return nil
 	}
 }
@@ -48,8 +50,10 @@ func WithFrequencyShifterHilbertPreset(preset hilbert.Preset) FrequencyShifterOp
 		if _, _, err := hilbert.PresetConfig(preset); err != nil {
 			return err
 		}
+
 		cfg.useCustomDesign = false
 		cfg.preset = preset
+
 		return nil
 	}
 }
@@ -60,9 +64,11 @@ func WithFrequencyShifterHilbertDesign(numberOfCoeffs int, transition float64) F
 		if _, err := hilbert.DesignCoefficients(numberOfCoeffs, transition); err != nil {
 			return err
 		}
+
 		cfg.useCustomDesign = true
 		cfg.coeffCount = numberOfCoeffs
 		cfg.transition = transition
+
 		return nil
 	}
 }
@@ -90,11 +96,14 @@ func NewFrequencyShifter(sampleRate float64, opts ...FrequencyShifterOption) (*F
 	}
 
 	cfg := defaultFrequencyShifterConfig()
+
 	for _, opt := range opts {
 		if opt == nil {
 			continue
 		}
-		if err := opt(&cfg); err != nil {
+
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -108,6 +117,7 @@ func NewFrequencyShifter(sampleRate float64, opts ...FrequencyShifterOption) (*F
 	} else {
 		h, err = hilbert.New64Preset(cfg.preset)
 	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +146,10 @@ func (f *FrequencyShifter) SetSampleRate(sampleRate float64) error {
 	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
 		return fmt.Errorf("frequency shifter sample rate must be > 0 and finite: %f", sampleRate)
 	}
+
 	f.sampleRate = sampleRate
 	f.updatePhaseIncrement()
+
 	return nil
 }
 
@@ -146,8 +158,10 @@ func (f *FrequencyShifter) SetShiftHz(shiftHz float64) error {
 	if shiftHz <= 0 || math.IsNaN(shiftHz) || math.IsInf(shiftHz, 0) {
 		return fmt.Errorf("frequency shifter shift Hz must be > 0 and finite: %f", shiftHz)
 	}
+
 	f.shiftHz = shiftHz
 	f.updatePhaseIncrement()
+
 	return nil
 }
 
@@ -157,11 +171,13 @@ func (f *FrequencyShifter) SetHilbertPreset(preset hilbert.Preset) error {
 	if err != nil {
 		return err
 	}
+
 	f.hilbert = h
 	f.useCustomDesign = false
 	f.preset = preset
 	f.coeffCount = h.NumberOfCoefficients()
 	f.transition = h.Transition()
+
 	return nil
 }
 
@@ -171,10 +187,12 @@ func (f *FrequencyShifter) SetHilbertDesign(numberOfCoeffs int, transition float
 	if err != nil {
 		return err
 	}
+
 	f.hilbert = h
 	f.useCustomDesign = true
 	f.coeffCount = numberOfCoeffs
 	f.transition = transition
+
 	return nil
 }
 
@@ -221,9 +239,11 @@ func (f *FrequencyShifter) ProcessBlock(input, upshift, downshift []float64) err
 		return fmt.Errorf("frequency shifter block length mismatch: in=%d up=%d down=%d",
 			len(input), len(upshift), len(downshift))
 	}
+
 	for i, x := range input {
 		upshift[i], downshift[i] = f.ProcessSample(x)
 	}
+
 	return nil
 }
 
@@ -238,6 +258,7 @@ func (f *FrequencyShifter) HilbertPreset() (hilbert.Preset, bool) {
 	if f.useCustomDesign {
 		return hilbert.PresetFast, false
 	}
+
 	return f.preset, true
 }
 

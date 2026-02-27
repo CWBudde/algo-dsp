@@ -18,7 +18,8 @@ func BenchmarkFrequencyShifterProcessSample(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for i := range b.N {
 		x := math.Sin(2 * math.Pi * 1000 * float64(i) / 48000)
 		_, _ = f.ProcessSample(x)
 	}
@@ -34,17 +35,21 @@ func BenchmarkFrequencyShifterProcessBlock(b *testing.B) {
 	}
 
 	const n = 1024
+
 	input := make([]float64, n)
 	up := make([]float64, n)
 	down := make([]float64, n)
+
 	for i := range input {
 		input[i] = math.Sin(2 * math.Pi * 700 * float64(i) / 48000)
 	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		if err := f.ProcessBlock(input, up, down); err != nil {
+
+	for range b.N {
+		err := f.ProcessBlock(input, up, down)
+		if err != nil {
 			b.Fatalf("ProcessBlock() error = %v", err)
 		}
 	}

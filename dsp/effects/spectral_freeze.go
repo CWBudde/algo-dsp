@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -69,7 +70,8 @@ func NewSpectralFreeze(sampleRate float64) (*SpectralFreeze, error) {
 		phaseMode:  SpectralFreezePhaseAdvance,
 	}
 
-	if err := s.rebuildState(); err != nil {
+	err := s.rebuildState()
+	if err != nil {
 		return nil, err
 	}
 
@@ -117,10 +119,7 @@ func (s *SpectralFreeze) SetFrameSize(size int) error {
 
 	s.frameSize = size
 	if s.hopSize >= s.frameSize {
-		s.hopSize = s.frameSize / 4
-		if s.hopSize < 1 {
-			s.hopSize = 1
-		}
+		s.hopSize = max(s.frameSize/4, 1)
 	}
 
 	return s.rebuildState()
@@ -212,7 +211,8 @@ func (s *SpectralFreeze) ProcessWithError(input []float64) ([]float64, error) {
 		return nil, nil
 	}
 
-	if err := s.validate(); err != nil {
+	err := s.validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -225,7 +225,7 @@ func (s *SpectralFreeze) ProcessWithError(input []float64) ([]float64, error) {
 	half := s.frameSize / 2
 	hopF := float64(hop)
 
-	for frame := 0; frame < frameCount; frame++ {
+	for frame := range frameCount {
 		pos := frame * hop
 
 		for i := range s.frameSize {
@@ -239,7 +239,8 @@ func (s *SpectralFreeze) ProcessWithError(input []float64) ([]float64, error) {
 			s.analysisSpectrum[i] = complex(x*s.windowCoeffs[i], 0)
 		}
 
-		if err := s.plan.Forward(s.analysisSpectrum, s.analysisSpectrum); err != nil {
+		err := s.plan.Forward(s.analysisSpectrum, s.analysisSpectrum)
+		if err != nil {
 			return nil, fmt.Errorf("spectral freeze: forward FFT failed: %w", err)
 		}
 
@@ -291,7 +292,8 @@ func (s *SpectralFreeze) ProcessWithError(input []float64) ([]float64, error) {
 			s.synthesisSpectrum[s.frameSize-k] = complex(real(v), -imag(v))
 		}
 
-		if err := s.plan.Inverse(s.timeFrame, s.synthesisSpectrum); err != nil {
+		err = s.plan.Inverse(s.timeFrame, s.synthesisSpectrum)
+		if err != nil {
 			return nil, fmt.Errorf("spectral freeze: inverse FFT failed: %w", err)
 		}
 
@@ -359,7 +361,7 @@ func (s *SpectralFreeze) validate() error {
 	}
 
 	if s.plan == nil {
-		return fmt.Errorf("spectral freeze FFT plan is nil")
+		return errors.New("spectral freeze FFT plan is nil")
 	}
 
 	return nil

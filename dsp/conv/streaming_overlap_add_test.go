@@ -1,6 +1,7 @@
 package conv
 
 import (
+	"errors"
 	"math"
 	"testing"
 )
@@ -84,7 +85,7 @@ func TestStreamingOverlapAddVsBatch(t *testing.T) {
 	}
 
 	streamResult := make([]float64, 0, len(signal))
-	for i := 0; i < numBlocks; i++ {
+	for i := range numBlocks {
 		block := signal[i*blockSize : (i+1)*blockSize]
 
 		out, err := streamOLA.ProcessBlock(block)
@@ -96,7 +97,7 @@ func TestStreamingOverlapAddVsBatch(t *testing.T) {
 	}
 
 	// Compare results (first len(signal) samples should match)
-	for i := 0; i < len(signal); i++ {
+	for i := range signal {
 		diff := math.Abs(batchResult[i] - streamResult[i])
 		if diff > 1e-10 {
 			t.Errorf("Sample %d: batch=%f, stream=%f, diff=%e", i, batchResult[i], streamResult[i], diff)
@@ -194,7 +195,7 @@ func BenchmarkStreamingOverlapAdd(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = soa.ProcessBlock(input)
 	}
 }
@@ -222,16 +223,16 @@ func BenchmarkStreamingOverlapAddTo(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = soa.ProcessBlockTo(output, input)
 	}
 }
 
-// Test error conditions
+// Test error conditions.
 func TestStreamingOverlapAddErrors(t *testing.T) {
 	t.Run("EmptyKernel", func(t *testing.T) {
 		_, err := NewStreamingOverlapAdd([]float64{}, 128)
-		if err != ErrEmptyKernel {
+		if !errors.Is(err, ErrEmptyKernel) {
 			t.Errorf("expected ErrEmptyKernel, got %v", err)
 		}
 	})
@@ -281,7 +282,7 @@ func TestStreamingOverlapAddErrors(t *testing.T) {
 	})
 }
 
-// Test getter methods
+// Test getter methods.
 func TestStreamingOverlapAddGetters(t *testing.T) {
 	kernel := []float64{1.0, 0.5, 0.25, 0.1}
 	blockSize := 8
@@ -306,7 +307,7 @@ func TestStreamingOverlapAddGetters(t *testing.T) {
 	}
 }
 
-// Test edge case: single-sample kernel (dirac delta)
+// Test edge case: single-sample kernel (dirac delta).
 func TestStreamingOverlapAddDiracDelta(t *testing.T) {
 	kernel := []float64{1.0}
 	blockSize := 8
@@ -331,7 +332,7 @@ func TestStreamingOverlapAddDiracDelta(t *testing.T) {
 	}
 }
 
-// Test edge case: very long kernel
+// Test edge case: very long kernel.
 func TestStreamingOverlapAddLongKernel(t *testing.T) {
 	// Kernel longer than block size with slower decay
 	kernel := make([]float64, 256)
@@ -364,7 +365,7 @@ func TestStreamingOverlapAddLongKernel(t *testing.T) {
 
 	// Process several more blocks to see tail continuation
 	// With kernel length 256 and block size 64, we expect tail for at least 3 blocks
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		zeros := make([]float64, blockSize)
 
 		out, err := soa.ProcessBlock(zeros)
@@ -385,7 +386,7 @@ func TestStreamingOverlapAddLongKernel(t *testing.T) {
 	}
 }
 
-// Test continuity across many blocks
+// Test continuity across many blocks.
 func TestStreamingOverlapAddContinuity(t *testing.T) {
 	kernel := []float64{0.25, 0.5, 1.0, 0.5, 0.25}
 	blockSize := 16
@@ -407,7 +408,7 @@ func TestStreamingOverlapAddContinuity(t *testing.T) {
 	// Process in blocks
 	streamOutput := make([]float64, 0, totalSamples)
 
-	for i := 0; i < numBlocks; i++ {
+	for i := range numBlocks {
 		block := fullSignal[i*blockSize : (i+1)*blockSize]
 
 		out, err := soa.ProcessBlock(block)
@@ -423,7 +424,7 @@ func TestStreamingOverlapAddContinuity(t *testing.T) {
 	batchResult, _ := batchOLA.Process(fullSignal)
 
 	// First len(fullSignal) samples should match
-	for i := 0; i < totalSamples; i++ {
+	for i := range totalSamples {
 		diff := math.Abs(batchResult[i] - streamOutput[i])
 		if diff > 1e-9 {
 			t.Errorf("Sample %d: batch=%f, stream=%f, diff=%e", i, batchResult[i], streamOutput[i], diff)

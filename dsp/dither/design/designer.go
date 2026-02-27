@@ -102,7 +102,8 @@ func NewDesigner(sampleRate float64, opts ...DesignerOption) (*Designer, error) 
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}

@@ -32,7 +32,7 @@ func ExampleCrossover_ProcessSample() {
 	// response equals the input energy (1.0).
 	energy := 0.0
 
-	for i := 0; i < 4096; i++ {
+	for i := range 4096 {
 		x := 0.0
 		if i == 0 {
 			x = 1.0

@@ -262,7 +262,7 @@ func lpToHPZPK(z, p []complex128, k float64) ([]complex128, []complex128, float6
 		zh = append(zh, 1.0/zr)
 	}
 
-	for i := 0; i < degree; i++ {
+	for range degree {
 		zh = append(zh, 0)
 	}
 
@@ -312,7 +312,7 @@ func bilinearZPK(z, p []complex128, kGain, k float64) ([]complex128, []complex12
 		zd = append(zd, (1.0+complex(k, 0)*zr)/den)
 	}
 
-	for i := 0; i < degree; i++ {
+	for range degree {
 		zd = append(zd, -1)
 	}
 
@@ -585,7 +585,7 @@ func arcJacSN(w complex128, m, tol float64) complex128 {
 	}
 
 	ks := []complex128{k}
-	for i := 0; i < arcJacSNMaxIter-1; i++ {
+	for range arcJacSNMaxIter - 1 {
 		kn := ks[len(ks)-1]
 		if cmplx.Abs(kn) == 0 {
 			break
@@ -604,7 +604,7 @@ func arcJacSN(w complex128, m, tol float64) complex128 {
 
 	wn := w
 
-	for i := 0; i < len(ks)-1; i++ {
+	for i := range len(ks) - 1 {
 		kn := ks[i]
 		knext := ks[i+1]
 
@@ -638,7 +638,7 @@ func ellipdegParam(n int, m1, tol float64) float64 {
 	q := math.Pow(q1, 1.0/float64(n))
 
 	num := 0.0
-	for mnum := 0; mnum < ellipticSeriesLen; mnum++ {
+	for mnum := range ellipticSeriesLen {
 		num += math.Pow(q, float64(mnum*(mnum+1)))
 	}
 

@@ -144,7 +144,7 @@ func TestSpectralFreezeSustainsEnergyOnSilenceTail(t *testing.T) {
 	freeze.Freeze()
 
 	in := make([]float64, 4096)
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		in[i] = math.Sin(2 * math.Pi * 440 * float64(i) / 48000)
 	}
 

@@ -4,20 +4,100 @@ run:
   timeout: 5m
 
 linters:
+  default: all
+  disable:
+    - depguard          # no import allow/deny lists needed
+    - err113            # sentinel errors too verbose for this codebase
+    - exhaustive        # don't require exhaustive switch on enums
+    - exhaustruct       # don't require all struct fields populated
+    - gochecknoglobals  # sync.Pools, singletons, config vars are fine
+    - godox             # allow TODO/FIXME comments
+    - ireturn           # allow returning interfaces
+    - lll               # long lines acceptable in math-heavy code
+    - mnd               # magic numbers acceptable in math-heavy code
+    - musttag           # no struct tag enforcement needed
+    - nlreturn          # no blank-line-before-return enforcement
+    - nonamedreturns    # named returns useful for complex signatures
+    - paralleltest      # not enforcing t.Parallel everywhere
+    - sqlclosecheck     # no SQL in this project
+    - testpackage       # allow white-box tests in same package
+    - varnamelen        # short names idiomatic in math/tensor code
+    - wsl               # use wsl_v5 instead
   enable:
-    - govet
-    - staticcheck
-    - errcheck
-    - ineffassign
-    - thelper
-    - tparallel
-    - unused
-    - varnamelen
     - wsl_v5
+
+  settings:
+    cyclop:
+      max-complexity: 15
+
+    funlen:
+      lines: 100
+
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+      disable: [decl]
+
+  exclusions:
+    generated: lax
+    presets: [comments, common-false-positives, legacy, std-error-handling]
+
+    rules:
+      # cmd/ uses inits for cobra, wraps errors less strictly
+      - linters: [gochecknoinits, wrapcheck]
+        path: cmd/
+
+      # assembly stubs have empty bodies
+      - linters: [revive]
+        path: .*_amd64\.go
+        text: empty-block
+
+      # test files are more relaxed
+      - linters: [funlen, cyclop, gocognit, maintidx, wrapcheck, dupl, noctx, forcetypeassert, gosec, thelper, usetesting, goconst]
+        path: _test\.go
+
+      # unsafe is intentional in SIMD/tensor code
+      - linters: [gosec]
+        path: internal/runtime/tensor/.*\.go
+        text: "G103:"
+
+      # wrapcheck too noisy in internal packages
+      - linters: [wrapcheck]
+        path: internal/
+
+      # noctx: internal HTTP clients (model download) don't need request contexts
+      - linters: [noctx]
+        path: internal/model/
+
+      # gosec: non-crypto random is fine for TTS sampling
+      - linters: [gosec]
+        path: internal/
+        text: "G404:"
+
+      # funlen: model loading and codec functions are inherently long
+      - linters: [funlen]
+        path: internal/native/
+      - linters: [funlen]
+        path: internal/onnx/
+      - linters: [funlen]
+        path: internal/model/
+
+      # cyclop/gocognit for inherently complex functions (model loading, codecs)
+      - linters: [cyclop, gocognit]
+        path: internal/native/
+      - linters: [cyclop, gocognit]
+        path: internal/onnx/
+      - linters: [cyclop, gocognit]
+        path: internal/runtime/
+      - linters: [cyclop, gocognit]
+        path: internal/model/
 
 formatters:
   enable:
     - gofmt
-
-issues:
-  exclude-use-default: false

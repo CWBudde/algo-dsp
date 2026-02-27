@@ -79,7 +79,7 @@ func TestTremoloDepthZeroIsTransparent(t *testing.T) {
 		t.Fatalf("NewTremolo() error = %v", err)
 	}
 
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		in := 0.5 * math.Sin(2*math.Pi*440*float64(i)/48000)
 
 		out := tremolo.Process(in)

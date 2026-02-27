@@ -215,7 +215,7 @@ func TestPinkNoiseSpectralSlope(t *testing.T) {
 	// Check slope between adjacent octave bands.
 	// Pink noise: -3 dB/octave → power ratio ≈ 0.5 per octave.
 	// Allow wide tolerance since this is stochastic.
-	for i := 0; i < len(powers)-1; i++ {
+	for i := range len(powers) - 1 {
 		if powers[i] == 0 || powers[i+1] == 0 {
 			continue
 		}

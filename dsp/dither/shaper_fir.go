@@ -35,7 +35,7 @@ func (s *FIRShaper) Shape(input float64) float64 {
 		return input
 	}
 	// Apply FIR convolution: subtract weighted past errors.
-	for i := 0; i < s.order; i++ {
+	for i := range s.order {
 		idx := (s.order + s.pos - i) % s.order
 		input -= s.coeffs[i] * s.history[idx]
 	}

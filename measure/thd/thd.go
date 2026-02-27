@@ -392,10 +392,7 @@ func getBinValue(magSquared []float64, bin, captureBins int) float64 {
 		return sqrtPositive(magSquared[bin])
 	}
 
-	loBin := bin - captureBins
-	if loBin < 0 {
-		loBin = 0
-	}
+	loBin := max(bin-captureBins, 0)
 
 	hiBin := bin + captureBins
 	if hiBin >= len(magSquared) {

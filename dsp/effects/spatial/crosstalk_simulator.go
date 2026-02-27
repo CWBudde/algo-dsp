@@ -144,7 +144,8 @@ func NewCrosstalkSimulator(sampleRate float64, opts ...CrosstalkSimulatorOption)
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -157,7 +158,9 @@ func NewCrosstalkSimulator(sampleRate float64, opts ...CrosstalkSimulatorOption)
 		invertPolarity: cfg.invertPolarity,
 		preset:         cfg.preset,
 	}
-	if err := s.rebuild(); err != nil {
+
+	err := s.rebuild()
+	if err != nil {
 		return nil, err
 	}
 
@@ -291,10 +294,7 @@ func (s *CrosstalkSimulator) rebuild() error {
 
 	delaySeconds := s.diameter / s.speedOfSound
 
-	delaySamples := int(math.Round(delaySeconds * s.sampleRate))
-	if delaySamples < minSimulatorDelaySamples {
-		delaySamples = minSimulatorDelaySamples
-	}
+	delaySamples := max(int(math.Round(delaySeconds*s.sampleRate)), minSimulatorDelaySamples)
 
 	s.delaySamples = delaySamples
 	s.lineLFromR.init(delaySamples)

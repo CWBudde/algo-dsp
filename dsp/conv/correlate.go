@@ -128,11 +128,11 @@ func CorrelateFFT(a, b []float64) ([]float64, error) {
 	aPadded := make([]complex128, fftSize)
 	bPadded := make([]complex128, fftSize)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		aPadded[i] = complex(a[i], 0)
 	}
 
-	for i := 0; i < m; i++ {
+	for i := range m {
 		bPadded[i] = complex(b[i], 0)
 	}
 
@@ -174,11 +174,11 @@ func CorrelateFFT(a, b []float64) ([]float64, error) {
 	// The correlation result needs to be rearranged
 	// Positive lags (0 to n-1) are at the beginning
 	// Negative lags (-(m-1) to -1) need to be extracted from the end
-	for i := 0; i < n; i++ {
+	for i := range n {
 		result[m-1+i] = real(resultTime[i])
 	}
 
-	for i := 0; i < m-1; i++ {
+	for i := range m - 1 {
 		result[i] = real(resultTime[fftSize-m+1+i])
 	}
 

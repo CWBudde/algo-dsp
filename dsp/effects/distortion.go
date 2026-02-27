@@ -329,7 +329,8 @@ func NewDistortion(sampleRate float64, opts ...DistortionOption) (*Distortion, e
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -351,7 +352,9 @@ func NewDistortion(sampleRate float64, opts ...DistortionOption) (*Distortion, e
 		chebyshevDCBypass: cfg.chebyshevDCBypass,
 		chebyshevWeights:  cfg.chebyshevWeights,
 	}
-	if err := d.validate(); err != nil {
+
+	err := d.validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -585,7 +588,8 @@ func (d *Distortion) Bias() float64 { return d.bias }
 func (d *Distortion) ChebyshevOrder() int { return d.chebyshevOrder }
 
 func (d *Distortion) validate() error {
-	if err := validateChebyshevParity(d.chebyshevOrder, d.chebyshevMode); err != nil {
+	err := validateChebyshevParity(d.chebyshevOrder, d.chebyshevMode)
+	if err != nil {
 		return err
 	}
 
@@ -681,7 +685,8 @@ func (d *Distortion) chebyshevShape(x float64) float64 {
 
 	// Determine whether per-harmonic weights are active.
 	hasWeights := false
-	for k := 0; k < d.chebyshevOrder; k++ {
+
+	for k := range d.chebyshevOrder {
 		if d.chebyshevWeights[k] != 0 {
 			hasWeights = true
 			break
@@ -703,6 +708,7 @@ func (d *Distortion) chebyshevShape(x float64) float64 {
 		if hasWeights {
 			weightedSum += d.chebyshevWeights[n-1] * tn
 		}
+
 		t0, t1 = t1, tn
 	}
 

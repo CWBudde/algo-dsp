@@ -174,7 +174,8 @@ func NewCrosstalkCanceller(sampleRate float64, opts ...CrosstalkCancellerOption)
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -190,7 +191,9 @@ func NewCrosstalkCanceller(sampleRate float64, opts ...CrosstalkCancellerOption)
 		shelfFreq:        cfg.shelfFreq,
 		shelfGainDB:      cfg.shelfGainDB,
 	}
-	if err := c.rebuild(); err != nil {
+
+	err := c.rebuild()
+	if err != nil {
 		return nil, err
 	}
 
@@ -202,7 +205,7 @@ func (c *CrosstalkCanceller) ProcessStereo(left, right float64) (float64, float6
 	crossToL := 0.0
 	crossToR := 0.0
 
-	for i := 0; i < c.stages; i++ {
+	for i := range c.stages {
 		delayedR := c.lineLFromR[i].tick(right)
 		delayedL := c.lineRFromL[i].tick(left)
 
@@ -315,7 +318,8 @@ func (c *CrosstalkCanceller) StageDelaySamples() int { return c.stageDelaySample
 func (c *CrosstalkCanceller) SampleRate() float64 { return c.sampleRate }
 
 func (c *CrosstalkCanceller) rebuild() error {
-	if err := validateCancellerGeometry(c.listenerDistance, c.speakerDistance, c.headRadius); err != nil {
+	err := validateCancellerGeometry(c.listenerDistance, c.speakerDistance, c.headRadius)
+	if err != nil {
 		return err
 	}
 
@@ -326,15 +330,9 @@ func (c *CrosstalkCanceller) rebuild() error {
 	pathDeltaMeters := c.pathDeltaMeters()
 	delaySeconds := pathDeltaMeters / c.speedOfSound
 
-	baseDelay := int(math.Round(delaySeconds * c.sampleRate))
-	if baseDelay < 1 {
-		baseDelay = 1
-	}
+	baseDelay := max(int(math.Round(delaySeconds*c.sampleRate)), 1)
 
-	stageDelay := int(math.Round(0.00015 * c.sampleRate))
-	if stageDelay < 1 {
-		stageDelay = 1
-	}
+	stageDelay := max(int(math.Round(0.00015*c.sampleRate)), 1)
 
 	c.baseDelaySamples = baseDelay
 	c.stageDelaySamples = stageDelay
@@ -348,7 +346,7 @@ func (c *CrosstalkCanceller) rebuild() error {
 	shelf := design.HighShelf(c.shelfFreq, c.shelfGainDB, defaultCancellerShelfQ, c.sampleRate)
 
 	gain := c.attenuation
-	for i := 0; i < c.stages; i++ {
+	for i := range c.stages {
 		stageSamples := c.baseDelaySamples + i*c.stageDelaySamples
 		c.stageGains[i] = gain
 		gain *= c.attenuation

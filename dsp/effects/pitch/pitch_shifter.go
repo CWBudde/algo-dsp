@@ -69,7 +69,9 @@ func NewPitchShifter(sampleRate float64) (*PitchShifter, error) {
 		overlapMs:  defaultPitchShifterOverlapMs,
 		searchMs:   defaultPitchShifterSearchMs,
 	}
-	if err := p.rebuild(); err != nil {
+
+	err := p.rebuild()
+	if err != nil {
 		return nil, err
 	}
 
@@ -103,7 +105,9 @@ func (p *PitchShifter) SetSampleRate(sampleRate float64) error {
 	old := p.sampleRate
 
 	p.sampleRate = sampleRate
-	if err := p.rebuild(); err != nil {
+
+	err := p.rebuild()
+	if err != nil {
 		p.sampleRate = old
 		_ = p.rebuild()
 
@@ -132,7 +136,9 @@ func (p *PitchShifter) SetPitchSemitones(semitones float64) error {
 	}
 
 	ratio := math.Pow(2, semitones/12.0)
-	if err := p.SetPitchRatio(ratio); err != nil {
+
+	err := p.SetPitchRatio(ratio)
+	if err != nil {
 		return fmt.Errorf("pitch shifter semitones out of range: %w", err)
 	}
 
@@ -150,7 +156,9 @@ func (p *PitchShifter) SetSequence(ms float64) error {
 	old := p.sequenceMs
 
 	p.sequenceMs = ms
-	if err := p.rebuild(); err != nil {
+
+	err := p.rebuild()
+	if err != nil {
 		p.sequenceMs = old
 		_ = p.rebuild()
 
@@ -171,7 +179,9 @@ func (p *PitchShifter) SetOverlap(ms float64) error {
 	old := p.overlapMs
 
 	p.overlapMs = ms
-	if err := p.rebuild(); err != nil {
+
+	err := p.rebuild()
+	if err != nil {
 		p.overlapMs = old
 		_ = p.rebuild()
 
@@ -192,7 +202,9 @@ func (p *PitchShifter) SetSearch(ms float64) error {
 	old := p.searchMs
 
 	p.searchMs = ms
-	if err := p.rebuild(); err != nil {
+
+	err := p.rebuild()
+	if err != nil {
 		p.searchMs = old
 		_ = p.rebuild()
 
@@ -245,15 +257,9 @@ func (p *PitchShifter) rebuild() error {
 			p.overlapMs, p.sequenceMs)
 	}
 
-	p.sequenceLen = int(math.Round(p.sequenceMs * 0.001 * p.sampleRate))
-	if p.sequenceLen < 32 {
-		p.sequenceLen = 32
-	}
+	p.sequenceLen = max(int(math.Round(p.sequenceMs*0.001*p.sampleRate)), 32)
 
-	p.overlapLen = int(math.Round(p.overlapMs * 0.001 * p.sampleRate))
-	if p.overlapLen < 8 {
-		p.overlapLen = 8
-	}
+	p.overlapLen = max(int(math.Round(p.overlapMs*0.001*p.sampleRate)), 8)
 
 	if p.overlapLen >= p.sequenceLen {
 		return fmt.Errorf("pitch shifter overlap too large for sequence: overlap=%d sequence=%d",
@@ -265,10 +271,7 @@ func (p *PitchShifter) rebuild() error {
 		return fmt.Errorf("pitch shifter output hop too small: %d", p.stepOut)
 	}
 
-	p.searchLen = int(math.Round(p.searchMs * 0.001 * p.sampleRate))
-	if p.searchLen < 1 {
-		p.searchLen = 1
-	}
+	p.searchLen = max(int(math.Round(p.searchMs*0.001*p.sampleRate)), 1)
 
 	p.fadeIn = make([]float64, p.overlapLen)
 
@@ -291,10 +294,7 @@ func (p *PitchShifter) rebuild() error {
 }
 
 func (p *PitchShifter) timeStretch(input []float64) []float64 {
-	targetLen := int(math.Round(float64(len(input)) * p.pitchRatio))
-	if targetLen < 1 {
-		targetLen = 1
-	}
+	targetLen := max(int(math.Round(float64(len(input))*p.pitchRatio)), 1)
 
 	nominalInStep := float64(p.stepOut) / p.pitchRatio
 	if nominalInStep < 1 {
@@ -305,7 +305,7 @@ func (p *PitchShifter) timeStretch(input []float64) []float64 {
 	outCap := nFrames*p.stepOut + p.sequenceLen + 1
 	out := make([]float64, outCap)
 
-	for i := 0; i < p.sequenceLen; i++ {
+	for i := range p.sequenceLen {
 		out[i] = pitchSampleZero(input, i)
 	}
 
@@ -316,7 +316,7 @@ func (p *PitchShifter) timeStretch(input []float64) []float64 {
 
 	for outLen < targetLen+p.sequenceLen {
 		refStart := prevStart + p.stepOut
-		for i := 0; i < p.overlapLen; i++ {
+		for i := range p.overlapLen {
 			ref[i] = pitchSampleZero(input, refStart+i)
 		}
 
@@ -324,7 +324,7 @@ func (p *PitchShifter) timeStretch(input []float64) []float64 {
 		candStart := p.findBestOverlap(ref, input, predicted)
 
 		outStart := outLen - p.overlapLen
-		for i := 0; i < p.overlapLen; i++ {
+		for i := range p.overlapLen {
 			yOld := out[outStart+i]
 			yNew := pitchSampleZero(input, candStart+i)
 			out[outStart+i] = yOld*p.fadeOut[i] + yNew*p.fadeIn[i]

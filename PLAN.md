@@ -606,6 +606,7 @@ A vocoder works in three stages:
 3. **Synthesis bank** — the carrier signal is fed through N matching bandpass (or LP/HP) filters. Each band's output is amplitude-modulated by the analysis envelope extracted in step 2. The modulated bands are summed to form the vocoded output.
 
 A final output stage blends:
+
 - **Vocoded mix** (`VocoderLevel`) — the summed carrier-reshaped output
 - **Dry carrier** (`SynthLevel`) — the unprocessed carrier (adds brightness/presence)
 - **Dry modulator** (`InputLevel`) — the unprocessed modulator (optional intelligibility aid)

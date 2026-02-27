@@ -77,7 +77,8 @@ func NewSpectralPitchShifter(sampleRate float64) (*SpectralPitchShifter, error) 
 	}
 	spectralPitchShifter.updateSynthesisHop()
 
-	if err := spectralPitchShifter.rebuildState(); err != nil {
+	err := spectralPitchShifter.rebuildState()
+	if err != nil {
 		return nil, err
 	}
 
@@ -165,7 +166,9 @@ func (s *SpectralPitchShifter) SetPitchSemitones(semitones float64) error {
 	}
 
 	ratio := math.Pow(2, semitones/12.0)
-	if err := s.SetPitchRatio(ratio); err != nil {
+
+	err := s.SetPitchRatio(ratio)
+	if err != nil {
 		return fmt.Errorf("spectral pitch shifter semitones out of range: %w", err)
 	}
 
@@ -265,7 +268,8 @@ func (s *SpectralPitchShifter) ProcessWithError(input []float64) ([]float64, err
 		return nil, nil
 	}
 
-	if err := s.validate(); err != nil {
+	err := s.validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -290,7 +294,7 @@ func (s *SpectralPitchShifter) processBinShift(input []float64) ([]float64, erro
 	hopF := float64(hop)
 	ratio := s.pitchRatio
 
-	for frame := 0; frame < frameCount; frame++ {
+	for frame := range frameCount {
 		pos := frame * hop
 
 		for i := range s.frameSize {
@@ -304,7 +308,8 @@ func (s *SpectralPitchShifter) processBinShift(input []float64) ([]float64, erro
 			s.analysisSpectrum[i] = complex(x*s.windowCoeffs[i], 0)
 		}
 
-		if err := s.plan.Forward(s.analysisSpectrum, s.analysisSpectrum); err != nil {
+		err := s.plan.Forward(s.analysisSpectrum, s.analysisSpectrum)
+		if err != nil {
 			return nil, fmt.Errorf("spectral pitch shifter: forward FFT failed: %w", err)
 		}
 
@@ -359,7 +364,8 @@ func (s *SpectralPitchShifter) processBinShift(input []float64) ([]float64, erro
 			s.synthesisSpectrum[s.frameSize-k] = complex(real(v), -imag(v))
 		}
 
-		if err := s.plan.Inverse(s.timeFrame, s.synthesisSpectrum); err != nil {
+		err = s.plan.Inverse(s.timeFrame, s.synthesisSpectrum)
+		if err != nil {
 			return nil, fmt.Errorf("spectral pitch shifter: inverse FFT failed: %w", err)
 		}
 
@@ -393,7 +399,7 @@ func (s *SpectralPitchShifter) processTimeStretch(input []float64) ([]float64, e
 	analysisHopF := float64(s.analysisHop)
 	synthesisHopF := float64(s.synthesisHop)
 
-	for frame := 0; frame < frameCount; frame++ {
+	for frame := range frameCount {
 		inPos := frame * s.analysisHop
 		outPos := frame * s.synthesisHop
 
@@ -408,7 +414,8 @@ func (s *SpectralPitchShifter) processTimeStretch(input []float64) ([]float64, e
 			s.analysisSpectrum[i] = complex(x*s.windowCoeffs[i], 0)
 		}
 
-		if err := s.plan.Forward(s.analysisSpectrum, s.analysisSpectrum); err != nil {
+		err := s.plan.Forward(s.analysisSpectrum, s.analysisSpectrum)
+		if err != nil {
 			return nil, fmt.Errorf("spectral pitch shifter: forward FFT failed: %w", err)
 		}
 
@@ -480,7 +487,8 @@ func (s *SpectralPitchShifter) processTimeStretch(input []float64) ([]float64, e
 			s.synthesisSpectrum[s.frameSize-k] = complex(real(v), -imag(v))
 		}
 
-		if err := s.plan.Inverse(s.timeFrame, s.synthesisSpectrum); err != nil {
+		err = s.plan.Inverse(s.timeFrame, s.synthesisSpectrum)
+		if err != nil {
 			return nil, fmt.Errorf("spectral pitch shifter: inverse FFT failed: %w", err)
 		}
 
@@ -600,10 +608,7 @@ func (s *SpectralPitchShifter) rebuildState() error {
 }
 
 func (s *SpectralPitchShifter) updateSynthesisHop() {
-	h := int(math.Round(float64(s.analysisHop) * s.pitchRatio))
-	if h < 1 {
-		h = 1
-	}
+	h := max(int(math.Round(float64(s.analysisHop)*s.pitchRatio)), 1)
 
 	s.synthesisHop = h
 }

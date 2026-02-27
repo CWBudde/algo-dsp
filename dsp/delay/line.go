@@ -195,11 +195,8 @@ func (d *Line) readLanczos(delay float64, size int) float64 {
 	t := delay - float64(p)
 
 	var samples [2 * a]float64
-	for i := 0; i < 2*a; i++ {
-		idx := p - (a - 1) + i
-		if idx < 0 {
-			idx = 0
-		}
+	for i := range 2 * a {
+		idx := max(p-(a-1)+i, 0)
 
 		samples[i] = d.Read(idx)
 	}
@@ -224,11 +221,8 @@ func (d *Line) readSinc(delay float64, size int) float64 {
 	t := delay - float64(p)
 
 	samples := make([]float64, taps)
-	for i := 0; i < taps; i++ {
-		idx := p - (n - 1) + i
-		if idx < 0 {
-			idx = 0
-		}
+	for i := range taps {
+		idx := max(p-(n-1)+i, 0)
 
 		samples[i] = d.Read(idx)
 	}

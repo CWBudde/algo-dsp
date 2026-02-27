@@ -82,7 +82,7 @@ func TestAutoWahMixZeroIsTransparent(t *testing.T) {
 		t.Fatalf("NewAutoWah() error = %v", err)
 	}
 
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		in := 0.4 * math.Sin(2*math.Pi*330*float64(i)/48000)
 
 		out := autoWah.Process(in)
@@ -103,7 +103,7 @@ func TestAutoWahCenterFrequencyTracksEnvelope(t *testing.T) {
 		t.Fatalf("NewAutoWah() error = %v", err)
 	}
 
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		in := 0.02 * math.Sin(2*math.Pi*440*float64(i)/48000)
 		autoWah.Process(in)
 	}
@@ -112,7 +112,7 @@ func TestAutoWahCenterFrequencyTracksEnvelope(t *testing.T) {
 
 	autoWah.Reset()
 
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		in := 0.9 * math.Sin(2*math.Pi*440*float64(i)/48000)
 		autoWah.Process(in)
 	}
@@ -134,7 +134,7 @@ func TestAutoWahFiniteOutput(t *testing.T) {
 		t.Fatalf("NewAutoWah() error = %v", err)
 	}
 
-	for i := 0; i < 12000; i++ {
+	for i := range 12000 {
 		in := 0.8 * math.Sin(2*math.Pi*220*float64(i)/48000)
 
 		out := autoWah.Process(in)
@@ -177,7 +177,8 @@ func TestAutoWahValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.fn(); err == nil {
+			err := tt.fn()
+			if err == nil {
 				t.Fatal("expected validation error, got nil")
 			}
 		})

@@ -356,10 +356,9 @@ func (e *Engine) processWidenerMonoInPlace(block []float64) {
 	// Mono fold-down approximation:
 	// Build a decorrelated side signal from a short delay, run through stereo widener,
 	// then fold back to mono with user-controlled wet mix.
-	delaySamples := int(e.sampleRate * 0.001) // 1 ms
-	if delaySamples < 1 {
-		delaySamples = 1
-	}
+	delaySamples := max(
+		// 1 ms
+		int(e.sampleRate*0.001), 1)
 
 	for i := range block {
 		left := dry[i]
@@ -389,10 +388,7 @@ func (e *Engine) processNodeWidenerMonoInPlace(block []float64, widener *spatial
 	dry := e.chainBuf[:len(block)]
 	copy(dry, block)
 
-	delaySamples := int(e.sampleRate * 0.001)
-	if delaySamples < 1 {
-		delaySamples = 1
-	}
+	delaySamples := max(int(e.sampleRate*0.001), 1)
 
 	for i := range block {
 		left := dry[i]

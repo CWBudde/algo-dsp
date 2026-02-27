@@ -396,7 +396,8 @@ func TestQuantizerNoiseShapingSpectralEffect(t *testing.T) {
 func TestQuantizerSetters(t *testing.T) {
 	quant, _ := NewQuantizer(44100)
 
-	if err := quant.SetBitDepth(24); err != nil {
+	err := quant.SetBitDepth(24)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -404,7 +405,8 @@ func TestQuantizerSetters(t *testing.T) {
 		t.Errorf("BitDepth = %d after Set", quant.BitDepth())
 	}
 
-	if err := quant.SetDitherType(DitherGaussian); err != nil {
+	err = quant.SetDitherType(DitherGaussian)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -412,7 +414,8 @@ func TestQuantizerSetters(t *testing.T) {
 		t.Errorf("DitherType = %v after Set", quant.DitherType())
 	}
 
-	if err := quant.SetDitherAmplitude(0.5); err != nil {
+	err = quant.SetDitherAmplitude(0.5)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -430,23 +433,28 @@ func TestQuantizerSetters(t *testing.T) {
 func TestQuantizerSetterValidation(t *testing.T) {
 	quant, _ := NewQuantizer(44100)
 
-	if err := quant.SetBitDepth(0); err == nil {
+	err := quant.SetBitDepth(0)
+	if err == nil {
 		t.Error("expected error for SetBitDepth(0)")
 	}
 
-	if err := quant.SetBitDepth(33); err == nil {
+	err = quant.SetBitDepth(33)
+	if err == nil {
 		t.Error("expected error for SetBitDepth(33)")
 	}
 
-	if err := quant.SetDitherType(DitherType(99)); err == nil {
+	err = quant.SetDitherType(DitherType(99))
+	if err == nil {
 		t.Error("expected error for invalid DitherType")
 	}
 
-	if err := quant.SetDitherAmplitude(-1); err == nil {
+	err = quant.SetDitherAmplitude(-1)
+	if err == nil {
 		t.Error("expected error for negative amplitude")
 	}
 
-	if err := quant.SetDitherAmplitude(math.NaN()); err == nil {
+	err = quant.SetDitherAmplitude(math.NaN())
+	if err == nil {
 		t.Error("expected error for NaN amplitude")
 	}
 }

@@ -399,7 +399,7 @@ func refCheby2LP(freq float64, order int, ripple float64, sampleRate float64) []
 	mu := math.Asinh(ripple) / float64(order)
 	out := make([]biquad.Coefficients, 0, (order+1)/2)
 
-	for i := 0; i < order/2; i++ {
+	for i := range order / 2 {
 		phi := math.Pi * float64(2*i+1) / float64(2*order)
 		sigma1 := math.Sinh(mu) * math.Sin(phi)
 		omega1 := math.Cosh(mu) * math.Cos(phi)
@@ -448,7 +448,7 @@ func refCheby2HP(freq float64, order int, ripple float64, sampleRate float64) []
 	mu := math.Asinh(ripple) / float64(order)
 	out := make([]biquad.Coefficients, 0, (order+1)/2)
 
-	for i := 0; i < order/2; i++ {
+	for i := range order / 2 {
 		phi := math.Pi * float64(2*i+1) / float64(2*order)
 		sigma1 := math.Sinh(mu) * math.Sin(phi)
 		omega1 := math.Cosh(mu) * math.Cos(phi)
@@ -484,7 +484,7 @@ func refCheby2HP(freq float64, order int, ripple float64, sampleRate float64) []
 }
 
 // butterworthFirstOrderLP and butterworthFirstOrderHP are test helpers
-// used by legacy test reference implementations
+// used by legacy test reference implementations.
 func butterworthFirstOrderLP(freq, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
 		return biquad.Coefficients{}

@@ -1,6 +1,7 @@
 package signal
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -92,7 +93,7 @@ func (g *Generator) Multisine(freqsHz []float64, amplitude float64, samples int)
 	}
 
 	if len(freqsHz) == 0 {
-		return nil, fmt.Errorf("multisine frequencies must not be empty")
+		return nil, errors.New("multisine frequencies must not be empty")
 	}
 
 	if g.cfg.SampleRate <= 0 {
@@ -254,7 +255,7 @@ func Normalize(data []float64, targetPeak float64) ([]float64, error) {
 	}
 
 	if len(data) == 0 {
-		return nil, fmt.Errorf("normalize input must not be empty")
+		return nil, errors.New("normalize input must not be empty")
 	}
 
 	maxAbs := 0.0
@@ -303,7 +304,7 @@ func Clip(data []float64, minVal, maxVal float64) ([]float64, error) {
 // RemoveDC removes the mean from the input and returns a new slice.
 func RemoveDC(data []float64) ([]float64, error) {
 	if len(data) == 0 {
-		return nil, fmt.Errorf("remove dc input must not be empty")
+		return nil, errors.New("remove dc input must not be empty")
 	}
 
 	sum := 0.0

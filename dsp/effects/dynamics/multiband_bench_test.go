@@ -11,7 +11,7 @@ func BenchmarkMultibandProcessSample2Band(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = mc.ProcessSample(sample)
 	}
 }
@@ -22,7 +22,7 @@ func BenchmarkMultibandProcessSample3Band(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = mc.ProcessSample(sample)
 	}
 }
@@ -33,7 +33,7 @@ func BenchmarkMultibandProcessSample4Band(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = mc.ProcessSample(sample)
 	}
 }
@@ -44,7 +44,7 @@ func BenchmarkMultibandProcessSample3BandLR8(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = mc.ProcessSample(sample)
 	}
 }
@@ -59,7 +59,7 @@ func BenchmarkMultibandProcessInPlace128(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		mc.ProcessInPlace(buf)
 	}
 }
@@ -74,7 +74,7 @@ func BenchmarkMultibandProcessInPlace512(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		mc.ProcessInPlace(buf)
 	}
 }
@@ -89,7 +89,7 @@ func BenchmarkMultibandProcessInPlace1024(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		mc.ProcessInPlace(buf)
 	}
 }

@@ -1,6 +1,7 @@
 package moog
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -127,7 +128,8 @@ func WithVariant(variant Variant) Option {
 // WithCutoffHz sets cutoff in Hz. Must be finite and > 0.
 func WithCutoffHz(cutoffHz float64) Option {
 	return func(cfg *config) error {
-		if err := validateFiniteRange(cutoffHz, minCutoffHz, math.Inf(1), "cutoff"); err != nil {
+		err := validateFiniteRange(cutoffHz, minCutoffHz, math.Inf(1), "cutoff")
+		if err != nil {
 			return err
 		}
 
@@ -140,7 +142,8 @@ func WithCutoffHz(cutoffHz float64) Option {
 // WithResonance sets feedback resonance in [0, 4].
 func WithResonance(resonance float64) Option {
 	return func(cfg *config) error {
-		if err := validateFiniteRange(resonance, 0, maxResonance, "resonance"); err != nil {
+		err := validateFiniteRange(resonance, 0, maxResonance, "resonance")
+		if err != nil {
 			return err
 		}
 
@@ -153,7 +156,8 @@ func WithResonance(resonance float64) Option {
 // WithDrive sets nonlinear drive in [0.1, 24].
 func WithDrive(drive float64) Option {
 	return func(cfg *config) error {
-		if err := validateFiniteRange(drive, minDrive, maxDrive, "drive"); err != nil {
+		err := validateFiniteRange(drive, minDrive, maxDrive, "drive")
+		if err != nil {
 			return err
 		}
 
@@ -166,7 +170,8 @@ func WithDrive(drive float64) Option {
 // WithInputGain sets linear pre-ladder gain in [0, 24].
 func WithInputGain(gain float64) Option {
 	return func(cfg *config) error {
-		if err := validateFiniteRange(gain, minInputGain, maxInputGain, "input gain"); err != nil {
+		err := validateFiniteRange(gain, minInputGain, maxInputGain, "input gain")
+		if err != nil {
 			return err
 		}
 
@@ -179,7 +184,8 @@ func WithInputGain(gain float64) Option {
 // WithOutputGain sets post-ladder output gain in [0, 24].
 func WithOutputGain(gain float64) Option {
 	return func(cfg *config) error {
-		if err := validateFiniteRange(gain, minOutputGain, maxOutputGain, "output gain"); err != nil {
+		err := validateFiniteRange(gain, minOutputGain, maxOutputGain, "output gain")
+		if err != nil {
 			return err
 		}
 
@@ -192,7 +198,8 @@ func WithOutputGain(gain float64) Option {
 // WithThermalVoltage sets thermal-voltage-style shaping in [0.1, 10].
 func WithThermalVoltage(thermalVoltage float64) Option {
 	return func(cfg *config) error {
-		if err := validateFiniteRange(thermalVoltage, minThermalVoltage, maxThermalVoltage, "thermal voltage"); err != nil {
+		err := validateFiniteRange(thermalVoltage, minThermalVoltage, maxThermalVoltage, "thermal voltage")
+		if err != nil {
 			return err
 		}
 
@@ -292,7 +299,8 @@ func New(sampleRate float64, opts ...Option) (*Filter, error) {
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -311,7 +319,8 @@ func New(sampleRate float64, opts ...Option) (*Filter, error) {
 		newtonIters:     cfg.newtonIters,
 	}
 
-	if err := filter.rebuild(); err != nil {
+	err := filter.rebuild()
+	if err != nil {
 		return nil, err
 	}
 
@@ -375,7 +384,8 @@ func (f *Filter) SetVariant(variant Variant) error {
 
 // SetCutoffHz updates cutoff and rebuilds coefficients.
 func (f *Filter) SetCutoffHz(cutoffHz float64) error {
-	if err := validateFiniteRange(cutoffHz, minCutoffHz, math.Inf(1), "cutoff"); err != nil {
+	err := validateFiniteRange(cutoffHz, minCutoffHz, math.Inf(1), "cutoff")
+	if err != nil {
 		return err
 	}
 
@@ -386,7 +396,8 @@ func (f *Filter) SetCutoffHz(cutoffHz float64) error {
 
 // SetResonance updates resonance and rebuilds coefficients.
 func (f *Filter) SetResonance(resonance float64) error {
-	if err := validateFiniteRange(resonance, 0, maxResonance, "resonance"); err != nil {
+	err := validateFiniteRange(resonance, 0, maxResonance, "resonance")
+	if err != nil {
 		return err
 	}
 
@@ -397,7 +408,8 @@ func (f *Filter) SetResonance(resonance float64) error {
 
 // SetDrive updates nonlinear drive.
 func (f *Filter) SetDrive(drive float64) error {
-	if err := validateFiniteRange(drive, minDrive, maxDrive, "drive"); err != nil {
+	err := validateFiniteRange(drive, minDrive, maxDrive, "drive")
+	if err != nil {
 		return err
 	}
 
@@ -409,7 +421,8 @@ func (f *Filter) SetDrive(drive float64) error {
 
 // SetInputGain updates linear pre-ladder gain.
 func (f *Filter) SetInputGain(gain float64) error {
-	if err := validateFiniteRange(gain, minInputGain, maxInputGain, "input gain"); err != nil {
+	err := validateFiniteRange(gain, minInputGain, maxInputGain, "input gain")
+	if err != nil {
 		return err
 	}
 
@@ -420,7 +433,8 @@ func (f *Filter) SetInputGain(gain float64) error {
 
 // SetOutputGain updates post-ladder output gain.
 func (f *Filter) SetOutputGain(gain float64) error {
-	if err := validateFiniteRange(gain, minOutputGain, maxOutputGain, "output gain"); err != nil {
+	err := validateFiniteRange(gain, minOutputGain, maxOutputGain, "output gain")
+	if err != nil {
 		return err
 	}
 
@@ -432,7 +446,8 @@ func (f *Filter) SetOutputGain(gain float64) error {
 
 // SetThermalVoltage updates shaping and rebuilds coefficients.
 func (f *Filter) SetThermalVoltage(thermalVoltage float64) error {
-	if err := validateFiniteRange(thermalVoltage, minThermalVoltage, maxThermalVoltage, "thermal voltage"); err != nil {
+	err := validateFiniteRange(thermalVoltage, minThermalVoltage, maxThermalVoltage, "thermal voltage")
+	if err != nil {
 		return err
 	}
 
@@ -491,7 +506,7 @@ func (f *Filter) State() State {
 // SetState restores an externally saved processor state.
 func (f *Filter) SetState(state State) error {
 	if !stateIsFinite(state) {
-		return fmt.Errorf("moog: state contains NaN or Inf")
+		return errors.New("moog: state contains NaN or Inf")
 	}
 
 	f.state = state
@@ -667,7 +682,7 @@ func (f *Filter) processZDF(input float64) float64 {
 	// Initial estimate: previous output.
 	y3est := state.PrevOutput
 
-	for iter := 0; iter < f.newtonIters; iter++ {
+	for range f.newtonIters {
 		u := inp - k*y3est
 
 		// Stage 0: dy0/du = gk * sech²(shape*u) (shape cancels in derivative).
@@ -747,27 +762,33 @@ func (f *Filter) rebuild() error {
 		return fmt.Errorf("moog: invalid variant: %d", f.variant)
 	}
 
-	if err := validateFiniteRange(f.cutoffHz, minCutoffHz, math.Inf(1), "cutoff"); err != nil {
+	err := validateFiniteRange(f.cutoffHz, minCutoffHz, math.Inf(1), "cutoff")
+	if err != nil {
 		return err
 	}
 
-	if err := validateFiniteRange(f.resonance, 0, maxResonance, "resonance"); err != nil {
+	err = validateFiniteRange(f.resonance, 0, maxResonance, "resonance")
+	if err != nil {
 		return err
 	}
 
-	if err := validateFiniteRange(f.drive, minDrive, maxDrive, "drive"); err != nil {
+	err = validateFiniteRange(f.drive, minDrive, maxDrive, "drive")
+	if err != nil {
 		return err
 	}
 
-	if err := validateFiniteRange(f.inputGain, minInputGain, maxInputGain, "input gain"); err != nil {
+	err = validateFiniteRange(f.inputGain, minInputGain, maxInputGain, "input gain")
+	if err != nil {
 		return err
 	}
 
-	if err := validateFiniteRange(f.outputGain, minOutputGain, maxOutputGain, "output gain"); err != nil {
+	err = validateFiniteRange(f.outputGain, minOutputGain, maxOutputGain, "output gain")
+	if err != nil {
 		return err
 	}
 
-	if err := validateFiniteRange(f.thermalVoltage, minThermalVoltage, maxThermalVoltage, "thermal voltage"); err != nil {
+	err = validateFiniteRange(f.thermalVoltage, minThermalVoltage, maxThermalVoltage, "thermal voltage")
+	if err != nil {
 		return err
 	}
 

@@ -98,7 +98,7 @@ func TestTransformerSimulationMixZeroTransparent(t *testing.T) {
 		t.Fatalf("NewTransformerSimulation() error = %v", err)
 	}
 
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		in := math.Sin(2 * math.Pi * 440 * float64(i) / 48000)
 
 		out := ts.ProcessSample(in)
@@ -165,7 +165,7 @@ func TestTransformerSimulationHighQualityReducesAliasingSpurs(t *testing.T) {
 	outHQ := make([]float64, n)
 
 	outLW := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		in[i] = 0.8 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
 		outHQ[i] = hq.ProcessSample(in[i])
 		outLW[i] = lw.ProcessSample(in[i])

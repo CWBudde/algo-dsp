@@ -1,6 +1,7 @@
 package sweep
 
 import (
+	"errors"
 	"math"
 	"testing"
 )
@@ -24,7 +25,7 @@ func TestLogSweepValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.sweep.Validate()
-			if err != tt.wantErr {
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Validate() = %v, want %v", err, tt.wantErr)
 			}
 		})
@@ -221,10 +222,7 @@ func TestLogSweepDeconvolveKnownIR(t *testing.T) {
 	// with amplitude roughly 0.3 of the main peak
 	searchStart := peakIdx + 80
 
-	searchEnd := peakIdx + 120
-	if searchEnd > len(recovered) {
-		searchEnd = len(recovered)
-	}
+	searchEnd := min(peakIdx+120, len(recovered))
 
 	secondPeakVal := 0.0
 	for i := searchStart; i < searchEnd; i++ {
@@ -244,12 +242,12 @@ func TestLogSweepDeconvolveEmptyResponse(t *testing.T) {
 	s := &LogSweep{100, 4000, 0.5, 16000}
 
 	_, err := s.Deconvolve(nil)
-	if err != ErrEmptyResponse {
+	if !errors.Is(err, ErrEmptyResponse) {
 		t.Errorf("Deconvolve(nil) = %v, want ErrEmptyResponse", err)
 	}
 
 	_, err = s.Deconvolve([]float64{})
-	if err != ErrEmptyResponse {
+	if !errors.Is(err, ErrEmptyResponse) {
 		t.Errorf("Deconvolve([]) = %v, want ErrEmptyResponse", err)
 	}
 }
@@ -303,7 +301,7 @@ func TestLogSweepExtractHarmonicIRsValidation(t *testing.T) {
 	sweep, _ := s.Generate()
 
 	_, err := s.ExtractHarmonicIRs(sweep, 1)
-	if err != ErrMaxHarmonic {
+	if !errors.Is(err, ErrMaxHarmonic) {
 		t.Errorf("ExtractHarmonicIRs(maxHarmonic=1) = %v, want ErrMaxHarmonic", err)
 	}
 }
@@ -324,7 +322,7 @@ func TestLinearSweepValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.sweep.Validate()
-			if err != tt.wantErr {
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Validate() = %v, want %v", err, tt.wantErr)
 			}
 		})

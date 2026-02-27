@@ -190,7 +190,8 @@ func NewTransformerSimulation(sampleRate float64, opts ...TransformerSimulationO
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -206,7 +207,8 @@ func NewTransformerSimulation(sampleRate float64, opts ...TransformerSimulationO
 		overSampling: cfg.overSampling,
 	}
 
-	if err := t.rebuildFilters(); err != nil {
+	err := t.rebuildFilters()
+	if err != nil {
 		return nil, err
 	}
 
@@ -400,7 +402,7 @@ func (t *TransformerSimulation) processHighQuality(x float64) float64 {
 
 	var out float64
 
-	for i := 0; i < t.overSampling; i++ {
+	for i := range t.overSampling {
 		inOS := 0.0
 		if i == 0 {
 			inOS = x * os

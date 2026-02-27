@@ -1,6 +1,7 @@
 package hilbert
 
 import (
+	"errors"
 	"fmt"
 	"math"
 )
@@ -15,7 +16,8 @@ const (
 // DesignCoefficients computes polyphase Hilbert allpass coefficients for the
 // given number of coefficients and normalized transition bandwidth.
 func DesignCoefficients(numberOfCoeffs int, transition float64) ([]float64, error) {
-	if err := validateDesignParams(numberOfCoeffs, transition); err != nil {
+	err := validateDesignParams(numberOfCoeffs, transition)
+	if err != nil {
 		return nil, err
 	}
 
@@ -33,7 +35,8 @@ func DesignCoefficients(numberOfCoeffs int, transition float64) ([]float64, erro
 // AttenuationFromOrderTBW computes stopband attenuation in dB for the given
 // coefficient count and transition bandwidth.
 func AttenuationFromOrderTBW(numberOfCoeffs int, transition float64) (float64, error) {
-	if err := validateDesignParams(numberOfCoeffs, transition); err != nil {
+	err := validateDesignParams(numberOfCoeffs, transition)
+	if err != nil {
 		return 0, err
 	}
 
@@ -47,6 +50,7 @@ func validateDesignParams(numberOfCoeffs int, transition float64) error {
 	if numberOfCoeffs < 1 {
 		return fmt.Errorf("hilbert: number of coefficients must be >= 1: %d", numberOfCoeffs)
 	}
+
 	if !isFinite(transition) || transition <= 0 || transition >= 0.5 {
 		return fmt.Errorf("hilbert: transition must be finite and in (0, 0.5): %g", transition)
 	}
@@ -56,13 +60,14 @@ func validateDesignParams(numberOfCoeffs int, transition float64) error {
 
 func validateCoefficients64(coeffs []float64) error {
 	if len(coeffs) < 1 {
-		return fmt.Errorf("hilbert: coefficients must not be empty")
+		return errors.New("hilbert: coefficients must not be empty")
 	}
 
 	for i, c := range coeffs {
 		if !isFinite(c) {
 			return fmt.Errorf("hilbert: coefficient[%d] is not finite", i)
 		}
+
 		if math.Abs(c) >= 1 {
 			return fmt.Errorf("hilbert: coefficient[%d] magnitude must be < 1 for stability: %g", i, c)
 		}
@@ -73,13 +78,14 @@ func validateCoefficients64(coeffs []float64) error {
 
 func validateCoefficients32(coeffs []float32) error {
 	if len(coeffs) < 1 {
-		return fmt.Errorf("hilbert: coefficients must not be empty")
+		return errors.New("hilbert: coefficients must not be empty")
 	}
 
 	for i, c := range coeffs {
 		if !isFinite(float64(c)) {
 			return fmt.Errorf("hilbert: coefficient[%d] is not finite", i)
 		}
+
 		if math.Abs(float64(c)) >= 1 {
 			return fmt.Errorf("hilbert: coefficient[%d] magnitude must be < 1 for stability: %g", i, c)
 		}
@@ -110,18 +116,21 @@ func computeCoefficient(index int, k, q float64, order int) float64 {
 	ww := (num * num) / (den * den)
 
 	r := math.Sqrt((1-ww*k)*(1-ww/k)) / (1 + ww)
+
 	return (1 - r) / (1 + r)
 }
 
 func computeACCNum(q float64, order, c int) float64 {
 	result := 0.0
 	i := 0
+
 	sign := 1.0
 	for {
 		term := math.Pow(q, float64(i*(i+1))) * (math.Sin(float64(i*2+1)*float64(c)*math.Pi/float64(order)) * sign)
 		result += term
 		sign = -sign
 		i++
+
 		if math.Abs(term) <= 1e-100 {
 			break
 		}
@@ -133,12 +142,14 @@ func computeACCNum(q float64, order, c int) float64 {
 func computeACCDen(q float64, order, c int) float64 {
 	result := 0.0
 	i := 1
+
 	sign := -1.0
 	for {
 		term := math.Pow(q, float64(i*i)) * math.Cos(2*float64(i)*float64(c)*math.Pi/float64(order)) * sign
 		result += term
 		sign = -sign
 		i++
+
 		if math.Abs(term) <= 1e-100 {
 			break
 		}

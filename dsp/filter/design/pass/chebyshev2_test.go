@@ -537,7 +537,7 @@ func TestChebyshev2LP_ImpulseResponse_Bounded(t *testing.T) {
 	out := chain.ProcessSample(1.0)
 
 	maxVal := math.Abs(out)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		out = chain.ProcessSample(0.0)
 		if v := math.Abs(out); v > maxVal {
 			maxVal = v
@@ -559,7 +559,7 @@ func TestChebyshev1LP_ImpulseResponse_Bounded(t *testing.T) {
 	out := chain.ProcessSample(1.0)
 
 	maxVal := math.Abs(out)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		out = chain.ProcessSample(0.0)
 		if v := math.Abs(out); v > maxVal {
 			maxVal = v
@@ -581,7 +581,7 @@ func TestChebyshev1HP_ImpulseResponse_Bounded(t *testing.T) {
 	out := chain.ProcessSample(1.0)
 
 	maxVal := math.Abs(out)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		out = chain.ProcessSample(0.0)
 		if v := math.Abs(out); v > maxVal {
 			maxVal = v
@@ -603,7 +603,7 @@ func TestChebyshev2HP_ImpulseResponse_Bounded(t *testing.T) {
 	out := chain.ProcessSample(1.0)
 
 	maxVal := math.Abs(out)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		out = chain.ProcessSample(0.0)
 		if v := math.Abs(out); v > maxVal {
 			maxVal = v

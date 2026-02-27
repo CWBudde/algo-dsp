@@ -137,7 +137,7 @@ func BenchmarkProcessBlock_Dispatch_AMD64(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				s.ProcessBlock(buf)
 			}
 		})

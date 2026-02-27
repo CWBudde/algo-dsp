@@ -93,7 +93,7 @@ func TestGranularMixZeroTransparent(t *testing.T) {
 		t.Fatalf("SetMix() error = %v", err)
 	}
 
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		in := 0.8 * math.Sin(2*math.Pi*440*float64(i)/48000)
 
 		out := g.ProcessSample(in)
@@ -117,7 +117,7 @@ func TestGranularSustainsTailEnergy(t *testing.T) {
 	g.SetRandomSeed(1)
 
 	in := make([]float64, 4096)
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		in[i] = math.Sin(2 * math.Pi * 440 * float64(i) / 48000)
 	}
 

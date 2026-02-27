@@ -302,6 +302,7 @@ func TestChain_UpdateCoefficients_AppliesNewCoefficients(t *testing.T) {
 	input := []float64{1, 0.5, -0.3, 0.7, 0, -1, 0.2, 0.8}
 	for i, x := range input {
 		want := ref.ProcessSample(x)
+
 		got := c.ProcessSample(x)
 		if !almostEqual(got, want, eps) {
 			t.Errorf("sample %d: got %.15f, want %.15f", i, got, want)

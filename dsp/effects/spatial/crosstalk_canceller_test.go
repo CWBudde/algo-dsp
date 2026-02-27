@@ -32,10 +32,7 @@ func TestCrosstalkCancellerDelayCalculation(t *testing.T) {
 		t.Fatalf("NewCrosstalkCanceller() error = %v", err)
 	}
 
-	expected := int(math.Round((c.pathDeltaMeters() / defaultCancellerSpeedOfSound) * c.SampleRate()))
-	if expected < 1 {
-		expected = 1
-	}
+	expected := max(int(math.Round((c.pathDeltaMeters()/defaultCancellerSpeedOfSound)*c.SampleRate())), 1)
 
 	if got := c.BaseDelaySamples(); got != expected {
 		t.Fatalf("base delay mismatch: got=%d want=%d", got, expected)
@@ -67,7 +64,7 @@ func TestCrosstalkCancellerInPlaceMatchesSampleBySample(t *testing.T) {
 	inL := make([]float64, n)
 
 	inR := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		inL[i] = math.Sin(2 * math.Pi * float64(i) / 21)
 		inR[i] = math.Sin(2*math.Pi*float64(i)/19 + 0.2)
 	}
@@ -107,7 +104,7 @@ func TestCrosstalkCancellerResetDeterministic(t *testing.T) {
 	inL := make([]float64, n)
 
 	inR := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		inL[i] = math.Sin(2 * math.Pi * float64(i) / 37)
 		inR[i] = math.Cos(2 * math.Pi * float64(i) / 29)
 	}
@@ -115,13 +112,13 @@ func TestCrosstalkCancellerResetDeterministic(t *testing.T) {
 	outL1 := make([]float64, n)
 
 	outR1 := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		outL1[i], outR1[i] = c.ProcessStereo(inL[i], inR[i])
 	}
 
 	c.Reset()
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		outL2, outR2 := c.ProcessStereo(inL[i], inR[i])
 		if math.Abs(outL1[i]-outL2) > 1e-12 {
 			t.Fatalf("left mismatch at %d after reset", i)

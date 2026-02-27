@@ -13,7 +13,7 @@ func BenchmarkPitchShifterProcessInPlace1024(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		p.ProcessInPlace(buf)
 	}
 }
@@ -29,7 +29,7 @@ func BenchmarkPitchShifterProcessInPlace4096(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		pitchShifter.ProcessInPlace(buf)
 	}
 }

@@ -34,8 +34,11 @@ func TestSetEQ_PreservesFilterStateOnSameOrder(t *testing.T) {
 
 	// Change HP frequency only — same family (rbj), type (highpass), order.
 	eq := e.eq
+
 	eq.HPFreq = 80 // was 40 Hz
-	if err := e.SetEQ(eq); err != nil {
+
+	err := e.SetEQ(eq)
+	if err != nil {
 		t.Fatalf("SetEQ: %v", err)
 	}
 
@@ -61,8 +64,11 @@ func TestSetEQ_ResetsStateOnFilterTypeChange(t *testing.T) {
 	// Switch from 2nd-order RBJ to 4th-order Butterworth.
 	eq := e.eq
 	eq.HPFamily = "butterworth"
+
 	eq.HPOrder = 4
-	if err := e.SetEQ(eq); err != nil {
+
+	err := e.SetEQ(eq)
+	if err != nil {
 		t.Fatalf("SetEQ: %v", err)
 	}
 

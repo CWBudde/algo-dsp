@@ -8,7 +8,7 @@ func BenchmarkStereoWidenerProcessStereo(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = w.ProcessStereo(l, r)
 	}
 }
@@ -19,7 +19,7 @@ func BenchmarkStereoWidenerProcessStereoBassMono(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = w.ProcessStereo(l, r)
 	}
 }
@@ -36,7 +36,7 @@ func benchmarkStereoWidenerInPlace(b *testing.B, n int) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = w.ProcessStereoInPlace(left, right)
 	}
 }
@@ -58,7 +58,7 @@ func benchmarkStereoWidenerInterleaved(b *testing.B, n int) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = w.ProcessInterleavedInPlace(buf)
 	}
 }

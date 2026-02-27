@@ -130,7 +130,9 @@ func (b *HarmonicBass) SetSampleRate(sampleRate float64) error {
 	}
 
 	b.sampleRate = sampleRate
-	if err := b.rebuildFilters(); err != nil {
+
+	err := b.rebuildFilters()
+	if err != nil {
 		return err
 	}
 
@@ -280,7 +282,8 @@ func (b *HarmonicBass) applyResponse() error {
 		return nil
 	}
 
-	if err := b.limiter.SetRelease(b.responseMs); err != nil {
+	err := b.limiter.SetRelease(b.responseMs)
+	if err != nil {
 		return err
 	}
 

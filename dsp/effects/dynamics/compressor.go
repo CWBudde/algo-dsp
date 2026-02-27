@@ -3,7 +3,7 @@ package dynamics
 import "fmt"
 
 const (
-	// Default compressor parameters
+	// Default compressor parameters.
 	defaultCompressorThresholdDB = -20.0
 	defaultCompressorRatio       = 4.0
 	defaultCompressorKneeDB      = 6.0
@@ -12,7 +12,7 @@ const (
 	defaultCompressorMakeupDB    = 0.0
 	defaultCompressorRMSWindowMs = 30.0
 
-	// Parameter validation ranges
+	// Parameter validation ranges.
 	minCompressorRatio     = 1.0
 	maxCompressorRatio     = 100.0
 	minCompressorAttackMs  = 0.1
@@ -127,7 +127,8 @@ func NewCompressor(sampleRate float64) (*Compressor, error) {
 
 // SetThreshold sets compression threshold in dB.
 func (c *Compressor) SetThreshold(dB float64) error {
-	if err := c.core.SetThreshold(dB); err != nil {
+	err := c.core.SetThreshold(dB)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -139,7 +140,8 @@ func (c *Compressor) SetThreshold(dB float64) error {
 
 // SetRatio sets compression ratio.
 func (c *Compressor) SetRatio(ratio float64) error {
-	if err := c.core.SetRatio(ratio); err != nil {
+	err := c.core.SetRatio(ratio)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -151,7 +153,8 @@ func (c *Compressor) SetRatio(ratio float64) error {
 
 // SetKnee sets soft-knee width in dB.
 func (c *Compressor) SetKnee(kneeDB float64) error {
-	if err := c.core.SetKnee(kneeDB); err != nil {
+	err := c.core.SetKnee(kneeDB)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -163,7 +166,8 @@ func (c *Compressor) SetKnee(kneeDB float64) error {
 
 // SetAttack sets attack time in milliseconds.
 func (c *Compressor) SetAttack(ms float64) error {
-	if err := c.core.SetAttack(ms); err != nil {
+	err := c.core.SetAttack(ms)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -175,7 +179,8 @@ func (c *Compressor) SetAttack(ms float64) error {
 
 // SetRelease sets release time in milliseconds.
 func (c *Compressor) SetRelease(ms float64) error {
-	if err := c.core.SetRelease(ms); err != nil {
+	err := c.core.SetRelease(ms)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -187,7 +192,8 @@ func (c *Compressor) SetRelease(ms float64) error {
 
 // SetMakeupGain sets manual makeup gain in dB and disables auto makeup.
 func (c *Compressor) SetMakeupGain(dB float64) error {
-	if err := c.core.SetManualMakeupGain(dB); err != nil {
+	err := c.core.SetManualMakeupGain(dB)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -200,7 +206,8 @@ func (c *Compressor) SetMakeupGain(dB float64) error {
 
 // SetAutoMakeup enables or disables automatic makeup gain.
 func (c *Compressor) SetAutoMakeup(enable bool) error {
-	if err := c.core.SetAutoMakeup(enable); err != nil {
+	err := c.core.SetAutoMakeup(enable)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -212,7 +219,8 @@ func (c *Compressor) SetAutoMakeup(enable bool) error {
 
 // SetSampleRate updates sample rate and recalculates coefficients.
 func (c *Compressor) SetSampleRate(sampleRate float64) error {
-	if err := c.core.SetSampleRate(sampleRate); err != nil {
+	err := c.core.SetSampleRate(sampleRate)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -224,7 +232,8 @@ func (c *Compressor) SetSampleRate(sampleRate float64) error {
 
 // SetTopology selects feedforward or feedback detector topology.
 func (c *Compressor) SetTopology(topology DynamicsTopology) error {
-	if err := c.core.SetTopology(topology); err != nil {
+	err := c.core.SetTopology(topology)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -235,7 +244,8 @@ func (c *Compressor) SetTopology(topology DynamicsTopology) error {
 
 // SetDetectorMode selects peak or RMS detector mode.
 func (c *Compressor) SetDetectorMode(mode DetectorMode) error {
-	if err := c.core.SetDetectorMode(mode); err != nil {
+	err := c.core.SetDetectorMode(mode)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -246,7 +256,8 @@ func (c *Compressor) SetDetectorMode(mode DetectorMode) error {
 
 // SetFeedbackRatioScale controls legacy feedback ratio-dependent time scaling.
 func (c *Compressor) SetFeedbackRatioScale(enable bool) error {
-	if err := c.core.SetFeedbackRatioScale(enable); err != nil {
+	err := c.core.SetFeedbackRatioScale(enable)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -258,7 +269,8 @@ func (c *Compressor) SetFeedbackRatioScale(enable bool) error {
 
 // SetRMSWindow sets RMS detector window length in milliseconds.
 func (c *Compressor) SetRMSWindow(ms float64) error {
-	if err := c.core.SetRMSWindow(ms); err != nil {
+	err := c.core.SetRMSWindow(ms)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -269,7 +281,8 @@ func (c *Compressor) SetRMSWindow(ms float64) error {
 
 // SetSidechainLowCut configures detector-only low-cut filter in Hz (0 disables).
 func (c *Compressor) SetSidechainLowCut(hz float64) error {
-	if err := c.core.SetSidechainLowCut(hz); err != nil {
+	err := c.core.SetSidechainLowCut(hz)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 
@@ -280,7 +293,8 @@ func (c *Compressor) SetSidechainLowCut(hz float64) error {
 
 // SetSidechainHighCut configures detector-only high-cut filter in Hz (0 disables).
 func (c *Compressor) SetSidechainHighCut(hz float64) error {
-	if err := c.core.SetSidechainHighCut(hz); err != nil {
+	err := c.core.SetSidechainHighCut(hz)
+	if err != nil {
 		return fmt.Errorf("compressor %w", err)
 	}
 

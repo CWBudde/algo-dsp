@@ -48,8 +48,11 @@ func NewDelay(sampleRate float64) (*Delay, error) {
 		feedback:     defaultDelayFeedback,
 		mix:          defaultDelayMix,
 	}
+
 	d.smoothCoeff = computeSmoothCoeff(sampleRate)
-	if err := d.reconfigureBuffer(); err != nil {
+
+	err := d.reconfigureBuffer()
+	if err != nil {
 		return nil, err
 	}
 
@@ -72,7 +75,8 @@ func (d *Delay) SetSampleRate(sampleRate float64) error {
 // Use this for static configuration before playback starts.  For smooth
 // in-playback changes that avoid audible clicks, use SetTargetTime.
 func (d *Delay) SetTime(seconds float64) error {
-	if err := d.validateTime(seconds); err != nil {
+	err := d.validateTime(seconds)
+	if err != nil {
 		return err
 	}
 
@@ -89,7 +93,8 @@ func (d *Delay) SetTime(seconds float64) error {
 // ProcessInPlace, avoiding the read-pointer jump that would otherwise cause
 // an audible click.
 func (d *Delay) SetTargetTime(seconds float64) error {
-	if err := d.validateTime(seconds); err != nil {
+	err := d.validateTime(seconds)
+	if err != nil {
 		return err
 	}
 
@@ -219,12 +224,9 @@ func (d *Delay) reconfigureBuffer() error {
 
 	// Preserve the newest available history after sample-rate changes.
 	if len(old) > 0 {
-		copyCount := len(old)
-		if copyCount > len(d.buffer) {
-			copyCount = len(d.buffer)
-		}
+		copyCount := min(len(old), len(d.buffer))
 
-		for i := 0; i < copyCount; i++ {
+		for i := range copyCount {
 			src := oldWrite - 1 - i
 			if src < 0 {
 				src += len(old)

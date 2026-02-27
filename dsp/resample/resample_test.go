@@ -138,22 +138,6 @@ func dbRatio(out, in float64) float64 {
 	return 20 * math.Log10(out/in)
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-
-	return b
-}
-
 func absInt(v int) int {
 	if v < 0 {
 		return -v

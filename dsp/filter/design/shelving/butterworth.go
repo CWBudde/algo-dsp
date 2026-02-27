@@ -12,7 +12,8 @@ import (
 // (positive for boost, negative for cut). order must be >= 1.
 // Returns a cascade of biquad sections.
 func ButterworthLowShelf(sampleRate, freqHz, gainDB float64, order int) ([]biquad.Coefficients, error) {
-	if err := validateParams(sampleRate, freqHz, order); err != nil {
+	err := validateParams(sampleRate, freqHz, order)
+	if err != nil {
 		return nil, err
 	}
 
@@ -34,7 +35,8 @@ func ButterworthLowShelf(sampleRate, freqHz, gainDB float64, order int) ([]biqua
 // (positive for boost, negative for cut). order must be >= 1.
 // Returns a cascade of biquad sections.
 func ButterworthHighShelf(sampleRate, freqHz, gainDB float64, order int) ([]biquad.Coefficients, error) {
-	if err := validateParams(sampleRate, freqHz, order); err != nil {
+	err := validateParams(sampleRate, freqHz, order)
+	if err != nil {
 		return nil, err
 	}
 

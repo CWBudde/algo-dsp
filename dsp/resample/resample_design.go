@@ -1,6 +1,7 @@
 package resample
 
 import (
+	"errors"
 	"fmt"
 	"math"
 )
@@ -11,11 +12,11 @@ func designPolyphaseFIR(up, down int, cfg config) ([]float64, [][]float64, int, 
 	}
 
 	if cfg.tapsPerPhase <= 0 {
-		return nil, nil, 0, fmt.Errorf("resample: taps per phase must be > 0")
+		return nil, nil, 0, errors.New("resample: taps per phase must be > 0")
 	}
 
 	if cfg.cutoffScale <= 0 || cfg.cutoffScale > 1 {
-		return nil, nil, 0, fmt.Errorf("resample: cutoff scale must be in (0,1]")
+		return nil, nil, 0, errors.New("resample: cutoff scale must be in (0,1]")
 	}
 
 	nTaps := cfg.tapsPerPhase * up
@@ -40,7 +41,7 @@ func designPolyphaseFIR(up, down int, cfg config) ([]float64, [][]float64, int, 
 	}
 
 	if sum == 0 {
-		return nil, nil, 0, fmt.Errorf("resample: designed zero-sum filter")
+		return nil, nil, 0, errors.New("resample: designed zero-sum filter")
 	}
 
 	scale := float64(up) / sum

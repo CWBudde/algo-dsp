@@ -160,7 +160,7 @@ const maxBesselOrder = 10
 // Only the unique pole from each conjugate pair (positive imaginary part) is stored.
 // For odd orders, the real pole (zero imaginary part) is listed last.
 //
-// Source: C.R. Bond, "Bessel Filter Constants", crbond.com/papers/bsf.pdf
+// Source: C.R. Bond, "Bessel Filter Constants", crbond.com/papers/bsf.pdf.
 var besselDelayPoles = [maxBesselOrder + 1][]complex128{
 	// order 0: unused
 	{},
@@ -219,7 +219,7 @@ var besselDelayPoles = [maxBesselOrder + 1][]complex128{
 // besselScaleFactors contains the frequency scaling factors to convert from
 // delay-normalized to -3 dB normalized Bessel filters.
 //
-// Source: C.R. Bond, "Bessel Filter Constants", crbond.com/papers/bsf.pdf
+// Source: C.R. Bond, "Bessel Filter Constants", crbond.com/papers/bsf.pdf.
 var besselScaleFactors = [maxBesselOrder + 1]float64{
 	0, // order 0: unused
 	1.0,

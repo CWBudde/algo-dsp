@@ -1,7 +1,7 @@
 package spatial
 
 import (
-	"fmt"
+	"errors"
 	"math"
 	"testing"
 )
@@ -160,7 +160,7 @@ func TestHRTFCrosstalkSimulatorProviderReload(t *testing.T) {
 }
 
 func TestHRTFCrosstalkSimulatorProviderError(t *testing.T) {
-	provider := fixedHRTFProvider{err: fmt.Errorf("load failed")}
+	provider := fixedHRTFProvider{err: errors.New("load failed")}
 
 	if _, err := NewHRTFCrosstalkSimulator(48000,
 		WithHRTFProvider(provider)); err == nil {

@@ -8,7 +8,7 @@ func BenchmarkGateProcessSample(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = g.ProcessSample(sample)
 	}
 }
@@ -23,7 +23,7 @@ func BenchmarkGateProcessInPlace64(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		g.ProcessInPlace(buf)
 	}
 }
@@ -38,7 +38,7 @@ func BenchmarkGateProcessInPlace128(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		g.ProcessInPlace(buf)
 	}
 }
@@ -53,7 +53,7 @@ func BenchmarkGateProcessInPlace256(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		g.ProcessInPlace(buf)
 	}
 }
@@ -68,7 +68,7 @@ func BenchmarkGateProcessInPlace512(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		g.ProcessInPlace(buf)
 	}
 }
@@ -83,7 +83,7 @@ func BenchmarkGateProcessInPlace1024(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		g.ProcessInPlace(buf)
 	}
 }

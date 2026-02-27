@@ -158,7 +158,8 @@ func TestDeEsserSetterValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.fn(); err == nil {
+			err := tt.fn()
+			if err == nil {
 				t.Error("expected validation error, got nil")
 			}
 		})
@@ -282,7 +283,7 @@ func TestDeEsserSilenceProducesSilence(t *testing.T) {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
 
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		out := d.ProcessSample(0)
 		if out != 0 {
 			t.Fatalf("sample %d: silent input should produce 0, got %g", i, out)
@@ -313,7 +314,7 @@ func TestDeEsserLowFrequencyTransparent(t *testing.T) {
 
 	// Let the filter settle.
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sample := 0.5 * math.Sin(2*math.Pi*freq*float64(i)/sr)
 		d.ProcessSample(sample)
 	}
@@ -321,7 +322,7 @@ func TestDeEsserLowFrequencyTransparent(t *testing.T) {
 	// Now measure — output should be close to input.
 	maxDiff := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sample := 0.5 * math.Sin(2*math.Pi*freq*float64(n+i)/sr)
 		out := d.ProcessSample(sample)
 
@@ -363,7 +364,7 @@ func TestDeEsserReducesSibilance(t *testing.T) {
 
 	// Let the detector envelope settle.
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sample := amplitude * math.Sin(2*math.Pi*freq*float64(i)/sr)
 		d.ProcessSample(sample)
 	}
@@ -371,7 +372,7 @@ func TestDeEsserReducesSibilance(t *testing.T) {
 	// Measure output level.
 	peakOut := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sample := amplitude * math.Sin(2*math.Pi*freq*float64(n+i)/sr)
 
 		out := d.ProcessSample(sample)
@@ -414,7 +415,7 @@ func TestDeEsserWidebandMode(t *testing.T) {
 		amp  = 0.5
 	)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sample := amp * math.Sin(2*math.Pi*freq*float64(i)/sr)
 		d.ProcessSample(sample)
 	}
@@ -422,7 +423,7 @@ func TestDeEsserWidebandMode(t *testing.T) {
 	// Now feed a lower frequency and check it's also reduced (wideband effect).
 	peakOut := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		// Mix of low and high frequency — wideband should reduce both.
 		t := float64(n + i)
 		sample := amp*math.Sin(2*math.Pi*freq*t/sr) + 0.3*math.Sin(2*math.Pi*300*t/sr)
@@ -457,13 +458,13 @@ func TestDeEsserListenMode(t *testing.T) {
 		n  = 2048
 	)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d.ProcessSample(0.5 * math.Sin(2*math.Pi*200*float64(i)/sr))
 	}
 
 	peakLow := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out := d.ProcessSample(0.5 * math.Sin(2*math.Pi*200*float64(n+i)/sr))
 		if math.Abs(out) > peakLow {
 			peakLow = math.Abs(out)
@@ -473,13 +474,13 @@ func TestDeEsserListenMode(t *testing.T) {
 	// Feed a signal at the detection frequency — listen output should be significant.
 	d.Reset()
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d.ProcessSample(0.5 * math.Sin(2*math.Pi*6000*float64(i)/sr))
 	}
 
 	peakHigh := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out := d.ProcessSample(0.5 * math.Sin(2*math.Pi*6000*float64(n+i)/sr))
 		if math.Abs(out) > peakHigh {
 			peakHigh = math.Abs(out)
@@ -523,13 +524,13 @@ func TestDeEsserHighpassDetector(t *testing.T) {
 		amp  = 0.5
 	)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d.ProcessSample(amp * math.Sin(2*math.Pi*freq*float64(i)/sr))
 	}
 
 	peakOut := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out := d.ProcessSample(amp * math.Sin(2*math.Pi*freq*float64(n+i)/sr))
 		if math.Abs(out) > peakOut {
 			peakOut = math.Abs(out)
@@ -620,7 +621,7 @@ func TestDeEsserMetrics(t *testing.T) {
 	}
 
 	// Process a loud sibilant signal.
-	for i := 0; i < 2048; i++ {
+	for i := range 2048 {
 		d.ProcessSample(0.8 * math.Sin(2*math.Pi*6000*float64(i)/48000))
 	}
 
@@ -661,7 +662,7 @@ func TestDeEsserHardKnee(t *testing.T) {
 	}
 
 	// Process should still work correctly.
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		d.ProcessSample(0.5 * math.Sin(2*math.Pi*6000*float64(i)/48000))
 	}
 
@@ -696,13 +697,13 @@ func TestDeEsserFilterOrderEffect(t *testing.T) {
 		d.SetListen(true)
 
 		// Let filter settle.
-		for i := 0; i < n; i++ {
+		for i := range n {
 			d.ProcessSample(0.5 * math.Sin(2*math.Pi*offFreq*float64(i)/sr))
 		}
 
 		peak := 0.0
 
-		for i := 0; i < n; i++ {
+		for i := range n {
 			out := d.ProcessSample(0.5 * math.Sin(2*math.Pi*offFreq*float64(n+i)/sr))
 			if math.Abs(out) > peak {
 				peak = math.Abs(out)
@@ -756,7 +757,7 @@ func TestDeEsserRangeLimit(t *testing.T) {
 		amp  = 0.9
 	)
 
-	for i := 0; i < 8192; i++ {
+	for i := range 8192 {
 		d.ProcessSample(amp * math.Sin(2*math.Pi*freq*float64(i)/sr))
 	}
 
@@ -806,7 +807,7 @@ func BenchmarkDeEsserProcessSample(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		d.ProcessSample(0.5 * math.Sin(2*math.Pi*6000*float64(i)/48000))
 	}
 }
@@ -826,7 +827,7 @@ func BenchmarkDeEsserProcessInPlace(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		d.ProcessInPlace(buf)
 	}
 }

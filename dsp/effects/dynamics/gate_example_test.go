@@ -67,7 +67,7 @@ func ExampleGate_metering() {
 	gate.ResetMetrics()
 
 	// Process quiet signal (below threshold)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		gate.ProcessSample(0.01)
 	}
 

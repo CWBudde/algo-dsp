@@ -21,7 +21,7 @@ func ExampleSpectralFreeze_ProcessInPlace() {
 	freeze.Freeze()
 
 	buf := make([]float64, 1024)
-	for i := 0; i < 128; i++ {
+	for i := range 128 {
 		buf[i] = math.Sin(2 * math.Pi * 440 * float64(i) / 48000)
 	}
 

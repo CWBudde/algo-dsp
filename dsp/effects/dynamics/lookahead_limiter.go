@@ -92,7 +92,8 @@ func (l *LookaheadLimiter) SetThreshold(dB float64) error {
 			minLookaheadLimiterThresholdDB, maxLookaheadLimiterThresholdDB, dB)
 	}
 
-	if err := l.comp.SetThreshold(dB); err != nil {
+	err := l.comp.SetThreshold(dB)
+	if err != nil {
 		return err
 	}
 
@@ -108,7 +109,8 @@ func (l *LookaheadLimiter) SetRelease(ms float64) error {
 			minLookaheadLimiterReleaseMs, maxLookaheadLimiterReleaseMs, ms)
 	}
 
-	if err := l.comp.SetRelease(ms); err != nil {
+	err := l.comp.SetRelease(ms)
+	if err != nil {
 		return err
 	}
 
@@ -132,7 +134,8 @@ func (l *LookaheadLimiter) SetLookahead(ms float64) error {
 
 // SetSampleRate updates sample rate and internal coefficients/buffers.
 func (l *LookaheadLimiter) SetSampleRate(sr float64) error {
-	if err := validateSampleRate(sr); err != nil {
+	err := validateSampleRate(sr)
+	if err != nil {
 		return fmt.Errorf("lookahead limiter %w", err)
 	}
 
@@ -216,15 +219,9 @@ func (l *LookaheadLimiter) ProcessInPlaceSidechain(program, sidechain []float64)
 }
 
 func (l *LookaheadLimiter) rebuildDelayBuffer() {
-	delaySamples := int(math.Round(l.lookaheadMs * l.sampleRate / 1000.0))
-	if delaySamples < 0 {
-		delaySamples = 0
-	}
+	delaySamples := max(int(math.Round(l.lookaheadMs*l.sampleRate/1000.0)), 0)
 
-	size := delaySamples + 1
-	if size < 1 {
-		size = 1
-	}
+	size := max(delaySamples+1, 1)
 
 	l.delayBuf = make([]float64, size)
 	l.writePos = 0

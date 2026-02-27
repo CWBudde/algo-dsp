@@ -47,7 +47,9 @@ func NewChorus() (*Chorus, error) {
 		mix:              defaultChorusMix,
 		stages:           defaultChorusStages,
 	}
-	if err := chorus.reconfigureDelayLine(); err != nil {
+
+	err := chorus.reconfigureDelayLine()
+	if err != nil {
 		return nil, err
 	}
 
@@ -145,7 +147,7 @@ func (c *Chorus) ProcessSample(input float64) float64 {
 	wetSum := 0.0
 
 	stageCount := float64(c.stages)
-	for i := 0; i < c.stages; i++ {
+	for i := range c.stages {
 		phaseOffset := (2 * math.Pi * float64(i)) / stageCount
 		mod := 0.5 * (1 + math.Sin(c.lfoPhase+phaseOffset)) // 0..1
 		delay := baseDelaySamples + depthSamples*mod
@@ -200,10 +202,7 @@ func (c *Chorus) reconfigureDelayLine() error {
 		return fmt.Errorf("chorus depth must be >= 0: %f", c.depthSeconds)
 	}
 
-	neededMax := int(math.Ceil((c.baseDelaySeconds+c.depthSeconds)*c.sampleRate)) + 3
-	if neededMax < 4 {
-		neededMax = 4
-	}
+	neededMax := max(int(math.Ceil((c.baseDelaySeconds+c.depthSeconds)*c.sampleRate))+3, 4)
 
 	if neededMax == len(c.delayLine) {
 		return nil
@@ -217,12 +216,9 @@ func (c *Chorus) reconfigureDelayLine() error {
 
 	// Preserve as much recent delay history as possible when resizing.
 	if len(old) > 0 {
-		copyCount := len(old)
-		if copyCount > len(c.delayLine) {
-			copyCount = len(c.delayLine)
-		}
+		copyCount := min(len(old), len(c.delayLine))
 
-		for i := 0; i < copyCount; i++ {
+		for i := range copyCount {
 			src := oldWrite - 1 - i
 			if src < 0 {
 				src += len(old)

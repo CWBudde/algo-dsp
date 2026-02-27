@@ -98,7 +98,7 @@ func searchBandwidth(coeffs []float64, dcRef float64, n int) float64 {
 	lo := 0.0
 
 	hi := 0.5
-	for i := 0; i < 80; i++ {
+	for range 80 {
 		mid := (lo + hi) / 2
 
 		val := dftMagSq(coeffs, mid) * invRef
@@ -155,7 +155,7 @@ func searchFirstMinimum(coeffs []float64, n int) float64 {
 	c := b - phi*(b-a)
 	d := a + phi*(b-a)
 
-	for i := 0; i < 80; i++ {
+	for range 80 {
 		fc := dftMagSq(coeffs, c)
 
 		fd := dftMagSq(coeffs, d)

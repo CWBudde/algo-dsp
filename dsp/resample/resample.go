@@ -284,10 +284,7 @@ func (r *Resampler) Process(input []float64) []float64 {
 
 	r.totalIn += len(input)
 
-	keep := max(0, r.maxPhaseLn-1)
-	if keep > len(work) {
-		keep = len(work)
-	}
+	keep := min(max(0, r.maxPhaseLn-1), len(work))
 
 	r.history = append(r.history[:0], work[len(work)-keep:]...)
 

@@ -30,7 +30,7 @@ func BenchmarkDirect(b *testing.B) {
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = Direct(signal, kernel)
 			}
 		})
@@ -61,7 +61,7 @@ func BenchmarkOverlapAdd(b *testing.B) {
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = OverlapAddConvolve(signal, kernel)
 			}
 		})
@@ -92,7 +92,7 @@ func BenchmarkOverlapAddReuse(b *testing.B) {
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = overlapAdd.Process(signal)
 			}
 		})
@@ -120,7 +120,7 @@ func BenchmarkOverlapSave(b *testing.B) {
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = OverlapSaveConvolve(signal, kernel)
 			}
 		})
@@ -150,7 +150,7 @@ func BenchmarkConvolve(b *testing.B) {
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = Convolve(signal, kernel)
 			}
 		})
@@ -168,7 +168,7 @@ func BenchmarkCorrelate(b *testing.B) {
 		b.Run(fmt.Sprintf("size=%d", size), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = Correlate(signal, template)
 			}
 		})
@@ -185,7 +185,7 @@ func BenchmarkAutoCorrelate(b *testing.B) {
 		b.Run(fmt.Sprintf("size=%d", size), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = AutoCorrelate(signal)
 			}
 		})
@@ -214,7 +214,7 @@ func BenchmarkDeconvolve(b *testing.B) {
 		b.Run(fmt.Sprintf("signal=%d_kernel=%d", size.signal, size.kernel), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = Deconvolve(convolved, kernel, opts)
 			}
 		})
@@ -245,14 +245,14 @@ func TestCrossoverPoints(t *testing.T) {
 
 		// Time direct
 		directResult := testing.Benchmark(func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = Direct(signal, kernel)
 			}
 		})
 
 		// Time FFT
 		fftResult := testing.Benchmark(func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = OverlapAddConvolve(signal, kernel)
 			}
 		})

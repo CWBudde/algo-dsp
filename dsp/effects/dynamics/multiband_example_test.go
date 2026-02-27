@@ -95,7 +95,7 @@ func ExampleMultibandCompressor_metering() {
 	mc.ResetMetrics()
 
 	// Process some signal
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		mc.ProcessSample(0.5 * math.Sin(2*math.Pi*440*float64(i)/48000))
 	}
 

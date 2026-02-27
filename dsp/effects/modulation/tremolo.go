@@ -109,7 +109,8 @@ func NewTremolo(sampleRate float64, opts ...TremoloOption) (*Tremolo, error) {
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -122,7 +123,9 @@ func NewTremolo(sampleRate float64, opts ...TremoloOption) (*Tremolo, error) {
 		mix:        cfg.mix,
 		currentMod: 1,
 	}
-	if err := t.validateParams(); err != nil {
+
+	err := t.validateParams()
+	if err != nil {
 		return nil, err
 	}
 

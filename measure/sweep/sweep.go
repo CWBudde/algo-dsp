@@ -69,7 +69,8 @@ func (s *LogSweep) samples() int {
 //
 //	x(t) = sin(2π * f1 * T / ln(f2/f1) * (exp(t/T * ln(f2/f1)) - 1))
 func (s *LogSweep) Generate() ([]float64, error) {
-	if err := s.Validate(); err != nil {
+	err := s.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -363,7 +364,8 @@ func (s *LinearSweep) Validate() error {
 //
 //	f(t) = f1 + (f2-f1) * t / T
 func (s *LinearSweep) Generate() ([]float64, error) {
-	if err := s.Validate(); err != nil {
+	err := s.Validate()
+	if err != nil {
 		return nil, err
 	}
 

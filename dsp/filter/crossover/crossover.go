@@ -1,6 +1,7 @@
 package crossover
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
@@ -133,7 +134,7 @@ type MultiBand struct {
 // For N frequencies, the crossover produces N+1 output bands.
 func NewMultiBand(freqs []float64, order int, sampleRate float64) (*MultiBand, error) {
 	if len(freqs) == 0 {
-		return nil, fmt.Errorf("crossover: at least one frequency is required")
+		return nil, errors.New("crossover: at least one frequency is required")
 	}
 
 	for i := 1; i < len(freqs); i++ {

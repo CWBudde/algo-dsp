@@ -117,7 +117,8 @@ func NewBitCrusher(sampleRate float64, opts ...BitCrusherOption) (*BitCrusher, e
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}

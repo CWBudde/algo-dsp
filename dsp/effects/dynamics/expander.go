@@ -111,7 +111,8 @@ func NewExpander(sampleRate float64) (*Expander, error) {
 
 // SetThreshold sets threshold in dB.
 func (e *Expander) SetThreshold(dB float64) error {
-	if err := e.core.SetThreshold(dB); err != nil {
+	err := e.core.SetThreshold(dB)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -127,7 +128,8 @@ func (e *Expander) SetRatio(ratio float64) error {
 		return fmt.Errorf("expander ratio must be in [%f, %f]: %f", minExpanderRatio, maxExpanderRatio, ratio)
 	}
 
-	if err := e.core.SetRatio(ratio); err != nil {
+	err := e.core.SetRatio(ratio)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -143,7 +145,8 @@ func (e *Expander) SetKnee(kneeDB float64) error {
 		return fmt.Errorf("expander knee must be in [%f, %f]: %f", minExpanderKneeDB, maxExpanderKneeDB, kneeDB)
 	}
 
-	if err := e.core.SetKnee(kneeDB); err != nil {
+	err := e.core.SetKnee(kneeDB)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -159,7 +162,8 @@ func (e *Expander) SetAttack(ms float64) error {
 		return fmt.Errorf("expander attack must be in [%f, %f]: %f", minExpanderAttackMs, maxExpanderAttackMs, ms)
 	}
 
-	if err := e.core.SetAttack(ms); err != nil {
+	err := e.core.SetAttack(ms)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -175,7 +179,8 @@ func (e *Expander) SetRelease(ms float64) error {
 		return fmt.Errorf("expander release must be in [%f, %f]: %f", minExpanderReleaseMs, maxExpanderReleaseMs, ms)
 	}
 
-	if err := e.core.SetRelease(ms); err != nil {
+	err := e.core.SetRelease(ms)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -199,7 +204,8 @@ func (e *Expander) SetRange(dB float64) error {
 
 // SetSampleRate updates sample rate.
 func (e *Expander) SetSampleRate(sampleRate float64) error {
-	if err := e.core.SetSampleRate(sampleRate); err != nil {
+	err := e.core.SetSampleRate(sampleRate)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -211,7 +217,8 @@ func (e *Expander) SetSampleRate(sampleRate float64) error {
 
 // SetTopology selects feedforward or feedback detector topology.
 func (e *Expander) SetTopology(topology DynamicsTopology) error {
-	if err := e.core.SetTopology(topology); err != nil {
+	err := e.core.SetTopology(topology)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -222,7 +229,8 @@ func (e *Expander) SetTopology(topology DynamicsTopology) error {
 
 // SetDetectorMode selects peak or RMS detector mode.
 func (e *Expander) SetDetectorMode(mode DetectorMode) error {
-	if err := e.core.SetDetectorMode(mode); err != nil {
+	err := e.core.SetDetectorMode(mode)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -233,7 +241,8 @@ func (e *Expander) SetDetectorMode(mode DetectorMode) error {
 
 // SetRMSWindow sets RMS detector window in milliseconds.
 func (e *Expander) SetRMSWindow(ms float64) error {
-	if err := e.core.SetRMSWindow(ms); err != nil {
+	err := e.core.SetRMSWindow(ms)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -244,7 +253,8 @@ func (e *Expander) SetRMSWindow(ms float64) error {
 
 // SetSidechainLowCut configures detector-only low-cut filter in Hz (0 disables).
 func (e *Expander) SetSidechainLowCut(hz float64) error {
-	if err := e.core.SetSidechainLowCut(hz); err != nil {
+	err := e.core.SetSidechainLowCut(hz)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 
@@ -255,7 +265,8 @@ func (e *Expander) SetSidechainLowCut(hz float64) error {
 
 // SetSidechainHighCut configures detector-only high-cut filter in Hz (0 disables).
 func (e *Expander) SetSidechainHighCut(hz float64) error {
-	if err := e.core.SetSidechainHighCut(hz); err != nil {
+	err := e.core.SetSidechainHighCut(hz)
+	if err != nil {
 		return fmt.Errorf("expander %w", err)
 	}
 

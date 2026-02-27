@@ -132,6 +132,7 @@ func printList() {
 
 type resolvedEntry struct {
 	windowEntry
+
 	alphaOverride float64
 }
 
@@ -204,7 +205,8 @@ func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) 
 		}
 	}
 
-	if err := tabWriter.Flush(); err != nil {
+	err := tabWriter.Flush()
+	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "error: failed to flush output: %v\n", err)
 	}
 }

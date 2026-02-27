@@ -18,6 +18,7 @@ func loadEmbeddedIRLib() (*IRLibrary, error) {
 	if err != nil {
 		return nil, fmt.Errorf("irlib: loading embedded library: %w", err)
 	}
+
 	return &IRLibrary{IRs: irs}, nil
 }
 
@@ -33,6 +34,7 @@ type IREntry struct {
 // IRData holds a loaded impulse response.
 type IRData struct {
 	IREntry
+
 	// Samples[ch] is the mono float64 slice for channel ch.
 	Samples [][]float64
 }
@@ -48,6 +50,7 @@ func (lib *IRLibrary) IRNames() []string {
 	for i, ir := range lib.IRs {
 		names[i] = ir.Name
 	}
+
 	return names
 }
 
@@ -56,6 +59,7 @@ func (lib *IRLibrary) GetIR(index int) *IRData {
 	if index < 0 || index >= len(lib.IRs) {
 		return nil
 	}
+
 	return &lib.IRs[index]
 }
 
@@ -78,6 +82,7 @@ func decodeF16(h uint16) float32 {
 				m <<= 1
 				e++
 			}
+
 			bits = sign | uint32(127-14-e+1)<<23 | (m&0x3FF)<<13
 		}
 	case 31:
@@ -93,7 +98,9 @@ func decodeF16(h uint16) float32 {
 // readString reads a uint16-length-prefixed UTF-8 string from r.
 func readString(r io.Reader) (string, error) {
 	var length uint16
-	if err := binary.Read(r, binary.LittleEndian, &length); err != nil {
+
+	err := binary.Read(r, binary.LittleEndian, &length)
+	if err != nil {
 		return "", fmt.Errorf("irlib: reading string length: %w", err)
 	}
 
@@ -126,43 +133,54 @@ func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 	if _, err := io.ReadFull(r, magic[:]); err != nil {
 		return nil, fmt.Errorf("irlib: reading magic: %w", err)
 	}
+
 	if magic != [4]byte{'I', 'R', 'L', 'B'} {
 		return nil, fmt.Errorf("irlib: invalid magic %q", magic)
 	}
 
 	var version uint16
-	if err := binary.Read(r, binary.LittleEndian, &version); err != nil {
+
+	err := binary.Read(r, binary.LittleEndian, &version)
+	if err != nil {
 		return nil, fmt.Errorf("irlib: reading version: %w", err)
 	}
+
 	if version != 1 {
 		return nil, fmt.Errorf("irlib: unsupported version %d", version)
 	}
 
 	var irCount uint32
-	if err := binary.Read(r, binary.LittleEndian, &irCount); err != nil {
+
+	err = binary.Read(r, binary.LittleEndian, &irCount)
+	if err != nil {
 		return nil, fmt.Errorf("irlib: reading ir_count: %w", err)
 	}
 
 	var indexOffset uint64
-	if err := binary.Read(r, binary.LittleEndian, &indexOffset); err != nil {
+
+	err = binary.Read(r, binary.LittleEndian, &indexOffset)
+	if err != nil {
 		return nil, fmt.Errorf("irlib: reading index_offset: %w", err)
 	}
 
 	// --- INDEX chunk ---
-	if _, err := r.Seek(int64(indexOffset), io.SeekStart); err != nil {
+	if _, err = r.Seek(int64(indexOffset), io.SeekStart); err != nil {
 		return nil, fmt.Errorf("irlib: seeking to index: %w", err)
 	}
 
 	var indxMagic [4]byte
-	if _, err := io.ReadFull(r, indxMagic[:]); err != nil {
+	if _, err = io.ReadFull(r, indxMagic[:]); err != nil {
 		return nil, fmt.Errorf("irlib: reading INDX magic: %w", err)
 	}
+
 	if indxMagic != [4]byte{'I', 'N', 'D', 'X'} {
 		return nil, fmt.Errorf("irlib: expected INDX chunk, got %q", indxMagic)
 	}
 
 	var indxSize uint64
-	if err := binary.Read(r, binary.LittleEndian, &indxSize); err != nil {
+
+	err = binary.Read(r, binary.LittleEndian, &indxSize)
+	if err != nil {
 		return nil, fmt.Errorf("irlib: reading INDX size: %w", err)
 	}
 
@@ -176,27 +194,32 @@ func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 		if err := binary.Read(r, binary.LittleEndian, &entry.offset); err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry offset: %w", err)
 		}
+
 		indxBodyRead += 8
 
 		if err := binary.Read(r, binary.LittleEndian, &entry.sampleRate); err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry sampleRate: %w", err)
 		}
+
 		indxBodyRead += 8
 
 		if err := binary.Read(r, binary.LittleEndian, &entry.channels); err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry channels: %w", err)
 		}
+
 		indxBodyRead += 4
 
 		if err := binary.Read(r, binary.LittleEndian, &entry.length); err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry length: %w", err)
 		}
+
 		indxBodyRead += 4
 
 		name, err := readString(r)
 		if err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry name: %w", err)
 		}
+
 		indxBodyRead += uint64(2 + len(name))
 		entry.name = name
 
@@ -204,6 +227,7 @@ func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 		if err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry category: %w", err)
 		}
+
 		indxBodyRead += uint64(2 + len(category))
 		entry.category = category
 
@@ -219,6 +243,7 @@ func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 			// Non-fatal: skip bad chunks.
 			continue
 		}
+
 		result = append(result, irData)
 	}
 
@@ -235,20 +260,26 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 	if _, err := io.ReadFull(r, irMagic[:]); err != nil {
 		return IRData{}, fmt.Errorf("irlib: reading IR magic: %w", err)
 	}
+
 	if irMagic != [4]byte{'I', 'R', '-', '-'} {
 		return IRData{}, fmt.Errorf("irlib: expected IR-- at offset %d, got %q", entry.offset, irMagic)
 	}
 
 	var chunkSize uint64
-	if err := binary.Read(r, binary.LittleEndian, &chunkSize); err != nil {
+
+	err := binary.Read(r, binary.LittleEndian, &chunkSize)
+	if err != nil {
 		return IRData{}, fmt.Errorf("irlib: reading IR chunk size: %w", err)
 	}
 
 	// Track how many bytes of this chunk we've consumed (past the 12-byte header).
 	var chunkRead uint64
 
-	var meta IREntry
-	var samples [][]float64
+	var (
+		meta    IREntry
+		samples [][]float64
+	)
+
 	hasMeta := false
 	hasAudio := false
 
@@ -257,12 +288,16 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 		if _, err := io.ReadFull(r, subMagic[:]); err != nil {
 			break
 		}
+
 		chunkRead += 4
 
 		var subSize uint32
-		if err := binary.Read(r, binary.LittleEndian, &subSize); err != nil {
+
+		err := binary.Read(r, binary.LittleEndian, &subSize)
+		if err != nil {
 			break
 		}
+
 		chunkRead += 4
 
 		switch subMagic {
@@ -291,6 +326,7 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 			if err != nil {
 				return IRData{}, fmt.Errorf("irlib: reading META description: %w", err)
 			}
+
 			_ = description
 
 			category, err := readString(r)
@@ -305,6 +341,7 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 
 			for i := range int(tagCount) {
 				_ = i
+
 				if _, err := readString(r); err != nil {
 					return IRData{}, fmt.Errorf("irlib: reading META tag: %w", err)
 				}
@@ -331,6 +368,7 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 			}
 
 			totalSamples := len(rawAudio) / 2
+
 			frames := totalSamples / channels
 			if frames == 0 {
 				break
@@ -347,6 +385,7 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 				h := binary.LittleEndian.Uint16(rawAudio[i*2 : i*2+2])
 				val := float64(decodeF16(h))
 				ch := i % channels
+
 				frame := i / channels
 				if frame < frames {
 					samples[ch][frame] = val

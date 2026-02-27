@@ -1,6 +1,7 @@
 package reverb
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cwbudde/algo-dsp/dsp/conv"
@@ -28,7 +29,7 @@ func NewConvolutionReverb(kernel []float64, minBlockOrder int) (*ConvolutionReve
 	const maxBlockOrder = 13
 
 	if len(kernel) == 0 {
-		return nil, fmt.Errorf("reverb: empty impulse response kernel")
+		return nil, errors.New("reverb: empty impulse response kernel")
 	}
 
 	engine, err := conv.NewPartitionedConvolution(kernel, minBlockOrder, maxBlockOrder)
@@ -68,7 +69,8 @@ func (r *ConvolutionReverb) ProcessInPlace(block []float64) error {
 
 	reverbOut := r.buf[:n]
 
-	if err := r.engine.ProcessBlock(block, reverbOut); err != nil {
+	err := r.engine.ProcessBlock(block, reverbOut)
+	if err != nil {
 		return fmt.Errorf("reverb: convolution engine: %w", err)
 	}
 

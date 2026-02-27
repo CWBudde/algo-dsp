@@ -84,7 +84,9 @@ type dynamicsCore struct {
 
 func newDynamicsCore(cfg dynamicsCoreConfig) (*dynamicsCore, error) {
 	c := &dynamicsCore{cfg: cfg}
-	if err := c.recalculate(); err != nil {
+
+	err := c.recalculate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -140,7 +142,8 @@ func (c *dynamicsCore) SetRatio(ratio float64) error {
 
 	c.cfg.ratio = ratio
 
-	if err := c.recalculateGainComputer(); err != nil {
+	err := c.recalculateGainComputer()
+	if err != nil {
 		return err
 	}
 
@@ -211,7 +214,9 @@ func (c *dynamicsCore) SetSidechainLowCut(hz float64) error {
 	prev := c.cfg.sidechainLowCutHz
 
 	c.cfg.sidechainLowCutHz = hz
-	if err := c.recalculatePrefilter(); err != nil {
+
+	err := c.recalculatePrefilter()
+	if err != nil {
 		c.cfg.sidechainLowCutHz = prev
 		_ = c.recalculatePrefilter()
 
@@ -229,7 +234,9 @@ func (c *dynamicsCore) SetSidechainHighCut(hz float64) error {
 	prev := c.cfg.sidechainHighCutHz
 
 	c.cfg.sidechainHighCutHz = hz
-	if err := c.recalculatePrefilter(); err != nil {
+
+	err := c.recalculatePrefilter()
+	if err != nil {
 		c.cfg.sidechainHighCutHz = prev
 		_ = c.recalculatePrefilter()
 
@@ -390,59 +397,75 @@ func (c *dynamicsCore) applyPrefilter(x float64) float64 {
 }
 
 func (c *dynamicsCore) recalculate() error {
-	if err := validateSampleRate(c.cfg.sampleRate); err != nil {
+	err := validateSampleRate(c.cfg.sampleRate)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetTopology(c.cfg.topology); err != nil {
+	err = c.SetTopology(c.cfg.topology)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetDetectorMode(c.cfg.detectorMode); err != nil {
+	err = c.SetDetectorMode(c.cfg.detectorMode)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetFeedbackRatioScale(c.cfg.feedbackRatioScale); err != nil {
+	err = c.SetFeedbackRatioScale(c.cfg.feedbackRatioScale)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetThreshold(c.cfg.thresholdDB); err != nil {
+	err = c.SetThreshold(c.cfg.thresholdDB)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetRatio(c.cfg.ratio); err != nil {
+	err = c.SetRatio(c.cfg.ratio)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetKnee(c.cfg.kneeDB); err != nil {
+	err = c.SetKnee(c.cfg.kneeDB)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetAttack(c.cfg.attackMs); err != nil {
+	err = c.SetAttack(c.cfg.attackMs)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetRelease(c.cfg.releaseMs); err != nil {
+	err = c.SetRelease(c.cfg.releaseMs)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetRMSWindow(c.cfg.rmsWindowMs); err != nil {
+	err = c.SetRMSWindow(c.cfg.rmsWindowMs)
+	if err != nil {
 		return err
 	}
 
 	if c.cfg.autoMakeup {
-		if err := c.SetAutoMakeup(true); err != nil {
+		err := c.SetAutoMakeup(true)
+		if err != nil {
 			return err
 		}
-	} else if err := c.SetManualMakeupGain(c.cfg.manualMakeupGainDB); err != nil {
+	} else {
+		err := c.SetManualMakeupGain(c.cfg.manualMakeupGainDB)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = c.SetSidechainLowCut(c.cfg.sidechainLowCutHz)
+	if err != nil {
 		return err
 	}
 
-	if err := c.SetSidechainLowCut(c.cfg.sidechainLowCutHz); err != nil {
-		return err
-	}
-
-	if err := c.SetSidechainHighCut(c.cfg.sidechainHighCutHz); err != nil {
+	err = c.SetSidechainHighCut(c.cfg.sidechainHighCutHz)
+	if err != nil {
 		return err
 	}
 
@@ -450,7 +473,8 @@ func (c *dynamicsCore) recalculate() error {
 }
 
 func (c *dynamicsCore) recalculateDetectorCoefficients() error {
-	if err := validateSampleRate(c.cfg.sampleRate); err != nil {
+	err := validateSampleRate(c.cfg.sampleRate)
+	if err != nil {
 		return err
 	}
 
@@ -469,14 +493,12 @@ func (c *dynamicsCore) recalculateDetectorCoefficients() error {
 }
 
 func (c *dynamicsCore) recalculateRMSBuffer() error {
-	if err := validateSampleRate(c.cfg.sampleRate); err != nil {
+	err := validateSampleRate(c.cfg.sampleRate)
+	if err != nil {
 		return err
 	}
 
-	samples := int(math.Round(c.cfg.rmsWindowMs * 0.001 * c.cfg.sampleRate))
-	if samples < 1 {
-		samples = 1
-	}
+	samples := max(int(math.Round(c.cfg.rmsWindowMs*0.001*c.cfg.sampleRate)), 1)
 
 	if len(c.rmsSquares) != samples {
 		c.rmsSquares = make([]float64, samples)
@@ -513,7 +535,8 @@ func (c *dynamicsCore) recalculateGainComputer() error {
 }
 
 func (c *dynamicsCore) recalculatePrefilter() error {
-	if err := validateSampleRate(c.cfg.sampleRate); err != nil {
+	err := validateSampleRate(c.cfg.sampleRate)
+	if err != nil {
 		return err
 	}
 

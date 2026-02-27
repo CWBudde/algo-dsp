@@ -64,7 +64,9 @@ func TestGoertzel_Reset(t *testing.T) {
 
 func TestGoertzel_Setters(t *testing.T) {
 	goertzel, _ := NewGoertzel(1000, 48000)
-	if err := goertzel.SetFrequency(2000); err != nil {
+
+	err := goertzel.SetFrequency(2000)
+	if err != nil {
 		t.Errorf("SetFrequency: %v", err)
 	}
 
@@ -72,7 +74,8 @@ func TestGoertzel_Setters(t *testing.T) {
 		t.Errorf("Frequency: got %v, want 2000", goertzel.Frequency())
 	}
 
-	if err := goertzel.SetSampleRate(44100); err != nil {
+	err = goertzel.SetSampleRate(44100)
+	if err != nil {
 		t.Errorf("SetSampleRate: %v", err)
 	}
 
@@ -80,15 +83,18 @@ func TestGoertzel_Setters(t *testing.T) {
 		t.Errorf("SampleRate: got %v, want 44100", goertzel.SampleRate())
 	}
 
-	if err := goertzel.SetFrequency(-1); err == nil {
+	err = goertzel.SetFrequency(-1)
+	if err == nil {
 		t.Error("SetFrequency should fail for negative frequency")
 	}
 
-	if err := goertzel.SetFrequency(22051); err == nil {
+	err = goertzel.SetFrequency(22051)
+	if err == nil {
 		t.Error("SetFrequency should fail for frequency > fs/2")
 	}
 
-	if err := goertzel.SetSampleRate(0); err == nil {
+	err = goertzel.SetSampleRate(0)
+	if err == nil {
 		t.Error("SetSampleRate should fail for 0 sample rate")
 	}
 }

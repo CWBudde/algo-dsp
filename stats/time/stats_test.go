@@ -645,10 +645,7 @@ func TestStreamingStats_MatchesCalculate(t *testing.T) {
 				streamingStats := NewStreamingStats()
 
 				for i := 0; i < len(signal); i += blockSize {
-					end := i + blockSize
-					if end > len(signal) {
-						end = len(signal)
-					}
+					end := min(i+blockSize, len(signal))
 
 					streamingStats.Update(signal[i:end])
 				}

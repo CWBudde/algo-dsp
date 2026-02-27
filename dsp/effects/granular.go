@@ -79,7 +79,8 @@ func NewGranular(sampleRate float64) (*Granular, error) {
 		rng:              rand.New(rand.NewSource(defaultGranularSeed)),
 	}
 
-	if err := granular.reconfigureState(); err != nil {
+	err := granular.reconfigureState()
+	if err != nil {
 		return nil, err
 	}
 
@@ -286,10 +287,7 @@ func (g *Granular) reconfigureState() error {
 			minGranularGrainSeconds, maxGranularGrainSeconds, g.grainSeconds)
 	}
 
-	ringLen := int(math.Ceil(maxGranularDelaySeconds*g.sampleRate)) + int(math.Ceil(g.grainSeconds*g.sampleRate)) + 4
-	if ringLen < 128 {
-		ringLen = 128
-	}
+	ringLen := max(int(math.Ceil(maxGranularDelaySeconds*g.sampleRate))+int(math.Ceil(g.grainSeconds*g.sampleRate))+4, 128)
 
 	g.ring = make([]float64, ringLen)
 	g.updateDerivedParams()
@@ -299,22 +297,13 @@ func (g *Granular) reconfigureState() error {
 }
 
 func (g *Granular) updateDerivedParams() {
-	g.grainSamples = int(math.Round(g.grainSeconds * g.sampleRate))
-	if g.grainSamples < 2 {
-		g.grainSamples = 2
-	}
+	g.grainSamples = max(int(math.Round(g.grainSeconds*g.sampleRate)), 2)
 
-	interval := int(math.Round(float64(g.grainSamples) * (1 - g.overlap)))
-	if interval < 1 {
-		interval = 1
-	}
+	interval := max(int(math.Round(float64(g.grainSamples)*(1-g.overlap))), 1)
 
 	g.spawnInterval = interval
 
-	g.baseDelaySamples = int(math.Round(g.baseDelaySeconds * g.sampleRate))
-	if g.baseDelaySamples < 0 {
-		g.baseDelaySamples = 0
-	}
+	g.baseDelaySamples = max(int(math.Round(g.baseDelaySeconds*g.sampleRate)), 0)
 
 	g.spraySamples = int(math.Round(float64(g.grainSamples) * g.spray))
 }

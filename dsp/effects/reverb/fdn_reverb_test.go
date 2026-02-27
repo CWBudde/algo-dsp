@@ -81,7 +81,7 @@ func TestFDNReverbImpulseTailExists(t *testing.T) {
 
 	var nonZero bool
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.0
 		if i == 0 {
 			x = 1

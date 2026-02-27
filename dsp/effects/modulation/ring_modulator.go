@@ -83,7 +83,8 @@ func NewRingModulator(sampleRate float64, opts ...RingModulatorOption) (*RingMod
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}

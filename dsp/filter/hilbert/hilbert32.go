@@ -23,6 +23,7 @@ func New32(numberOfCoeffs int, transition float64) (*Processor32, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	coeffs := make([]float32, len(coeffs64))
 	for i, c := range coeffs64 {
 		coeffs[i] = float32(c)
@@ -55,9 +56,12 @@ func New32Default() (*Processor32, error) {
 // New32FromCoefficients creates a 32-bit processor from explicit coefficients.
 func New32FromCoefficients(coeffs []float32) (*Processor32, error) {
 	p := &Processor32{transition: math.NaN(), attenuationDB: math.NaN()}
-	if err := p.SetCoefficients(coeffs); err != nil {
+
+	err := p.SetCoefficients(coeffs)
+	if err != nil {
 		return nil, err
 	}
+
 	return p, nil
 }
 
@@ -67,6 +71,7 @@ func (p *Processor32) SetDesign(numberOfCoeffs int, transition float64) error {
 	if err != nil {
 		return err
 	}
+
 	coeffs := make([]float32, len(coeffs64))
 	for i, c := range coeffs64 {
 		coeffs[i] = float32(c)
@@ -89,7 +94,8 @@ func (p *Processor32) SetDesign(numberOfCoeffs int, transition float64) error {
 
 // SetCoefficients replaces allpass coefficients and clears internal state.
 func (p *Processor32) SetCoefficients(coeffs []float32) error {
-	if err := validateCoefficients32(coeffs); err != nil {
+	err := validateCoefficients32(coeffs)
+	if err != nil {
 		return err
 	}
 

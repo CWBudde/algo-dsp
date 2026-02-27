@@ -8,17 +8,17 @@ import (
 )
 
 const (
-	// K-weighting filter parameters from BS.1770
+	// K-weighting filter parameters from BS.1770.
 	kWeightingShelfFreq = 1500.0
 	kWeightingShelfGain = 4.0
 
 	kWeightingHpfFreq = 38.0
 
-	// Integration window durations in seconds
+	// Integration window durations in seconds.
 	momentaryDuration = 0.4
 	shortTermDuration = 3.0
 
-	// Gating parameters
+	// Gating parameters.
 	absThreshold    = -70.0
 	relThreshold    = -10.0
 	blockOverlap    = 0.75 // 75% overlap for integrated loudness gating
@@ -82,7 +82,7 @@ func (m *Meter) reconfigure() {
 	shelfCoeffs := design.HighShelf(kWeightingShelfFreq, kWeightingShelfGain, q, m.sampleRate)
 	hpfCoeffs := design.Highpass(kWeightingHpfFreq, q, m.sampleRate)
 
-	for i := 0; i < m.channels; i++ {
+	for i := range m.channels {
 		m.shelfFilters[i] = biquad.NewSection(shelfCoeffs)
 		m.hpfFilters[i] = biquad.NewSection(hpfCoeffs)
 	}
@@ -93,7 +93,7 @@ func (m *Meter) reconfigure() {
 	m.momHistory = make([][]float64, m.channels)
 
 	m.shortHistory = make([][]float64, m.channels)
-	for i := 0; i < m.channels; i++ {
+	for i := range m.channels {
 		m.momHistory[i] = make([]float64, m.momWindowSamples)
 		m.shortHistory[i] = make([]float64, m.shortWindowSamples)
 	}
@@ -104,17 +104,14 @@ func (m *Meter) reconfigure() {
 
 	m.blockSamples = m.momWindowSamples
 
-	m.blockSamplesStep = int(math.Round(momentaryDuration * blockStepFactor * m.sampleRate))
-	if m.blockSamplesStep < 1 {
-		m.blockSamplesStep = 1
-	}
+	m.blockSamplesStep = max(int(math.Round(momentaryDuration*blockStepFactor*m.sampleRate)), 1)
 
 	m.Reset()
 }
 
 // Reset clears all integration state and peak values.
 func (m *Meter) Reset() {
-	for i := 0; i < m.channels; i++ {
+	for i := range m.channels {
 		m.shelfFilters[i].Reset()
 		m.hpfFilters[i].Reset()
 
@@ -156,7 +153,7 @@ func (m *Meter) ProcessSample(samples []float64) {
 
 	sumCurrentBlock := 0.0
 
-	for i := 0; i < m.channels; i++ {
+	for i := range m.channels {
 		// 1. K-Weighting
 		val := m.shelfFilters[i].ProcessSample(samples[i])
 		val = m.hpfFilters[i].ProcessSample(val)
@@ -207,7 +204,7 @@ func (m *Meter) ProcessSample(samples []float64) {
 			// l_j = sum_i(G_i * z_ij) where G_i is channel weighting.
 
 			meanSqSum := 0.0
-			for i := 0; i < m.channels; i++ {
+			for i := range m.channels {
 				meanSqSum += m.momRunningSums[i] / float64(m.momWindowSamples)
 			}
 
@@ -226,7 +223,7 @@ func (m *Meter) ProcessBlock(block []float64) {
 // Momentary returns the current momentary loudness in LUFS.
 func (m *Meter) Momentary() float64 {
 	meanSqSum := 0.0
-	for i := 0; i < m.channels; i++ {
+	for i := range m.channels {
 		meanSqSum += m.momRunningSums[i] / float64(m.momWindowSamples)
 	}
 
@@ -236,7 +233,7 @@ func (m *Meter) Momentary() float64 {
 // ShortTerm returns the current short-term loudness in LUFS.
 func (m *Meter) ShortTerm() float64 {
 	meanSqSum := 0.0
-	for i := 0; i < m.channels; i++ {
+	for i := range m.channels {
 		meanSqSum += m.shortRunningSums[i] / float64(m.shortWindowSamples)
 	}
 

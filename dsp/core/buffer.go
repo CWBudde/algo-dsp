@@ -22,10 +22,7 @@ func Zero(buf []float64) {
 
 // CopyInto copies src into dst and returns the number of copied elements.
 func CopyInto(dst, src []float64) int {
-	n := len(dst)
-	if len(src) < n {
-		n = len(src)
-	}
+	n := min(len(src), len(dst))
 
 	copy(dst[:n], src[:n])
 

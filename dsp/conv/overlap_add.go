@@ -20,7 +20,7 @@ var (
 // 1. Divide input signal into non-overlapping blocks
 // 2. Zero-pad each block and the kernel to FFT size
 // 3. Convolve via FFT multiplication in frequency domain
-// 4. Overlap-add the results to form the output
+// 4. Overlap-add the results to form the output.
 type OverlapAdd struct {
 	// Kernel in frequency domain
 	kernelFFT []complex128
@@ -51,10 +51,7 @@ func NewOverlapAdd(kernel []float64, blockSize int) (*OverlapAdd, error) {
 	// Auto-select block size if not specified
 	if blockSize <= 0 {
 		// Rule of thumb: block size roughly equal to or larger than kernel
-		blockSize = nextPowerOf2(kernelLen)
-		if blockSize < 256 {
-			blockSize = 256
-		}
+		blockSize = max(nextPowerOf2(kernelLen), 256)
 	}
 
 	// FFT size must accommodate block + kernel - 1 for linear convolution
@@ -120,14 +117,11 @@ func (oa *OverlapAdd) Process(input []float64) ([]float64, error) {
 	// Process in blocks
 	numBlocks := (len(input) + oa.blockSize - 1) / oa.blockSize
 
-	for blockIdx := 0; blockIdx < numBlocks; blockIdx++ {
+	for blockIdx := range numBlocks {
 		// Determine block boundaries
 		start := blockIdx * oa.blockSize
 
-		end := start + oa.blockSize
-		if end > len(input) {
-			end = len(input)
-		}
+		end := min(start+oa.blockSize, len(input))
 
 		blockLen := end - start
 
@@ -136,7 +130,7 @@ func (oa *OverlapAdd) Process(input []float64) ([]float64, error) {
 			oa.inputPadded[i] = 0
 		}
 
-		for i := 0; i < blockLen; i++ {
+		for i := range blockLen {
 			oa.inputPadded[i] = complex(input[start+i], 0)
 		}
 
@@ -232,10 +226,7 @@ func OverlapAddConvolve(signal, kernel []float64) ([]float64, error) {
 	kernelLen := len(kernel)
 
 	// Determine configuration (same logic as NewOverlapAdd)
-	blockSize := nextPowerOf2(kernelLen)
-	if blockSize < 256 {
-		blockSize = 256
-	}
+	blockSize := max(nextPowerOf2(kernelLen), 256)
 
 	minFFTSize := blockSize + kernelLen - 1
 	fftSize := nextPowerOf2(minFFTSize)

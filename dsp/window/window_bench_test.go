@@ -8,21 +8,21 @@ func BenchmarkGenerate(b *testing.B) {
 		b.Run("hann/"+itoa(n), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = Generate(TypeHann, n)
 			}
 		})
 		b.Run("bh4/"+itoa(n), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = Generate(TypeBlackmanHarris4Term, n)
 			}
 		})
 		b.Run("kaiser/"+itoa(n), func(b *testing.B) {
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = Generate(TypeKaiser, n, WithAlpha(8))
 			}
 		})
@@ -36,7 +36,7 @@ func BenchmarkApply(b *testing.B) {
 			b.ReportAllocs()
 
 			buf := make([]float64, n)
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				Apply(TypeHann, buf)
 			}
 		})
@@ -58,7 +58,7 @@ func BenchmarkApplyCoefficientsInPlace(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = ApplyCoefficientsInPlace(buf, coeffs)
 			}
 		})
@@ -80,7 +80,7 @@ func BenchmarkApplyCoefficients(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _ = ApplyCoefficients(buf, coeffs)
 			}
 		})

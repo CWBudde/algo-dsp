@@ -35,15 +35,18 @@ func TestNewLookaheadLimiter(t *testing.T) {
 func TestLookaheadLimiterParameterValidation(t *testing.T) {
 	l, _ := NewLookaheadLimiter(48000)
 
-	if err := l.SetThreshold(-30); err == nil {
+	err := l.SetThreshold(-30)
+	if err == nil {
 		t.Fatal("expected threshold validation error")
 	}
 
-	if err := l.SetRelease(0.5); err == nil {
+	err = l.SetRelease(0.5)
+	if err == nil {
 		t.Fatal("expected release validation error")
 	}
 
-	if err := l.SetLookahead(-1); err == nil {
+	err = l.SetLookahead(-1)
+	if err == nil {
 		t.Fatal("expected lookahead validation error")
 	}
 }
@@ -119,7 +122,7 @@ func TestLookaheadLimiterSidechainDrivesGain(t *testing.T) {
 	sidechainHot := 1.0
 
 	// Warm up detector.
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		lNeutral.ProcessSample(program)
 		lSide.ProcessSampleSidechain(program, sidechainHot)
 	}

@@ -95,7 +95,7 @@ func TestLegacyCharacterizationTemporalBehavior(t *testing.T) {
 	_ = c.SetFeedbackRatioScale(true)
 
 	// Step up
-	for i := 0; i < 1500; i++ {
+	for range 1500 {
 		_ = c.ProcessSample(0.8)
 	}
 
@@ -105,11 +105,11 @@ func TestLegacyCharacterizationTemporalBehavior(t *testing.T) {
 	}
 
 	// Burst then decay
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		_ = c.ProcessSample(0.9)
 	}
 
-	for i := 0; i < 4000; i++ {
+	for range 4000 {
 		_ = c.ProcessSample(0.0)
 	}
 
@@ -223,10 +223,7 @@ func simulateLegacyFeedforwardRMS(in []float64, sr, thresholdDB, ratio, attackMs
 	makeup0 := 1.0
 	makeup1 := makeup0 * math.Pow(threshold, 1.0-legacyRatio)
 
-	size := int(math.Round(sr * 0.001 * rmsMs))
-	if size < 1 {
-		size = 1
-	}
+	size := max(int(math.Round(sr*0.001*rmsMs)), 1)
 
 	buf := make([]float64, size)
 	pos := 0

@@ -51,9 +51,12 @@ func New64Default() (*Processor64, error) {
 // New64FromCoefficients creates a 64-bit processor from explicit coefficients.
 func New64FromCoefficients(coeffs []float64) (*Processor64, error) {
 	p := &Processor64{transition: math.NaN(), attenuationDB: math.NaN()}
-	if err := p.SetCoefficients(coeffs); err != nil {
+
+	err := p.SetCoefficients(coeffs)
+	if err != nil {
 		return nil, err
 	}
+
 	return p, nil
 }
 
@@ -81,7 +84,8 @@ func (p *Processor64) SetDesign(numberOfCoeffs int, transition float64) error {
 
 // SetCoefficients replaces allpass coefficients and clears internal state.
 func (p *Processor64) SetCoefficients(coeffs []float64) error {
-	if err := validateCoefficients64(coeffs); err != nil {
+	err := validateCoefficients64(coeffs)
+	if err != nil {
 		return err
 	}
 
@@ -163,6 +167,7 @@ func (p *Processor64) ClearBuffers() {
 			p.yMem[ph][i] = 0
 		}
 	}
+
 	p.prev = 0
 	p.phase = 0
 }
@@ -176,6 +181,7 @@ func (p *Processor64) Reset() {
 func (p *Processor64) Coefficients() []float64 {
 	out := make([]float64, len(p.coeffs))
 	copy(out, p.coeffs)
+
 	return out
 }
 

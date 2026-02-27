@@ -66,7 +66,7 @@ func ExampleOverlapAdd() {
 	fmt.Printf("FFT size: %d\n", convolver.FFTSize())
 
 	// Process multiple signals efficiently
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		signal := make([]float64, 500)
 		for j := range signal {
 			signal[j] = math.Sin(2 * math.Pi * float64(j) / 20)

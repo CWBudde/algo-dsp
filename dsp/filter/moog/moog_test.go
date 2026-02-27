@@ -76,7 +76,7 @@ func TestStateRoundTrip(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	for i := 0; i < 96; i++ {
+	for i := range 96 {
 		_ = f.ProcessSample(math.Sin(2 * math.Pi * float64(i) / 29))
 	}
 
@@ -95,7 +95,7 @@ func TestStateRoundTrip(t *testing.T) {
 		t.Fatalf("SetState() error = %v", err)
 	}
 
-	for i := 0; i < 128; i++ {
+	for i := range 128 {
 		x := math.Sin(2*math.Pi*float64(i)/31) + 0.2*math.Sin(2*math.Pi*float64(i)/7)
 
 		y1 := f.ProcessSample(x)
@@ -167,7 +167,7 @@ func TestLegacyParityClassicModes(t *testing.T) {
 			scale := dbToAmp(resonance)
 			scale *= scale
 
-			for i := 0; i < 512; i++ {
+			for i := range 512 {
 				x := 0.7*math.Sin(2*math.Pi*float64(i)/37) + 0.13*math.Sin(2*math.Pi*float64(i)/9)
 
 				want := legacyClassicStep(&st, x, resonance, coeff, thermal, scale, tc.improved, tc.tanhFn)
@@ -252,7 +252,7 @@ func TestDriveSweepIncreasesHarmonics(t *testing.T) {
 	outLow := make([]float64, n)
 
 	outHigh := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.8 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
 		outLow[i] = lowDrive.ProcessSample(x)
 		outHigh[i] = highDrive.ProcessSample(x)
@@ -328,7 +328,7 @@ func TestHighResonanceSustainsLongerTail(t *testing.T) {
 }
 
 func TestRapidAutomationStaysFinite(t *testing.T) {
-	f, err := New(48000,
+	filter, err := New(48000,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(1000),
 		WithResonance(1.0),
@@ -339,21 +339,23 @@ func TestRapidAutomationStaysFinite(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	for i := 0; i < 3000; i++ {
+	for i := range 3000 {
 		cutoff := 100 + 18000*(0.5+0.5*math.Sin(2*math.Pi*float64(i)/211))
 		res := 0.2 + 3.4*(0.5+0.5*math.Sin(2*math.Pi*float64(i)/137))
 
-		if err := f.SetCutoffHz(cutoff); err != nil {
+		err := filter.SetCutoffHz(cutoff)
+		if err != nil {
 			t.Fatalf("SetCutoffHz(%g) error = %v", cutoff, err)
 		}
 
-		if err := f.SetResonance(res); err != nil {
+		err = filter.SetResonance(res)
+		if err != nil {
 			t.Fatalf("SetResonance(%g) error = %v", res, err)
 		}
 
 		x := 0.7*math.Sin(2*math.Pi*float64(i)/37) + 0.1*math.Sin(2*math.Pi*float64(i)/5)
 
-		y := f.ProcessSample(x)
+		y := filter.ProcessSample(x)
 		if !isFinite(y) {
 			t.Fatalf("non-finite sample at %d: %v", i, y)
 		}
@@ -362,12 +364,12 @@ func TestRapidAutomationStaysFinite(t *testing.T) {
 
 func TestOversamplingReducesSpurs(t *testing.T) {
 	const (
-		sr = 48000.0
-		n  = 2048
-		k0 = 944
+		sampleRate = 48000.0
+		n          = 2048
+		k0         = 944
 	)
 
-	base, err := New(sr,
+	base, err := New(sampleRate,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(12000),
 		WithResonance(1.0),
@@ -378,7 +380,7 @@ func TestOversamplingReducesSpurs(t *testing.T) {
 		t.Fatalf("New(base) error = %v", err)
 	}
 
-	os, err := New(sr,
+	os, err := New(sampleRate,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(12000),
 		WithResonance(1.0),
@@ -392,7 +394,7 @@ func TestOversamplingReducesSpurs(t *testing.T) {
 	outBase := make([]float64, n)
 
 	outOS := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.85 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
 		outBase[i] = base.ProcessSample(x)
 		outOS[i] = os.ProcessSample(x)
@@ -512,7 +514,7 @@ func TestZDFStateRoundTrip(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	for i := 0; i < 96; i++ {
+	for i := range 96 {
 		_ = f.ProcessSample(math.Sin(2 * math.Pi * float64(i) / 29))
 	}
 
@@ -531,7 +533,7 @@ func TestZDFStateRoundTrip(t *testing.T) {
 		t.Fatalf("SetState() error = %v", err)
 	}
 
-	for i := 0; i < 128; i++ {
+	for i := range 128 {
 		x := math.Sin(2*math.Pi*float64(i)/31) + 0.2*math.Sin(2*math.Pi*float64(i)/7)
 
 		y1 := f.ProcessSample(x)
@@ -651,7 +653,6 @@ func TestZDFHighFrequencyTuningAccuracy(t *testing.T) {
 		if zdfRatio < 1.5 {
 			t.Errorf("ZDF ratio too low at cutoff=%g: %.2f", cutoff, zdfRatio)
 		}
-
 	}
 }
 
@@ -717,7 +718,7 @@ func TestZDFHighResonanceSustainsLongerTail(t *testing.T) {
 }
 
 func TestZDFRapidAutomationStaysFinite(t *testing.T) {
-	f, err := New(48000,
+	moogFilter, err := New(48000,
 		WithVariant(VariantZDF),
 		WithCutoffHz(1000),
 		WithResonance(1.0),
@@ -728,21 +729,23 @@ func TestZDFRapidAutomationStaysFinite(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	for i := 0; i < 3000; i++ {
+	for i := range 3000 {
 		cutoff := 100 + 18000*(0.5+0.5*math.Sin(2*math.Pi*float64(i)/211))
 		res := 0.2 + 3.4*(0.5+0.5*math.Sin(2*math.Pi*float64(i)/137))
 
-		if err := f.SetCutoffHz(cutoff); err != nil {
+		err := moogFilter.SetCutoffHz(cutoff)
+		if err != nil {
 			t.Fatalf("SetCutoffHz(%g) error = %v", cutoff, err)
 		}
 
-		if err := f.SetResonance(res); err != nil {
+		err = moogFilter.SetResonance(res)
+		if err != nil {
 			t.Fatalf("SetResonance(%g) error = %v", res, err)
 		}
 
 		x := 0.7*math.Sin(2*math.Pi*float64(i)/37) + 0.1*math.Sin(2*math.Pi*float64(i)/5)
 
-		y := f.ProcessSample(x)
+		y := moogFilter.ProcessSample(x)
 		if !isFinite(y) {
 			t.Fatalf("non-finite sample at %d: %v", i, y)
 		}
@@ -781,7 +784,7 @@ func TestZDFOversamplingReducesSpurs(t *testing.T) {
 	outBase := make([]float64, n)
 
 	outOS := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.85 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
 		outBase[i] = base.ProcessSample(x)
 		outOS[i] = os.ProcessSample(x)
@@ -827,7 +830,7 @@ func TestZDFDriveSweepIncreasesHarmonics(t *testing.T) {
 	outLow := make([]float64, n)
 
 	outHigh := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.8 * math.Sin(2*math.Pi*float64(k0)*float64(i)/n)
 		outLow[i] = lowDrive.ProcessSample(x)
 		outHigh[i] = highDrive.ProcessSample(x)
@@ -868,7 +871,7 @@ func TestZDFNewtonConvergence(t *testing.T) {
 
 	var maxDiff float64
 
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		x := 0.7*math.Sin(2*math.Pi*float64(i)/37) + 0.3*math.Sin(2*math.Pi*float64(i)/11)
 		y1 := f1.ProcessSample(x)
 		y8 := f8.ProcessSample(x)
@@ -983,7 +986,7 @@ func legacyClassicStep(
 func impulseTailEnergy(f *Filter, n int) float64 {
 	var sum float64
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.0
 		if i == 0 {
 			x = 1
@@ -1038,7 +1041,7 @@ func dftBinEnergy(x []float64, k int) float64 {
 func steadyToneRMS(f *Filter, sampleRate, freq float64, n, warmup int) float64 {
 	var sum float64
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.7 * math.Sin(2*math.Pi*freq*float64(i)/sampleRate)
 
 		y := f.ProcessSample(x)

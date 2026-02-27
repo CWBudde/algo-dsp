@@ -57,7 +57,7 @@ func TestBlt_AllSectionsProcessed(t *testing.T) {
 	for i, s := range fo {
 		allZero := true
 
-		for j := 0; j < 5; j++ {
+		for j := range 5 {
 			if !isZero(s.b[j]) || !isZero(s.a[j]) {
 				allZero = false
 				break

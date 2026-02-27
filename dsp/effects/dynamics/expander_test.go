@@ -65,23 +65,28 @@ func TestExpanderDefaults(t *testing.T) {
 func TestExpanderParameterValidation(t *testing.T) {
 	e, _ := NewExpander(48000)
 
-	if err := e.SetRatio(0.5); err == nil {
+	err := e.SetRatio(0.5)
+	if err == nil {
 		t.Fatal("expected ratio error")
 	}
 
-	if err := e.SetKnee(25); err == nil {
+	err = e.SetKnee(25)
+	if err == nil {
 		t.Fatal("expected knee error")
 	}
 
-	if err := e.SetAttack(0.05); err == nil {
+	err = e.SetAttack(0.05)
+	if err == nil {
 		t.Fatal("expected attack error")
 	}
 
-	if err := e.SetRelease(0.5); err == nil {
+	err = e.SetRelease(0.5)
+	if err == nil {
 		t.Fatal("expected release error")
 	}
 
-	if err := e.SetRange(-121); err == nil {
+	err = e.SetRange(-121)
+	if err == nil {
 		t.Fatal("expected range error")
 	}
 }
@@ -95,7 +100,7 @@ func TestExpanderGainBehavior(t *testing.T) {
 
 	// Above threshold should pass mostly unchanged after settling.
 	var above float64
-	for i := 0; i < 1024; i++ {
+	for range 1024 {
 		above = e.ProcessSample(0.5)
 	}
 
@@ -106,7 +111,7 @@ func TestExpanderGainBehavior(t *testing.T) {
 	e.Reset()
 	// Below threshold should be attenuated.
 	var below float64
-	for i := 0; i < 1024; i++ {
+	for range 1024 {
 		below = e.ProcessSample(0.02)
 	}
 
@@ -124,7 +129,7 @@ func TestExpanderTopologyDetectorAndSidechain(t *testing.T) {
 	_ = e.SetTopology(DynamicsTopologyFeedback)
 
 	var fb float64
-	for i := 0; i < 512; i++ {
+	for range 512 {
 		fb = e.ProcessSample(0.05)
 	}
 
@@ -132,7 +137,7 @@ func TestExpanderTopologyDetectorAndSidechain(t *testing.T) {
 	_ = e.SetTopology(DynamicsTopologyFeedforward)
 
 	var ff float64
-	for i := 0; i < 512; i++ {
+	for range 512 {
 		ff = e.ProcessSample(0.05)
 	}
 
@@ -144,7 +149,7 @@ func TestExpanderTopologyDetectorAndSidechain(t *testing.T) {
 	_ = e.SetSidechainHighCut(5000)
 
 	var out float64
-	for i := 0; i < 512; i++ {
+	for range 512 {
 		out = e.ProcessSampleSidechain(0.2, 0.001)
 	}
 

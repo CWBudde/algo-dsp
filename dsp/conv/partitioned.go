@@ -150,6 +150,7 @@ func (s *partStageT[F, C]) process(inputBuf []F, outputBuf []F) {
 		for i := range s.signalBuf {
 			s.signalBuf[i] = s.signalFreq[i] * irSpec[i]
 		}
+
 		s.fft.Inverse(s.signalBuf, s.signalBuf)
 		unpackReal(s.convTime, s.signalBuf)
 
@@ -165,6 +166,7 @@ func (s *partStageT[F, C]) process(inputBuf []F, outputBuf []F) {
 			for i := range s.signalBuf {
 				s.signalBuf[i] = s.signalFreq[i] * irSpec[i]
 			}
+
 			s.fft.Inverse(s.signalBuf, s.signalBuf)
 			unpackReal(s.convTime, s.signalBuf)
 
@@ -187,6 +189,7 @@ func truncLog2(n int) int {
 	}
 
 	result := 0
+
 	for n > 1 {
 		n >>= 1
 		result++
@@ -236,6 +239,7 @@ func NewPartitionedConvolutionT[F algofft.Float, C algofft.Complex](
 
 	// Determine the max IR order actually used for buffer sizing.
 	maxIROrd := minBlockOrder
+
 	if len(stages) > 0 {
 		last := stages[len(stages)-1]
 		maxIROrd = last.fftOrder
@@ -285,10 +289,12 @@ func partitionIR[F algofft.Float, C algofft.Complex](
 	resIRSize = kernelLenPadded - (bitCountToBits(maxIROrd) - bitCountToBits(minBlockOrder-1))
 
 	var stages []*partStageT[F, C]
+
 	startPos := 0
 
 	for order := minBlockOrder; order < maxIROrd; order++ {
 		count := 1 + ((resIRSize >> order) & 1)
+
 		stage, err := newPartStage[F, C](order, startPos, latency, count)
 		if err != nil {
 			return nil, err
@@ -423,5 +429,6 @@ func (p *PartitionedConvolutionT[F, C]) StageInfo(index int) (partSize, blockCou
 	}
 
 	s := p.stages[index]
+
 	return s.partSize, len(s.irSpectra), nil
 }

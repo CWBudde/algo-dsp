@@ -10,20 +10,24 @@ import (
 // makeImpulseKernel creates a kernel that is a scaled exponential decay.
 func makeImpulseKernel(n int) []float64 {
 	k := make([]float64, n)
+
 	k[0] = 1.0
 	for i := 1; i < n; i++ {
 		k[i] = k[i-1] * 0.99
 	}
+
 	return k
 }
 
 // makePartitionedTestSignal creates a deterministic signal using a fixed-seed generator.
 func makePartitionedTestSignal(n int) []float64 {
 	rng := rand.New(rand.NewPCG(42, 0))
+
 	sig := make([]float64, n)
 	for i := range sig {
 		sig[i] = rng.Float64()*2 - 1
 	}
+
 	return sig
 }
 
@@ -46,11 +50,14 @@ func convolveWithSOA(t *testing.T, kernel, signal []float64, blockSize int) []fl
 			// Pad last block with zeros.
 			block := make([]float64, blockSize)
 			copy(block, signal[i:])
+
 			blkOut, err := soa.ProcessBlock(block)
 			if err != nil {
 				t.Fatalf("SOA ProcessBlock: %v", err)
 			}
+
 			out = append(out, blkOut...)
+
 			break
 		}
 
@@ -58,6 +65,7 @@ func convolveWithSOA(t *testing.T, kernel, signal []float64, blockSize int) []fl
 		if err != nil {
 			t.Fatalf("SOA ProcessBlock: %v", err)
 		}
+
 		out = append(out, blkOut...)
 	}
 
@@ -139,6 +147,7 @@ func TestPartitionedConvolutionMatchesSOA(t *testing.T) {
 			compareLen := min(len(signal), len(pcOut), len(soaOut))
 
 			maxDiff := 0.0
+
 			for i := range compareLen {
 				d := math.Abs(pcOut[i] - soaOut[i])
 				if d > maxDiff {
@@ -208,8 +217,10 @@ func TestPartitionedConvolutionErrors(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewPartitionedConvolution: %v", err)
 		}
+
 		in := make([]float64, 10)
 		out := make([]float64, 8) // different length
+
 		err = pc.ProcessBlock(in, out)
 		if !errors.Is(err, ErrLengthMismatch) {
 			t.Errorf("want ErrLengthMismatch, got %v", err)
@@ -248,9 +259,11 @@ func TestPartitionedConvolutionStageInfo(t *testing.T) {
 			t.Errorf("StageInfo(%d): %v", i, err)
 			continue
 		}
+
 		if partSize <= 0 {
 			t.Errorf("StageInfo(%d): partSize=%d, want >0", i, partSize)
 		}
+
 		if blockCount <= 0 {
 			t.Errorf("StageInfo(%d): blockCount=%d, want >0", i, blockCount)
 		}
@@ -259,10 +272,12 @@ func TestPartitionedConvolutionStageInfo(t *testing.T) {
 
 func TestPartitionedConvolutionKernelLen(t *testing.T) {
 	kernel := makeImpulseKernel(300)
+
 	pc, err := NewPartitionedConvolution(kernel, 6, 13)
 	if err != nil {
 		t.Fatalf("NewPartitionedConvolution: %v", err)
 	}
+
 	if pc.KernelLen() != len(kernel) {
 		t.Errorf("KernelLen()=%d, want %d", pc.KernelLen(), len(kernel))
 	}

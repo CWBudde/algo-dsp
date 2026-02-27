@@ -11,7 +11,9 @@ func (e *Engine) SetCompressor(param CompressorParams) error {
 	param.MakeupGainDB = clamp(param.MakeupGainDB, 0, 24)
 
 	e.compParams = param
-	if err := e.rebuildCompressor(); err != nil {
+
+	err := e.rebuildCompressor()
+	if err != nil {
 		return err
 	}
 
@@ -29,7 +31,9 @@ func (e *Engine) SetLimiter(p LimiterParams) error {
 	p.Release = clamp(p.Release, 1, 5000)
 
 	e.limParams = p
-	if err := e.rebuildLimiter(); err != nil {
+
+	err := e.rebuildLimiter()
+	if err != nil {
 		return err
 	}
 
@@ -239,36 +243,44 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 }
 
 func (e *Engine) rebuildCompressor() error {
-	if err := e.compressor.SetSampleRate(e.sampleRate); err != nil {
+	err := e.compressor.SetSampleRate(e.sampleRate)
+	if err != nil {
 		return err
 	}
 
-	if err := e.compressor.SetThreshold(e.compParams.ThresholdDB); err != nil {
+	err = e.compressor.SetThreshold(e.compParams.ThresholdDB)
+	if err != nil {
 		return err
 	}
 
-	if err := e.compressor.SetRatio(e.compParams.Ratio); err != nil {
+	err = e.compressor.SetRatio(e.compParams.Ratio)
+	if err != nil {
 		return err
 	}
 
-	if err := e.compressor.SetKnee(e.compParams.KneeDB); err != nil {
+	err = e.compressor.SetKnee(e.compParams.KneeDB)
+	if err != nil {
 		return err
 	}
 
-	if err := e.compressor.SetAttack(e.compParams.AttackMs); err != nil {
+	err = e.compressor.SetAttack(e.compParams.AttackMs)
+	if err != nil {
 		return err
 	}
 
-	if err := e.compressor.SetRelease(e.compParams.ReleaseMs); err != nil {
+	err = e.compressor.SetRelease(e.compParams.ReleaseMs)
+	if err != nil {
 		return err
 	}
 
 	if e.compParams.AutoMakeup {
-		if err := e.compressor.SetAutoMakeup(true); err != nil {
+		err = e.compressor.SetAutoMakeup(true)
+		if err != nil {
 			return err
 		}
 	} else {
-		if err := e.compressor.SetMakeupGain(e.compParams.MakeupGainDB); err != nil {
+		err = e.compressor.SetMakeupGain(e.compParams.MakeupGainDB)
+		if err != nil {
 			return err
 		}
 	}
@@ -277,15 +289,18 @@ func (e *Engine) rebuildCompressor() error {
 }
 
 func (e *Engine) rebuildLimiter() error {
-	if err := e.limiter.SetSampleRate(e.sampleRate); err != nil {
+	err := e.limiter.SetSampleRate(e.sampleRate)
+	if err != nil {
 		return err
 	}
 
-	if err := e.limiter.SetThreshold(e.limParams.Threshold); err != nil {
+	err = e.limiter.SetThreshold(e.limParams.Threshold)
+	if err != nil {
 		return err
 	}
 
-	if err := e.limiter.SetRelease(e.limParams.Release); err != nil {
+	err = e.limiter.SetRelease(e.limParams.Release)
+	if err != nil {
 		return err
 	}
 
@@ -308,7 +323,8 @@ func (e *Engine) rebuildEffects() error {
 		e.rebuildHarmonicBassEffect,
 	}
 	for _, step := range steps {
-		if err := step(); err != nil {
+		err := step()
+		if err != nil {
 			return err
 		}
 	}

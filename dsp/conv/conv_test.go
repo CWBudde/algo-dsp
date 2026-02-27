@@ -1,6 +1,7 @@
 package conv
 
 import (
+	"errors"
 	"math"
 	"testing"
 )
@@ -69,12 +70,12 @@ func TestDirect(t *testing.T) {
 
 func TestDirectErrors(t *testing.T) {
 	_, err := Direct([]float64{}, []float64{1, 2})
-	if err != ErrEmptyInput {
+	if !errors.Is(err, ErrEmptyInput) {
 		t.Errorf("expected ErrEmptyInput, got %v", err)
 	}
 
 	_, err = Direct([]float64{1, 2}, []float64{})
-	if err != ErrEmptyKernel {
+	if !errors.Is(err, ErrEmptyKernel) {
 		t.Errorf("expected ErrEmptyKernel, got %v", err)
 	}
 }
@@ -485,7 +486,7 @@ func TestCorrelateFFT(t *testing.T) {
 
 func TestCorrelateFFTErrors(t *testing.T) {
 	_, err := CorrelateFFT([]float64{}, []float64{1, 2})
-	if err != ErrEmptyInput {
+	if !errors.Is(err, ErrEmptyInput) {
 		t.Errorf("expected ErrEmptyInput, got %v", err)
 	}
 }
@@ -511,7 +512,7 @@ func TestCorrelateDirect(t *testing.T) {
 
 func TestCorrelateDirectErrors(t *testing.T) {
 	_, err := CorrelateDirect([]float64{}, []float64{1, 2})
-	if err != ErrEmptyInput {
+	if !errors.Is(err, ErrEmptyInput) {
 		t.Errorf("expected ErrEmptyInput, got %v", err)
 	}
 }
@@ -619,12 +620,12 @@ func TestDeconvolveErrors(t *testing.T) {
 	opts := DefaultDeconvOptions()
 
 	_, err := Deconvolve([]float64{}, []float64{1, 2}, opts)
-	if err != ErrEmptyInput {
+	if !errors.Is(err, ErrEmptyInput) {
 		t.Errorf("expected ErrEmptyInput, got %v", err)
 	}
 
 	_, err = Deconvolve([]float64{1, 2}, []float64{}, opts)
-	if err != ErrEmptyKernel {
+	if !errors.Is(err, ErrEmptyKernel) {
 		t.Errorf("expected ErrEmptyKernel, got %v", err)
 	}
 }
@@ -654,12 +655,12 @@ func TestSNR(t *testing.T) {
 
 func TestDirectCircularErrors(t *testing.T) {
 	_, err := DirectCircular([]float64{}, []float64{1, 2})
-	if err != ErrEmptyInput {
+	if !errors.Is(err, ErrEmptyInput) {
 		t.Errorf("expected ErrEmptyInput, got %v", err)
 	}
 
 	_, err = DirectCircular([]float64{1, 2, 3}, []float64{1, 2})
-	if err != ErrLengthMismatch {
+	if !errors.Is(err, ErrLengthMismatch) {
 		t.Errorf("expected ErrLengthMismatch, got %v", err)
 	}
 }

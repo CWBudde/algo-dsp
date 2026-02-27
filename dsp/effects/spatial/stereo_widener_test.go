@@ -90,7 +90,7 @@ func TestStereoWidenerInterleavedMatchesProcessStereo(t *testing.T) {
 		t.Fatalf("ProcessInterleavedInPlace() error = %v", err)
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if diff := math.Abs(interleaved[2*i] - wantL[i]); diff > 1e-12 {
 			t.Fatalf("left sample %d mismatch: got=%g want=%g", i, interleaved[2*i], wantL[i])
 		}
@@ -261,7 +261,7 @@ func TestStereoWidenerBassMonoCollapsesLow(t *testing.T) {
 	outL := make([]float64, n)
 
 	outR := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		phase := 2 * math.Pi * 20 * float64(i) / sampleRate
 		l := math.Sin(phase)
 		r := -math.Sin(phase) // opposite polarity = pure side
@@ -293,7 +293,7 @@ func TestStereoWidenerBassMonoPreservesHigh(t *testing.T) {
 	outL := make([]float64, n)
 
 	outR := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		phase := 2 * math.Pi * 5000 * float64(i) / sampleRate
 		l := math.Sin(phase)
 		r := math.Sin(phase + 0.5) // offset phase = stereo content
@@ -482,7 +482,7 @@ func TestStereoWidenerEnergyPreservation(t *testing.T) {
 	inputEnergy := 0.0
 	outputEnergy := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		l := math.Sin(2 * math.Pi * float64(i) / 31)
 		r := math.Cos(2 * math.Pi * float64(i) / 31)
 		inputEnergy += l*l + r*r

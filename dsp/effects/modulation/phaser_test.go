@@ -98,7 +98,7 @@ func TestPhaserFiniteOutputUnderFeedback(t *testing.T) {
 		t.Fatalf("NewPhaser() error = %v", err)
 	}
 
-	for i := 0; i < 12000; i++ {
+	for i := range 12000 {
 		in := 0.3 * math.Sin(2*math.Pi*440*float64(i)/48000)
 
 		out := phaser.Process(in)

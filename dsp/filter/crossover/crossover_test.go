@@ -119,7 +119,7 @@ func TestCrossover_ProcessSample(t *testing.T) {
 	}
 
 	// Feed zeros — outputs should decay toward zero.
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		lo, hi = xo.ProcessSample(0.0)
 	}
 
@@ -142,7 +142,7 @@ func TestCrossover_AllpassImpulseSum(t *testing.T) {
 	n := 4096
 	sumEnergy := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.0
 		if i == 0 {
 			x = 1.0
@@ -277,7 +277,7 @@ func TestMultiBand_ProcessSample_EnergyPreservation(t *testing.T) {
 	n := 8192
 	sumEnergy := 0.0
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := 0.0
 		if i == 0 {
 			x = 1.0
@@ -326,7 +326,7 @@ func TestMultiBand_ProcessBlock(t *testing.T) {
 	// Block.
 	blockBands := mbBlock.ProcessBlock(input)
 
-	for b := 0; b < 3; b++ {
+	for b := range 3 {
 		for i := range sampleBands[b] {
 			if math.Abs(sampleBands[b][i]-blockBands[b][i]) > 1e-12 {
 				t.Errorf("band %d sample %d: sample=%.15e block=%.15e", b, i, sampleBands[b][i], blockBands[b][i])

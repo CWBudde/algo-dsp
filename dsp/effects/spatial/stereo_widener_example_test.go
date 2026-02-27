@@ -81,7 +81,7 @@ func ExampleStereoWidener_bassMono() {
 
 	// Process a stereo signal with bass mono crossover active.
 	const n = 4800
-	for i := 0; i < n; i++ {
+	for i := range n {
 		phase := 2 * math.Pi * 1000 * float64(i) / 48000
 		l := math.Sin(phase)
 		r := math.Sin(phase + 0.3)

@@ -46,7 +46,7 @@ func BenchmarkProcessBlock_AVX2Kernel(b *testing.B) {
 
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				d0, d1 = processBlock(c, d0, d1, buf)
 			}
 		})

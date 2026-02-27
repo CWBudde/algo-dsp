@@ -113,8 +113,8 @@ func DirectTo(dst, a, b []float64) {
 
 // directToScalar performs scalar convolution for small kernels.
 func directToScalar(dst, a, b []float64, n, m int) {
-	for i := 0; i < n; i++ {
-		for j := 0; j < m; j++ {
+	for i := range n {
+		for j := range m {
 			dst[i+j] += a[i] * b[j]
 		}
 	}
@@ -136,7 +136,7 @@ func directToSIMD(dst, a, b []float64, n, m int) {
 
 	temp = temp[:m]
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		// Scale kernel by current input sample: temp = b * a[i]
 		vecmath.ScaleBlock(temp, b, a[i])
 
@@ -172,8 +172,8 @@ func DirectCircularTo(dst, a, b []float64) {
 		dst[i] = 0
 	}
 
-	for i := 0; i < n; i++ {
-		for j := 0; j < n; j++ {
+	for i := range n {
+		for j := range n {
 			k := (i + j) % n
 			dst[k] += a[i] * b[j]
 		}

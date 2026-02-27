@@ -61,7 +61,7 @@ func ExampleCompressor_metering() {
 	comp.ResetMetrics()
 
 	// Process some loud signal
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		comp.ProcessSample(0.8)
 	}
 

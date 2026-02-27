@@ -286,7 +286,8 @@ func TestValidationAndEdgeCases(t *testing.T) {
 		t.Fatal("expected mismatch error")
 	}
 
-	if err := ApplyCoefficientsInPlace([]float64{1, 2}, []float64{1}); err == nil {
+	err := ApplyCoefficientsInPlace([]float64{1, 2}, []float64{1})
+	if err == nil {
 		t.Fatal("expected mismatch error")
 	}
 }

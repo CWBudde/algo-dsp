@@ -36,7 +36,8 @@ type TransientShaper struct {
 
 // NewTransientShaper creates a transient shaper with production defaults.
 func NewTransientShaper(sampleRate float64) (*TransientShaper, error) {
-	if err := validateSampleRate(sampleRate); err != nil {
+	err := validateSampleRate(sampleRate)
+	if err != nil {
 		return nil, fmt.Errorf("transient shaper %w", err)
 	}
 
@@ -104,7 +105,8 @@ func (t *TransientShaper) SetRelease(ms float64) error {
 
 // SetSampleRate updates sample rate and detector coefficients.
 func (t *TransientShaper) SetSampleRate(sampleRate float64) error {
-	if err := validateSampleRate(sampleRate); err != nil {
+	err := validateSampleRate(sampleRate)
+	if err != nil {
 		return fmt.Errorf("transient shaper %w", err)
 	}
 

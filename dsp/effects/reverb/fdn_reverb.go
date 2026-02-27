@@ -82,7 +82,8 @@ func NewFDNReverb(sampleRate float64) (*FDNReverb, error) {
 	r.outputGain = scale
 	r.matrixScale = scale
 
-	if err := r.SetSampleRate(sampleRate); err != nil {
+	err := r.SetSampleRate(sampleRate)
+	if err != nil {
 		return nil, err
 	}
 
@@ -203,7 +204,7 @@ func (r *FDNReverb) ProcessSample(input float64) float64 {
 	}
 
 	var delays [fdnSize]float64
-	for i := 0; i < fdnSize; i++ {
+	for i := range fdnSize {
 		phaseOffset := (2 * math.Pi * float64(i)) / float64(fdnSize)
 		mod := 0.5 * (1 + math.Sin(r.lfoPhase+phaseOffset))
 		delay := r.baseDelaySamples[i]*r.lineDelayScale + r.modDepthSamples*mod
@@ -215,9 +216,9 @@ func (r *FDNReverb) ProcessSample(input float64) float64 {
 		r.lfoPhase -= 2 * math.Pi
 	}
 
-	for i := 0; i < fdnSize; i++ {
+	for i := range fdnSize {
 		feedback := 0.0
-		for j := 0; j < fdnSize; j++ {
+		for j := range fdnSize {
 			feedback += fdnHadamard[i][j] * delays[j]
 		}
 
@@ -229,7 +230,7 @@ func (r *FDNReverb) ProcessSample(input float64) float64 {
 	}
 
 	out := 0.0
-	for i := 0; i < fdnSize; i++ {
+	for i := range fdnSize {
 		out += delays[i]
 	}
 
@@ -282,20 +283,14 @@ func (r *FDNReverb) reconfigureDelays() error {
 		return fmt.Errorf("fdn reverb pre-delay must be >= 0: %f", r.preDelaySeconds)
 	}
 
-	for i := 0; i < fdnSize; i++ {
-		maxDelay := int(math.Ceil(r.baseDelaySamples[i]*r.lineDelayScale+r.modDepthSamples)) + 3
-		if maxDelay < minFDNDelayBufferSize {
-			maxDelay = minFDNDelayBufferSize
-		}
+	for i := range fdnSize {
+		maxDelay := max(int(math.Ceil(r.baseDelaySamples[i]*r.lineDelayScale+r.modDepthSamples))+3, minFDNDelayBufferSize)
 
 		r.lines[i].resize(maxDelay)
 		r.filterState[i] = 0
 	}
 
-	preDelayMax := int(math.Ceil(r.preDelaySamples)) + 3
-	if preDelayMax < minFDNDelayBufferSize {
-		preDelayMax = minFDNDelayBufferSize
-	}
+	preDelayMax := max(int(math.Ceil(r.preDelaySamples))+3, minFDNDelayBufferSize)
 
 	r.preDelayLine.resize(preDelayMax)
 
@@ -309,7 +304,7 @@ func (r *FDNReverb) updateFeedbackGains() {
 		return
 	}
 
-	for i := 0; i < fdnSize; i++ {
+	for i := range fdnSize {
 		delaySeconds := (r.baseDelaySamples[i] * r.lineDelayScale) / r.sampleRate
 		r.feedbackGain[i] = math.Pow(10, -3*delaySeconds/r.rt60Seconds)
 	}

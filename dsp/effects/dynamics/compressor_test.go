@@ -268,7 +268,8 @@ func TestSetAutoMakeup(t *testing.T) {
 	c, _ := NewCompressor(48000)
 
 	// Disable auto makeup
-	if err := c.SetAutoMakeup(false); err != nil {
+	err := c.SetAutoMakeup(false)
+	if err != nil {
 		t.Fatalf("SetAutoMakeup(false) error = %v", err)
 	}
 
@@ -277,7 +278,8 @@ func TestSetAutoMakeup(t *testing.T) {
 	}
 
 	// Re-enable auto makeup
-	if err := c.SetAutoMakeup(true); err != nil {
+	err = c.SetAutoMakeup(true)
+	if err != nil {
 		t.Fatalf("SetAutoMakeup(true) error = %v", err)
 	}
 
@@ -291,7 +293,8 @@ func TestCoefficientCalculations(t *testing.T) {
 	c, _ := NewCompressor(48000)
 
 	// Test threshold conversion to log2
-	if err := c.SetThreshold(-20); err != nil {
+	err := c.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -301,7 +304,8 @@ func TestCoefficientCalculations(t *testing.T) {
 	}
 
 	// Test knee width calculation
-	if err := c.SetKnee(6); err != nil {
+	err = c.SetKnee(6)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -326,15 +330,18 @@ func TestAutoMakeupGainCalculation(t *testing.T) {
 	c, _ := NewCompressor(48000)
 
 	// Set specific parameters
-	if err := c.SetThreshold(-20); err != nil {
+	err := c.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetRatio(4); err != nil {
+	err = c.SetRatio(4)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetAutoMakeup(true); err != nil {
+	err = c.SetAutoMakeup(true)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -348,7 +355,9 @@ func TestAutoMakeupGainCalculation(t *testing.T) {
 // TestGainCalculationBelowThreshold verifies no compression below threshold.
 func TestGainCalculationBelowThreshold(t *testing.T) {
 	c, _ := NewCompressor(48000)
-	if err := c.SetThreshold(-20); err != nil {
+
+	err := c.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -365,15 +374,19 @@ func TestGainCalculationBelowThreshold(t *testing.T) {
 // TestGainCalculationAboveThreshold verifies compression above threshold.
 func TestGainCalculationAboveThreshold(t *testing.T) {
 	c, _ := NewCompressor(48000)
-	if err := c.SetThreshold(-20); err != nil {
+
+	err := c.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetRatio(4); err != nil {
+	err = c.SetRatio(4)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetKnee(0); err != nil { // Hard knee for predictable testing
+	err = c.SetKnee(0)
+	if err != nil { // Hard knee for predictable testing
 		t.Fatal(err)
 	}
 
@@ -408,15 +421,19 @@ func TestGainCalculationRatios(t *testing.T) {
 
 	for i, tt := range tests {
 		c, _ := NewCompressor(48000)
-		if err := c.SetThreshold(-20); err != nil {
+
+		err := c.SetThreshold(-20)
+		if err != nil {
 			t.Fatal(err)
 		}
 
-		if err := c.SetRatio(tt.ratio); err != nil {
+		err = c.SetRatio(tt.ratio)
+		if err != nil {
 			t.Fatal(err)
 		}
 
-		if err := c.SetKnee(0); err != nil {
+		err = c.SetKnee(0)
+		if err != nil {
 			t.Fatal(err)
 		}
 
@@ -440,7 +457,7 @@ func TestProcessSampleZero(t *testing.T) {
 	c, _ := NewCompressor(48000)
 	c.Reset()
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		output := c.ProcessSample(0)
 		if output != 0 {
 			t.Errorf("ProcessSample(0) = %f, want 0", output)
@@ -491,7 +508,7 @@ func TestReset(t *testing.T) {
 	c, _ := NewCompressor(48000)
 
 	// Process some samples to build up state
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		c.ProcessSample(0.5)
 	}
 
@@ -518,18 +535,20 @@ func TestReset(t *testing.T) {
 func TestMetricsTracking(t *testing.T) {
 	c, _ := NewCompressor(48000)
 	// Set low threshold and fast attack to ensure compression happens quickly
-	if err := c.SetThreshold(-20); err != nil {
+	err := c.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetAttack(1); err != nil { // Very fast attack
+	err = c.SetAttack(1)
+	if err != nil { // Very fast attack
 		t.Fatal(err)
 	}
 
 	c.ResetMetrics()
 
 	// Process many loud samples to build up envelope and trigger compression
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		c.ProcessSample(0.8)
 	}
 
@@ -553,7 +572,9 @@ func TestMetricsTracking(t *testing.T) {
 // TestEnvelopeFollowerAttack verifies attack phase behavior.
 func TestEnvelopeFollowerAttack(t *testing.T) {
 	c, _ := NewCompressor(48000)
-	if err := c.SetAttack(1); err != nil { // Very fast 1ms attack
+
+	err := c.SetAttack(1)
+	if err != nil { // Very fast 1ms attack
 		t.Fatal(err)
 	}
 
@@ -566,7 +587,7 @@ func TestEnvelopeFollowerAttack(t *testing.T) {
 
 	// Process enough samples - envelope followers approach asymptotically
 	// With 1ms attack at 48kHz, we need several time constants (5-10ms) to approach target
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		c.ProcessSample(level)
 		// Peak should increase monotonically during attack (or stay constant when settled)
 		if c.peakLevel < prevPeak-1e-10 { // Allow tiny numerical errors
@@ -587,18 +608,21 @@ func TestEnvelopeFollowerAttack(t *testing.T) {
 // TestEnvelopeFollowerRelease verifies release phase behavior.
 func TestEnvelopeFollowerRelease(t *testing.T) {
 	c, _ := NewCompressor(48000)
-	if err := c.SetAttack(1); err != nil { // Fast attack to build up quickly
+
+	err := c.SetAttack(1)
+	if err != nil { // Fast attack to build up quickly
 		t.Fatal(err)
 	}
 
-	if err := c.SetRelease(50); err != nil { // 50ms release
+	err = c.SetRelease(50)
+	if err != nil { // 50ms release
 		t.Fatal(err)
 	}
 
 	c.Reset()
 
 	// Build up peak - process for longer to ensure peak is settled
-	for i := 0; i < 2000; i++ {
+	for range 2000 {
 		c.ProcessSample(0.5)
 	}
 
@@ -612,7 +636,7 @@ func TestEnvelopeFollowerRelease(t *testing.T) {
 	// Process silence for release (50ms * 48kHz = 2400 samples, so 5000 is more than sufficient)
 	prevPeak := peakAfterAttack
 
-	for i := 0; i < 5000; i++ {
+	for i := range 5000 {
 		c.ProcessSample(0)
 		// Peak should decrease monotonically during release (or stay at zero when settled)
 		if c.peakLevel > prevPeak+1e-10 { // Allow tiny numerical errors

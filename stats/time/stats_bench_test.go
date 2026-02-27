@@ -22,7 +22,7 @@ func BenchmarkCalculate(b *testing.B) {
 			b.ReportAllocs()
 			b.SetBytes(int64(n * 8))
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				Calculate(signal)
 			}
 		})
@@ -37,7 +37,7 @@ func BenchmarkRMS(b *testing.B) {
 			b.ReportAllocs()
 			b.SetBytes(int64(n * 8))
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				RMS(signal)
 			}
 		})
@@ -53,7 +53,7 @@ func BenchmarkStreamingUpdate(b *testing.B) {
 			b.SetBytes(int64(n * 8))
 
 			ss := NewStreamingStats()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				ss.Reset()
 				ss.Update(signal)
 			}

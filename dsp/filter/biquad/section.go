@@ -13,8 +13,8 @@ import (
 // The sign convention follows Direct Form II Transposed:
 //
 //	y  = B0*x + d0
-//	d0 = B1*x - A1*y + d1
-//	d1 = B2*x - A2*y
+//	= B1*x - A1*y + d1
+//	= B2*x - A2*y
 type Coefficients struct {
 	B0, B1, B2 float64 // feedforward (numerator)
 	A1, A2     float64 // feedback (denominator)
@@ -24,6 +24,7 @@ type Coefficients struct {
 // It implements Direct Form II Transposed processing.
 type Section struct {
 	Coefficients
+
 	d0, d1 float64
 }
 

@@ -39,7 +39,7 @@ func BenchmarkProcessSample(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_ = f.ProcessSample(math.Sin(in))
 				in += step
 			}
@@ -83,7 +83,7 @@ func BenchmarkProcessInPlace1024(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				f.ProcessInPlace(buf)
 			}
 		})

@@ -25,7 +25,8 @@ func ExamplePitchProcessor() {
 
 	processors := []pitch.PitchProcessor{td, fd}
 	for _, p := range processors {
-		if err := p.SetPitchSemitones(4); err != nil {
+		err := p.SetPitchSemitones(4)
+		if err != nil {
 			panic(err)
 		}
 

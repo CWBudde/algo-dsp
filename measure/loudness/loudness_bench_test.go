@@ -17,7 +17,7 @@ func BenchmarkMeter_ProcessBlock(b *testing.B) {
 				b.SetBytes(int64(size * ch * 8))
 				b.ResetTimer()
 
-				for i := 0; i < b.N; i++ {
+				for range b.N {
 					meter.ProcessBlock(block)
 				}
 			})

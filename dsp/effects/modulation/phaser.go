@@ -155,7 +155,8 @@ func NewPhaser(sampleRate float64, opts ...PhaserOption) (*Phaser, error) {
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -169,7 +170,9 @@ func NewPhaser(sampleRate float64, opts ...PhaserOption) (*Phaser, error) {
 		mix:        cfg.mix,
 		stages:     make([]phaserAllpassStage, cfg.stages),
 	}
-	if err := p.validateParams(); err != nil {
+
+	err := p.validateParams()
+	if err != nil {
 		return nil, err
 	}
 

@@ -173,7 +173,7 @@ func TestDistortionChebyshevHarmonicBalance(t *testing.T) {
 	in := make([]float64, n)
 
 	out := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		in[i] = math.Cos(2 * math.Pi * float64(i) / float64(n))
 		out[i] = d.ProcessSample(in[i])
 	}
@@ -218,7 +218,7 @@ func TestDistortionChebyshevDCBypassReducesDC(t *testing.T) {
 
 	var sumNoDC, sumWithDC float64
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := math.Cos(2 * math.Pi * float64(i) / 128)
 		sumNoDC += dNoDC.ProcessSample(x)
 		sumWithDC += dWithDC.ProcessSample(x)
@@ -295,8 +295,10 @@ func TestChebyshevWeightsDefaultIsLegacyTN(t *testing.T) {
 }
 
 func TestChebyshevWeightsAdditiveBlend(t *testing.T) {
-	const x = 0.3
-	const tol = 1e-10
+	const (
+		x   = 0.3
+		tol = 1e-10
+	)
 
 	baseOpts := []DistortionOption{
 		WithDistortionMode(DistortionModeChebyshev),
@@ -322,6 +324,7 @@ func TestChebyshevWeightsAdditiveBlend(t *testing.T) {
 
 	for _, tc := range cases {
 		opts := append(baseOpts, WithChebyshevWeights(tc.weights))
+
 		d, err := NewDistortion(48000, opts...)
 		if err != nil {
 			t.Fatalf("[%s] NewDistortion() error = %v", tc.label, err)
@@ -382,6 +385,7 @@ func TestSetChebyshevWeightsValidation(t *testing.T) {
 
 	// Verify the weights are applied: with [1,0,0] output should equal T_1(x)=x.
 	const x = 0.4
+
 	got := d.ProcessSample(x)
 	want := x // T_1(x)*gain=1 with mix=1, output=1, drive=1
 
@@ -408,8 +412,10 @@ func TestChebyshevWeightsZeroAfterSet(t *testing.T) {
 		t.Fatalf("SetChebyshevWeights([1,0,0]) error = %v", err)
 	}
 
-	const x = 0.5
-	const tol = 1e-10
+	const (
+		x   = 0.5
+		tol = 1e-10
+	)
 
 	// With weights=[1,0,0], output should equal T_1(0.5)=0.5.
 	got := d.ProcessSample(x)

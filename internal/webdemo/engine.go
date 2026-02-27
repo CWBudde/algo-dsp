@@ -501,7 +501,7 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		return nil, err
 	}
 
-	for i := 0; i < stepCount; i++ {
+	for i := range stepCount {
 		e.steps[i] = StepConfig{Enabled: i%4 == 0, FreqHz: defaultStepFreq(i)}
 	}
 
@@ -524,6 +524,7 @@ func (e *Engine) GetIRNames() []string {
 	if e.irLib == nil {
 		return nil
 	}
+
 	return e.irLib.IRNames()
 }
 

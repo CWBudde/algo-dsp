@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestButterworthLP_Basic verifies basic Butterworth lowpass functionality
+// TestButterworthLP_Basic verifies basic Butterworth lowpass functionality.
 func TestButterworthLP_Basic(t *testing.T) {
 	sr := 48000.0
 
@@ -19,7 +19,7 @@ func TestButterworthLP_Basic(t *testing.T) {
 	}
 }
 
-// TestButterworthHP_Basic verifies basic Butterworth highpass functionality
+// TestButterworthHP_Basic verifies basic Butterworth highpass functionality.
 func TestButterworthHP_Basic(t *testing.T) {
 	sr := 48000.0
 

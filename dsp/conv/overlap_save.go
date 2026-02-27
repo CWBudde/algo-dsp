@@ -59,10 +59,7 @@ func NewOverlapSave(kernel []float64, fftSize int) (*OverlapSave, error) {
 	// Auto-select FFT size if not specified
 	if fftSize <= 0 {
 		// Choose FFT size to be at least 2x kernel length for efficiency
-		fftSize = nextPowerOf2(2 * kernelLen)
-		if fftSize < 256 {
-			fftSize = 256
-		}
+		fftSize = max(nextPowerOf2(2*kernelLen), 256)
 	}
 
 	// Validate FFT size
@@ -150,7 +147,7 @@ func (os *OverlapSave) Process(input []float64) ([]float64, error) {
 		}
 
 		// Copy history (kernelLen - 1 samples)
-		for i := 0; i < os.kernelLen-1; i++ {
+		for i := range os.kernelLen - 1 {
 			os.inputBuffer[i] = complex(os.history[i], 0)
 		}
 
@@ -160,7 +157,7 @@ func (os *OverlapSave) Process(input []float64) ([]float64, error) {
 			newSamples = len(input) - inputPos
 		}
 
-		for i := 0; i < newSamples; i++ {
+		for i := range newSamples {
 			os.inputBuffer[os.kernelLen-1+i] = complex(input[inputPos+i], 0)
 		}
 
@@ -189,12 +186,9 @@ func (os *OverlapSave) Process(input []float64) ([]float64, error) {
 
 		// Update history for next block
 		// History is the last (kernelLen - 1) samples of current input block
-		historyStart := newSamples
-		if historyStart < 0 {
-			historyStart = 0
-		}
+		historyStart := max(newSamples, 0)
 
-		for i := 0; i < os.kernelLen-1; i++ {
+		for i := range os.kernelLen - 1 {
 			idx := historyStart + i
 			if idx < os.stepSize && inputPos+idx < len(input) {
 				os.history[i] = input[inputPos+idx]
@@ -208,7 +202,7 @@ func (os *OverlapSave) Process(input []float64) ([]float64, error) {
 		// Actually, for overlap-save, history should be the last samples that will overlap
 		// Let's simplify: history = last (kernelLen-1) samples we've seen
 		actualHistoryStart := inputPos + newSamples - (os.kernelLen - 1)
-		for i := 0; i < os.kernelLen-1; i++ {
+		for i := range os.kernelLen - 1 {
 			idx := actualHistoryStart + i
 			if idx >= 0 && idx < len(input) {
 				os.history[i] = input[idx]
@@ -231,7 +225,7 @@ func (os *OverlapSave) Process(input []float64) ([]float64, error) {
 			os.inputBuffer[i] = 0
 		}
 
-		for i := 0; i < os.kernelLen-1; i++ {
+		for i := range os.kernelLen - 1 {
 			os.inputBuffer[i] = complex(os.history[i], 0)
 		}
 
@@ -323,10 +317,7 @@ func OverlapSaveConvolve(signal, kernel []float64) ([]float64, error) {
 	kernelLen := len(kernel)
 
 	// Determine configuration (same logic as NewOverlapSave)
-	fftSize := nextPowerOf2(2 * kernelLen)
-	if fftSize < 256 {
-		fftSize = 256
-	}
+	fftSize := max(nextPowerOf2(2*kernelLen), 256)
 
 	// Get a pooled instance
 	pool := getOverlapSavePool(fftSize)

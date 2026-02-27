@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Test that both implementations satisfy the StreamingConvolver interface (float64)
+// Test that both implementations satisfy the StreamingConvolver interface (float64).
 func TestStreamingConvolverInterface(t *testing.T) {
 	kernel := []float64{1.0, 0.5, 0.25}
 	blockSize := 8
@@ -64,7 +64,7 @@ func TestStreamingConvolverInterface(t *testing.T) {
 	}
 }
 
-// Test that both float32 implementations satisfy the StreamingConvolverT interface
+// Test that both float32 implementations satisfy the StreamingConvolverT interface.
 func TestStreamingConvolverInterface32(t *testing.T) {
 	kernel := []float32{1.0, 0.5, 0.25}
 	blockSize := 8
@@ -118,7 +118,7 @@ func TestStreamingConvolverInterface32(t *testing.T) {
 	}
 }
 
-// Test that both algorithms produce equivalent results (float64)
+// Test that both algorithms produce equivalent results (float64).
 func TestStreamingAlgorithmEquivalence(t *testing.T) {
 	kernel := []float64{0.5, 1.0, 0.5, 0.2, 0.1}
 	blockSize := 16
@@ -175,7 +175,7 @@ func TestStreamingAlgorithmEquivalence(t *testing.T) {
 	}
 }
 
-// Test float32 algorithm equivalence between overlap-add and overlap-save
+// Test float32 algorithm equivalence between overlap-add and overlap-save.
 func TestStreamingAlgorithmEquivalence32(t *testing.T) {
 	kernel := []float32{0.5, 1.0, 0.5, 0.2, 0.1}
 	blockSize := 16
@@ -233,7 +233,7 @@ func TestStreamingAlgorithmEquivalence32(t *testing.T) {
 	}
 }
 
-// Test float32 produces correct impulse response
+// Test float32 produces correct impulse response.
 func TestStreamingFloat32ImpulseResponse(t *testing.T) {
 	kernel := []float32{1.0, 0.5, 0.25}
 	blockSize := 8
@@ -267,7 +267,7 @@ func TestStreamingFloat32ImpulseResponse(t *testing.T) {
 	}
 }
 
-// Test ProcessBlockTo equivalence
+// Test ProcessBlockTo equivalence.
 func TestStreamingAlgorithmProcessBlockToEquivalence(t *testing.T) {
 	kernel := []float64{0.25, 0.5, 1.0, 0.5, 0.25}
 	blockSize := 8
@@ -301,7 +301,7 @@ func TestStreamingAlgorithmProcessBlockToEquivalence(t *testing.T) {
 	}
 }
 
-// Benchmark comparison: float64 vs float32
+// Benchmark comparison: float64 vs float32.
 func BenchmarkStreamingConvolvers(b *testing.B) {
 	kernel64 := make([]float64, 4096)
 	kernel32 := make([]float32, 4096)
@@ -327,7 +327,7 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = ola.ProcessBlock(input64)
 		}
 	})
@@ -338,7 +338,7 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = ola.ProcessBlock(input32)
 		}
 	})
@@ -349,7 +349,7 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = ols.ProcessBlock(input64)
 		}
 	})
@@ -360,7 +360,7 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = ols.ProcessBlock(input32)
 		}
 	})
@@ -372,7 +372,7 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = ola.ProcessBlockTo(output, input64)
 		}
 	})
@@ -384,7 +384,7 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = ola.ProcessBlockTo(output, input32)
 		}
 	})
@@ -396,7 +396,7 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = ols.ProcessBlockTo(output, input64)
 		}
 	})
@@ -408,13 +408,13 @@ func BenchmarkStreamingConvolvers(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = ols.ProcessBlockTo(output, input32)
 		}
 	})
 }
 
-// Helper functions
+// Helper functions.
 func mustNewStreamingOverlapAdd(kernel []float64, blockSize int) *StreamingOverlapAdd {
 	conv, err := NewStreamingOverlapAdd(kernel, blockSize)
 	if err != nil {

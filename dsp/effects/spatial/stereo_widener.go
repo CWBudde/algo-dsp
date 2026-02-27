@@ -114,7 +114,8 @@ func NewStereoWidener(sampleRate float64, opts ...StereoWidenerOption) (*StereoW
 			continue
 		}
 
-		if err := opt(&cfg); err != nil {
+		err := opt(&cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -126,7 +127,8 @@ func NewStereoWidener(sampleRate float64, opts ...StereoWidenerOption) (*StereoW
 	}
 
 	if cfg.bassMonoFreq > 0 {
-		if err := w.rebuildBassMonoFilters(); err != nil {
+		err := w.rebuildBassMonoFilters()
+		if err != nil {
 			return nil, err
 		}
 	}
