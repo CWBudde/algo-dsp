@@ -6,17 +6,20 @@ import (
 )
 
 func TestCrosstalkCancellerValidation(t *testing.T) {
-	if _, err := NewCrosstalkCanceller(0); err == nil {
+	_, err := NewCrosstalkCanceller(0)
+	if err == nil {
 		t.Fatal("expected error for invalid sample rate")
 	}
 
-	if _, err := NewCrosstalkCanceller(48000, WithCancellerStages(0)); err == nil {
+	_, err = NewCrosstalkCanceller(48000, WithCancellerStages(0))
+	if err == nil {
 		t.Fatal("expected error for invalid stages")
 	}
 
-	if _, err := NewCrosstalkCanceller(48000,
+	_, err = NewCrosstalkCanceller(48000,
 		WithCancellerSpeakerDistance(0.2),
-		WithCancellerHeadRadius(0.12)); err == nil {
+		WithCancellerHeadRadius(0.12))
+	if err == nil {
 		t.Fatal("expected geometry error when speaker distance <= 2*head radius")
 	}
 }

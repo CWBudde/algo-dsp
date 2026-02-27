@@ -300,7 +300,8 @@ func partitionIR[F algofft.Float, C algofft.Complex](
 			return nil, err
 		}
 
-		if err := stage.calculateIRSpectra(kernel); err != nil {
+		err = stage.calculateIRSpectra(kernel)
+		if err != nil {
 			return nil, err
 		}
 
@@ -320,7 +321,8 @@ func partitionIR[F algofft.Float, C algofft.Complex](
 		return nil, err
 	}
 
-	if err := stage.calculateIRSpectra(kernel); err != nil {
+	err = stage.calculateIRSpectra(kernel)
+	if err != nil {
 		return nil, err
 	}
 

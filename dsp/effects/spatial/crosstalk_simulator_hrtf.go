@@ -196,7 +196,8 @@ func (s *HRTFCrosstalkSimulator) reloadIR() error {
 		return fmt.Errorf("hrtf crosstalk simulator impulse response load failed: %w", err)
 	}
 
-	if err := validateIRSet(irSet, s.mode); err != nil {
+	err = validateIRSet(irSet, s.mode)
+	if err != nil {
 		return err
 	}
 

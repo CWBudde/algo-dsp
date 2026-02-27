@@ -11,11 +11,13 @@ func TestSetCoefficientsValidation32(t *testing.T) {
 		t.Fatalf("New32Default() error = %v", err)
 	}
 
-	if err := p.SetCoefficients(nil); err == nil {
+	err = p.SetCoefficients(nil)
+	if err == nil {
 		t.Fatal("expected error for empty coefficients")
 	}
 
-	if err := p.SetCoefficients([]float32{-1.2}); err == nil {
+	err = p.SetCoefficients([]float32{-1.2})
+	if err == nil {
 		t.Fatal("expected error for unstable coefficient")
 	}
 }

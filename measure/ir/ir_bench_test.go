@@ -11,7 +11,8 @@ func BenchmarkSchroederIntegral(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := a.SchroederIntegral(impulseResponse); err != nil {
+		_, err := a.SchroederIntegral(impulseResponse)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -24,7 +25,8 @@ func BenchmarkRT60(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := a.RT60(impulseResponse); err != nil {
+		_, err := a.RT60(impulseResponse)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -37,7 +39,8 @@ func BenchmarkAnalyze(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := a.Analyze(impulseResponse); err != nil {
+		_, err := a.Analyze(impulseResponse)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}

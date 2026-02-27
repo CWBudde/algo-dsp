@@ -90,7 +90,9 @@ func convolveWithPartitioned(t *testing.T, kernel, signal []float64, minBlockOrd
 	copy(padded, signal)
 
 	out := make([]float64, len(padded))
-	if err := pc.ProcessBlock(padded, out); err != nil {
+
+	err = pc.ProcessBlock(padded, out)
+	if err != nil {
 		t.Fatalf("PartitionedConvolution ProcessBlock: %v", err)
 	}
 
