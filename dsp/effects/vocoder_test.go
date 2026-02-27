@@ -530,7 +530,7 @@ func TestVocoderBarkSynthesisQDefaultsAndOverride(t *testing.T) {
 			want := cpgBandpass(fc, barkBandQ(i), sr)
 
 			got := v.synthesisFilters[i].Coefficients
-			if !coeffClose(got, want, 1e-12) {
+			if !coeffClose(got, want) {
 				t.Fatalf("band %d coeff mismatch for default Bark synthesis Q", i)
 			}
 		}
@@ -549,7 +549,7 @@ func TestVocoderBarkSynthesisQDefaultsAndOverride(t *testing.T) {
 			want := cpgBandpass(fc, q, sr)
 
 			got := v.synthesisFilters[i].Coefficients
-			if !coeffClose(got, want, 1e-12) {
+			if !coeffClose(got, want) {
 				t.Fatalf("band %d coeff mismatch for overridden Bark synthesis Q", i)
 			}
 		}
@@ -829,11 +829,11 @@ func TestVocoderDownsamplingBuildsRetunedMultirateAnalysisFilters(t *testing.T) 
 				want := cpgBandpass(freq, q, dsRate)
 
 				got := vDS.downsampleAnalysisFilters[i].Coefficients
-				if !coeffClose(got, want, 1e-12) {
+				if !coeffClose(got, want) {
 					t.Fatalf("band %d retuned coeff mismatch for factor=%d", i, factor)
 				}
 
-				if factor > 1 && coeffClose(got, vDS.analysisFilters[i].Coefficients, 1e-12) {
+				if factor > 1 && coeffClose(got, vDS.analysisFilters[i].Coefficients) {
 					t.Fatalf("band %d factor=%d should not keep full-rate coefficients", i, factor)
 				}
 			}
@@ -857,7 +857,7 @@ func TestVocoderDownsamplingBuildsAntiAliasFilters(t *testing.T) {
 	for g, factor := range v.downsampleGroupFactors {
 		c := v.downsampleGroupAAFilters[g].Coefficients
 		if factor == 1 {
-			if !coeffClose(c, biquad.Coefficients{B0: 1}, 1e-12) {
+			if !coeffClose(c, biquad.Coefficients{B0: 1}) {
 				t.Fatalf("factor=1 group should use passthrough filter, got=%+v", c)
 			}
 
@@ -977,7 +977,9 @@ func TestVocoderNyquistNearStabilityAcrossSynthesisQ(t *testing.T) {
 	}
 }
 
-func coeffClose(a, b biquad.Coefficients, tol float64) bool {
+func coeffClose(a, b biquad.Coefficients) bool {
+	const tol = 1e-12
+
 	return math.Abs(a.B0-b.B0) <= tol &&
 		math.Abs(a.B1-b.B1) <= tol &&
 		math.Abs(a.B2-b.B2) <= tol &&

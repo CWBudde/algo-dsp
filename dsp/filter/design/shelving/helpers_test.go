@@ -54,6 +54,13 @@ func allPolesStable(t *testing.T, sections []biquad.Coefficients) {
 	}
 }
 
+func TestCascadeMagnitudeDB_NonDefaultSampleRate(t *testing.T) {
+	mag := cascadeMagnitudeDB([]biquad.Coefficients{{B0: 1}}, 1000, 44100)
+	if !almostEqual(mag, 0, 1e-12) {
+		t.Fatalf("unity section magnitude = %v dB, want 0 dB", mag)
+	}
+}
+
 func orderName(order int) string {
 	return "M" + itoa(order)
 }

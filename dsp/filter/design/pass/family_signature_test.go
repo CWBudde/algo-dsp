@@ -52,6 +52,13 @@ func measureBandSignature(sections []biquad.Coefficients, fStart, fEnd, step, sr
 	return sig
 }
 
+func TestMeasureBandSignature_NonDefaultSampleRate(t *testing.T) {
+	sig := measureBandSignature([]biquad.Coefficients{{B0: 1}}, 100, 1000, 100, 44100)
+	if sig.maxAbsDB != 0 || sig.spanDB != 0 {
+		t.Fatalf("unity section signature invalid: maxAbs=%v span=%v", sig.maxAbsDB, sig.spanDB)
+	}
+}
+
 func TestButterworthLP_FamilySignature(t *testing.T) {
 	sr := 48000.0
 	fc := 1000.0

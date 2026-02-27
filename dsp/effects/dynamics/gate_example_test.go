@@ -16,11 +16,11 @@ func ExampleGate() {
 	}
 
 	// Process a single sample
-	input := 0.5
-	output := gate.ProcessSample(input)
+	_ = gate.ProcessSample(0.5)
 
-	fmt.Printf("Input: %.3f, Output: %.3f\n", input, output)
-	// Output varies due to dynamic processing
+	fmt.Println("Gate processed one sample")
+	// Output:
+	// Gate processed one sample
 }
 
 // ExampleGate_configuration demonstrates configuring gate parameters.
@@ -73,11 +73,10 @@ func ExampleGate_metering() {
 
 	// Get metering information
 	metrics := gate.GetMetrics()
+	if metrics.InputPeak > 0 {
+		fmt.Println("Gate metering updated")
+	}
 
-	fmt.Printf("Input Peak: %.3f\n", metrics.InputPeak)
-	fmt.Printf("Output Peak: %.6f\n", metrics.OutputPeak)
-	fmt.Printf("Gain Reduction: %.6f (%.1f dB)\n",
-		metrics.GainReduction,
-		20*math.Log10(metrics.GainReduction))
-	// Output varies due to dynamic processing
+	// Output:
+	// Gate metering updated
 }

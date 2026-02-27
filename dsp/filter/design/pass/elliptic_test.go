@@ -25,6 +25,13 @@ func bandMaxMin(sections []biquad.Coefficients, fStart, fEnd, step, sr float64) 
 	return maxDB, minDB
 }
 
+func TestBandMaxMin_NonDefaultSampleRate(t *testing.T) {
+	maxDB, minDB := bandMaxMin([]biquad.Coefficients{{B0: 1}}, 100, 1000, 100, 44100)
+	if maxDB != 0 || minDB != 0 {
+		t.Fatalf("unity section max/min = (%v, %v), want (0, 0)", maxDB, minDB)
+	}
+}
+
 func interiorExtremaCount(sections []biquad.Coefficients, fStart, fEnd, step, sampleRate float64) int {
 	var vals []float64
 	for freq := fStart; freq <= fEnd; freq += step {

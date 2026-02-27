@@ -271,6 +271,15 @@ func TestInvalidInputs(t *testing.T) {
 	}
 }
 
+func TestMagHelper_NonDefaultSampleRate(t *testing.T) {
+	c := Lowpass(1000, 0.707, 44100)
+
+	v := mag(c, 1000, 44100)
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		t.Fatalf("mag returned invalid value: %v", v)
+	}
+}
+
 func mag(c biquad.Coefficients, freq, sr float64) float64 {
 	h := c.Response(freq, sr)
 	return cmplx.Abs(h)

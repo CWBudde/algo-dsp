@@ -393,10 +393,10 @@ func zpkToSections(z, p []complex128, gain float64) []biquad.Coefficients {
 			}
 		}
 
-		b0, b1, b2 := quadFromRoots(zg)
-		_, a1, a2 := quadFromRoots(pg)
+		b1, b2 := quadFromRoots(zg)
+		a1, a2 := quadFromRoots(pg)
 		out = append(out, biquad.Coefficients{
-			B0: b0, B1: b1, B2: b2,
+			B0: 1, B1: b1, B2: b2,
 			A1: a1, A2: a2,
 		})
 	}
@@ -497,16 +497,16 @@ func groupImagAbs(g []complex128) float64 {
 	return maxImag
 }
 
-func quadFromRoots(group []complex128) (float64, float64, float64) {
+func quadFromRoots(group []complex128) (float64, float64) {
 	switch len(group) {
 	case 0:
-		return 1, 0, 0
+		return 0, 0
 	case 1:
 		r := group[0]
-		return 1, -real(r), 0
+		return -real(r), 0
 	default:
 		r1, r2 := group[0], group[1]
-		return 1, -real(r1 + r2), real(r1 * r2)
+		return -real(r1 + r2), real(r1 * r2)
 	}
 }
 

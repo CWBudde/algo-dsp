@@ -16,11 +16,11 @@ func ExampleCompressor() {
 	}
 
 	// Process a single sample
-	input := 0.5
-	output := comp.ProcessSample(input)
+	_ = comp.ProcessSample(0.5)
 
-	fmt.Printf("Input: %.3f, Output: %.3f\n", input, output)
-	// Output varies due to dynamic processing
+	fmt.Println("Compressor processed one sample")
+	// Output:
+	// Compressor processed one sample
 }
 
 // ExampleCompressor_configuration demonstrates configuring compressor parameters.
@@ -67,11 +67,10 @@ func ExampleCompressor_metering() {
 
 	// Get metering information
 	metrics := comp.GetMetrics()
+	if metrics.InputPeak > 0 && metrics.OutputPeak > 0 {
+		fmt.Println("Compressor metering updated")
+	}
 
-	fmt.Printf("Input Peak: %.3f\n", metrics.InputPeak)
-	fmt.Printf("Output Peak: %.3f\n", metrics.OutputPeak)
-	fmt.Printf("Gain Reduction: %.3f (%.1f dB)\n",
-		metrics.GainReduction,
-		20*math.Log10(metrics.GainReduction))
-	// Output varies due to dynamic processing
+	// Output:
+	// Compressor metering updated
 }

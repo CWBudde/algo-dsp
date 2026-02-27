@@ -65,11 +65,11 @@ func ExampleMultibandCompressor_ProcessSample() {
 	mc, _ := dynamics.NewMultibandCompressor([]float64{1000}, 4, 48000)
 
 	// Process a single sample
-	input := 0.5
-	output := mc.ProcessSample(input)
+	_ = mc.ProcessSample(0.5)
 
-	fmt.Printf("Input: %.3f, Output: %.3f\n", input, output)
-	// Output varies due to dynamic processing
+	fmt.Println("Multiband compressor processed one sample")
+	// Output:
+	// Multiband compressor processed one sample
 }
 
 // ExampleMultibandCompressor_ProcessInPlace demonstrates block processing
@@ -100,14 +100,11 @@ func ExampleMultibandCompressor_metering() {
 	}
 
 	metrics := mc.GetMetrics()
-	fmt.Printf("Number of band metrics: %d\n", len(metrics.Bands))
-
-	for i, bm := range metrics.Bands {
-		if bm.InputPeak > 0 {
-			fmt.Printf("Band %d has activity (input peak: %.3f)\n", i, bm.InputPeak)
-		}
+	if len(metrics.Bands) > 0 {
+		fmt.Println("Multiband metrics collected")
 	}
-	// Output varies due to dynamic processing
+	// Output:
+	// Multiband metrics collected
 }
 
 // ExampleMultibandCompressor_feedbackRMS demonstrates enabling feedback/RMS

@@ -94,8 +94,8 @@ func New(t Type, sampleRate float64) *biquad.Chain {
 func newAWeighting(sr float64) *biquad.Chain {
 	coeffs := []biquad.Coefficients{
 		hpSecondOrder(f1, sr),
-		lpFirstOrder(f5, sr),
-		lpFirstOrder(f5, sr),
+		lpFirstOrder(sr),
+		lpFirstOrder(sr),
 		hpFirstOrder(f2, sr),
 		hpFirstOrder(f4, sr),
 	}
@@ -117,8 +117,8 @@ func newAWeighting(sr float64) *biquad.Chain {
 func newBWeighting(sr float64) *biquad.Chain {
 	coeffs := []biquad.Coefficients{
 		hpSecondOrder(f1, sr),
-		lpFirstOrder(f5, sr),
-		lpFirstOrder(f5, sr),
+		lpFirstOrder(sr),
+		lpFirstOrder(sr),
 		hpFirstOrder(f3, sr),
 	}
 	gain := normalizationGain(coeffs, sr)
@@ -138,8 +138,8 @@ func newBWeighting(sr float64) *biquad.Chain {
 func newCWeighting(sr float64) *biquad.Chain {
 	coeffs := []biquad.Coefficients{
 		hpSecondOrder(f1, sr),
-		lpFirstOrder(f5, sr),
-		lpFirstOrder(f5, sr),
+		lpFirstOrder(sr),
+		lpFirstOrder(sr),
 	}
 	gain := normalizationGain(coeffs, sr)
 
@@ -153,16 +153,16 @@ func newZWeighting() *biquad.Chain {
 	})
 }
 
-// lpFirstOrder computes a 1st-order low-pass biquad section for a
-// single pole at frequency f using the bilinear transform.
+// lpFirstOrder computes a 1st-order low-pass biquad section for the
+// fixed weighting pole at f5 using the bilinear transform.
 //
 // The analog prototype is H(s) = omega / (s + omega).
 // Using K = tan(pi*f/sr):
 //
 //	B0 = K/(1+K), B1 = K/(1+K), B2 = 0
 //	A1 = (K-1)/(K+1), A2 = 0
-func lpFirstOrder(f, sr float64) biquad.Coefficients {
-	k := math.Tan(math.Pi * f / sr)
+func lpFirstOrder(sr float64) biquad.Coefficients {
+	k := math.Tan(math.Pi * f5 / sr)
 	d := 1 + k
 
 	return biquad.Coefficients{

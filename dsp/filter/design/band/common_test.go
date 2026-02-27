@@ -153,3 +153,7 @@ func testBandDesign(t *testing.T, name string, designFn func(float64, float64, f
 		}
 	}
 }
+
+func TestBandDesign_NonDefaultCenterFrequency(t *testing.T) {
+	testBandDesign(t, "Butterworth +6dB @2k", ButterworthBand, 2000, 700, 6, 6, 0.7)
+}

@@ -717,6 +717,22 @@ func TestZDFHighResonanceSustainsLongerTail(t *testing.T) {
 	}
 }
 
+func TestImpulseTailEnergy_NonDefaultLength(t *testing.T) {
+	f, err := New(48000,
+		WithVariant(VariantClassic),
+		WithCutoffHz(1000),
+		WithResonance(0.8),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	energy := impulseTailEnergy(f, 1024)
+	if !isFinite(energy) || energy < 0 {
+		t.Fatalf("invalid tail energy: %v", energy)
+	}
+}
+
 func TestZDFRapidAutomationStaysFinite(t *testing.T) {
 	moogFilter, err := New(48000,
 		WithVariant(VariantZDF),

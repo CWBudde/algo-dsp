@@ -14,10 +14,11 @@ func ExampleExpander() {
 		panic(err)
 	}
 
-	input := 0.05
-	output := exp.ProcessSample(input)
-	fmt.Printf("Input: %.3f, Output: %.3f\n", input, output)
-	// Output varies due to dynamic processing
+	_ = exp.ProcessSample(0.05)
+
+	fmt.Println("Expander processed one sample")
+	// Output:
+	// Expander processed one sample
 }
 
 // ExampleExpander_configuration demonstrates configuring expander parameters.
