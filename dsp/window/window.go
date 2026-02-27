@@ -321,6 +321,7 @@ func normalizeEvalX(x float64, slope Slope) float64 {
 	return x
 }
 
+//nolint:cyclop
 func evalWindow(t Type, x float64, cfg config) float64 {
 	switch cfg.slope {
 	case SlopeLeft:
