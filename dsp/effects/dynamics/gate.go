@@ -423,49 +423,15 @@ func (g *Gate) updateTimeConstants() {
 
 // calculateGain computes the gate gain multiplier using log2-domain soft-knee.
 func (g *Gate) calculateGain(peakLevel float64) float64 {
-	if peakLevel <= 0 {
-		return g.rangeLin
-	}
-
-	peakLog2 := mathLog2(peakLevel)
-	undershoot := g.thresholdLog2 - peakLog2
-
-	if g.kneeDB <= 0 {
-		if undershoot <= 0 {
-			return 1.0
-		}
-
-		gainLog2 := -undershoot * (g.ratio - 1.0)
-
-		gain := mathPower2(gainLog2)
-		if gain < g.rangeLin {
-			return g.rangeLin
-		}
-
-		return gain
-	}
-
-	halfWidth := g.kneeWidthLog2 * 0.5
-
-	var effectiveUndershoot float64
-
-	if undershoot < -halfWidth {
-		return 1.0
-	} else if undershoot > halfWidth {
-		effectiveUndershoot = undershoot
-	} else {
-		scratch := undershoot + halfWidth
-		effectiveUndershoot = scratch * scratch * 0.5 * g.invKneeWidthLog2
-	}
-
-	gainLog2 := -effectiveUndershoot * (g.ratio - 1.0)
-
-	gain := mathPower2(gainLog2)
-	if gain < g.rangeLin {
-		return g.rangeLin
-	}
-
-	return gain
+	return calculateDownwardExpansionGain(
+		peakLevel,
+		g.thresholdLog2,
+		g.kneeDB,
+		g.kneeWidthLog2,
+		g.invKneeWidthLog2,
+		g.ratio,
+		g.rangeLin,
+	)
 }
 
 // updateMetrics tracks peak levels and gain reduction.

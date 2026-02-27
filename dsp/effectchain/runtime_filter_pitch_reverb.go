@@ -1,6 +1,7 @@
 package effectchain
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/core"
@@ -76,34 +77,34 @@ func (r *filterRuntime) Configure(ctx Context, p Params) error {
 				moog.WithNormalizeOutput(true),
 			)
 			if err != nil {
-				return err
+				return fmt.Errorf("effectchain: create moog filter: %w", err)
 			}
 
 			r.moogLP = fx
 		} else {
 			err := r.moogLP.SetSampleRate(ctx.SampleRate)
 			if err != nil {
-				return err
+				return fmt.Errorf("effectchain: set moog sample rate: %w", err)
 			}
 
 			err = r.moogLP.SetOversampling(oversampling)
 			if err != nil {
-				return err
+				return fmt.Errorf("effectchain: set moog oversampling: %w", err)
 			}
 
 			err = r.moogLP.SetCutoffHz(freq)
 			if err != nil {
-				return err
+				return fmt.Errorf("effectchain: set moog cutoff: %w", err)
 			}
 
 			err = r.moogLP.SetResonance(resonance)
 			if err != nil {
-				return err
+				return fmt.Errorf("effectchain: set moog resonance: %w", err)
 			}
 
 			err = r.moogLP.SetDrive(drive)
 			if err != nil {
-				return err
+				return fmt.Errorf("effectchain: set moog drive: %w", err)
 			}
 		}
 

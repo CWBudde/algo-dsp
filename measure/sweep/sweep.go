@@ -175,6 +175,10 @@ func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 		return nil, err
 	}
 
+	return deconvolveWithInverse(response, inv)
+}
+
+func deconvolveWithInverse(response, inv []float64) ([]float64, error) {
 	// Use FFT-based convolution for efficiency
 	n := len(response) + len(inv) - 1
 	fftSize := nextPowerOf2(n)
@@ -471,56 +475,7 @@ func (s *LinearSweep) Deconvolve(response []float64) ([]float64, error) {
 		return nil, err
 	}
 
-	n := len(response) + len(inv) - 1
-	fftSize := nextPowerOf2(n)
-
-	plan, err := algofft.NewPlan64(fftSize)
-	if err != nil {
-		return nil, fmt.Errorf("sweep: failed to create FFT plan: %w", err)
-	}
-
-	respPadded := make([]complex128, fftSize)
-	for i, v := range response {
-		respPadded[i] = complex(v, 0)
-	}
-
-	respFreq := make([]complex128, fftSize)
-
-	err = plan.Forward(respFreq, respPadded)
-	if err != nil {
-		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
-	}
-
-	invPadded := make([]complex128, fftSize)
-	for i, v := range inv {
-		invPadded[i] = complex(v, 0)
-	}
-
-	invFreq := make([]complex128, fftSize)
-
-	err = plan.Forward(invFreq, invPadded)
-	if err != nil {
-		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
-	}
-
-	resultFreq := make([]complex128, fftSize)
-	for i := range resultFreq {
-		resultFreq[i] = respFreq[i] * invFreq[i]
-	}
-
-	resultTime := make([]complex128, fftSize)
-
-	err = plan.Inverse(resultTime, resultFreq)
-	if err != nil {
-		return nil, fmt.Errorf("sweep: inverse FFT failed: %w", err)
-	}
-
-	result := make([]float64, n)
-	for i := range result {
-		result[i] = real(resultTime[i])
-	}
-
-	return result, nil
+	return deconvolveWithInverse(response, inv)
 }
 
 // nextPowerOf2 returns the next power of 2 >= n.

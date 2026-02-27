@@ -1,6 +1,8 @@
 package effectchain
 
 import (
+	"fmt"
+
 	"github.com/cwbudde/algo-dsp/dsp/core"
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
@@ -42,7 +44,7 @@ func (r *convReverbRuntime) Configure(_ Context, p Params) error {
 
 		cr, err := reverb.NewConvolutionReverb(kernel, 7)
 		if err != nil {
-			return err
+			return fmt.Errorf("effectchain: create convolution reverb: %w", err)
 		}
 
 		r.fx = cr
@@ -72,30 +74,35 @@ type vocoderRuntime struct {
 func (r *vocoderRuntime) Configure(ctx Context, p Params) error {
 	err := r.fx.SetSampleRate(ctx.SampleRate)
 	if err != nil {
-		return err
+		return fmt.Errorf("effectchain: set vocoder sample rate: %w", err)
 	}
 
 	err = r.fx.SetAttack(core.Clamp(p.GetNum("attackMs", 0.5), 0.01, 100))
 	if err != nil {
-		return err
+		return fmt.Errorf("effectchain: set vocoder attack: %w", err)
 	}
 
 	err = r.fx.SetRelease(core.Clamp(p.GetNum("releaseMs", 2.0), 0.01, 1000))
 	if err != nil {
-		return err
+		return fmt.Errorf("effectchain: set vocoder release: %w", err)
 	}
 
 	err = r.fx.SetInputLevel(core.Clamp(p.GetNum("inputLevel", 0), 0, 10))
 	if err != nil {
-		return err
+		return fmt.Errorf("effectchain: set vocoder input level: %w", err)
 	}
 
 	err = r.fx.SetSynthLevel(core.Clamp(p.GetNum("synthLevel", 0), 0, 10))
 	if err != nil {
-		return err
+		return fmt.Errorf("effectchain: set vocoder synth level: %w", err)
 	}
 
-	return r.fx.SetVocoderLevel(core.Clamp(p.GetNum("vocoderLevel", 1), 0, 10))
+	err = r.fx.SetVocoderLevel(core.Clamp(p.GetNum("vocoderLevel", 1), 0, 10))
+	if err != nil {
+		return fmt.Errorf("effectchain: set vocoder level: %w", err)
+	}
+
+	return nil
 }
 
 func (r *vocoderRuntime) Process(block []float64) {

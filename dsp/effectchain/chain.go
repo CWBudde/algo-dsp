@@ -135,7 +135,7 @@ func (c *Chain) syncNodes(graph *compiledGraph) error {
 
 		err := rt.runtime.Configure(c.ctx, node)
 		if err != nil {
-			return err
+			return fmt.Errorf("effectchain: configure node %q (%s): %w", node.ID, node.Type, err)
 		}
 	}
 

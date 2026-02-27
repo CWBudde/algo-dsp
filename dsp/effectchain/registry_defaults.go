@@ -1,6 +1,8 @@
 package effectchain
 
 import (
+	"fmt"
+
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
 	"github.com/cwbudde/algo-dsp/dsp/effects/modulation"
@@ -13,6 +15,10 @@ import (
 type registryConfig struct {
 	irProvider     IRProvider
 	filterDesigner FilterDesigner
+}
+
+func wrapRuntimeInitErr(effectType string, err error) error {
+	return fmt.Errorf("effectchain: create %s runtime: %w", effectType, err)
 }
 
 // RegistryOption configures the default registry.
@@ -42,7 +48,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("chorus", func(_ Context) (Runtime, error) {
 		fx, err := modulation.NewChorus()
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("chorus", err)
 		}
 
 		return &chorusRuntime{fx: fx}, nil
@@ -50,7 +56,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("flanger", func(ctx Context) (Runtime, error) {
 		fx, err := modulation.NewFlanger(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("flanger", err)
 		}
 
 		return &flangerRuntime{fx: fx}, nil
@@ -58,7 +64,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("ringmod", func(ctx Context) (Runtime, error) {
 		fx, err := modulation.NewRingModulator(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("ringmod", err)
 		}
 
 		return &ringModRuntime{fx: fx}, nil
@@ -66,7 +72,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("bitcrusher", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewBitCrusher(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("bitcrusher", err)
 		}
 
 		return &bitCrusherRuntime{fx: fx}, nil
@@ -74,7 +80,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("distortion", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewDistortion(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("distortion", err)
 		}
 
 		return &distortionRuntime{fx: fx}, nil
@@ -82,7 +88,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("dist-cheb", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewDistortion(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("dist-cheb", err)
 		}
 
 		return &distChebRuntime{fx: fx}, nil
@@ -90,7 +96,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("transformer", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewTransformerSimulation(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("transformer", err)
 		}
 
 		return &transformerRuntime{fx: fx}, nil
@@ -98,7 +104,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("widener", func(ctx Context) (Runtime, error) {
 		fx, err := spatial.NewStereoWidener(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("widener", err)
 		}
 
 		return &widenerRuntime{fx: fx}, nil
@@ -106,7 +112,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("phaser", func(ctx Context) (Runtime, error) {
 		fx, err := modulation.NewPhaser(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("phaser", err)
 		}
 
 		return &phaserRuntime{fx: fx}, nil
@@ -114,7 +120,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("tremolo", func(ctx Context) (Runtime, error) {
 		fx, err := modulation.NewTremolo(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("tremolo", err)
 		}
 
 		return &tremoloRuntime{fx: fx}, nil
@@ -122,7 +128,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("delay", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewDelay(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("delay", err)
 		}
 
 		return &delayRuntime{fx: fx}, nil
@@ -157,7 +163,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("bass", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewHarmonicBass(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("bass", err)
 		}
 
 		return &bassRuntime{fx: fx}, nil
@@ -165,7 +171,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("pitch-time", func(ctx Context) (Runtime, error) {
 		fx, err := pitch.NewPitchShifter(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("pitch-time", err)
 		}
 
 		return &timePitchRuntime{fx: fx}, nil
@@ -173,7 +179,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("pitch-spectral", func(ctx Context) (Runtime, error) {
 		fx, err := pitch.NewSpectralPitchShifter(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("pitch-spectral", err)
 		}
 
 		return &spectralPitchRuntime{fx: fx}, nil
@@ -181,7 +187,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("spectral-freeze", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewSpectralFreeze(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("spectral-freeze", err)
 		}
 
 		return &spectralFreezeRuntime{fx: fx}, nil
@@ -189,7 +195,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("granular", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewGranular(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("granular", err)
 		}
 
 		return &granularRuntime{fx: fx}, nil
@@ -197,7 +203,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("reverb", func(ctx Context) (Runtime, error) {
 		fdn, err := reverb.NewFDNReverb(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("reverb", err)
 		}
 
 		return &reverbRuntime{
@@ -211,7 +217,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("reverb-fdn", func(ctx Context) (Runtime, error) {
 		fdn, err := reverb.NewFDNReverb(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("reverb-fdn", err)
 		}
 
 		return &fdnReverbRuntime{fx: fdn}, nil
@@ -224,7 +230,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("dyn-compressor", func(ctx Context) (Runtime, error) {
 		fx, err := dynamics.NewCompressor(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("dyn-compressor", err)
 		}
 
 		return &compressorRuntime{fx: fx}, nil
@@ -232,7 +238,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("dyn-limiter", func(ctx Context) (Runtime, error) {
 		fx, err := dynamics.NewLimiter(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("dyn-limiter", err)
 		}
 
 		return &limiterRuntime{fx: fx}, nil
@@ -240,7 +246,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("dyn-lookahead", func(ctx Context) (Runtime, error) {
 		fx, err := dynamics.NewLookaheadLimiter(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("dyn-lookahead", err)
 		}
 
 		return &lookaheadLimiterRuntime{fx: fx}, nil
@@ -248,7 +254,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("dyn-gate", func(ctx Context) (Runtime, error) {
 		fx, err := dynamics.NewGate(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("dyn-gate", err)
 		}
 
 		return &gateRuntime{fx: fx}, nil
@@ -256,7 +262,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("dyn-expander", func(ctx Context) (Runtime, error) {
 		fx, err := dynamics.NewExpander(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("dyn-expander", err)
 		}
 
 		return &expanderRuntime{fx: fx}, nil
@@ -264,7 +270,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("dyn-deesser", func(ctx Context) (Runtime, error) {
 		fx, err := dynamics.NewDeEsser(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("dyn-deesser", err)
 		}
 
 		return &deesserRuntime{fx: fx}, nil
@@ -272,7 +278,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("dyn-transient", func(ctx Context) (Runtime, error) {
 		fx, err := dynamics.NewTransientShaper(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("dyn-transient", err)
 		}
 
 		return &transientShaperRuntime{fx: fx}, nil
@@ -283,7 +289,7 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 	r.MustRegister("vocoder", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewVocoder(ctx.SampleRate)
 		if err != nil {
-			return nil, err
+			return nil, wrapRuntimeInitErr("vocoder", err)
 		}
 
 		return &vocoderRuntime{fx: fx}, nil

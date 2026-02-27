@@ -344,29 +344,49 @@ func (e *Expander) ResetMetrics() {
 }
 
 func (e *Expander) calculateGain(level float64) float64 {
+	return calculateDownwardExpansionGain(
+		level,
+		e.thresholdLog2,
+		e.kneeDB,
+		e.kneeWidthLog2,
+		e.invKneeWidthLog2,
+		e.ratio,
+		e.rangeLin,
+	)
+}
+
+func calculateDownwardExpansionGain(
+	level,
+	thresholdLog2,
+	kneeDB,
+	kneeWidthLog2,
+	invKneeWidthLog2,
+	ratio,
+	rangeLin float64,
+) float64 {
 	if level <= 0 {
-		return e.rangeLin
+		return rangeLin
 	}
 
 	levelLog2 := mathLog2(level)
-	undershoot := e.thresholdLog2 - levelLog2
+	undershoot := thresholdLog2 - levelLog2
 
-	if e.kneeDB <= 0 {
+	if kneeDB <= 0 {
 		if undershoot <= 0 {
 			return 1.0
 		}
 
-		gainLog2 := -undershoot * (e.ratio - 1.0)
+		gainLog2 := -undershoot * (ratio - 1.0)
 
 		gain := mathPower2(gainLog2)
-		if gain < e.rangeLin {
-			return e.rangeLin
+		if gain < rangeLin {
+			return rangeLin
 		}
 
 		return gain
 	}
 
-	halfWidth := e.kneeWidthLog2 * 0.5
+	halfWidth := kneeWidthLog2 * 0.5
 
 	var effectiveUndershoot float64
 
@@ -378,14 +398,14 @@ func (e *Expander) calculateGain(level float64) float64 {
 		effectiveUndershoot = undershoot
 	} else {
 		scratch := undershoot + halfWidth
-		effectiveUndershoot = scratch * scratch * 0.5 * e.invKneeWidthLog2
+		effectiveUndershoot = scratch * scratch * 0.5 * invKneeWidthLog2
 	}
 
-	gainLog2 := -effectiveUndershoot * (e.ratio - 1.0)
+	gainLog2 := -effectiveUndershoot * (ratio - 1.0)
 
 	gain := mathPower2(gainLog2)
-	if gain < e.rangeLin {
-		return e.rangeLin
+	if gain < rangeLin {
+		return rangeLin
 	}
 
 	return gain

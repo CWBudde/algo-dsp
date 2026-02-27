@@ -257,6 +257,7 @@ func (p *Processor64) processSample3(input float64) (outputA, outputB float64) {
 	return outputA, outputB
 }
 
+//nolint:dupl
 func (p *Processor64) processSample4(input float64) (outputA, outputB float64) {
 	phase := p.phase
 	y := p.yMem[phase]

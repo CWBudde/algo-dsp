@@ -158,7 +158,12 @@ func (r *distChebRuntime) Configure(ctx Context, p Params) error {
 		weights[k] = p.GetNum(fmt.Sprintf("w%d", k+1), 0)
 	}
 
-	return r.fx.SetChebyshevWeights(weights)
+	err = r.fx.SetChebyshevWeights(weights)
+	if err != nil {
+		return fmt.Errorf("effectchain: set chebyshev weights: %w", err)
+	}
+
+	return nil
 }
 
 func (r *distChebRuntime) Process(block []float64) {
