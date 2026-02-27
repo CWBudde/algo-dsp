@@ -149,7 +149,7 @@ func TestMultibandAccessors(t *testing.T) {
 	}
 
 	// Band returns compressors
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		if mc.Band(i) == nil {
 			t.Errorf("Band(%d) returned nil", i)
 		}
@@ -323,7 +323,7 @@ func TestMultibandSetAllBands(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		if mc.Band(i).Threshold() != -15 {
 			t.Errorf("band %d threshold = %f, want -15", i, mc.Band(i).Threshold())
 		}
@@ -334,7 +334,7 @@ func TestMultibandSetAllBands(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		if mc.Band(i).Ratio() != 3.0 {
 			t.Errorf("band %d ratio = %f, want 3.0", i, mc.Band(i).Ratio())
 		}
@@ -345,7 +345,7 @@ func TestMultibandSetAllBands(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		if mc.Band(i).Knee() != 10.0 {
 			t.Errorf("band %d knee = %f, want 10.0", i, mc.Band(i).Knee())
 		}
@@ -356,7 +356,7 @@ func TestMultibandSetAllBands(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		if mc.Band(i).Attack() != 15.0 {
 			t.Errorf("band %d attack = %f, want 15.0", i, mc.Band(i).Attack())
 		}
@@ -367,7 +367,7 @@ func TestMultibandSetAllBands(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		if mc.Band(i).Release() != 250.0 {
 			t.Errorf("band %d release = %f, want 250.0", i, mc.Band(i).Release())
 		}
@@ -393,7 +393,7 @@ func TestMultibandSetAllBands(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		if mc.Band(i).Topology() != DynamicsTopologyFeedback {
 			t.Errorf("band %d topology = %v, want %v", i, mc.Band(i).Topology(), DynamicsTopologyFeedback)
 		}
@@ -502,7 +502,7 @@ func TestMultibandProcessInPlace(t *testing.T) {
 	mc2, _ := NewMultibandCompressor([]float64{1000}, 4, sr)
 
 	// Disable auto makeup for deterministic comparison
-	for i := 0; i < mc1.NumBands(); i++ {
+	for i := range mc1.NumBands() {
 		_ = mc1.SetBandAutoMakeup(i, false)
 		_ = mc1.SetBandMakeupGain(i, 0)
 		_ = mc2.SetBandAutoMakeup(i, false)
@@ -606,7 +606,7 @@ func TestMultibandCompressesLoudSignal(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{1000}, 4, 48000)
 
 	// Configure for heavy compression with no auto makeup
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		_ = mc.SetBandThreshold(i, -20)
 		_ = mc.SetBandRatio(i, 10.0)
 		_ = mc.SetBandKnee(i, 0)
@@ -747,7 +747,7 @@ func TestMultibandEnergyPreservation(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{500, 5000}, 4, 48000)
 
 	// Set all bands to unity (no compression)
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		_ = mc.SetBandRatio(i, 1.0)
 		_ = mc.SetBandAutoMakeup(i, false)
 		_ = mc.SetBandMakeupGain(i, 0)
@@ -775,7 +775,7 @@ func TestMultibandEnergyPreservation(t *testing.T) {
 
 func TestMultibandRecombinationConsistency(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{300, 3000}, 4, 48000)
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		_ = mc.SetBandRatio(i, 1.0)
 		_ = mc.SetBandAutoMakeup(i, false)
 		_ = mc.SetBandMakeupGain(i, 0)
@@ -810,7 +810,7 @@ func TestMultibandRecombinationConsistency(t *testing.T) {
 
 func TestMultibandPhaseLatencySanity(t *testing.T) {
 	mc, _ := NewMultibandCompressor([]float64{500, 5000}, 4, 48000)
-	for i := 0; i < mc.NumBands(); i++ {
+	for i := range mc.NumBands() {
 		_ = mc.SetBandRatio(i, 1.0)
 		_ = mc.SetBandAutoMakeup(i, false)
 		_ = mc.SetBandMakeupGain(i, 0)

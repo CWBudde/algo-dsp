@@ -1565,7 +1565,7 @@ func (r *filterChainRuntime) Configure(e *Engine, node compiledChainNode) error 
 	} else if r.fx.NumSections() == next.NumSections() {
 		r.fx.SetGain(next.Gain())
 
-		for i := 0; i < r.fx.NumSections(); i++ {
+		for i := range r.fx.NumSections() {
 			r.fx.Section(i).Coefficients = next.Section(i).Coefficients
 		}
 	} else {
@@ -2202,7 +2202,7 @@ func (r *multibandChainRuntime) Configure(e *Engine, node compiledChainNode) err
 	makeup := clamp(getNodeNum(node, "makeupGainDB", 0), 0, 24)
 	autoMakeup := getNodeNum(node, "autoMakeup", 0) >= 0.5
 
-	for b := 0; b < r.fx.NumBands(); b++ {
+	for b := range r.fx.NumBands() {
 		err := r.fx.SetBandAttack(b, attack)
 		if err != nil {
 			return err

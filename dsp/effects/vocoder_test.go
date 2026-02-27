@@ -537,7 +537,7 @@ func TestVocoderBarkSynthesisQDefaultsAndOverride(t *testing.T) {
 			t.Fatalf("NewVocoder() error = %v", err)
 		}
 
-		for i := 0; i < v.NumBands(); i++ {
+		for i := range v.NumBands() {
 			fc := barkFrequencies[i]
 			want := cpgBandpass(fc, barkBandQ(i), sr)
 
@@ -556,7 +556,7 @@ func TestVocoderBarkSynthesisQDefaultsAndOverride(t *testing.T) {
 			t.Fatalf("NewVocoder() error = %v", err)
 		}
 
-		for i := 0; i < v.NumBands(); i++ {
+		for i := range v.NumBands() {
 			fc := barkFrequencies[i]
 			want := cpgBandpass(fc, q, sr)
 
@@ -828,7 +828,7 @@ func TestVocoderDownsamplingBuildsRetunedMultirateAnalysisFilters(t *testing.T) 
 				t.Fatalf("downsample analysis filter count = %d, want %d", len(vDS.downsampleAnalysisFilters), vDS.NumBands())
 			}
 
-			for i := 0; i < vDS.NumBands(); i++ {
+			for i := range vDS.NumBands() {
 				factor := vDS.downsampleFactors[i]
 				dsRate := sr / float64(factor)
 				freq := l.freqs[i]

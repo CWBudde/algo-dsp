@@ -113,7 +113,7 @@ func TestReadFractionalLinearRamp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < delayLine.Len(); i++ {
+	for i := range delayLine.Len() {
 		delayLine.Write(float64(i))
 	}
 
@@ -232,7 +232,7 @@ func TestReadFractionalAllpass(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Fill with DC to let the allpass state settle.
-	for i := 0; i < delayLine.Len(); i++ {
+	for range delayLine.Len() {
 		delayLine.Write(50.0)
 	}
 
@@ -275,7 +275,7 @@ func TestAllModesDCPreservation(t *testing.T) {
 			t.Fatal(err)
 		}
 		// Fill with constant value.
-		for i := 0; i < delayLine.Len(); i++ {
+		for range delayLine.Len() {
 			delayLine.Write(42.0)
 		}
 
@@ -294,7 +294,7 @@ func TestAllpassDCConvergence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < delayLine.Len(); i++ {
+	for range delayLine.Len() {
 		delayLine.Write(10.0)
 	}
 	// Read multiple times at the same delay to let the allpass state settle.
