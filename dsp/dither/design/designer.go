@@ -1,4 +1,4 @@
-//nolint:gocognit,cyclop,gosec,ineffassign
+//nolint:gocognit,gosec
 package design
 
 import (

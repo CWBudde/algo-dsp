@@ -1,4 +1,4 @@
-//nolint:funlen,gocognit,gocyclo,cyclop
+//nolint:funlen,gocognit,gocyclo,cyclop,maintidx
 package webdemo
 
 // SetCompressor updates compressor parameters.
