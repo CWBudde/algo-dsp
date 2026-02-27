@@ -1,3 +1,4 @@
+//nolint:funcorder
 package biquad
 
 import (
