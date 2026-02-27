@@ -21,7 +21,7 @@ This plan is **actionable**: every phase contains **checkable tasks and subtasks
 3. Architecture and Package Layout
 4. API Design Principles
 5. Phase Overview
-6. Detailed Phase Plan (Phases 0–31)
+6. Detailed Phase Plan (Phases 0–35)
 7. Appendices
    - Appendix A: Testing and Validation Strategy
    - Appendix B: Benchmarking and Performance Strategy
@@ -187,7 +187,9 @@ Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
 Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  ✅ Complete
 Phase 29: Dither and Noise Shaping                    [3 weeks]  ✅ Complete
 Phase 30: Polyphase Hilbert / Analytic Signal         [2 weeks]  📋 Planned
-Phase 31: Interpolation Kernel Expansion               [2 weeks]  📋 Planned
+Phase 31: Vocoder                                      [3 weeks]  🔄 In Progress
+Phase 32: Interpolation Kernel Expansion               [2 weeks]  📋 Planned
+Phase 35: API Stabilization and v1.0                   [2 weeks]  🔄 In Progress
 ```
 
 ---
@@ -442,9 +444,6 @@ Tasks:
 - [ ] Stereo panner
   - [ ] Implement equal-power pan law.
   - [ ] Add tests + example.
-- [ ] Vocoder
-  - [ ] Implement analysis bank + envelopes + carrier shaping.
-  - [ ] Add tests + example.
 - [ ] Pitch correction
   - [ ] Implement YIN helper + integrate with spectral shifter.
   - [ ] Add tests + example.
@@ -588,7 +587,164 @@ Exit criteria:
 - [ ] Callers can select interpolation strategy explicitly with clear tradeoffs.
 - [ ] `go test -race ./dsp/interp ./dsp/delay ./dsp/resample` passes.
 
-### Phase 31: API Stabilization and v1.0 (In Progress)
+### Phase 31: Vocoder (Planned)
+
+Goal:
+
+- Implement a channel vocoder that applies the spectral envelope of a modulator signal (typically speech) to a carrier signal (typically a synthesizer or noise), producing the classic "talking synthesizer" effect.
+- Provide multiple band-layout strategies (1/3-octave ISO and Bark scale) with configurable filter order, attack/release envelopes, and dry/wet mixing.
+- Based on the legacy implementation in `legacy/Source/DSP/DAV_DspVocoder.pas`, which contains three complete vocoder variants: a simple third-octave bandpass vocoder, a Bark-scale LP/HP subtractive bank vocoder, and a mixed-design vocoder with Chebyshev analysis and bandpass synthesis.
+
+---
+
+#### Architecture Overview
+
+A vocoder works in three stages:
+
+1. **Analysis bank** — the modulator signal is decomposed into N frequency bands. Each band produces a slowly-varying amplitude envelope (the "spectral shape" of the voice or modulator at that frequency region).
+2. **Envelope follower** — for each band, a peak or RMS detector with configurable attack and release times tracks the band's instantaneous energy level. This is the "spectral envelope" that gives the vocoder its characteristic sound.
+3. **Synthesis bank** — the carrier signal is fed through N matching bandpass (or LP/HP) filters. Each band's output is amplitude-modulated by the analysis envelope extracted in step 2. The modulated bands are summed to form the vocoded output.
+
+A final output stage blends:
+- **Vocoded mix** (`VocoderLevel`) — the summed carrier-reshaped output
+- **Dry carrier** (`SynthLevel`) — the unprocessed carrier (adds brightness/presence)
+- **Dry modulator** (`InputLevel`) — the unprocessed modulator (optional intelligibility aid)
+
+---
+
+#### Band Layout Strategies
+
+Two layouts are required, matching the legacy variants:
+
+**1/3-Octave ISO Bank (32 bands)**
+
+Center frequencies follow the ISO 1/3-octave series from 16 Hz to 20 kHz:
+
+```
+16, 20, 25, 31, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500,
+630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000,
+10000, 12500, 16000, 20000
+```
+
+Each band uses a pair of 2nd-order bandpass filters (analysis and synthesis), both centered on the same ISO frequency. The synthesis bandwidth is independently configurable (Q factor), defaulting to 0.707.
+
+The simple variant (`SimpleVocoder`) runs both analysis and synthesis entirely through bandpass filters. This is computationally straightforward but has lower frequency selectivity. Filter type: basic biquad bandpass (existing `dsp/filter/biquad` package).
+
+**Bark Scale Bank (24 bands)**
+
+Center frequencies follow the critical-band (Bark) scale, which approximates the perceptual frequency resolution of the human ear:
+
+```
+100, 200, 300, 400, 510, 630, 770, 920, 1080, 1270, 1480, 1720, 2000,
+2320, 2700, 3150, 3700, 4400, 5300, 6400, 7700, 9500, 12000, 15500
+```
+
+Analysis and synthesis use **subtractive band splitting**: a cascade of LP/HP filter pairs at each band boundary frequency, implemented with Chebyshev Type I filters (order configurable, default 4). The band signal at each stage is the HP output; the LP output is passed to the next (lower) stage. This is more computationally efficient than running a full bandpass per band.
+
+---
+
+#### Envelope Follower Design
+
+Each band has a peak-detecting envelope follower with asymmetric attack and release:
+
+```
+if |x[n]| > env[n-1]:
+    env[n] = env[n-1] + (|x[n]| - env[n-1]) * attack_factor
+else:
+    env[n] = |x[n]| + (env[n-1] - |x[n]|) * release_factor
+```
+
+Time constants are computed from attack/release times in milliseconds:
+
+```
+attack_factor  = 1 - exp(-1 / (attack_ms  * 0.001 * sample_rate))
+release_factor =     exp(-1 / (release_ms * 0.001 * sample_rate))
+```
+
+Defaults: attack = 0.5 ms, release = 2 ms. These must recompute when sample rate changes.
+
+---
+
+#### Downsampling / Efficiency (TVocoder variant)
+
+For the LP/HP subtractive bank, lower frequency bands can be processed at reduced sample rates (power-of-2 decimation) since their content is band-limited. The legacy code implements this via a `DownsampleFactor` per band and a shared `FDownSampler` counter, only processing a band when `(downsample_counter % factor) == 0`.
+
+The Go implementation should support this as an optional optimization path, controllable via a `WithDownsampling(enabled bool)` option. The default may disable downsampling for correctness and simplicity in a first pass.
+
+---
+
+#### Tasks
+
+- [x] Core vocoder infrastructure
+  - [x] Define `Vocoder` struct with configurable band count, layout, attack, release, and mix levels.
+  - [x] Define `BandLayout` enum/type: `ThirdOctaveISO` (32 bands) and `BarkScale` (24 bands).
+  - [x] Implement `WithBandLayout`, `WithAttack`, `WithRelease`, `WithInputLevel`, `WithSynthLevel`, `WithVocoderLevel` option functions. (Note: `WithFilterOrder` removed — fixed at 2nd-order CPG bandpass; `WithSynthesisBandwidth` deferred.)
+  - [x] Implement `NewVocoder(sampleRate float64, opts ...Option) (*Vocoder, error)`.
+  - [x] Implement `Reset()` to clear all filter and envelope state.
+  - [x] Implement `SetSampleRate(sr float64)` to recompute all time constants and filter coefficients on the fly.
+
+- [x] Analysis filter bank
+  - [x] Implement 1/3-octave bandpass analysis bank: 32 CPG (constant-peak-gain) biquad bandpass filters (one per ISO band).
+  - [x] Implement Bark-scale analysis bank: 24 CPG bandpass filters at Bark center frequencies with per-band Q. (Note: simplified from subtractive LP/HP Chebyshev — Chebyshev filters aren't complementary, causing gain accumulation.)
+  - [x] Wire filter coefficient recomputation on sample rate change.
+
+- [x] Envelope followers
+  - [x] Implement per-band peak-follower with asymmetric attack/release as described above.
+  - [ ] Provide RMS-mode alternative (optional, `WithEnvelopeMode(mode EnvelopeMode)`) using a leaky integrator on the squared signal.
+  - [x] Recompute attack/release factors on sample rate or time-constant change.
+
+- [x] Synthesis filter bank
+  - [x] Implement 1/3-octave bandpass synthesis bank: 32 CPG biquad bandpass filters (same ISO center frequencies).
+  - [x] Implement Bark-scale synthesis bank: 24 CPG bandpass filters mirroring analysis bank.
+  - [x] Implement carrier modulation: filter carrier through synthesis bandpass, then multiply by analysis envelope before summing.
+
+- [x] Output mixing
+  - [x] Sum all modulated synthesis band outputs.
+  - [x] Apply three-way blend: `output = vocoder_level * vocoded + synth_level * carrier + input_level * modulator`.
+  - [x] All level factors are linear (not dB) at the processing layer.
+
+- [x] Processing API
+  - [x] Implement `ProcessSample(modulator, carrier float64) float64` for sample-by-sample streaming.
+  - [x] Implement `ProcessBlock(modulators, carriers, output []float64) error` for block processing (zero-alloc, in-place output).
+  - [ ] Document latency: both filter banks introduce group delay that is inherently asymmetric between IIR filter types; document this clearly.
+
+- [x] Optional downsampling optimization
+  - [x] Implement per-band downsample factor computation for both layouts (power-of-2 based on band frequency vs. Nyquist).
+  - [x] Implement bitmask-based counter mechanism so lower bands only run analysis on every Nth sample; synthesis always runs at full rate.
+  - [x] Guard with `WithDownsampling(true)` option and `SetDownsampling()` setter; default off.
+
+- [x] Tests
+  - [x] Unit test: `ProcessSample` with silence modulator produces silent output.
+  - [x] Unit test: non-silent output for non-silent modulator+carrier.
+  - [x] Unit test: envelope asymmetry (attack vs release time constants).
+  - [x] Unit test: band-layout frequencies match expected ISO and Bark tables.
+  - [x] Unit test: `SetSampleRate` recomputes coefficients correctly.
+  - [x] Unit test: `ProcessBlock` equivalence with `ProcessSample`.
+  - [x] Unit test: `Reset` clears state. Setter/getter roundtrip. Setter validation. Dry mix. Output bounded. Bark layout.
+  - [x] Benchmark: `ProcessSample` for both band layouts; 0 allocs/op, ~192ns (ThirdOctave), ~212ns (Bark).
+
+- [x] Review follow-up hardening (DSP correctness + parity)
+  - [x] Fix analysis downsampling path so per-band analysis frequency response is preserved (do not skip IIR state evolution); implement proper decimation strategy or equivalent full-rate analysis with decimated control updates.
+  - [x] Make envelope attack/release timing invariant in milliseconds when downsampling is enabled (factor-aware coefficient derivation and tests).
+  - [x] Resolve Bark Q behavior mismatch: either default Bark synthesis Q to per-band Bark-derived values or explicitly split analysis/synthesis Q options and documentation.
+  - [x] Align comments/docs with implementation (`barkSynthQ` naming/usage, Bark analysis filter description, downsample factor rule text).
+  - [x] Add downsample quality regression tests stronger than broad RMS checks (band-energy error and/or STFT-distance thresholds vs full-rate baseline).
+  - [x] Add targeted tests for high-frequency/Nyquist-near bands under varying synthesis Q to validate stable/expected behavior.
+
+- [ ] Example
+  - [ ] Add `example_test.go` demonstrating: construct a Bark-scale vocoder, feed a speech-like modulator (sine sweep) and synthesizer-like carrier (sawtooth approximation), run `ProcessBlock`, print output energy.
+
+Exit criteria:
+
+- [x] Both `ThirdOctaveISO` and `BarkScale` layouts produce non-silent output for non-silent inputs.
+- [x] Envelope followers have correct asymmetric time constant behavior verified by unit tests.
+- [x] `go test -race ./dsp/effects/...` passes with no data races.
+- [x] `ProcessBlock` shows zero heap allocations in benchmark.
+- [ ] Runnable example compiles and runs without error.
+
+---
+
+### Phase 35: API Stabilization and v1.0 (In Progress)
 
 Tasks:
 

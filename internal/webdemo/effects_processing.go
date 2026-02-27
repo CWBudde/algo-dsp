@@ -177,7 +177,7 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 		mainParents := parents
 		sideParents := []compiledChainEdge(nil)
 
-		if node.Type == "dyn-lookahead" {
+		if node.Type == "dyn-lookahead" || node.Type == "vocoder" {
 			mainParents = mainParents[:0]
 
 			for _, edge := range parents {
@@ -246,6 +246,30 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 					}
 
 					lookahead.ProcessWithSidechain(dst, sideBuf)
+
+					continue
+				}
+			}
+		}
+
+		if node.Type == "vocoder" {
+			rt := e.chainNodes[node.ID]
+			if rt != nil {
+				if voc, ok := rt.effect.(*vocoderChainRuntime); ok {
+					// Ensure carrier buffer is large enough.
+					if len(voc.carrierBuf) < len(dst) {
+						voc.carrierBuf = make([]float64, len(dst))
+					}
+
+					carrierBuf := voc.carrierBuf[:len(dst)]
+					mixParentEdgesInto(sideParents, carrierBuf, mixBuf, edgeSrc)
+
+					if len(sideParents) == 0 {
+						copy(carrierBuf, dst)
+					}
+
+					// dst = modulator (port 0), carrierBuf = carrier (port 1).
+					voc.processVocoder(dst, carrierBuf)
 
 					continue
 				}

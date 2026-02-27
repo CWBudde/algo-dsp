@@ -334,6 +334,14 @@ func init() {
 	registerChainEffectFactory("dyn-multiband", func(e *Engine) (chainEffectRuntime, error) {
 		return &multibandChainRuntime{}, nil
 	})
+	registerChainEffectFactory("vocoder", func(e *Engine) (chainEffectRuntime, error) {
+		fx, err := effects.NewVocoder(e.sampleRate)
+		if err != nil {
+			return nil, err
+		}
+
+		return &vocoderChainRuntime{fx: fx}, nil
+	})
 }
 
 // parseChainGraph parses the JSON chain graph and performs a topological sort
@@ -2382,4 +2390,51 @@ func (r *convReverbChainRuntime) Process(_ *Engine, _ compiledChainNode, block [
 	}
 
 	_ = r.fx.ProcessInPlace(block)
+}
+
+// ---------------------------------------------------------------------------
+// vocoder
+// ---------------------------------------------------------------------------
+
+type vocoderChainRuntime struct {
+	fx         *effects.Vocoder
+	carrierBuf []float64 // reusable buffer for the carrier input
+}
+
+func (r *vocoderChainRuntime) Configure(e *Engine, node compiledChainNode) error {
+	if err := r.fx.SetSampleRate(e.sampleRate); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetAttack(clamp(getNodeNum(node, "attackMs", 0.5), 0.01, 100)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetRelease(clamp(getNodeNum(node, "releaseMs", 2.0), 0.01, 1000)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetInputLevel(clamp(getNodeNum(node, "inputLevel", 0), 0, 10)); err != nil {
+		return err
+	}
+
+	if err := r.fx.SetSynthLevel(clamp(getNodeNum(node, "synthLevel", 0), 0, 10)); err != nil {
+		return err
+	}
+
+	return r.fx.SetVocoderLevel(clamp(getNodeNum(node, "vocoderLevel", 1), 0, 10))
+}
+
+func (r *vocoderChainRuntime) Process(_ *Engine, _ compiledChainNode, block []float64) {
+	// Single-input fallback: use the same signal as both modulator and carrier.
+	if len(r.carrierBuf) < len(block) {
+		r.carrierBuf = make([]float64, len(block))
+	}
+
+	copy(r.carrierBuf, block)
+	_ = r.fx.ProcessBlock(block, r.carrierBuf, block)
+}
+
+func (r *vocoderChainRuntime) processVocoder(modulator, carrier []float64) {
+	_ = r.fx.ProcessBlock(modulator, carrier, modulator)
 }

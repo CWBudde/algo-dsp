@@ -693,6 +693,37 @@
                 <span id="fx-lookahead-ms-value">3.0 ms</span>
               </label>
             </div>
+            <div class="fx-card chain-detail-card" data-chain-detail="vocoder" hidden>
+              <div class="fx-option-head">
+                <span>Vocoder</span>
+                <small>Port 0 = modulator, Port 1 = carrier</small>
+              </div>
+              <label>
+                Attack
+                <input id="fx-vocoder-attack" type="range" min="0.01" max="100" step="0.01" value="0.5" />
+                <span id="fx-vocoder-attack-value">0.50 ms</span>
+              </label>
+              <label>
+                Release
+                <input id="fx-vocoder-release" type="range" min="0.01" max="1000" step="0.1" value="2.0" />
+                <span id="fx-vocoder-release-value">2.0 ms</span>
+              </label>
+              <label>
+                Vocoder Level
+                <input id="fx-vocoder-level" type="range" min="0" max="10" step="0.01" value="1.0" />
+                <span id="fx-vocoder-level-value">1.00</span>
+              </label>
+              <label>
+                Dry Modulator
+                <input id="fx-vocoder-dry" type="range" min="0" max="10" step="0.01" value="0" />
+                <span id="fx-vocoder-dry-value">0.00</span>
+              </label>
+              <label>
+                Dry Carrier
+                <input id="fx-vocoder-carrier" type="range" min="0" max="10" step="0.01" value="0" />
+                <span id="fx-vocoder-carrier-value">0.00</span>
+              </label>
+            </div>
             <div class="fx-card chain-detail-card" data-chain-detail="dyn-gate" hidden>
               <div class="fx-option-head">
                 <span>Gate / Expander (Chain)</span>

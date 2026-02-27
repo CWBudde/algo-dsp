@@ -361,6 +361,16 @@ const el = {
   fxLookaheadReleaseValue: document.getElementById("fx-lookahead-release-value"),
   fxLookaheadMs: document.getElementById("fx-lookahead-ms"),
   fxLookaheadMsValue: document.getElementById("fx-lookahead-ms-value"),
+  fxVocoderAttack: document.getElementById("fx-vocoder-attack"),
+  fxVocoderAttackValue: document.getElementById("fx-vocoder-attack-value"),
+  fxVocoderRelease: document.getElementById("fx-vocoder-release"),
+  fxVocoderReleaseValue: document.getElementById("fx-vocoder-release-value"),
+  fxVocoderLevel: document.getElementById("fx-vocoder-level"),
+  fxVocoderLevelValue: document.getElementById("fx-vocoder-level-value"),
+  fxVocoderDry: document.getElementById("fx-vocoder-dry"),
+  fxVocoderDryValue: document.getElementById("fx-vocoder-dry-value"),
+  fxVocoderCarrier: document.getElementById("fx-vocoder-carrier"),
+  fxVocoderCarrierValue: document.getElementById("fx-vocoder-carrier-value"),
   fxGateMode: document.getElementById("fx-gate-mode"),
   fxGateThresh: document.getElementById("fx-gate-thresh"),
   fxGateThreshValue: document.getElementById("fx-gate-thresh-value"),
@@ -657,6 +667,7 @@ const EFFECT_NODE_DEFAULTS = {
   },
   "dyn-limiter": { thresholdDB: -0.1, releaseMs: 100 },
   "dyn-lookahead": { thresholdDB: -1.0, releaseMs: 100, lookaheadMs: 3.0 },
+  vocoder: { attackMs: 0.5, releaseMs: 2.0, vocoderLevel: 1.0, inputLevel: 0, synthLevel: 0 },
   "dyn-gate": {
     mode: "gate",
     thresholdDB: -40,
@@ -944,6 +955,13 @@ function applyNodeParamsToUI(node) {
       el.fxLookaheadRelease.value = p.releaseMs;
       el.fxLookaheadMs.value = p.lookaheadMs;
       break;
+    case "vocoder":
+      el.fxVocoderAttack.value = p.attackMs;
+      el.fxVocoderRelease.value = p.releaseMs;
+      el.fxVocoderLevel.value = p.vocoderLevel;
+      el.fxVocoderDry.value = p.inputLevel;
+      el.fxVocoderCarrier.value = p.synthLevel;
+      break;
     case "dyn-gate":
       el.fxGateMode.value = p.mode || "gate";
       el.fxGateThresh.value = p.thresholdDB;
@@ -1230,6 +1248,14 @@ function collectNodeParamsFromUI(nodeType) {
         thresholdDB: Number(el.fxLookaheadThresh.value),
         releaseMs: Number(el.fxLookaheadRelease.value),
         lookaheadMs: Number(el.fxLookaheadMs.value),
+      };
+    case "vocoder":
+      return {
+        attackMs: Number(el.fxVocoderAttack.value),
+        releaseMs: Number(el.fxVocoderRelease.value),
+        vocoderLevel: Number(el.fxVocoderLevel.value),
+        inputLevel: Number(el.fxVocoderDry.value),
+        synthLevel: Number(el.fxVocoderCarrier.value),
       };
     case "dyn-gate":
       return {
@@ -2121,6 +2147,21 @@ function updateEffectsText() {
   if (el.fxLookaheadMsValue) {
     el.fxLookaheadMsValue.textContent = `${Number(el.fxLookaheadMs.value).toFixed(1)} ms`;
   }
+  if (el.fxVocoderAttackValue) {
+    el.fxVocoderAttackValue.textContent = `${Number(el.fxVocoderAttack.value).toFixed(2)} ms`;
+  }
+  if (el.fxVocoderReleaseValue) {
+    el.fxVocoderReleaseValue.textContent = `${Number(el.fxVocoderRelease.value).toFixed(1)} ms`;
+  }
+  if (el.fxVocoderLevelValue) {
+    el.fxVocoderLevelValue.textContent = Number(el.fxVocoderLevel.value).toFixed(2);
+  }
+  if (el.fxVocoderDryValue) {
+    el.fxVocoderDryValue.textContent = Number(el.fxVocoderDry.value).toFixed(2);
+  }
+  if (el.fxVocoderCarrierValue) {
+    el.fxVocoderCarrierValue.textContent = Number(el.fxVocoderCarrier.value).toFixed(2);
+  }
   if (el.fxGateThreshValue) {
     el.fxGateThreshValue.textContent = `${Number(el.fxGateThresh.value).toFixed(1)} dB`;
   }
@@ -2618,6 +2659,11 @@ function bindEvents() {
     el.fxLookaheadThresh,
     el.fxLookaheadRelease,
     el.fxLookaheadMs,
+    el.fxVocoderAttack,
+    el.fxVocoderRelease,
+    el.fxVocoderLevel,
+    el.fxVocoderDry,
+    el.fxVocoderCarrier,
     el.fxGateMode,
     el.fxGateThresh,
     el.fxGateRatio,
@@ -2914,6 +2960,11 @@ const PIN_MAP = {
   "fx-lookahead-thresh": { type: "dyn-lookahead", param: "thresholdDB" },
   "fx-lookahead-release": { type: "dyn-lookahead", param: "releaseMs" },
   "fx-lookahead-ms": { type: "dyn-lookahead", param: "lookaheadMs" },
+  "fx-vocoder-attack": { type: "vocoder", param: "attackMs" },
+  "fx-vocoder-release": { type: "vocoder", param: "releaseMs" },
+  "fx-vocoder-level": { type: "vocoder", param: "vocoderLevel" },
+  "fx-vocoder-dry": { type: "vocoder", param: "inputLevel" },
+  "fx-vocoder-carrier": { type: "vocoder", param: "synthLevel" },
   "fx-gate-thresh": { type: "dyn-gate", param: "thresholdDB" },
   "fx-gate-ratio": { type: "dyn-gate", param: "ratio" },
   "fx-gate-knee": { type: "dyn-gate", param: "kneeDB" },

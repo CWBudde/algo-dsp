@@ -46,6 +46,7 @@
     "dyn-deesser":    { label: "De-Esser",          hue: 58,  category: "Dynamics" },
     "dyn-transient":  { label: "Transient Shaper",  hue: 50,  category: "Dynamics" },
     "dyn-multiband":  { label: "Multiband Comp",    hue: 108, category: "Dynamics" },
+    vocoder:          { label: "Vocoder",           hue: 305, category: "Color" },
     "split-freq":     { label: "Split Freq",        hue: 210, category: "Routing", utility: true },
     split:            { label: "Split",             hue: 210, category: "Routing", utility: true, hidden: true },
     sum:              { label: "Sum",               hue: 35,  category: "Routing", utility: true },
@@ -213,6 +214,13 @@
       midRatio:       { label: "MRat",  min: 1, max: 20, step: 0.1, unit: ":1" },
       highThresholdDB:{ label: "HThr",  min: -80, max: 0, step: 0.5, unit: "dB" },
       highRatio:      { label: "HRat",  min: 1, max: 20, step: 0.1, unit: ":1" },
+    },
+    vocoder: {
+      attackMs:     { label: "Atk",  min: 0.01, max: 100, step: 0.01, unit: "ms" },
+      releaseMs:    { label: "Rel",  min: 0.01, max: 1000, step: 0.1, unit: "ms" },
+      vocoderLevel: { label: "Voc",  min: 0, max: 10, step: 0.01, unit: "" },
+      inputLevel:   { label: "Dry",  min: 0, max: 10, step: 0.01, unit: "" },
+      synthLevel:   { label: "Car",  min: 0, max: 10, step: 0.01, unit: "" },
     },
     "split-freq": {
       freqHz: { label: "Freq", min: 20, max: 20000, step: 1, unit: "Hz" },
@@ -1888,7 +1896,7 @@
       if (type === "_input") return 0;
       if (type === "_output") return 1;
       if (type === "sum") return -1;
-      if (type === "dyn-lookahead") return 2;
+      if (type === "dyn-lookahead" || type === "vocoder") return 2;
       return 1;
     }
 
@@ -1927,7 +1935,7 @@
     }
 
     _inputPortCount(type) {
-      if (type === "dyn-lookahead") return 2;
+      if (type === "dyn-lookahead" || type === "vocoder") return 2;
       return 1;
     }
 
