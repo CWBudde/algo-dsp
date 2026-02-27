@@ -246,11 +246,51 @@
 
       <section class="panel chain-panel">
         <div class="chain-head">
-          <h2>Effects Chain</h2>
+          <div class="chain-head-top">
+            <h2>Effects Chain</h2>
+            <div class="chain-shortcuts-wrap">
+              <button
+                id="chain-shortcuts-toggle"
+                class="chain-shortcuts-toggle"
+                type="button"
+                aria-label="Show keyboard shortcuts"
+                aria-expanded="false"
+                aria-controls="chain-shortcuts-popover"
+              >
+                ?
+              </button>
+              <div
+                id="chain-shortcuts-popover"
+                class="chain-shortcuts-popover"
+                role="dialog"
+                aria-label="Block editor keyboard shortcuts"
+                hidden
+              >
+                <p class="chain-shortcuts-title">Keyboard Shortcuts</p>
+                <ul class="chain-shortcuts-list">
+                  <li><kbd>A</kbd><span>Add effect menu</span></li>
+                  <li><kbd>Tab</kbd><span>Next block</span></li>
+                  <li>
+                    <kbd>Shift</kbd> + <kbd>Tab</kbd><span>Previous block</span>
+                  </li>
+                  <li><kbd>↑↓←→</kbd><span>Move selected block</span></li>
+                  <li>
+                    <kbd>Shift</kbd> + <kbd>↑↓←→</kbd><span>Move faster</span>
+                  </li>
+                  <li><kbd>B</kbd><span>Toggle bypass</span></li>
+                  <li>
+                    <kbd>Del</kbd>/<kbd>Backspace</kbd><span>Remove block</span>
+                  </li>
+                  <li>
+                    <kbd>Esc</kbd><span>Clear selection / close menus</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
           <p class="chain-hint">
-            Right-click to add effects. Click a block for details. Shortcuts: A
-            add, Tab/Shift+Tab select, Arrows move (Shift faster), B bypass, Del
-            remove, Esc clear.
+            Right-click to add effects. Click a block for details. Use ? for
+            keyboard shortcuts.
           </p>
         </div>
         <div class="chain-canvas-wrap">

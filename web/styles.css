@@ -112,7 +112,10 @@ body {
   line-height: 1;
   padding: 0.45rem 0.55rem;
   cursor: pointer;
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
 }
 
 .theme-toggle:hover {
@@ -310,7 +313,9 @@ button.active {
   border-radius: 10px;
   padding: 0.5rem;
   background: var(--surface);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .step.current {
@@ -568,10 +573,97 @@ button.active {
 }
 
 .chain-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.chain-head-top {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.chain-head-top h2 {
+  margin: 0;
+}
+
+.chain-shortcuts-wrap {
+  position: relative;
+}
+
+.chain-shortcuts-toggle {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.chain-shortcuts-toggle:hover,
+.chain-shortcuts-toggle[aria-expanded="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.chain-shortcuts-popover {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  width: min(22rem, 80vw);
+  z-index: 20;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 0.55rem 0.65rem;
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.chain-shortcuts-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.chain-shortcuts-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.chain-shortcuts-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.chain-shortcuts-list li span {
+  margin-left: auto;
+  opacity: 0.75;
+}
+
+.chain-shortcuts-list kbd {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface) 86%, var(--line));
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-family: inherit;
+  line-height: 1;
+  padding: 0.18rem 0.35rem;
 }
 
 .chain-hint {
@@ -600,8 +692,14 @@ button.active {
 }
 
 @keyframes chain-detail-in {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .chain-detail-inner {
@@ -640,12 +738,14 @@ button.active {
   background: transparent;
   cursor: pointer;
   opacity: 0.35;
-  transition: opacity 0.15s, background 0.15s;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
 }
 
 .pin-param:hover {
   opacity: 0.7;
-  background: var(--surface-hover, rgba(128,128,128,0.1));
+  background: var(--surface-hover, rgba(128, 128, 128, 0.1));
 }
 
 .pin-param.pinned {
