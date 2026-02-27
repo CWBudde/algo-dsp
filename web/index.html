@@ -10,7 +10,10 @@
     <link rel="apple-touch-icon" href="Algo-X-256.png" />
 
     <meta property="og:title" content="algo-dsp Web Demo" />
-    <meta property="og:description" content="Interactive high-performance DSP demo featuring a step synthesizer, 5-node EQ, chorus, reverb, and dynamics processing." />
+    <meta
+      property="og:description"
+      content="Interactive high-performance DSP demo featuring a step synthesizer, 5-node EQ, chorus, reverb, and dynamics processing."
+    />
     <meta property="og:image" content="Algo-X-256.png" />
     <meta property="og:type" content="website" />
 
@@ -18,16 +21,24 @@
       (() => {
         try {
           const stored = localStorage.getItem("algo-dsp-theme");
-          const selected = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+          const selected =
+            stored === "light" || stored === "dark" || stored === "system"
+              ? stored
+              : "system";
           const mql = window.matchMedia("(prefers-color-scheme: dark)");
-          const resolved = selected === "system" ? (mql.matches ? "dark" : "light") : selected;
+          const resolved =
+            selected === "system" ? (mql.matches ? "dark" : "light") : selected;
           const root = document.documentElement;
           root.dataset.theme = selected;
           root.dataset.resolvedTheme = resolved;
         } catch {
           const root = document.documentElement;
           root.dataset.theme = "system";
-          root.dataset.resolvedTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          root.dataset.resolvedTheme = window.matchMedia(
+            "(prefers-color-scheme: dark)",
+          ).matches
+            ? "dark"
+            : "light";
         }
       })();
     </script>
@@ -44,7 +55,13 @@
       <header class="hero">
         <div class="hero-top">
           <h1>algo-dsp Web Demo</h1>
-          <button id="theme-toggle" class="theme-toggle" type="button" title="Theme follows system until toggled" aria-label="Toggle theme">
+          <button
+            id="theme-toggle"
+            class="theme-toggle"
+            type="button"
+            title="Theme follows system until toggled"
+            aria-label="Toggle theme"
+          >
             <svg
               class="theme-toggle-icon"
               viewBox="0 0 24 24"
@@ -71,7 +88,12 @@
 
       <section class="panel transport">
         <div class="row">
-          <button id="run-toggle" class="icon-btn" type="button" aria-label="Play">
+          <button
+            id="run-toggle"
+            class="icon-btn"
+            type="button"
+            aria-label="Play"
+          >
             <span class="icon icon-play" aria-hidden="true"></span>
             <span class="icon icon-stop" aria-hidden="true"></span>
             <span class="sr-only">Play</span>
@@ -83,12 +105,26 @@
           </label>
           <label>
             Shuffle
-            <input id="shuffle" type="range" min="0" max="1" step="0.01" value="0" />
+            <input
+              id="shuffle"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0"
+            />
             <span id="shuffle-value">0%</span>
           </label>
           <label>
             Decay
-            <input id="decay" type="range" min="0.04" max="0.8" step="0.01" value="0.2" />
+            <input
+              id="decay"
+              type="range"
+              min="0.04"
+              max="0.8"
+              step="0.01"
+              value="0.2"
+            />
             <span id="decay-value">0.20 s</span>
           </label>
           <label>
@@ -140,7 +176,9 @@
                 <option value="B">B</option>
               </select>
             </label>
-            <button id="randomize-steps" class="secondary" type="button">Randomize</button>
+            <button id="randomize-steps" class="secondary" type="button">
+              Randomize
+            </button>
           </div>
         </div>
         <div id="steps" class="steps"></div>
@@ -151,7 +189,11 @@
           <h2>EQ</h2>
           <p id="eq-readout" class="eq-readout">Hover a node for details.</p>
         </div>
-        <canvas id="eq-canvas" height="400" aria-label="Interactive EQ graph"></canvas>
+        <canvas
+          id="eq-canvas"
+          height="400"
+          aria-label="Interactive EQ graph"
+        ></canvas>
         <div class="analyzer-band">
           <label>
             FFT Size
@@ -166,7 +208,14 @@
           </label>
           <label>
             Overlap
-            <input id="analyzer-overlap" type="range" min="25" max="90" step="1" value="75" />
+            <input
+              id="analyzer-overlap"
+              type="range"
+              min="25"
+              max="90"
+              step="1"
+              value="75"
+            />
             <span id="analyzer-overlap-value">75% overlap (25% hop)</span>
           </label>
           <label>
@@ -181,145 +230,313 @@
           </label>
           <label>
             Smoothing
-            <input id="analyzer-smoothing" type="range" min="0" max="0.95" step="0.01" value="0.65" />
+            <input
+              id="analyzer-smoothing"
+              type="range"
+              min="0"
+              max="0.95"
+              step="0.01"
+              value="0.65"
+            />
             <span id="analyzer-smoothing-value">0.65</span>
           </label>
         </div>
-        <div class="eq-meta">
-        </div>
+        <div class="eq-meta"></div>
       </section>
 
       <section class="panel chain-panel">
         <div class="chain-head">
           <h2>Effects Chain</h2>
-          <p class="chain-hint">Right-click to add effects. Drag blocks with left button. Click a block for details.</p>
+          <p class="chain-hint">
+            Right-click to add effects. Click a block for details. Shortcuts: A
+            add, Tab/Shift+Tab select, Arrows move (Shift faster), B bypass, Del
+            remove, Esc clear.
+          </p>
         </div>
         <div class="chain-canvas-wrap">
-          <canvas id="chain-canvas" height="540" aria-label="Effect chain graph editor"></canvas>
+          <canvas
+            id="chain-canvas"
+            height="540"
+            aria-label="Effect chain graph editor"
+          ></canvas>
         </div>
         <div id="chain-detail" class="chain-detail" hidden>
           <div class="chain-detail-inner">
-            <div class="fx-card chain-detail-card" data-chain-detail="chorus" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="chorus"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Chorus</span>
               </div>
               <label>
                 Mix
-                <input id="chorus-mix" type="range" min="0" max="0.6" step="0.01" value="0.18" />
+                <input
+                  id="chorus-mix"
+                  type="range"
+                  min="0"
+                  max="0.6"
+                  step="0.01"
+                  value="0.18"
+                />
                 <span id="chorus-mix-value">18%</span>
               </label>
               <label>
                 Depth
-                <input id="chorus-depth" type="range" min="0" max="0.01" step="0.0001" value="0.003" />
+                <input
+                  id="chorus-depth"
+                  type="range"
+                  min="0"
+                  max="0.01"
+                  step="0.0001"
+                  value="0.003"
+                />
                 <span id="chorus-depth-value">3.0 ms</span>
               </label>
               <label>
                 Speed
-                <input id="chorus-speed" type="range" min="0.05" max="5" step="0.01" value="0.35" />
+                <input
+                  id="chorus-speed"
+                  type="range"
+                  min="0.05"
+                  max="5"
+                  step="0.01"
+                  value="0.35"
+                />
                 <span id="chorus-speed-value">0.35 Hz</span>
               </label>
               <label>
                 Stages
-                <input id="chorus-stages" type="range" min="1" max="6" step="1" value="3" />
+                <input
+                  id="chorus-stages"
+                  type="range"
+                  min="1"
+                  max="6"
+                  step="1"
+                  value="3"
+                />
                 <span id="chorus-stages-value">3</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="delay" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="delay"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Delay</span>
               </div>
               <label>
                 Time
-                <input id="delay-time" type="range" min="0.01" max="2" step="0.01" value="0.25" />
+                <input
+                  id="delay-time"
+                  type="range"
+                  min="0.01"
+                  max="2"
+                  step="0.01"
+                  value="0.25"
+                />
                 <span id="delay-time-value">250 ms</span>
               </label>
               <label>
                 Feedback
-                <input id="delay-feedback" type="range" min="0" max="0.95" step="0.01" value="0.35" />
+                <input
+                  id="delay-feedback"
+                  type="range"
+                  min="0"
+                  max="0.95"
+                  step="0.01"
+                  value="0.35"
+                />
                 <span id="delay-feedback-value">35%</span>
               </label>
               <label>
                 Mix
-                <input id="delay-mix" type="range" min="0" max="1" step="0.01" value="0.25" />
+                <input
+                  id="delay-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.25"
+                />
                 <span id="delay-mix-value">25%</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="delay-simple" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="delay-simple"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Simple Delay</span>
               </div>
               <label>
                 Delay
-                <input id="simple-delay-ms" type="range" min="0" max="500" step="1" value="20" />
+                <input
+                  id="simple-delay-ms"
+                  type="range"
+                  min="0"
+                  max="500"
+                  step="1"
+                  value="20"
+                />
                 <span id="simple-delay-ms-value">20 ms</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="flanger" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="flanger"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Flanger</span>
               </div>
               <label>
                 Rate
-                <input id="flanger-rate" type="range" min="0.05" max="5" step="0.01" value="0.25" />
+                <input
+                  id="flanger-rate"
+                  type="range"
+                  min="0.05"
+                  max="5"
+                  step="0.01"
+                  value="0.25"
+                />
                 <span id="flanger-rate-value">0.25 Hz</span>
               </label>
               <label>
                 Depth
-                <input id="flanger-depth" type="range" min="0" max="0.009" step="0.0001" value="0.0015" />
+                <input
+                  id="flanger-depth"
+                  type="range"
+                  min="0"
+                  max="0.009"
+                  step="0.0001"
+                  value="0.0015"
+                />
                 <span id="flanger-depth-value">1.50 ms</span>
               </label>
               <label>
                 Base Delay
-                <input id="flanger-base-delay" type="range" min="0.0001" max="0.01" step="0.0001" value="0.001" />
+                <input
+                  id="flanger-base-delay"
+                  type="range"
+                  min="0.0001"
+                  max="0.01"
+                  step="0.0001"
+                  value="0.001"
+                />
                 <span id="flanger-base-delay-value">1.00 ms</span>
               </label>
               <label>
                 Feedback
-                <input id="flanger-feedback" type="range" min="-0.95" max="0.95" step="0.01" value="0.25" />
+                <input
+                  id="flanger-feedback"
+                  type="range"
+                  min="-0.95"
+                  max="0.95"
+                  step="0.01"
+                  value="0.25"
+                />
                 <span id="flanger-feedback-value">25%</span>
               </label>
               <label>
                 Mix
-                <input id="flanger-mix" type="range" min="0" max="1" step="0.01" value="0.5" />
+                <input
+                  id="flanger-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.5"
+                />
                 <span id="flanger-mix-value">50%</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="ringmod" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="ringmod"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Ring Modulator</span>
               </div>
               <label>
                 Carrier
-                <input id="ringmod-carrier" type="range" min="20" max="4000" step="1" value="440" />
+                <input
+                  id="ringmod-carrier"
+                  type="range"
+                  min="20"
+                  max="4000"
+                  step="1"
+                  value="440"
+                />
                 <span id="ringmod-carrier-value">440.0 Hz</span>
               </label>
               <label>
                 Mix
-                <input id="ringmod-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <input
+                  id="ringmod-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="ringmod-mix-value">100%</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="bitcrusher" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="bitcrusher"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Bit Crusher</span>
               </div>
               <label>
                 Bit Depth
-                <input id="bitcrusher-bits" type="range" min="1" max="16" step="0.1" value="8" />
+                <input
+                  id="bitcrusher-bits"
+                  type="range"
+                  min="1"
+                  max="16"
+                  step="0.1"
+                  value="8"
+                />
                 <span id="bitcrusher-bits-value">8.0 bit</span>
               </label>
               <label>
                 Downsample
-                <input id="bitcrusher-downsample" type="range" min="1" max="64" step="1" value="4" />
+                <input
+                  id="bitcrusher-downsample"
+                  type="range"
+                  min="1"
+                  max="64"
+                  step="1"
+                  value="4"
+                />
                 <span id="bitcrusher-downsample-value">4x</span>
               </label>
               <label>
                 Mix
-                <input id="bitcrusher-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <input
+                  id="bitcrusher-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="bitcrusher-mix-value">100%</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="distortion" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="distortion"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Distortion</span>
               </div>
@@ -351,184 +568,387 @@
               </label>
               <label>
                 Drive
-                <input id="distortion-drive" type="range" min="0.1" max="20" step="0.01" value="1.8" />
+                <input
+                  id="distortion-drive"
+                  type="range"
+                  min="0.1"
+                  max="20"
+                  step="0.01"
+                  value="1.8"
+                />
                 <span id="distortion-drive-value">1.80x</span>
               </label>
               <label>
                 Mix
-                <input id="distortion-mix" type="range" min="0" max="1" step="0.01" value="1.0" />
+                <input
+                  id="distortion-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="1.0"
+                />
                 <span id="distortion-mix-value">100%</span>
               </label>
               <label>
                 Output
-                <input id="distortion-output" type="range" min="0" max="4" step="0.01" value="1.0" />
+                <input
+                  id="distortion-output"
+                  type="range"
+                  min="0"
+                  max="4"
+                  step="0.01"
+                  value="1.0"
+                />
                 <span id="distortion-output-value">1.00x</span>
               </label>
               <label>
                 Clip
-                <input id="distortion-clip" type="range" min="0.05" max="1" step="0.01" value="1.0" />
+                <input
+                  id="distortion-clip"
+                  type="range"
+                  min="0.05"
+                  max="1"
+                  step="0.01"
+                  value="1.0"
+                />
                 <span id="distortion-clip-value">1.00</span>
               </label>
               <label>
                 Shape
-                <input id="distortion-shape" type="range" min="0" max="1" step="0.01" value="0.5" />
+                <input
+                  id="distortion-shape"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.5"
+                />
                 <span id="distortion-shape-value">0.50</span>
               </label>
               <label>
                 Bias
-                <input id="distortion-bias" type="range" min="-1" max="1" step="0.01" value="0" />
+                <input
+                  id="distortion-bias"
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.01"
+                  value="0"
+                />
                 <span id="distortion-bias-value">0.00</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="dist-cheb" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="dist-cheb"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Chebyshev Waveshaper</span>
               </div>
               <div class="dist-cheb-layout">
-              <div class="dist-cheb-params">
-              <label>
-                Order
-                <input id="dist-cheb-order" type="range" min="1" max="16" step="1" value="3" />
-                <span id="dist-cheb-order-value">3</span>
-              </label>
-              <label>
-                Harmonics
-                <select id="dist-cheb-harmonic">
-                  <option value="all">All</option>
-                  <option value="odd">Odd</option>
-                  <option value="even">Even</option>
-                </select>
-              </label>
-              <label>
-                Invert
-                <select id="dist-cheb-invert">
-                  <option value="0">Off</option>
-                  <option value="1">On</option>
-                </select>
-              </label>
-              <label>
-                Gain
-                <input id="dist-cheb-gain" type="range" min="0" max="4" step="0.01" value="1.0" />
-                <span id="dist-cheb-gain-value">1.00x</span>
-              </label>
-              <label>
-                DC Bypass
-                <select id="dist-cheb-dc-bypass">
-                  <option value="0">Off</option>
-                  <option value="1">On</option>
-                </select>
-              </label>
-              <label>
-                Drive
-                <input id="dist-cheb-drive" type="range" min="0.1" max="20" step="0.01" value="1.0" />
-                <span id="dist-cheb-drive-value">1.00x</span>
-              </label>
-              <label>
-                Mix
-                <input id="dist-cheb-mix" type="range" min="0" max="1" step="0.01" value="1.0" />
-                <span id="dist-cheb-mix-value">100%</span>
-              </label>
-              <label>
-                Output
-                <input id="dist-cheb-output" type="range" min="0" max="4" step="0.01" value="1.0" />
-                <span id="dist-cheb-output-value">1.00x</span>
-              </label>
-              <label>
-                Approx
-                <select id="dist-cheb-approx">
-                  <option value="exact">Exact</option>
-                  <option value="polynomial">Polynomial</option>
-                </select>
-              </label>
-              <label class="fx-section-header">Harmonic Weights</label>
-              <label id="dist-cheb-w1-row" hidden>
-                T1
-                <input id="dist-cheb-w1" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w1-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w2-row" hidden>
-                T2
-                <input id="dist-cheb-w2" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w2-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w3-row" hidden>
-                T3
-                <input id="dist-cheb-w3" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w3-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w4-row" hidden>
-                T4
-                <input id="dist-cheb-w4" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w4-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w5-row" hidden>
-                T5
-                <input id="dist-cheb-w5" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w5-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w6-row" hidden>
-                T6
-                <input id="dist-cheb-w6" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w6-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w7-row" hidden>
-                T7
-                <input id="dist-cheb-w7" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w7-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w8-row" hidden>
-                T8
-                <input id="dist-cheb-w8" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w8-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w9-row" hidden>
-                T9
-                <input id="dist-cheb-w9" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w9-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w10-row" hidden>
-                T10
-                <input id="dist-cheb-w10" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w10-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w11-row" hidden>
-                T11
-                <input id="dist-cheb-w11" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w11-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w12-row" hidden>
-                T12
-                <input id="dist-cheb-w12" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w12-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w13-row" hidden>
-                T13
-                <input id="dist-cheb-w13" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w13-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w14-row" hidden>
-                T14
-                <input id="dist-cheb-w14" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w14-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w15-row" hidden>
-                T15
-                <input id="dist-cheb-w15" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w15-value">0.00</span>
-              </label>
-              <label id="dist-cheb-w16-row" hidden>
-                T16
-                <input id="dist-cheb-w16" type="range" min="-2" max="2" step="0.01" value="0" />
-                <span id="dist-cheb-w16-value">0.00</span>
-              </label>
-              </div><!-- dist-cheb-params -->
-              <div class="dist-cheb-viz">
-                <canvas id="dist-cheb-canvas" width="220" height="160"></canvas>
-                <span class="plot-label">Waveform</span>
+                <div class="dist-cheb-params">
+                  <label>
+                    Order
+                    <input
+                      id="dist-cheb-order"
+                      type="range"
+                      min="1"
+                      max="16"
+                      step="1"
+                      value="3"
+                    />
+                    <span id="dist-cheb-order-value">3</span>
+                  </label>
+                  <label>
+                    Harmonics
+                    <select id="dist-cheb-harmonic">
+                      <option value="all">All</option>
+                      <option value="odd">Odd</option>
+                      <option value="even">Even</option>
+                    </select>
+                  </label>
+                  <label>
+                    Invert
+                    <select id="dist-cheb-invert">
+                      <option value="0">Off</option>
+                      <option value="1">On</option>
+                    </select>
+                  </label>
+                  <label>
+                    Gain
+                    <input
+                      id="dist-cheb-gain"
+                      type="range"
+                      min="0"
+                      max="4"
+                      step="0.01"
+                      value="1.0"
+                    />
+                    <span id="dist-cheb-gain-value">1.00x</span>
+                  </label>
+                  <label>
+                    DC Bypass
+                    <select id="dist-cheb-dc-bypass">
+                      <option value="0">Off</option>
+                      <option value="1">On</option>
+                    </select>
+                  </label>
+                  <label>
+                    Drive
+                    <input
+                      id="dist-cheb-drive"
+                      type="range"
+                      min="0.1"
+                      max="20"
+                      step="0.01"
+                      value="1.0"
+                    />
+                    <span id="dist-cheb-drive-value">1.00x</span>
+                  </label>
+                  <label>
+                    Mix
+                    <input
+                      id="dist-cheb-mix"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value="1.0"
+                    />
+                    <span id="dist-cheb-mix-value">100%</span>
+                  </label>
+                  <label>
+                    Output
+                    <input
+                      id="dist-cheb-output"
+                      type="range"
+                      min="0"
+                      max="4"
+                      step="0.01"
+                      value="1.0"
+                    />
+                    <span id="dist-cheb-output-value">1.00x</span>
+                  </label>
+                  <label>
+                    Approx
+                    <select id="dist-cheb-approx">
+                      <option value="exact">Exact</option>
+                      <option value="polynomial">Polynomial</option>
+                    </select>
+                  </label>
+                  <label class="fx-section-header">Harmonic Weights</label>
+                  <label id="dist-cheb-w1-row" hidden>
+                    T1
+                    <input
+                      id="dist-cheb-w1"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w1-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w2-row" hidden>
+                    T2
+                    <input
+                      id="dist-cheb-w2"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w2-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w3-row" hidden>
+                    T3
+                    <input
+                      id="dist-cheb-w3"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w3-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w4-row" hidden>
+                    T4
+                    <input
+                      id="dist-cheb-w4"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w4-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w5-row" hidden>
+                    T5
+                    <input
+                      id="dist-cheb-w5"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w5-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w6-row" hidden>
+                    T6
+                    <input
+                      id="dist-cheb-w6"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w6-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w7-row" hidden>
+                    T7
+                    <input
+                      id="dist-cheb-w7"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w7-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w8-row" hidden>
+                    T8
+                    <input
+                      id="dist-cheb-w8"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w8-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w9-row" hidden>
+                    T9
+                    <input
+                      id="dist-cheb-w9"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w9-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w10-row" hidden>
+                    T10
+                    <input
+                      id="dist-cheb-w10"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w10-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w11-row" hidden>
+                    T11
+                    <input
+                      id="dist-cheb-w11"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w11-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w12-row" hidden>
+                    T12
+                    <input
+                      id="dist-cheb-w12"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w12-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w13-row" hidden>
+                    T13
+                    <input
+                      id="dist-cheb-w13"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w13-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w14-row" hidden>
+                    T14
+                    <input
+                      id="dist-cheb-w14"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w14-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w15-row" hidden>
+                    T15
+                    <input
+                      id="dist-cheb-w15"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w15-value">0.00</span>
+                  </label>
+                  <label id="dist-cheb-w16-row" hidden>
+                    T16
+                    <input
+                      id="dist-cheb-w16"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.01"
+                      value="0"
+                    />
+                    <span id="dist-cheb-w16-value">0.00</span>
+                  </label>
+                </div>
+                <!-- dist-cheb-params -->
+                <div class="dist-cheb-viz">
+                  <canvas
+                    id="dist-cheb-canvas"
+                    width="220"
+                    height="160"
+                  ></canvas>
+                  <span class="plot-label">Waveform</span>
+                </div>
               </div>
-              </div><!-- dist-cheb-layout -->
+              <!-- dist-cheb-layout -->
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="transformer" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="transformer"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Transformer Saturation</span>
               </div>
@@ -541,27 +961,62 @@
               </label>
               <label>
                 Drive
-                <input id="transformer-drive" type="range" min="0.1" max="20" step="0.01" value="2.0" />
+                <input
+                  id="transformer-drive"
+                  type="range"
+                  min="0.1"
+                  max="20"
+                  step="0.01"
+                  value="2.0"
+                />
                 <span id="transformer-drive-value">2.00x</span>
               </label>
               <label>
                 Mix
-                <input id="transformer-mix" type="range" min="0" max="1" step="0.01" value="1.0" />
+                <input
+                  id="transformer-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="1.0"
+                />
                 <span id="transformer-mix-value">100%</span>
               </label>
               <label>
                 Output
-                <input id="transformer-output" type="range" min="0" max="4" step="0.01" value="1.0" />
+                <input
+                  id="transformer-output"
+                  type="range"
+                  min="0"
+                  max="4"
+                  step="0.01"
+                  value="1.0"
+                />
                 <span id="transformer-output-value">1.00x</span>
               </label>
               <label>
                 High-pass
-                <input id="transformer-highpass" type="range" min="5" max="400" step="1" value="25" />
+                <input
+                  id="transformer-highpass"
+                  type="range"
+                  min="5"
+                  max="400"
+                  step="1"
+                  value="25"
+                />
                 <span id="transformer-highpass-value">25 Hz</span>
               </label>
               <label>
                 Damping
-                <input id="transformer-damping" type="range" min="500" max="18000" step="10" value="9000" />
+                <input
+                  id="transformer-damping"
+                  type="range"
+                  min="500"
+                  max="18000"
+                  step="10"
+                  value="9000"
+                />
                 <span id="transformer-damping-value">9000 Hz</span>
               </label>
               <label>
@@ -573,7 +1028,11 @@
                 </select>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="filter" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="filter"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Filter</span>
               </div>
@@ -604,127 +1063,287 @@
               </label>
               <label>
                 Order
-                <input id="fx-filter-order" type="range" min="1" max="12" step="1" value="2" />
+                <input
+                  id="fx-filter-order"
+                  type="range"
+                  min="1"
+                  max="12"
+                  step="1"
+                  value="2"
+                />
                 <span id="fx-filter-order-value">2</span>
               </label>
               <label>
                 Frequency
-                <input id="fx-filter-freq" type="range" min="20" max="18000" step="1" value="1200" />
+                <input
+                  id="fx-filter-freq"
+                  type="range"
+                  min="20"
+                  max="18000"
+                  step="1"
+                  value="1200"
+                />
                 <span id="fx-filter-freq-value">1200 Hz</span>
               </label>
               <label>
                 Shape
-                <input id="fx-filter-q" type="range" min="0.2" max="8" step="0.01" value="0.707" />
+                <input
+                  id="fx-filter-q"
+                  type="range"
+                  min="0.2"
+                  max="8"
+                  step="0.01"
+                  value="0.707"
+                />
                 <span id="fx-filter-q-value">0.71</span>
               </label>
               <label>
                 Gain
-                <input id="fx-filter-gain" type="range" min="-24" max="24" step="0.1" value="0" />
+                <input
+                  id="fx-filter-gain"
+                  type="range"
+                  min="-24"
+                  max="24"
+                  step="0.1"
+                  value="0"
+                />
                 <span id="fx-filter-gain-value">0.0 dB</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="dyn-compressor" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="dyn-compressor"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Compressor (Chain)</span>
               </div>
               <label>
                 Threshold
-                <input id="fx-comp-thresh" type="range" min="-60" max="0" step="0.5" value="-20" />
+                <input
+                  id="fx-comp-thresh"
+                  type="range"
+                  min="-60"
+                  max="0"
+                  step="0.5"
+                  value="-20"
+                />
                 <span id="fx-comp-thresh-value">-20.0 dB</span>
               </label>
               <label>
                 Ratio
-                <input id="fx-comp-ratio" type="range" min="1" max="20" step="0.1" value="4" />
+                <input
+                  id="fx-comp-ratio"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.1"
+                  value="4"
+                />
                 <span id="fx-comp-ratio-value">4.0:1</span>
               </label>
               <label>
                 Knee
-                <input id="fx-comp-knee" type="range" min="0" max="24" step="0.5" value="6" />
+                <input
+                  id="fx-comp-knee"
+                  type="range"
+                  min="0"
+                  max="24"
+                  step="0.5"
+                  value="6"
+                />
                 <span id="fx-comp-knee-value">6.0 dB</span>
               </label>
               <label>
                 Attack
-                <input id="fx-comp-attack" type="range" min="0.1" max="100" step="0.1" value="10" />
+                <input
+                  id="fx-comp-attack"
+                  type="range"
+                  min="0.1"
+                  max="100"
+                  step="0.1"
+                  value="10"
+                />
                 <span id="fx-comp-attack-value">10.0 ms</span>
               </label>
               <label>
                 Release
-                <input id="fx-comp-release" type="range" min="10" max="1000" step="1" value="100" />
+                <input
+                  id="fx-comp-release"
+                  type="range"
+                  min="10"
+                  max="1000"
+                  step="1"
+                  value="100"
+                />
                 <span id="fx-comp-release-value">100 ms</span>
               </label>
               <label>
                 Makeup
-                <input id="fx-comp-makeup" type="range" min="0" max="24" step="0.1" value="0" />
+                <input
+                  id="fx-comp-makeup"
+                  type="range"
+                  min="0"
+                  max="24"
+                  step="0.1"
+                  value="0"
+                />
                 <span id="fx-comp-makeup-value">0.0 dB</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="dyn-limiter" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="dyn-limiter"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Limiter (Chain)</span>
               </div>
               <label>
                 Threshold
-                <input id="fx-lim-thresh" type="range" min="-24" max="0" step="0.1" value="-0.1" />
+                <input
+                  id="fx-lim-thresh"
+                  type="range"
+                  min="-24"
+                  max="0"
+                  step="0.1"
+                  value="-0.1"
+                />
                 <span id="fx-lim-thresh-value">-0.1 dB</span>
               </label>
               <label>
                 Release
-                <input id="fx-lim-release" type="range" min="1" max="1000" step="1" value="100" />
+                <input
+                  id="fx-lim-release"
+                  type="range"
+                  min="1"
+                  max="1000"
+                  step="1"
+                  value="100"
+                />
                 <span id="fx-lim-release-value">100 ms</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="dyn-lookahead" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="dyn-lookahead"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Lookahead Limiter (Chain)</span>
               </div>
               <label>
                 Threshold
-                <input id="fx-lookahead-thresh" type="range" min="-24" max="0" step="0.1" value="-1.0" />
+                <input
+                  id="fx-lookahead-thresh"
+                  type="range"
+                  min="-24"
+                  max="0"
+                  step="0.1"
+                  value="-1.0"
+                />
                 <span id="fx-lookahead-thresh-value">-1.0 dB</span>
               </label>
               <label>
                 Release
-                <input id="fx-lookahead-release" type="range" min="1" max="1000" step="1" value="100" />
+                <input
+                  id="fx-lookahead-release"
+                  type="range"
+                  min="1"
+                  max="1000"
+                  step="1"
+                  value="100"
+                />
                 <span id="fx-lookahead-release-value">100 ms</span>
               </label>
               <label>
                 Lookahead
-                <input id="fx-lookahead-ms" type="range" min="0" max="200" step="0.1" value="3.0" />
+                <input
+                  id="fx-lookahead-ms"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="0.1"
+                  value="3.0"
+                />
                 <span id="fx-lookahead-ms-value">3.0 ms</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="vocoder" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="vocoder"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Vocoder</span>
                 <small>Port 0 = modulator, Port 1 = carrier</small>
               </div>
               <label>
                 Attack
-                <input id="fx-vocoder-attack" type="range" min="0.01" max="100" step="0.01" value="0.5" />
+                <input
+                  id="fx-vocoder-attack"
+                  type="range"
+                  min="0.01"
+                  max="100"
+                  step="0.01"
+                  value="0.5"
+                />
                 <span id="fx-vocoder-attack-value">0.50 ms</span>
               </label>
               <label>
                 Release
-                <input id="fx-vocoder-release" type="range" min="0.01" max="1000" step="0.1" value="2.0" />
+                <input
+                  id="fx-vocoder-release"
+                  type="range"
+                  min="0.01"
+                  max="1000"
+                  step="0.1"
+                  value="2.0"
+                />
                 <span id="fx-vocoder-release-value">2.0 ms</span>
               </label>
               <label>
                 Vocoder Level
-                <input id="fx-vocoder-level" type="range" min="0" max="10" step="0.01" value="1.0" />
+                <input
+                  id="fx-vocoder-level"
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.01"
+                  value="1.0"
+                />
                 <span id="fx-vocoder-level-value">1.00</span>
               </label>
               <label>
                 Dry Modulator
-                <input id="fx-vocoder-dry" type="range" min="0" max="10" step="0.01" value="0" />
+                <input
+                  id="fx-vocoder-dry"
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.01"
+                  value="0"
+                />
                 <span id="fx-vocoder-dry-value">0.00</span>
               </label>
               <label>
                 Dry Carrier
-                <input id="fx-vocoder-carrier" type="range" min="0" max="10" step="0.01" value="0" />
+                <input
+                  id="fx-vocoder-carrier"
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.01"
+                  value="0"
+                />
                 <span id="fx-vocoder-carrier-value">0.00</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="dyn-gate" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="dyn-gate"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Gate / Expander (Chain)</span>
               </div>
@@ -737,41 +1356,94 @@
               </label>
               <label>
                 Threshold
-                <input id="fx-gate-thresh" type="range" min="-80" max="0" step="0.5" value="-40" />
+                <input
+                  id="fx-gate-thresh"
+                  type="range"
+                  min="-80"
+                  max="0"
+                  step="0.5"
+                  value="-40"
+                />
                 <span id="fx-gate-thresh-value">-40.0 dB</span>
               </label>
               <label>
                 Ratio
-                <input id="fx-gate-ratio" type="range" min="1" max="20" step="0.1" value="10" />
+                <input
+                  id="fx-gate-ratio"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.1"
+                  value="10"
+                />
                 <span id="fx-gate-ratio-value">10.0:1</span>
               </label>
               <label>
                 Knee
-                <input id="fx-gate-knee" type="range" min="0" max="24" step="0.5" value="6" />
+                <input
+                  id="fx-gate-knee"
+                  type="range"
+                  min="0"
+                  max="24"
+                  step="0.5"
+                  value="6"
+                />
                 <span id="fx-gate-knee-value">6.0 dB</span>
               </label>
               <label>
                 Attack
-                <input id="fx-gate-attack" type="range" min="0.1" max="200" step="0.1" value="0.1" />
+                <input
+                  id="fx-gate-attack"
+                  type="range"
+                  min="0.1"
+                  max="200"
+                  step="0.1"
+                  value="0.1"
+                />
                 <span id="fx-gate-attack-value">0.1 ms</span>
               </label>
               <label>
                 Hold
-                <input id="fx-gate-hold" type="range" min="0" max="500" step="1" value="50" />
+                <input
+                  id="fx-gate-hold"
+                  type="range"
+                  min="0"
+                  max="500"
+                  step="1"
+                  value="50"
+                />
                 <span id="fx-gate-hold-value">50 ms</span>
               </label>
               <label>
                 Release
-                <input id="fx-gate-release" type="range" min="1" max="1000" step="1" value="100" />
+                <input
+                  id="fx-gate-release"
+                  type="range"
+                  min="1"
+                  max="1000"
+                  step="1"
+                  value="100"
+                />
                 <span id="fx-gate-release-value">100 ms</span>
               </label>
               <label>
                 Range
-                <input id="fx-gate-range" type="range" min="-120" max="0" step="1" value="-80" />
+                <input
+                  id="fx-gate-range"
+                  type="range"
+                  min="-120"
+                  max="0"
+                  step="1"
+                  value="-80"
+                />
                 <span id="fx-gate-range-value">-80 dB</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="dyn-expander" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="dyn-expander"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Expander (Chain)</span>
               </div>
@@ -791,41 +1463,94 @@
               </label>
               <label>
                 RMS Window
-                <input id="fx-exp-rms" type="range" min="1" max="200" step="1" value="30" />
+                <input
+                  id="fx-exp-rms"
+                  type="range"
+                  min="1"
+                  max="200"
+                  step="1"
+                  value="30"
+                />
                 <span id="fx-exp-rms-value">30 ms</span>
               </label>
               <label>
                 Threshold
-                <input id="fx-exp-thresh" type="range" min="-80" max="0" step="0.5" value="-35" />
+                <input
+                  id="fx-exp-thresh"
+                  type="range"
+                  min="-80"
+                  max="0"
+                  step="0.5"
+                  value="-35"
+                />
                 <span id="fx-exp-thresh-value">-35.0 dB</span>
               </label>
               <label>
                 Ratio
-                <input id="fx-exp-ratio" type="range" min="1" max="20" step="0.1" value="2" />
+                <input
+                  id="fx-exp-ratio"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.1"
+                  value="2"
+                />
                 <span id="fx-exp-ratio-value">2.0:1</span>
               </label>
               <label>
                 Knee
-                <input id="fx-exp-knee" type="range" min="0" max="24" step="0.5" value="6" />
+                <input
+                  id="fx-exp-knee"
+                  type="range"
+                  min="0"
+                  max="24"
+                  step="0.5"
+                  value="6"
+                />
                 <span id="fx-exp-knee-value">6.0 dB</span>
               </label>
               <label>
                 Attack
-                <input id="fx-exp-attack" type="range" min="0.1" max="200" step="0.1" value="1" />
+                <input
+                  id="fx-exp-attack"
+                  type="range"
+                  min="0.1"
+                  max="200"
+                  step="0.1"
+                  value="1"
+                />
                 <span id="fx-exp-attack-value">1.0 ms</span>
               </label>
               <label>
                 Release
-                <input id="fx-exp-release" type="range" min="1" max="1000" step="1" value="100" />
+                <input
+                  id="fx-exp-release"
+                  type="range"
+                  min="1"
+                  max="1000"
+                  step="1"
+                  value="100"
+                />
                 <span id="fx-exp-release-value">100 ms</span>
               </label>
               <label>
                 Range
-                <input id="fx-exp-range" type="range" min="-120" max="0" step="1" value="-60" />
+                <input
+                  id="fx-exp-range"
+                  type="range"
+                  min="-120"
+                  max="0"
+                  step="1"
+                  value="-60"
+                />
                 <span id="fx-exp-range-value">-60 dB</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="dyn-deesser" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="dyn-deesser"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>De-Esser (Chain)</span>
               </div>
@@ -852,76 +1577,175 @@
               </label>
               <label>
                 Frequency
-                <input id="fx-deess-freq" type="range" min="1000" max="16000" step="10" value="6000" />
+                <input
+                  id="fx-deess-freq"
+                  type="range"
+                  min="1000"
+                  max="16000"
+                  step="10"
+                  value="6000"
+                />
                 <span id="fx-deess-freq-value">6000 Hz</span>
               </label>
               <label>
                 Q
-                <input id="fx-deess-q" type="range" min="0.1" max="10" step="0.01" value="1.5" />
+                <input
+                  id="fx-deess-q"
+                  type="range"
+                  min="0.1"
+                  max="10"
+                  step="0.01"
+                  value="1.5"
+                />
                 <span id="fx-deess-q-value">1.50</span>
               </label>
               <label>
                 Filter Order
-                <input id="fx-deess-order" type="range" min="1" max="4" step="1" value="2" />
+                <input
+                  id="fx-deess-order"
+                  type="range"
+                  min="1"
+                  max="4"
+                  step="1"
+                  value="2"
+                />
                 <span id="fx-deess-order-value">2</span>
               </label>
               <label>
                 Threshold
-                <input id="fx-deess-thresh" type="range" min="-80" max="0" step="0.5" value="-20" />
+                <input
+                  id="fx-deess-thresh"
+                  type="range"
+                  min="-80"
+                  max="0"
+                  step="0.5"
+                  value="-20"
+                />
                 <span id="fx-deess-thresh-value">-20.0 dB</span>
               </label>
               <label>
                 Ratio
-                <input id="fx-deess-ratio" type="range" min="1" max="20" step="0.1" value="4" />
+                <input
+                  id="fx-deess-ratio"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.1"
+                  value="4"
+                />
                 <span id="fx-deess-ratio-value">4.0:1</span>
               </label>
               <label>
                 Knee
-                <input id="fx-deess-knee" type="range" min="0" max="12" step="0.1" value="3" />
+                <input
+                  id="fx-deess-knee"
+                  type="range"
+                  min="0"
+                  max="12"
+                  step="0.1"
+                  value="3"
+                />
                 <span id="fx-deess-knee-value">3.0 dB</span>
               </label>
               <label>
                 Attack
-                <input id="fx-deess-attack" type="range" min="0.01" max="50" step="0.01" value="0.5" />
+                <input
+                  id="fx-deess-attack"
+                  type="range"
+                  min="0.01"
+                  max="50"
+                  step="0.01"
+                  value="0.5"
+                />
                 <span id="fx-deess-attack-value">0.50 ms</span>
               </label>
               <label>
                 Release
-                <input id="fx-deess-release" type="range" min="1" max="500" step="1" value="20" />
+                <input
+                  id="fx-deess-release"
+                  type="range"
+                  min="1"
+                  max="500"
+                  step="1"
+                  value="20"
+                />
                 <span id="fx-deess-release-value">20 ms</span>
               </label>
               <label>
                 Range
-                <input id="fx-deess-range" type="range" min="-60" max="0" step="1" value="-24" />
+                <input
+                  id="fx-deess-range"
+                  type="range"
+                  min="-60"
+                  max="0"
+                  step="1"
+                  value="-24"
+                />
                 <span id="fx-deess-range-value">-24 dB</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="dyn-transient" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="dyn-transient"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Transient Shaper (Chain)</span>
               </div>
               <label>
                 Attack Amount
-                <input id="fx-transient-attack" type="range" min="-1" max="1" step="0.01" value="0" />
+                <input
+                  id="fx-transient-attack"
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.01"
+                  value="0"
+                />
                 <span id="fx-transient-attack-value">0.00</span>
               </label>
               <label>
                 Sustain Amount
-                <input id="fx-transient-sustain" type="range" min="-1" max="1" step="0.01" value="0" />
+                <input
+                  id="fx-transient-sustain"
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.01"
+                  value="0"
+                />
                 <span id="fx-transient-sustain-value">0.00</span>
               </label>
               <label>
                 Attack Time
-                <input id="fx-transient-attack-ms" type="range" min="0.1" max="200" step="0.1" value="10" />
+                <input
+                  id="fx-transient-attack-ms"
+                  type="range"
+                  min="0.1"
+                  max="200"
+                  step="0.1"
+                  value="10"
+                />
                 <span id="fx-transient-attack-ms-value">10.0 ms</span>
               </label>
               <label>
                 Release Time
-                <input id="fx-transient-release-ms" type="range" min="1" max="2000" step="1" value="120" />
+                <input
+                  id="fx-transient-release-ms"
+                  type="range"
+                  min="1"
+                  max="2000"
+                  step="1"
+                  value="120"
+                />
                 <span id="fx-transient-release-ms-value">120 ms</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="dyn-multiband" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="dyn-multiband"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Multiband Compressor (Chain)</span>
               </div>
@@ -934,32 +1758,74 @@
               </label>
               <label>
                 Crossover 1
-                <input id="fx-mb-cross1" type="range" min="40" max="4000" step="10" value="250" />
+                <input
+                  id="fx-mb-cross1"
+                  type="range"
+                  min="40"
+                  max="4000"
+                  step="10"
+                  value="250"
+                />
                 <span id="fx-mb-cross1-value">250 Hz</span>
               </label>
               <label>
                 Crossover 2
-                <input id="fx-mb-cross2" type="range" min="400" max="12000" step="10" value="3000" />
+                <input
+                  id="fx-mb-cross2"
+                  type="range"
+                  min="400"
+                  max="12000"
+                  step="10"
+                  value="3000"
+                />
                 <span id="fx-mb-cross2-value">3000 Hz</span>
               </label>
               <label>
                 Order
-                <input id="fx-mb-order" type="range" min="2" max="24" step="2" value="4" />
+                <input
+                  id="fx-mb-order"
+                  type="range"
+                  min="2"
+                  max="24"
+                  step="2"
+                  value="4"
+                />
                 <span id="fx-mb-order-value">4</span>
               </label>
               <label>
                 Attack
-                <input id="fx-mb-attack" type="range" min="0.1" max="200" step="0.1" value="8" />
+                <input
+                  id="fx-mb-attack"
+                  type="range"
+                  min="0.1"
+                  max="200"
+                  step="0.1"
+                  value="8"
+                />
                 <span id="fx-mb-attack-value">8.0 ms</span>
               </label>
               <label>
                 Release
-                <input id="fx-mb-release" type="range" min="1" max="1000" step="1" value="120" />
+                <input
+                  id="fx-mb-release"
+                  type="range"
+                  min="1"
+                  max="1000"
+                  step="1"
+                  value="120"
+                />
                 <span id="fx-mb-release-value">120 ms</span>
               </label>
               <label>
                 Knee
-                <input id="fx-mb-knee" type="range" min="0" max="24" step="0.5" value="6" />
+                <input
+                  id="fx-mb-knee"
+                  type="range"
+                  min="0"
+                  max="24"
+                  step="0.5"
+                  value="6"
+                />
                 <span id="fx-mb-knee-value">6.0 dB</span>
               </label>
               <label>
@@ -971,174 +1837,395 @@
               </label>
               <label>
                 Makeup
-                <input id="fx-mb-makeup" type="range" min="0" max="24" step="0.1" value="0" />
+                <input
+                  id="fx-mb-makeup"
+                  type="range"
+                  min="0"
+                  max="24"
+                  step="0.1"
+                  value="0"
+                />
                 <span id="fx-mb-makeup-value">0.0 dB</span>
               </label>
               <label>
                 Low Threshold
-                <input id="fx-mb-low-thresh" type="range" min="-80" max="0" step="0.5" value="-20" />
+                <input
+                  id="fx-mb-low-thresh"
+                  type="range"
+                  min="-80"
+                  max="0"
+                  step="0.5"
+                  value="-20"
+                />
                 <span id="fx-mb-low-thresh-value">-20.0 dB</span>
               </label>
               <label>
                 Low Ratio
-                <input id="fx-mb-low-ratio" type="range" min="1" max="20" step="0.1" value="2.5" />
+                <input
+                  id="fx-mb-low-ratio"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.1"
+                  value="2.5"
+                />
                 <span id="fx-mb-low-ratio-value">2.5:1</span>
               </label>
               <label>
                 Mid Threshold
-                <input id="fx-mb-mid-thresh" type="range" min="-80" max="0" step="0.5" value="-18" />
+                <input
+                  id="fx-mb-mid-thresh"
+                  type="range"
+                  min="-80"
+                  max="0"
+                  step="0.5"
+                  value="-18"
+                />
                 <span id="fx-mb-mid-thresh-value">-18.0 dB</span>
               </label>
               <label>
                 Mid Ratio
-                <input id="fx-mb-mid-ratio" type="range" min="1" max="20" step="0.1" value="3.0" />
+                <input
+                  id="fx-mb-mid-ratio"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.1"
+                  value="3.0"
+                />
                 <span id="fx-mb-mid-ratio-value">3.0:1</span>
               </label>
               <label>
                 High Threshold
-                <input id="fx-mb-high-thresh" type="range" min="-80" max="0" step="0.5" value="-14" />
+                <input
+                  id="fx-mb-high-thresh"
+                  type="range"
+                  min="-80"
+                  max="0"
+                  step="0.5"
+                  value="-14"
+                />
                 <span id="fx-mb-high-thresh-value">-14.0 dB</span>
               </label>
               <label>
                 High Ratio
-                <input id="fx-mb-high-ratio" type="range" min="1" max="20" step="0.1" value="4.0" />
+                <input
+                  id="fx-mb-high-ratio"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.1"
+                  value="4.0"
+                />
                 <span id="fx-mb-high-ratio-value">4.0:1</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="widener" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="widener"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Stereo Widener</span>
               </div>
               <label>
                 Width
-                <input id="widener-width" type="range" min="0" max="3" step="0.01" value="1" />
+                <input
+                  id="widener-width"
+                  type="range"
+                  min="0"
+                  max="3"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="widener-width-value">1.00x</span>
               </label>
               <label>
                 Mix
-                <input id="widener-mix" type="range" min="0" max="1" step="0.01" value="0.5" />
+                <input
+                  id="widener-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.5"
+                />
                 <span id="widener-mix-value">50%</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="split" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="split"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Split</span>
               </div>
-              <p>Split duplicates the signal to multiple downstream branches.</p>
+              <p>
+                Split duplicates the signal to multiple downstream branches.
+              </p>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="split-freq" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="split-freq"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Split Freq (LR4)</span>
               </div>
               <label>
                 Crossover Frequency
-                <input id="split-freq" type="range" min="20" max="20000" step="1" value="1200" />
+                <input
+                  id="split-freq"
+                  type="range"
+                  min="20"
+                  max="20000"
+                  step="1"
+                  value="1200"
+                />
                 <span id="split-freq-value">1200 Hz</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="sum" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="sum"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Sum</span>
               </div>
-              <p>Sum mixes all incoming branches and forwards a single output.</p>
+              <p>
+                Sum mixes all incoming branches and forwards a single output.
+              </p>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="phaser" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="phaser"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Phaser</span>
               </div>
               <label>
                 Rate
-                <input id="phaser-rate" type="range" min="0.05" max="5" step="0.01" value="0.4" />
+                <input
+                  id="phaser-rate"
+                  type="range"
+                  min="0.05"
+                  max="5"
+                  step="0.01"
+                  value="0.4"
+                />
                 <span id="phaser-rate-value">0.40 Hz</span>
               </label>
               <label>
                 Min Frequency
-                <input id="phaser-min-freq" type="range" min="20" max="3000" step="1" value="300" />
+                <input
+                  id="phaser-min-freq"
+                  type="range"
+                  min="20"
+                  max="3000"
+                  step="1"
+                  value="300"
+                />
                 <span id="phaser-min-freq-value">300 Hz</span>
               </label>
               <label>
                 Max Frequency
-                <input id="phaser-max-freq" type="range" min="40" max="8000" step="1" value="1600" />
+                <input
+                  id="phaser-max-freq"
+                  type="range"
+                  min="40"
+                  max="8000"
+                  step="1"
+                  value="1600"
+                />
                 <span id="phaser-max-freq-value">1600 Hz</span>
               </label>
               <label>
                 Stages
-                <input id="phaser-stages" type="range" min="1" max="12" step="1" value="6" />
+                <input
+                  id="phaser-stages"
+                  type="range"
+                  min="1"
+                  max="12"
+                  step="1"
+                  value="6"
+                />
                 <span id="phaser-stages-value">6</span>
               </label>
               <label>
                 Feedback
-                <input id="phaser-feedback" type="range" min="-0.95" max="0.95" step="0.01" value="0.2" />
+                <input
+                  id="phaser-feedback"
+                  type="range"
+                  min="-0.95"
+                  max="0.95"
+                  step="0.01"
+                  value="0.2"
+                />
                 <span id="phaser-feedback-value">20%</span>
               </label>
               <label>
                 Mix
-                <input id="phaser-mix" type="range" min="0" max="1" step="0.01" value="0.5" />
+                <input
+                  id="phaser-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.5"
+                />
                 <span id="phaser-mix-value">50%</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="tremolo" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="tremolo"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Tremolo</span>
               </div>
               <label>
                 Rate
-                <input id="tremolo-rate" type="range" min="0.1" max="20" step="0.1" value="4" />
+                <input
+                  id="tremolo-rate"
+                  type="range"
+                  min="0.1"
+                  max="20"
+                  step="0.1"
+                  value="4"
+                />
                 <span id="tremolo-rate-value">4.00 Hz</span>
               </label>
               <label>
                 Depth
-                <input id="tremolo-depth" type="range" min="0" max="1" step="0.01" value="0.6" />
+                <input
+                  id="tremolo-depth"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.6"
+                />
                 <span id="tremolo-depth-value">60%</span>
               </label>
               <label>
                 Smoothing
-                <input id="tremolo-smoothing" type="range" min="0" max="200" step="1" value="5" />
+                <input
+                  id="tremolo-smoothing"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="1"
+                  value="5"
+                />
                 <span id="tremolo-smoothing-value">5.0 ms</span>
               </label>
               <label>
                 Mix
-                <input id="tremolo-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <input
+                  id="tremolo-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="tremolo-mix-value">100%</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="bass" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="bass"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Psychoacoustic Bass</span>
               </div>
               <label>
                 Frequency
-                <input id="harmonic-frequency" type="range" min="30" max="200" step="1" value="80" />
+                <input
+                  id="harmonic-frequency"
+                  type="range"
+                  min="30"
+                  max="200"
+                  step="1"
+                  value="80"
+                />
                 <span id="harmonic-frequency-value">80 Hz</span>
               </label>
               <label>
                 Input
-                <input id="harmonic-input" type="range" min="0" max="2" step="0.01" value="1" />
+                <input
+                  id="harmonic-input"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="harmonic-input-value">1.00</span>
               </label>
               <label>
                 High
-                <input id="harmonic-high" type="range" min="0" max="2" step="0.01" value="1" />
+                <input
+                  id="harmonic-high"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="harmonic-high-value">1.00</span>
               </label>
               <label>
                 Original
-                <input id="harmonic-original" type="range" min="0" max="2" step="0.01" value="1" />
+                <input
+                  id="harmonic-original"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="harmonic-original-value">1.00</span>
               </label>
               <label>
                 Harmonics
-                <input id="harmonic-harmonic" type="range" min="0" max="2" step="0.01" value="0" />
+                <input
+                  id="harmonic-harmonic"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.01"
+                  value="0"
+                />
                 <span id="harmonic-harmonic-value">0.00</span>
               </label>
               <label>
                 Decay
-                <input id="harmonic-decay" type="range" min="-1" max="1" step="0.01" value="0" />
+                <input
+                  id="harmonic-decay"
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.01"
+                  value="0"
+                />
                 <span id="harmonic-decay-value">0.00</span>
               </label>
               <label>
                 Response
-                <input id="harmonic-response" type="range" min="1" max="200" step="1" value="20" />
+                <input
+                  id="harmonic-response"
+                  type="range"
+                  min="1"
+                  max="200"
+                  step="1"
+                  value="20"
+                />
                 <span id="harmonic-response-value">20 ms</span>
               </label>
               <label>
@@ -1151,38 +2238,81 @@
                 <span id="harmonic-highpass-value">DC</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="pitch-time" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="pitch-time"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Pitch Shifter (Time)</span>
               </div>
               <label>
                 Semitones
-                <input id="time-pitch-semitones" type="range" min="-24" max="24" step="0.1" value="0" />
+                <input
+                  id="time-pitch-semitones"
+                  type="range"
+                  min="-24"
+                  max="24"
+                  step="0.1"
+                  value="0"
+                />
                 <span id="time-pitch-semitones-value">0.0 st</span>
               </label>
               <label>
                 Sequence
-                <input id="time-pitch-sequence" type="range" min="20" max="120" step="1" value="40" />
+                <input
+                  id="time-pitch-sequence"
+                  type="range"
+                  min="20"
+                  max="120"
+                  step="1"
+                  value="40"
+                />
                 <span id="time-pitch-sequence-value">40 ms</span>
               </label>
               <label>
                 Overlap
-                <input id="time-pitch-overlap" type="range" min="4" max="60" step="1" value="10" />
+                <input
+                  id="time-pitch-overlap"
+                  type="range"
+                  min="4"
+                  max="60"
+                  step="1"
+                  value="10"
+                />
                 <span id="time-pitch-overlap-value">10 ms</span>
               </label>
               <label>
                 Search
-                <input id="time-pitch-search" type="range" min="2" max="40" step="1" value="15" />
+                <input
+                  id="time-pitch-search"
+                  type="range"
+                  min="2"
+                  max="40"
+                  step="1"
+                  value="15"
+                />
                 <span id="time-pitch-search-value">15 ms</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="pitch-spectral" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="pitch-spectral"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Pitch Shifter (Spectral)</span>
               </div>
               <label>
                 Semitones
-                <input id="spectral-pitch-semitones" type="range" min="-24" max="24" step="0.1" value="0" />
+                <input
+                  id="spectral-pitch-semitones"
+                  type="range"
+                  min="-24"
+                  max="24"
+                  step="0.1"
+                  value="0"
+                />
                 <span id="spectral-pitch-semitones-value">0.0 st</span>
               </label>
               <label>
@@ -1203,16 +2333,29 @@
                   <option value="0.25" selected>25%</option>
                   <option value="0.5">50%</option>
                 </select>
-                <span id="spectral-pitch-hop-ratio-value">256 samples (25%)</span>
+                <span id="spectral-pitch-hop-ratio-value"
+                  >256 samples (25%)</span
+                >
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="spectral-freeze" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="spectral-freeze"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Spectral Freeze</span>
               </div>
               <label>
                 Mix
-                <input id="spectral-freeze-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <input
+                  id="spectral-freeze-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="spectral-freeze-mix-value">100%</span>
               </label>
               <label>
@@ -1233,7 +2376,9 @@
                   <option value="0.25" selected>25%</option>
                   <option value="0.5">50%</option>
                 </select>
-                <span id="spectral-freeze-hop-ratio-value">256 samples (25%)</span>
+                <span id="spectral-freeze-hop-ratio-value"
+                  >256 samples (25%)</span
+                >
               </label>
               <label>
                 Phase
@@ -1250,107 +2395,242 @@
                 </select>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="granular" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="granular"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Granular</span>
               </div>
               <label>
                 Grain
-                <input id="granular-grain" type="range" min="0.005" max="0.5" step="0.001" value="0.08" />
+                <input
+                  id="granular-grain"
+                  type="range"
+                  min="0.005"
+                  max="0.5"
+                  step="0.001"
+                  value="0.08"
+                />
                 <span id="granular-grain-value">80.0 ms</span>
               </label>
               <label>
                 Overlap
-                <input id="granular-overlap" type="range" min="0" max="0.95" step="0.01" value="0.5" />
+                <input
+                  id="granular-overlap"
+                  type="range"
+                  min="0"
+                  max="0.95"
+                  step="0.01"
+                  value="0.5"
+                />
                 <span id="granular-overlap-value">50%</span>
               </label>
               <label>
                 Pitch
-                <input id="granular-pitch" type="range" min="0.25" max="4" step="0.01" value="1" />
+                <input
+                  id="granular-pitch"
+                  type="range"
+                  min="0.25"
+                  max="4"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="granular-pitch-value">1.00x</span>
               </label>
               <label>
                 Spray
-                <input id="granular-spray" type="range" min="0" max="1" step="0.01" value="0.1" />
+                <input
+                  id="granular-spray"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.1"
+                />
                 <span id="granular-spray-value">10%</span>
               </label>
               <label>
                 Base Delay
-                <input id="granular-base-delay" type="range" min="0" max="2" step="0.01" value="0.08" />
+                <input
+                  id="granular-base-delay"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.01"
+                  value="0.08"
+                />
                 <span id="granular-base-delay-value">80.0 ms</span>
               </label>
               <label>
                 Mix
-                <input id="granular-mix" type="range" min="0" max="1" step="0.01" value="1" />
+                <input
+                  id="granular-mix"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="granular-mix-value">100%</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="reverb-freeverb" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="reverb-freeverb"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Reverb (Freeverb)</span>
               </div>
               <label>
                 Wet
-                <input id="reverb-freeverb-wet" type="range" min="0" max="1" step="0.01" value="0.22" />
+                <input
+                  id="reverb-freeverb-wet"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.22"
+                />
                 <span id="reverb-freeverb-wet-value">22%</span>
               </label>
               <label>
                 Dry
-                <input id="reverb-freeverb-dry" type="range" min="0" max="1.5" step="0.01" value="1" />
+                <input
+                  id="reverb-freeverb-dry"
+                  type="range"
+                  min="0"
+                  max="1.5"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="reverb-freeverb-dry-value">1.00</span>
               </label>
               <label>
                 Room
-                <input id="reverb-freeverb-room" type="range" min="0" max="0.98" step="0.01" value="0.72" />
+                <input
+                  id="reverb-freeverb-room"
+                  type="range"
+                  min="0"
+                  max="0.98"
+                  step="0.01"
+                  value="0.72"
+                />
                 <span id="reverb-freeverb-room-value">0.72</span>
               </label>
               <label>
                 Damp
-                <input id="reverb-freeverb-damp" type="range" min="0" max="0.99" step="0.01" value="0.45" />
+                <input
+                  id="reverb-freeverb-damp"
+                  type="range"
+                  min="0"
+                  max="0.99"
+                  step="0.01"
+                  value="0.45"
+                />
                 <span id="reverb-freeverb-damp-value">0.45</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="reverb-fdn" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="reverb-fdn"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Reverb (FDN)</span>
               </div>
               <label>
                 Wet
-                <input id="reverb-fdn-wet" type="range" min="0" max="1" step="0.01" value="0.22" />
+                <input
+                  id="reverb-fdn-wet"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.22"
+                />
                 <span id="reverb-fdn-wet-value">22%</span>
               </label>
               <label>
                 Dry
-                <input id="reverb-fdn-dry" type="range" min="0" max="1.5" step="0.01" value="1" />
+                <input
+                  id="reverb-fdn-dry"
+                  type="range"
+                  min="0"
+                  max="1.5"
+                  step="0.01"
+                  value="1"
+                />
                 <span id="reverb-fdn-dry-value">1.00</span>
               </label>
               <label>
                 Damp
-                <input id="reverb-fdn-damp" type="range" min="0" max="0.99" step="0.01" value="0.45" />
+                <input
+                  id="reverb-fdn-damp"
+                  type="range"
+                  min="0"
+                  max="0.99"
+                  step="0.01"
+                  value="0.45"
+                />
                 <span id="reverb-fdn-damp-value">0.45</span>
               </label>
               <label>
                 RT60
-                <input id="reverb-fdn-rt60" type="range" min="0.2" max="8" step="0.05" value="1.8" />
+                <input
+                  id="reverb-fdn-rt60"
+                  type="range"
+                  min="0.2"
+                  max="8"
+                  step="0.05"
+                  value="1.8"
+                />
                 <span id="reverb-fdn-rt60-value">1.80 s</span>
               </label>
               <label>
                 Pre-delay
-                <input id="reverb-fdn-predelay" type="range" min="0" max="0.08" step="0.001" value="0.01" />
+                <input
+                  id="reverb-fdn-predelay"
+                  type="range"
+                  min="0"
+                  max="0.08"
+                  step="0.001"
+                  value="0.01"
+                />
                 <span id="reverb-fdn-predelay-value">10.0 ms</span>
               </label>
               <label>
                 Mod depth
-                <input id="reverb-fdn-mod-depth" type="range" min="0" max="0.01" step="0.0001" value="0.002" />
+                <input
+                  id="reverb-fdn-mod-depth"
+                  type="range"
+                  min="0"
+                  max="0.01"
+                  step="0.0001"
+                  value="0.002"
+                />
                 <span id="reverb-fdn-mod-depth-value">2.0 ms</span>
               </label>
               <label>
                 Mod rate
-                <input id="reverb-fdn-mod-rate" type="range" min="0" max="1" step="0.01" value="0.1" />
+                <input
+                  id="reverb-fdn-mod-rate"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.1"
+                />
                 <span id="reverb-fdn-mod-rate-value">0.10 Hz</span>
               </label>
             </div>
-            <div class="fx-card chain-detail-card" data-chain-detail="reverb-conv" hidden>
+            <div
+              class="fx-card chain-detail-card"
+              data-chain-detail="reverb-conv"
+              hidden
+            >
               <div class="fx-option-head">
                 <span>Reverb (Convolution)</span>
               </div>
@@ -1362,7 +2642,14 @@
               </label>
               <label>
                 Wet
-                <input id="chain-conv-reverb-wet" type="range" min="0" max="1.5" step="0.01" value="0.35" />
+                <input
+                  id="chain-conv-reverb-wet"
+                  type="range"
+                  min="0"
+                  max="1.5"
+                  step="0.01"
+                  value="0.35"
+                />
                 <span id="chain-conv-reverb-wet-value">35%</span>
               </label>
             </div>
@@ -1383,27 +2670,62 @@
             </div>
             <label>
               Threshold
-              <input id="comp-thresh" type="range" min="-60" max="0" step="0.5" value="-20" />
+              <input
+                id="comp-thresh"
+                type="range"
+                min="-60"
+                max="0"
+                step="0.5"
+                value="-20"
+              />
               <span id="comp-thresh-value">-20.0 dB</span>
             </label>
             <label>
               Ratio
-              <input id="comp-ratio" type="range" min="1" max="20" step="0.1" value="4" />
+              <input
+                id="comp-ratio"
+                type="range"
+                min="1"
+                max="20"
+                step="0.1"
+                value="4"
+              />
               <span id="comp-ratio-value">4.0:1</span>
             </label>
             <label>
               Knee
-              <input id="comp-knee" type="range" min="0" max="24" step="0.5" value="6" />
+              <input
+                id="comp-knee"
+                type="range"
+                min="0"
+                max="24"
+                step="0.5"
+                value="6"
+              />
               <span id="comp-knee-value">6.0 dB</span>
             </label>
             <label>
               Attack
-              <input id="comp-attack" type="range" min="0.1" max="100" step="0.1" value="10" />
+              <input
+                id="comp-attack"
+                type="range"
+                min="0.1"
+                max="100"
+                step="0.1"
+                value="10"
+              />
               <span id="comp-attack-value">10.0 ms</span>
             </label>
             <label>
               Release
-              <input id="comp-release" type="range" min="10" max="1000" step="1" value="100" />
+              <input
+                id="comp-release"
+                type="range"
+                min="10"
+                max="1000"
+                step="1"
+                value="100"
+              />
               <span id="comp-release-value">100 ms</span>
             </label>
             <label class="fx-toggle-row">
@@ -1415,7 +2737,15 @@
             </label>
             <label>
               Makeup
-              <input id="comp-makeup" type="range" min="0" max="24" step="0.1" value="0" disabled />
+              <input
+                id="comp-makeup"
+                type="range"
+                min="0"
+                max="24"
+                step="0.1"
+                value="0"
+                disabled
+              />
               <span id="comp-makeup-value">0.0 dB</span>
             </label>
           </div>
@@ -1446,12 +2776,26 @@
             </div>
             <label>
               Ceiling
-              <input id="lim-thresh" type="range" min="-24" max="0" step="0.1" value="-0.1" />
+              <input
+                id="lim-thresh"
+                type="range"
+                min="-24"
+                max="0"
+                step="0.1"
+                value="-0.1"
+              />
               <span id="lim-thresh-value">-0.1 dB</span>
             </label>
             <label>
               Release
-              <input id="lim-release" type="range" min="1" max="1000" step="1" value="100" />
+              <input
+                id="lim-release"
+                type="range"
+                min="1"
+                max="1000"
+                step="1"
+                value="100"
+              />
               <span id="lim-release-value">100 ms</span>
             </label>
           </div>

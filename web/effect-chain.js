@@ -7,71 +7,110 @@
 
   // ---- effect type registry ------------------------------------------------
   const FX_TYPES = {
-    chorus:           { label: "Chorus",            hue: 15,  category: "Modulation" },
-    flanger:          { label: "Flanger",           hue: 200, category: "Modulation" },
-    ringmod:          { label: "Ring Mod",          hue: 320, category: "Modulation" },
-    phaser:           { label: "Phaser",            hue: 140, category: "Modulation" },
-    tremolo:          { label: "Tremolo",           hue: 270, category: "Modulation" },
-    bitcrusher:       { label: "Bit Crusher",       hue: 24,  category: "Color" },
-    distortion:       { label: "Distortion",        hue: 6,   category: "Color" },
-    "dist-cheb":      { label: "Chebyshev WS",      hue: 18,  category: "Color" },
-    transformer:      { label: "Transformer Sat",   hue: 44,  category: "Color" },
-    filter:           { label: "Filter",            hue: 188, category: "Filters", hidden: true },
-    "filter-lowpass": { label: "Lowpass",           hue: 188, category: "Filters" },
-    "filter-highpass":{ label: "Highpass",          hue: 204, category: "Filters" },
-    "filter-bandpass":{ label: "Bandpass",          hue: 220, category: "Filters" },
-    "filter-notch":   { label: "Notch",             hue: 236, category: "Filters" },
-    "filter-allpass": { label: "Allpass",           hue: 252, category: "Filters" },
-    "filter-peak":    { label: "Peak EQ",           hue: 268, category: "Filters" },
-    "filter-lowshelf":{ label: "Low Shelf",         hue: 284, category: "Filters" },
-    "filter-highshelf":{ label: "High Shelf",       hue: 300, category: "Filters" },
-    "filter-moog":    { label: "Moog Ladder LP",    hue: 326, category: "Filters" },
-    delay:            { label: "Delay",             hue: 35,  category: "Time/Space" },
-    "delay-simple":   { label: "Simple Delay",      hue: 48,  category: "Routing" },
-    reverb:           { label: "Reverb",            hue: 260, category: "Time/Space", hidden: true },
-    "reverb-freeverb":{ label: "Reverb (Freeverb)", hue: 260, category: "Time/Space" },
-    "reverb-fdn":     { label: "Reverb (FDN)",      hue: 268, category: "Time/Space" },
-    "reverb-conv":    { label: "Reverb (Conv IR)",  hue: 248, category: "Time/Space" },
-    widener:          { label: "Stereo Widener",    hue: 286, category: "Spatial" },
-    bass:             { label: "Bass Enhancer",     hue: 10,  category: "Spatial" },
-    "pitch-time":     { label: "Pitch (Time)",      hue: 190, category: "Pitch" },
-    "pitch-spectral": { label: "Pitch (Spectral)",  hue: 170, category: "Pitch" },
-    "spectral-freeze":{ label: "Spectral Freeze",   hue: 176, category: "Pitch" },
-    granular:         { label: "Granular",          hue: 156, category: "Pitch" },
-    "dyn-compressor": { label: "Compressor",        hue: 120, category: "Dynamics" },
-    "dyn-limiter":    { label: "Limiter",           hue: 98,  category: "Dynamics" },
-    "dyn-lookahead":  { label: "Lookahead Limiter", hue: 92,  category: "Dynamics" },
-    "dyn-gate":       { label: "Gate/Expander",     hue: 82,  category: "Dynamics" },
-    "dyn-expander":   { label: "Expander",          hue: 66,  category: "Dynamics" },
-    "dyn-deesser":    { label: "De-Esser",          hue: 58,  category: "Dynamics" },
-    "dyn-transient":  { label: "Transient Shaper",  hue: 50,  category: "Dynamics" },
-    "dyn-multiband":  { label: "Multiband Comp",    hue: 108, category: "Dynamics" },
-    vocoder:          { label: "Vocoder",           hue: 305, category: "Color" },
-    "split-freq":     { label: "Split Freq",        hue: 210, category: "Routing", utility: true },
-    split:            { label: "Split",             hue: 210, category: "Routing", utility: true, hidden: true },
-    sum:              { label: "Sum",               hue: 35,  category: "Routing", utility: true },
+    chorus: { label: "Chorus", hue: 15, category: "Modulation" },
+    flanger: { label: "Flanger", hue: 200, category: "Modulation" },
+    ringmod: { label: "Ring Mod", hue: 320, category: "Modulation" },
+    phaser: { label: "Phaser", hue: 140, category: "Modulation" },
+    tremolo: { label: "Tremolo", hue: 270, category: "Modulation" },
+    bitcrusher: { label: "Bit Crusher", hue: 24, category: "Color" },
+    distortion: { label: "Distortion", hue: 6, category: "Color" },
+    "dist-cheb": { label: "Chebyshev WS", hue: 18, category: "Color" },
+    transformer: { label: "Transformer Sat", hue: 44, category: "Color" },
+    filter: { label: "Filter", hue: 188, category: "Filters", hidden: true },
+    "filter-lowpass": { label: "Lowpass", hue: 188, category: "Filters" },
+    "filter-highpass": { label: "Highpass", hue: 204, category: "Filters" },
+    "filter-bandpass": { label: "Bandpass", hue: 220, category: "Filters" },
+    "filter-notch": { label: "Notch", hue: 236, category: "Filters" },
+    "filter-allpass": { label: "Allpass", hue: 252, category: "Filters" },
+    "filter-peak": { label: "Peak EQ", hue: 268, category: "Filters" },
+    "filter-lowshelf": { label: "Low Shelf", hue: 284, category: "Filters" },
+    "filter-highshelf": { label: "High Shelf", hue: 300, category: "Filters" },
+    "filter-moog": { label: "Moog Ladder LP", hue: 326, category: "Filters" },
+    delay: { label: "Delay", hue: 35, category: "Time/Space" },
+    "delay-simple": { label: "Simple Delay", hue: 48, category: "Routing" },
+    reverb: { label: "Reverb", hue: 260, category: "Time/Space", hidden: true },
+    "reverb-freeverb": {
+      label: "Reverb (Freeverb)",
+      hue: 260,
+      category: "Time/Space",
+    },
+    "reverb-fdn": { label: "Reverb (FDN)", hue: 268, category: "Time/Space" },
+    "reverb-conv": {
+      label: "Reverb (Conv IR)",
+      hue: 248,
+      category: "Time/Space",
+    },
+    widener: { label: "Stereo Widener", hue: 286, category: "Spatial" },
+    bass: { label: "Bass Enhancer", hue: 10, category: "Spatial" },
+    "pitch-time": { label: "Pitch (Time)", hue: 190, category: "Pitch" },
+    "pitch-spectral": {
+      label: "Pitch (Spectral)",
+      hue: 170,
+      category: "Pitch",
+    },
+    "spectral-freeze": {
+      label: "Spectral Freeze",
+      hue: 176,
+      category: "Pitch",
+    },
+    granular: { label: "Granular", hue: 156, category: "Pitch" },
+    "dyn-compressor": { label: "Compressor", hue: 120, category: "Dynamics" },
+    "dyn-limiter": { label: "Limiter", hue: 98, category: "Dynamics" },
+    "dyn-lookahead": {
+      label: "Lookahead Limiter",
+      hue: 92,
+      category: "Dynamics",
+    },
+    "dyn-gate": { label: "Gate/Expander", hue: 82, category: "Dynamics" },
+    "dyn-expander": { label: "Expander", hue: 66, category: "Dynamics" },
+    "dyn-deesser": { label: "De-Esser", hue: 58, category: "Dynamics" },
+    "dyn-transient": {
+      label: "Transient Shaper",
+      hue: 50,
+      category: "Dynamics",
+    },
+    "dyn-multiband": {
+      label: "Multiband Comp",
+      hue: 108,
+      category: "Dynamics",
+    },
+    vocoder: { label: "Vocoder", hue: 305, category: "Color" },
+    "split-freq": {
+      label: "Split Freq",
+      hue: 210,
+      category: "Routing",
+      utility: true,
+    },
+    split: {
+      label: "Split",
+      hue: 210,
+      category: "Routing",
+      utility: true,
+      hidden: true,
+    },
+    sum: { label: "Sum", hue: 35, category: "Routing", utility: true },
   };
 
   // ---- geometry constants ---------------------------------------------------
-  const NODE_W   = 152;
-  const NODE_H   = 52;
+  const NODE_W = 152;
+  const NODE_H = 52;
   const SUM_PORT_SPACING = 18;
   const SUM_PORT_PAD = 12;
-  const PORT_R   = 7;
+  const PORT_R = 7;
   const BYPASS_S = 14; // bypass-button square size
   const BYPASS_PAD = 6;
   const DRAG_THRESHOLD = 4;
 
   // ---- pinned-param mini-slider geometry ------------------------------------
-  const LABEL_H      = 52;   // height of the label/header area (same as old NODE_H)
-  const SLIDER_H     = 22;   // row height per pinned param
-  const SLIDER_PAD   = 4;    // padding before first slider row
-  const SLIDER_TRACK_H = 4;  // track bar height
-  const SLIDER_THUMB_R = 5;  // thumb circle radius
-  const SLIDER_LEFT  = 10;   // left inset for label text
-  const SLIDER_RIGHT = 8;    // right inset from block edge
+  const LABEL_H = 52; // height of the label/header area (same as old NODE_H)
+  const SLIDER_H = 22; // row height per pinned param
+  const SLIDER_PAD = 4; // padding before first slider row
+  const SLIDER_TRACK_H = 4; // track bar height
+  const SLIDER_THUMB_R = 5; // thumb circle radius
+  const SLIDER_LEFT = 10; // left inset for label text
+  const SLIDER_RIGHT = 8; // right inset from block edge
   const SLIDER_TRACK_LEFT = 40; // track starts after short label
-  const SLIDER_VAL_W     = 38; // reserved width for value text at right
+  const SLIDER_VAL_W = 38; // reserved width for value text at right
 
   // ---- default pinned params per effect type --------------------------------
   const DEFAULT_PINNED = {
@@ -90,55 +129,90 @@
 
   const FILTER_PARAM_REGISTRY = {
     freq: { label: "Freq", min: 20, max: 18000, step: 1, unit: "Hz" },
-    q:    { label: "Q",    min: 0.2, max: 8, step: 0.01, unit: "" },
+    q: { label: "Q", min: 0.2, max: 8, step: 0.01, unit: "" },
     gain: { label: "Gain", min: -24, max: 24, step: 0.1, unit: "dB" },
-    order:{ label: "Ord",  min: 1, max: 12, step: 1, unit: "" },
+    order: { label: "Ord", min: 1, max: 12, step: 1, unit: "" },
   };
 
   // ---- parameter registry (min/max/unit metadata for canvas sliders) --------
   const PARAM_REGISTRY = {
     chorus: {
-      mix:     { label: "Mix",   min: 0, max: 0.6, step: 0.01, unit: "%", scale: 100 },
-      depth:   { label: "Depth", min: 0, max: 0.01, step: 0.0001, unit: "ms", scale: 1000 },
+      mix: {
+        label: "Mix",
+        min: 0,
+        max: 0.6,
+        step: 0.01,
+        unit: "%",
+        scale: 100,
+      },
+      depth: {
+        label: "Depth",
+        min: 0,
+        max: 0.01,
+        step: 0.0001,
+        unit: "ms",
+        scale: 1000,
+      },
       speedHz: { label: "Speed", min: 0.05, max: 5, step: 0.01, unit: "Hz" },
-      stages:  { label: "Stg",   min: 1, max: 6, step: 1, unit: "" },
+      stages: { label: "Stg", min: 1, max: 6, step: 1, unit: "" },
     },
     flanger: {
-      rateHz:    { label: "Rate",  min: 0.05, max: 5, step: 0.01, unit: "Hz" },
-      depth:     { label: "Depth", min: 0, max: 0.009, step: 0.0001, unit: "ms", scale: 1000 },
-      baseDelay: { label: "Base",  min: 0.0001, max: 0.01, step: 0.0001, unit: "ms", scale: 1000 },
-      feedback:  { label: "Fdbk",  min: -0.95, max: 0.95, step: 0.01, unit: "%" , scale: 100 },
-      mix:       { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      rateHz: { label: "Rate", min: 0.05, max: 5, step: 0.01, unit: "Hz" },
+      depth: {
+        label: "Depth",
+        min: 0,
+        max: 0.009,
+        step: 0.0001,
+        unit: "ms",
+        scale: 1000,
+      },
+      baseDelay: {
+        label: "Base",
+        min: 0.0001,
+        max: 0.01,
+        step: 0.0001,
+        unit: "ms",
+        scale: 1000,
+      },
+      feedback: {
+        label: "Fdbk",
+        min: -0.95,
+        max: 0.95,
+        step: 0.01,
+        unit: "%",
+        scale: 100,
+      },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     ringmod: {
       carrierHz: { label: "Freq", min: 20, max: 4000, step: 1, unit: "Hz" },
-      mix:       { label: "Mix",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     bitcrusher: {
-      bitDepth:   { label: "Bits",  min: 1, max: 16, step: 0.1, unit: "bit" },
-      downsample: { label: "Down",  min: 1, max: 64, step: 1, unit: "x" },
-      mix:        { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      bitDepth: { label: "Bits", min: 1, max: 16, step: 0.1, unit: "bit" },
+      downsample: { label: "Down", min: 1, max: 64, step: 1, unit: "x" },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     distortion: {
-      drive:  { label: "Drive",  min: 0.1, max: 20, step: 0.01, unit: "x" },
-      mix:    { label: "Mix",    min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
-      output: { label: "Out",    min: 0, max: 4, step: 0.01, unit: "x" },
-      clip:   { label: "Clip",   min: 0.05, max: 1, step: 0.01, unit: "" },
-      shape:  { label: "Shape",  min: 0, max: 1, step: 0.01, unit: "" },
-      bias:   { label: "Bias",   min: -1, max: 1, step: 0.01, unit: "" },
+      drive: { label: "Drive", min: 0.1, max: 20, step: 0.01, unit: "x" },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      output: { label: "Out", min: 0, max: 4, step: 0.01, unit: "x" },
+      clip: { label: "Clip", min: 0.05, max: 1, step: 0.01, unit: "" },
+      shape: { label: "Shape", min: 0, max: 1, step: 0.01, unit: "" },
+      bias: { label: "Bias", min: -1, max: 1, step: 0.01, unit: "" },
     },
     "dist-cheb": {
-      order:  { label: "Order",  min: 1, max: 16, step: 1, unit: "" },
-      gain:   { label: "Gain",   min: 0, max: 4, step: 0.01, unit: "x" },
-      drive:  { label: "Drive",  min: 0.1, max: 20, step: 0.01, unit: "x" },
-      mix:    { label: "Mix",    min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      order: { label: "Order", min: 1, max: 16, step: 1, unit: "" },
+      gain: { label: "Gain", min: 0, max: 4, step: 0.01, unit: "x" },
+      drive: { label: "Drive", min: 0.1, max: 20, step: 0.01, unit: "x" },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     transformer: {
-      drive:      { label: "Drive", min: 0.1, max: 20, step: 0.01, unit: "x" },
-      mix:        { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
-      output:     { label: "Out",   min: 0, max: 4, step: 0.01, unit: "x" },
-      highpassHz: { label: "HP",    min: 5, max: 400, step: 1, unit: "Hz" },
-      dampingHz:  { label: "Damp",  min: 500, max: 18000, step: 10, unit: "Hz" },
+      drive: { label: "Drive", min: 0.1, max: 20, step: 0.01, unit: "x" },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      output: { label: "Out", min: 0, max: 4, step: 0.01, unit: "x" },
+      highpassHz: { label: "HP", min: 5, max: 400, step: 1, unit: "Hz" },
+      dampingHz: { label: "Damp", min: 500, max: 18000, step: 10, unit: "Hz" },
     },
     filter: FILTER_PARAM_REGISTRY,
     "filter-lowpass": FILTER_PARAM_REGISTRY,
@@ -151,165 +225,252 @@
     "filter-highshelf": FILTER_PARAM_REGISTRY,
     "filter-moog": FILTER_PARAM_REGISTRY,
     "dyn-compressor": {
-      thresholdDB: { label: "Thr",  min: -60, max: 0, step: 0.5, unit: "dB" },
-      ratio:       { label: "Rat",  min: 1, max: 20, step: 0.1, unit: ":1" },
-      kneeDB:      { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
-      attackMs:    { label: "Atk",  min: 0.1, max: 100, step: 0.1, unit: "ms" },
-      releaseMs:   { label: "Rel",  min: 10, max: 1000, step: 1, unit: "ms" },
-      makeupGainDB:{ label: "Make", min: 0, max: 24, step: 0.1, unit: "dB" },
+      thresholdDB: { label: "Thr", min: -60, max: 0, step: 0.5, unit: "dB" },
+      ratio: { label: "Rat", min: 1, max: 20, step: 0.1, unit: ":1" },
+      kneeDB: { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
+      attackMs: { label: "Atk", min: 0.1, max: 100, step: 0.1, unit: "ms" },
+      releaseMs: { label: "Rel", min: 10, max: 1000, step: 1, unit: "ms" },
+      makeupGainDB: { label: "Make", min: 0, max: 24, step: 0.1, unit: "dB" },
     },
     "dyn-limiter": {
       thresholdDB: { label: "Thr", min: -24, max: 0, step: 0.1, unit: "dB" },
-      releaseMs:   { label: "Rel", min: 1, max: 1000, step: 1, unit: "ms" },
+      releaseMs: { label: "Rel", min: 1, max: 1000, step: 1, unit: "ms" },
     },
     "dyn-lookahead": {
-      thresholdDB: { label: "Thr",  min: -24, max: 0, step: 0.1, unit: "dB" },
-      releaseMs:   { label: "Rel",  min: 1, max: 1000, step: 1, unit: "ms" },
+      thresholdDB: { label: "Thr", min: -24, max: 0, step: 0.1, unit: "dB" },
+      releaseMs: { label: "Rel", min: 1, max: 1000, step: 1, unit: "ms" },
       lookaheadMs: { label: "Look", min: 0, max: 200, step: 0.1, unit: "ms" },
     },
     "dyn-gate": {
-      thresholdDB: { label: "Thr",  min: -80, max: 0, step: 0.5, unit: "dB" },
-      ratio:       { label: "Rat",  min: 1, max: 20, step: 0.1, unit: ":1" },
-      kneeDB:      { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
-      attackMs:    { label: "Atk",  min: 0.1, max: 200, step: 0.1, unit: "ms" },
-      holdMs:      { label: "Hold", min: 0, max: 500, step: 1, unit: "ms" },
-      releaseMs:   { label: "Rel",  min: 1, max: 1000, step: 1, unit: "ms" },
-      rangeDB:     { label: "Rng",  min: -120, max: 0, step: 1, unit: "dB" },
+      thresholdDB: { label: "Thr", min: -80, max: 0, step: 0.5, unit: "dB" },
+      ratio: { label: "Rat", min: 1, max: 20, step: 0.1, unit: ":1" },
+      kneeDB: { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
+      attackMs: { label: "Atk", min: 0.1, max: 200, step: 0.1, unit: "ms" },
+      holdMs: { label: "Hold", min: 0, max: 500, step: 1, unit: "ms" },
+      releaseMs: { label: "Rel", min: 1, max: 1000, step: 1, unit: "ms" },
+      rangeDB: { label: "Rng", min: -120, max: 0, step: 1, unit: "dB" },
     },
     "dyn-expander": {
-      thresholdDB: { label: "Thr",  min: -80, max: 0, step: 0.5, unit: "dB" },
-      ratio:       { label: "Rat",  min: 1, max: 20, step: 0.1, unit: ":1" },
-      kneeDB:      { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
-      attackMs:    { label: "Atk",  min: 0.1, max: 200, step: 0.1, unit: "ms" },
-      releaseMs:   { label: "Rel",  min: 1, max: 1000, step: 1, unit: "ms" },
-      rangeDB:     { label: "Rng",  min: -120, max: 0, step: 1, unit: "dB" },
-      rmsWindowMs: { label: "RMS",  min: 1, max: 200, step: 1, unit: "ms" },
+      thresholdDB: { label: "Thr", min: -80, max: 0, step: 0.5, unit: "dB" },
+      ratio: { label: "Rat", min: 1, max: 20, step: 0.1, unit: ":1" },
+      kneeDB: { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
+      attackMs: { label: "Atk", min: 0.1, max: 200, step: 0.1, unit: "ms" },
+      releaseMs: { label: "Rel", min: 1, max: 1000, step: 1, unit: "ms" },
+      rangeDB: { label: "Rng", min: -120, max: 0, step: 1, unit: "dB" },
+      rmsWindowMs: { label: "RMS", min: 1, max: 200, step: 1, unit: "ms" },
     },
     "dyn-deesser": {
-      freqHz:      { label: "Freq", min: 1000, max: 16000, step: 10, unit: "Hz" },
-      q:           { label: "Q",    min: 0.1, max: 10, step: 0.01, unit: "" },
-      thresholdDB: { label: "Thr",  min: -80, max: 0, step: 0.5, unit: "dB" },
-      ratio:       { label: "Rat",  min: 1, max: 20, step: 0.1, unit: ":1" },
-      kneeDB:      { label: "Knee", min: 0, max: 12, step: 0.1, unit: "dB" },
-      attackMs:    { label: "Atk",  min: 0.01, max: 50, step: 0.01, unit: "ms" },
-      releaseMs:   { label: "Rel",  min: 1, max: 500, step: 1, unit: "ms" },
-      rangeDB:     { label: "Rng",  min: -60, max: 0, step: 1, unit: "dB" },
+      freqHz: { label: "Freq", min: 1000, max: 16000, step: 10, unit: "Hz" },
+      q: { label: "Q", min: 0.1, max: 10, step: 0.01, unit: "" },
+      thresholdDB: { label: "Thr", min: -80, max: 0, step: 0.5, unit: "dB" },
+      ratio: { label: "Rat", min: 1, max: 20, step: 0.1, unit: ":1" },
+      kneeDB: { label: "Knee", min: 0, max: 12, step: 0.1, unit: "dB" },
+      attackMs: { label: "Atk", min: 0.01, max: 50, step: 0.01, unit: "ms" },
+      releaseMs: { label: "Rel", min: 1, max: 500, step: 1, unit: "ms" },
+      rangeDB: { label: "Rng", min: -60, max: 0, step: 1, unit: "dB" },
     },
     "dyn-transient": {
-      attack:    { label: "Atk",  min: -1, max: 1, step: 0.01, unit: "" },
-      sustain:   { label: "Sus",  min: -1, max: 1, step: 0.01, unit: "" },
-      attackMs:  { label: "AtkT", min: 0.1, max: 200, step: 0.1, unit: "ms" },
+      attack: { label: "Atk", min: -1, max: 1, step: 0.01, unit: "" },
+      sustain: { label: "Sus", min: -1, max: 1, step: 0.01, unit: "" },
+      attackMs: { label: "AtkT", min: 0.1, max: 200, step: 0.1, unit: "ms" },
       releaseMs: { label: "RelT", min: 1, max: 2000, step: 1, unit: "ms" },
     },
     "dyn-multiband": {
-      cross1Hz:       { label: "X1",    min: 40, max: 4000, step: 10, unit: "Hz" },
-      cross2Hz:       { label: "X2",    min: 400, max: 12000, step: 10, unit: "Hz" },
-      attackMs:       { label: "Atk",   min: 0.1, max: 200, step: 0.1, unit: "ms" },
-      releaseMs:      { label: "Rel",   min: 1, max: 1000, step: 1, unit: "ms" },
-      kneeDB:         { label: "Knee",  min: 0, max: 24, step: 0.5, unit: "dB" },
-      makeupGainDB:   { label: "Make",  min: 0, max: 24, step: 0.1, unit: "dB" },
-      lowThresholdDB: { label: "LThr",  min: -80, max: 0, step: 0.5, unit: "dB" },
-      lowRatio:       { label: "LRat",  min: 1, max: 20, step: 0.1, unit: ":1" },
-      midThresholdDB: { label: "MThr",  min: -80, max: 0, step: 0.5, unit: "dB" },
-      midRatio:       { label: "MRat",  min: 1, max: 20, step: 0.1, unit: ":1" },
-      highThresholdDB:{ label: "HThr",  min: -80, max: 0, step: 0.5, unit: "dB" },
-      highRatio:      { label: "HRat",  min: 1, max: 20, step: 0.1, unit: ":1" },
+      cross1Hz: { label: "X1", min: 40, max: 4000, step: 10, unit: "Hz" },
+      cross2Hz: { label: "X2", min: 400, max: 12000, step: 10, unit: "Hz" },
+      attackMs: { label: "Atk", min: 0.1, max: 200, step: 0.1, unit: "ms" },
+      releaseMs: { label: "Rel", min: 1, max: 1000, step: 1, unit: "ms" },
+      kneeDB: { label: "Knee", min: 0, max: 24, step: 0.5, unit: "dB" },
+      makeupGainDB: { label: "Make", min: 0, max: 24, step: 0.1, unit: "dB" },
+      lowThresholdDB: {
+        label: "LThr",
+        min: -80,
+        max: 0,
+        step: 0.5,
+        unit: "dB",
+      },
+      lowRatio: { label: "LRat", min: 1, max: 20, step: 0.1, unit: ":1" },
+      midThresholdDB: {
+        label: "MThr",
+        min: -80,
+        max: 0,
+        step: 0.5,
+        unit: "dB",
+      },
+      midRatio: { label: "MRat", min: 1, max: 20, step: 0.1, unit: ":1" },
+      highThresholdDB: {
+        label: "HThr",
+        min: -80,
+        max: 0,
+        step: 0.5,
+        unit: "dB",
+      },
+      highRatio: { label: "HRat", min: 1, max: 20, step: 0.1, unit: ":1" },
     },
     vocoder: {
-      attackMs:     { label: "Atk",  min: 0.01, max: 100, step: 0.01, unit: "ms" },
-      releaseMs:    { label: "Rel",  min: 0.01, max: 1000, step: 0.1, unit: "ms" },
-      vocoderLevel: { label: "Voc",  min: 0, max: 10, step: 0.01, unit: "" },
-      inputLevel:   { label: "Dry",  min: 0, max: 10, step: 0.01, unit: "" },
-      synthLevel:   { label: "Car",  min: 0, max: 10, step: 0.01, unit: "" },
+      attackMs: { label: "Atk", min: 0.01, max: 100, step: 0.01, unit: "ms" },
+      releaseMs: { label: "Rel", min: 0.01, max: 1000, step: 0.1, unit: "ms" },
+      vocoderLevel: { label: "Voc", min: 0, max: 10, step: 0.01, unit: "" },
+      inputLevel: { label: "Dry", min: 0, max: 10, step: 0.01, unit: "" },
+      synthLevel: { label: "Car", min: 0, max: 10, step: 0.01, unit: "" },
     },
     "split-freq": {
       freqHz: { label: "Freq", min: 20, max: 20000, step: 1, unit: "Hz" },
     },
     widener: {
       width: { label: "Width", min: 0, max: 3, step: 0.01, unit: "x" },
-      mix:   { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     phaser: {
-      rateHz:     { label: "Rate",  min: 0.05, max: 5, step: 0.01, unit: "Hz" },
-      minFreqHz:  { label: "MinF",  min: 20, max: 3000, step: 1, unit: "Hz" },
-      maxFreqHz:  { label: "MaxF",  min: 40, max: 8000, step: 1, unit: "Hz" },
-      stages:     { label: "Stg",   min: 1, max: 12, step: 1, unit: "" },
-      feedback:   { label: "Fdbk",  min: -0.95, max: 0.95, step: 0.01, unit: "%", scale: 100 },
-      mix:        { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      rateHz: { label: "Rate", min: 0.05, max: 5, step: 0.01, unit: "Hz" },
+      minFreqHz: { label: "MinF", min: 20, max: 3000, step: 1, unit: "Hz" },
+      maxFreqHz: { label: "MaxF", min: 40, max: 8000, step: 1, unit: "Hz" },
+      stages: { label: "Stg", min: 1, max: 12, step: 1, unit: "" },
+      feedback: {
+        label: "Fdbk",
+        min: -0.95,
+        max: 0.95,
+        step: 0.01,
+        unit: "%",
+        scale: 100,
+      },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     tremolo: {
-      rateHz:      { label: "Rate",  min: 0.1, max: 20, step: 0.1, unit: "Hz" },
-      depth:       { label: "Depth", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
-      smoothingMs: { label: "Smth",  min: 0, max: 200, step: 1, unit: "ms" },
-      mix:         { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      rateHz: { label: "Rate", min: 0.1, max: 20, step: 0.1, unit: "Hz" },
+      depth: {
+        label: "Depth",
+        min: 0,
+        max: 1,
+        step: 0.01,
+        unit: "%",
+        scale: 100,
+      },
+      smoothingMs: { label: "Smth", min: 0, max: 200, step: 1, unit: "ms" },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     delay: {
-      time:     { label: "Time", min: 0.01, max: 2, step: 0.01, unit: "ms", scale: 1000 },
-      feedback: { label: "Fdbk", min: 0, max: 0.95, step: 0.01, unit: "%", scale: 100 },
-      mix:      { label: "Mix",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      time: {
+        label: "Time",
+        min: 0.01,
+        max: 2,
+        step: 0.01,
+        unit: "ms",
+        scale: 1000,
+      },
+      feedback: {
+        label: "Fdbk",
+        min: 0,
+        max: 0.95,
+        step: 0.01,
+        unit: "%",
+        scale: 100,
+      },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     "delay-simple": {
       delayMs: { label: "Delay", min: 0, max: 500, step: 1, unit: "ms" },
     },
     bass: {
-      frequency:  { label: "Freq", min: 30, max: 200, step: 1, unit: "Hz" },
-      inputGain:  { label: "In",   min: 0, max: 2, step: 0.01, unit: "" },
-      highGain:   { label: "High", min: 0, max: 2, step: 0.01, unit: "" },
-      original:   { label: "Orig", min: 0, max: 2, step: 0.01, unit: "" },
-      harmonic:   { label: "Harm", min: 0, max: 2, step: 0.01, unit: "" },
-      decay:      { label: "Dcy",  min: -1, max: 1, step: 0.01, unit: "" },
+      frequency: { label: "Freq", min: 30, max: 200, step: 1, unit: "Hz" },
+      inputGain: { label: "In", min: 0, max: 2, step: 0.01, unit: "" },
+      highGain: { label: "High", min: 0, max: 2, step: 0.01, unit: "" },
+      original: { label: "Orig", min: 0, max: 2, step: 0.01, unit: "" },
+      harmonic: { label: "Harm", min: 0, max: 2, step: 0.01, unit: "" },
+      decay: { label: "Dcy", min: -1, max: 1, step: 0.01, unit: "" },
       responseMs: { label: "Resp", min: 1, max: 200, step: 1, unit: "ms" },
     },
     "pitch-time": {
       semitones: { label: "Semi", min: -24, max: 24, step: 0.1, unit: "st" },
-      sequence:  { label: "Seq",  min: 20, max: 120, step: 1, unit: "ms" },
-      overlap:   { label: "Ovlp", min: 4, max: 60, step: 1, unit: "ms" },
-      search:    { label: "Srch", min: 2, max: 40, step: 1, unit: "ms" },
+      sequence: { label: "Seq", min: 20, max: 120, step: 1, unit: "ms" },
+      overlap: { label: "Ovlp", min: 4, max: 60, step: 1, unit: "ms" },
+      search: { label: "Srch", min: 2, max: 40, step: 1, unit: "ms" },
     },
     "pitch-spectral": {
       semitones: { label: "Semi", min: -24, max: 24, step: 0.1, unit: "st" },
     },
     "spectral-freeze": {
-      mix:      { label: "Mix",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
-      frameSize:{ label: "Frame",min: 256, max: 4096, step: 256, unit: "" },
-      hopRatio: { label: "Hop",  min: 0.125, max: 0.5, step: 0.125, unit: "" },
-      frozen:   { label: "Frz",  min: 0, max: 1, step: 1, unit: "" },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      frameSize: { label: "Frame", min: 256, max: 4096, step: 256, unit: "" },
+      hopRatio: { label: "Hop", min: 0.125, max: 0.5, step: 0.125, unit: "" },
+      frozen: { label: "Frz", min: 0, max: 1, step: 1, unit: "" },
     },
     granular: {
-      grainSeconds: { label: "Grn",   min: 0.005, max: 0.5, step: 0.001, unit: "s" },
-      overlap:      { label: "Ovl",   min: 0, max: 0.95, step: 0.01, unit: "" },
-      pitch:        { label: "Pitch", min: 0.25, max: 4, step: 0.01, unit: "x" },
-      spray:        { label: "Spry",  min: 0, max: 1, step: 0.01, unit: "" },
-      baseDelay:    { label: "Base",  min: 0, max: 2, step: 0.01, unit: "s" },
-      mix:          { label: "Mix",   min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      grainSeconds: {
+        label: "Grn",
+        min: 0.005,
+        max: 0.5,
+        step: 0.001,
+        unit: "s",
+      },
+      overlap: { label: "Ovl", min: 0, max: 0.95, step: 0.01, unit: "" },
+      pitch: { label: "Pitch", min: 0.25, max: 4, step: 0.01, unit: "x" },
+      spray: { label: "Spry", min: 0, max: 1, step: 0.01, unit: "" },
+      baseDelay: { label: "Base", min: 0, max: 2, step: 0.01, unit: "s" },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
     },
     reverb: {
-      wet:      { label: "Wet",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
-      dry:      { label: "Dry",  min: 0, max: 1.5, step: 0.01, unit: "" },
+      wet: { label: "Wet", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      dry: { label: "Dry", min: 0, max: 1.5, step: 0.01, unit: "" },
       roomSize: { label: "Room", min: 0, max: 0.98, step: 0.01, unit: "" },
-      damp:     { label: "Damp", min: 0, max: 0.99, step: 0.01, unit: "" },
-      rt60:     { label: "RT60", min: 0.2, max: 8, step: 0.05, unit: "s" },
-      preDelay: { label: "Pre",  min: 0, max: 0.08, step: 0.001, unit: "ms", scale: 1000 },
-      modDepth: { label: "ModD", min: 0, max: 0.01, step: 0.0001, unit: "ms", scale: 1000 },
-      modRate:  { label: "ModR", min: 0, max: 1, step: 0.01, unit: "Hz" },
+      damp: { label: "Damp", min: 0, max: 0.99, step: 0.01, unit: "" },
+      rt60: { label: "RT60", min: 0.2, max: 8, step: 0.05, unit: "s" },
+      preDelay: {
+        label: "Pre",
+        min: 0,
+        max: 0.08,
+        step: 0.001,
+        unit: "ms",
+        scale: 1000,
+      },
+      modDepth: {
+        label: "ModD",
+        min: 0,
+        max: 0.01,
+        step: 0.0001,
+        unit: "ms",
+        scale: 1000,
+      },
+      modRate: { label: "ModR", min: 0, max: 1, step: 0.01, unit: "Hz" },
     },
     "reverb-freeverb": {
-      wet:      { label: "Wet",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
-      dry:      { label: "Dry",  min: 0, max: 1.5, step: 0.01, unit: "" },
+      wet: { label: "Wet", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      dry: { label: "Dry", min: 0, max: 1.5, step: 0.01, unit: "" },
       roomSize: { label: "Room", min: 0, max: 0.98, step: 0.01, unit: "" },
-      damp:     { label: "Damp", min: 0, max: 0.99, step: 0.01, unit: "" },
+      damp: { label: "Damp", min: 0, max: 0.99, step: 0.01, unit: "" },
     },
     "reverb-fdn": {
-      wet:      { label: "Wet",  min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
-      dry:      { label: "Dry",  min: 0, max: 1.5, step: 0.01, unit: "" },
-      damp:     { label: "Damp", min: 0, max: 0.99, step: 0.01, unit: "" },
-      rt60:     { label: "RT60", min: 0.2, max: 8, step: 0.05, unit: "s" },
-      preDelay: { label: "Pre",  min: 0, max: 0.08, step: 0.001, unit: "ms", scale: 1000 },
-      modDepth: { label: "ModD", min: 0, max: 0.01, step: 0.0001, unit: "ms", scale: 1000 },
-      modRate:  { label: "ModR", min: 0, max: 1, step: 0.01, unit: "Hz" },
+      wet: { label: "Wet", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      dry: { label: "Dry", min: 0, max: 1.5, step: 0.01, unit: "" },
+      damp: { label: "Damp", min: 0, max: 0.99, step: 0.01, unit: "" },
+      rt60: { label: "RT60", min: 0.2, max: 8, step: 0.05, unit: "s" },
+      preDelay: {
+        label: "Pre",
+        min: 0,
+        max: 0.08,
+        step: 0.001,
+        unit: "ms",
+        scale: 1000,
+      },
+      modDepth: {
+        label: "ModD",
+        min: 0,
+        max: 0.01,
+        step: 0.0001,
+        unit: "ms",
+        scale: 1000,
+      },
+      modRate: { label: "ModR", min: 0, max: 1, step: 0.01, unit: "Hz" },
     },
     "reverb-conv": {
-      wet: { label: "Wet", min: 0, max: 1.5, step: 0.01, unit: "%", scale: 100 },
+      wet: {
+        label: "Wet",
+        min: 0,
+        max: 1.5,
+        step: 0.01,
+        unit: "%",
+        scale: 100,
+      },
     },
   };
 
@@ -324,7 +485,9 @@
 
   // ---- id generator ---------------------------------------------------------
   let _nextId = 1;
-  function genId() { return "n" + (_nextId++); }
+  function genId() {
+    return "n" + _nextId++;
+  }
 
   // ---- roundRect polyfill ---------------------------------------------------
   // CanvasRenderingContext2D.roundRect() is unavailable in older browsers.
@@ -350,7 +513,9 @@
   }
 
   function cssVar(name) {
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
   }
 
   function nodeColor(node, alpha) {
@@ -380,39 +545,39 @@
   class EffectChain {
     constructor(canvas, opts) {
       this.canvas = canvas;
-      this.ctx    = canvas.getContext("2d");
-      this.opts   = opts || {};
+      this.ctx = canvas.getContext("2d");
+      this.opts = opts || {};
 
       // view transform (pan offset in CSS pixels)
       this.panX = 0;
       this.panY = 0;
 
       // data
-      this.nodes       = [];
-      this.connections  = []; // { from: id, to: id }
-      this.selectedId   = null;
+      this.nodes = [];
+      this.connections = []; // { from: id, to: id }
+      this.selectedId = null;
 
       // interaction state
-      this._action      = null; // null | 'pan' | 'drag' | 'connect'
-      this._startCX     = 0;
-      this._startCY     = 0;
+      this._action = null; // null | 'pan' | 'drag' | 'connect'
+      this._startCX = 0;
+      this._startCY = 0;
       this._dragNodeStartX = 0;
       this._dragNodeStartY = 0;
-      this._moved        = false;
-      this._connectFrom  = null; // node id when connecting
-      this._connectEnd   = null; // {x,y} temp wire end (world coords)
-      this._connectPort  = null; // 'output' | 'input'
+      this._moved = false;
+      this._connectFrom = null; // node id when connecting
+      this._connectEnd = null; // {x,y} temp wire end (world coords)
+      this._connectPort = null; // 'output' | 'input'
       this._connectPortIndex = null;
-      this._hoveredNode  = null;
-      this._hoveredPort  = null; // { nodeId, port: 'input'|'output' }
-      this._hoveredWire  = null; // { from, to }
+      this._hoveredNode = null;
+      this._hoveredPort = null; // { nodeId, port: 'input'|'output' }
+      this._hoveredWire = null; // { from, to }
 
       // context menu DOM
       this._menu = null;
       this._submenu = null;
 
       // add fixed Input and Output nodes
-      this._addFixedNode("_input",  "Input",  60,  250);
+      this._addFixedNode("_input", "Input", 60, 250);
       this._addFixedNode("_output", "Output", 560, 250);
       // default connection
       this.connections.push({ from: "_input", to: "_output" });
@@ -432,9 +597,14 @@
       const params = this.opts.createParams?.(type) || {};
       const defaultPins = DEFAULT_PINNED[type] || [];
       this.nodes.push({
-        id, type, label,
-        x: wx - NODE_W / 2, y: wy - NODE_H / 2,
-        bypassed: false, fixed: false, params,
+        id,
+        type,
+        label,
+        x: wx - NODE_W / 2,
+        y: wy - NODE_H / 2,
+        bypassed: false,
+        fixed: false,
+        params,
         pinnedParams: [...defaultPins],
       });
       this._autoInsert(id);
@@ -545,7 +715,10 @@
       const states = {};
       for (const n of this.nodes) {
         if (n.type !== "_input" && n.type !== "_output") {
-          states[n.type] = { bypassed: n.bypassed, connected: this._isInChain(n.id) };
+          states[n.type] = {
+            bypassed: n.bypassed,
+            connected: this._isInChain(n.id),
+          };
         }
       }
       return states;
@@ -555,18 +728,25 @@
     getState() {
       return {
         nodes: this.nodes.map((n) => ({
-          id: n.id, type: n.type, label: n.label,
-          x: n.x, y: n.y, bypassed: n.bypassed, fixed: n.fixed,
+          id: n.id,
+          type: n.type,
+          label: n.label,
+          x: n.x,
+          y: n.y,
+          bypassed: n.bypassed,
+          fixed: n.fixed,
           params: n.params || {},
           pinnedParams: n.pinnedParams || [],
         })),
         connections: this.connections.map((c) => {
           const out = { from: c.from, to: c.to };
-          if (Number.isInteger(c.fromPortIndex)) out.fromPortIndex = c.fromPortIndex;
+          if (Number.isInteger(c.fromPortIndex))
+            out.fromPortIndex = c.fromPortIndex;
           if (Number.isInteger(c.toPortIndex)) out.toPortIndex = c.toPortIndex;
           return out;
         }),
-        panX: this.panX, panY: this.panY,
+        panX: this.panX,
+        panY: this.panY,
       };
     }
 
@@ -584,11 +764,15 @@
         });
         // ensure _input and _output exist and are always marked fixed
         const inp = this._nodeById("_input");
-        if (inp) { inp.fixed = true; inp.type = "_input"; }
-        else this._addFixedNode("_input",  "Input",  60, 130);
+        if (inp) {
+          inp.fixed = true;
+          inp.type = "_input";
+        } else this._addFixedNode("_input", "Input", 60, 130);
         const out = this._nodeById("_output");
-        if (out) { out.fixed = true; out.type = "_output"; }
-        else this._addFixedNode("_output", "Output", 560, 130);
+        if (out) {
+          out.fixed = true;
+          out.type = "_output";
+        } else this._addFixedNode("_output", "Output", 560, 130);
       }
       if (Array.isArray(data.connections)) {
         const nodeIds = new Set(this.nodes.map((n) => n.id));
@@ -603,7 +787,9 @@
             }
             return out;
           })
-          .filter((c) => nodeIds.has(c.from) && nodeIds.has(c.to) && c.from !== c.to);
+          .filter(
+            (c) => nodeIds.has(c.from) && nodeIds.has(c.to) && c.from !== c.to,
+          );
 
         // Enforce single-input sinks (e.g. _output) when loading persisted state.
         const seenIncoming = new Set();
@@ -637,14 +823,17 @@
 
     draw() {
       const canvas = this.canvas;
-      const ctx    = this.ctx;
-      const dpr    = window.devicePixelRatio || 1;
-      const rect   = canvas.getBoundingClientRect();
+      const ctx = this.ctx;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
 
-      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-        canvas.width  = Math.round(w * dpr);
+      if (
+        canvas.width !== Math.round(w * dpr) ||
+        canvas.height !== Math.round(h * dpr)
+      ) {
+        canvas.width = Math.round(w * dpr);
         canvas.height = Math.round(h * dpr);
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -678,7 +867,9 @@
       const step = 24;
       const offX = ((this.panX % step) + step) % step;
       const offY = ((this.panY % step) + step) % step;
-      ctx.strokeStyle = isDark() ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.05)";
+      ctx.strokeStyle = isDark()
+        ? "rgba(255,255,255,0.04)"
+        : "rgba(0,0,0,0.05)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let x = offX; x < w; x += step) {
@@ -694,7 +885,7 @@
 
     _drawWire(conn, highlighted = false) {
       const fromNode = this._nodeById(conn.from);
-      const toNode   = this._nodeById(conn.to);
+      const toNode = this._nodeById(conn.to);
       if (!fromNode || !toNode) return;
 
       const x1 = fromNode.x + NODE_W;
@@ -709,10 +900,14 @@
       ctx.moveTo(x1, y1);
       ctx.bezierCurveTo(x1 + dx, y1, x2 - dx, y2, x2, y2);
       if (highlighted) {
-        ctx.strokeStyle = isDark() ? "rgba(200,220,245,0.85)" : "rgba(52,72,92,0.75)";
+        ctx.strokeStyle = isDark()
+          ? "rgba(200,220,245,0.85)"
+          : "rgba(52,72,92,0.75)";
         ctx.lineWidth = 3.5;
       } else {
-        ctx.strokeStyle = isDark() ? "rgba(140,170,200,0.55)" : "rgba(60,80,100,0.4)";
+        ctx.strokeStyle = isDark()
+          ? "rgba(140,170,200,0.55)"
+          : "rgba(60,80,100,0.4)";
         ctx.lineWidth = 2.5;
       }
       ctx.stroke();
@@ -745,7 +940,9 @@
         ctx.moveTo(x1, y1);
         ctx.bezierCurveTo(x1 - dx, y1, x2 + dx, y2, x2, y2);
       }
-      ctx.strokeStyle = isDark() ? "rgba(140,170,200,0.35)" : "rgba(60,80,100,0.25)";
+      ctx.strokeStyle = isDark()
+        ? "rgba(140,170,200,0.35)"
+        : "rgba(60,80,100,0.25)";
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
       ctx.stroke();
@@ -758,14 +955,14 @@
       const y = node.y;
       const h = this._nodeH(node);
       const selected = node.id === this.selectedId;
-      const hovered  = node.id === this._hoveredNode;
+      const hovered = node.id === this._hoveredNode;
       const bypassed = node.bypassed;
-      const alpha    = bypassed ? 0.5 : 1;
+      const alpha = bypassed ? 0.5 : 1;
 
       // shadow
       ctx.save();
       ctx.shadowColor = "rgba(0,0,0,0.12)";
-      ctx.shadowBlur  = 8;
+      ctx.shadowBlur = 8;
       ctx.shadowOffsetY = 2;
 
       // body
@@ -788,7 +985,9 @@
         ctx.strokeStyle = nodeColor(node, 0.7);
         ctx.lineWidth = 1.8;
       } else {
-        ctx.strokeStyle = isDark() ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.12)";
+        ctx.strokeStyle = isDark()
+          ? "rgba(255,255,255,0.13)"
+          : "rgba(0,0,0,0.12)";
         ctx.lineWidth = 1;
       }
       ctx.stroke();
@@ -816,7 +1015,8 @@
           for (let i = 0; i < inputs; i++) {
             const ipx = x;
             const ipy = this._inputPortY(node, i);
-            const ihov = this._hoveredPort?.nodeId === node.id &&
+            const ihov =
+              this._hoveredPort?.nodeId === node.id &&
               this._hoveredPort?.port === "input" &&
               this._hoveredPort?.portIndex === i;
             const connected = this._hasIncomingAtPort(node.id, i);
@@ -829,7 +1029,8 @@
             for (let i = 0; i < inPorts; i++) {
               const ipx = x;
               const ipy = this._inputPortY(node, i);
-              const ihov = this._hoveredPort?.nodeId === node.id &&
+              const ihov =
+                this._hoveredPort?.nodeId === node.id &&
                 this._hoveredPort?.port === "input" &&
                 this._hoveredPort?.portIndex === i;
               const connected = this._hasIncomingAtPort(node.id, i);
@@ -840,7 +1041,9 @@
             // input port (left)
             const ipx = x;
             const ipy = y + LABEL_H / 2;
-            const ihov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "input";
+            const ihov =
+              this._hoveredPort?.nodeId === node.id &&
+              this._hoveredPort?.port === "input";
             this._drawPort(ipx, ipy, ihov, this._hasIncoming(node.id));
           }
         }
@@ -850,7 +1053,8 @@
           for (let i = 0; i < 2; i++) {
             const opx = x + NODE_W;
             const opy = this._outputPortY(node, i);
-            const ohov = this._hoveredPort?.nodeId === node.id &&
+            const ohov =
+              this._hoveredPort?.nodeId === node.id &&
               this._hoveredPort?.port === "output" &&
               this._hoveredPort?.portIndex === i;
             this._drawPort(opx, opy, ohov, this._hasOutgoingAtPort(node.id, i));
@@ -859,7 +1063,9 @@
           // output port (right)
           const opx = x + NODE_W;
           const opy = y + LABEL_H / 2;
-          const ohov = this._hoveredPort?.nodeId === node.id && this._hoveredPort?.port === "output";
+          const ohov =
+            this._hoveredPort?.nodeId === node.id &&
+            this._hoveredPort?.port === "output";
           this._drawPort(opx, opy, ohov, this._hasOutgoing(node.id));
         }
       }
@@ -876,9 +1082,13 @@
       ctx.beginPath();
       ctx.roundRect(bx, by, BYPASS_S, BYPASS_S, 4);
       if (node.bypassed) {
-        ctx.fillStyle = isDark() ? "rgba(255,100,80,0.25)" : "rgba(200,60,40,0.15)";
+        ctx.fillStyle = isDark()
+          ? "rgba(255,100,80,0.25)"
+          : "rgba(200,60,40,0.15)";
       } else {
-        ctx.fillStyle = isDark() ? "rgba(100,200,120,0.25)" : "rgba(40,160,60,0.15)";
+        ctx.fillStyle = isDark()
+          ? "rgba(100,200,120,0.25)"
+          : "rgba(40,160,60,0.15)";
       }
       ctx.fill();
 
@@ -889,8 +1099,12 @@
       ctx.beginPath();
       ctx.arc(cx, cy, ir, -Math.PI * 0.7, Math.PI * 0.7, false);
       ctx.strokeStyle = node.bypassed
-        ? (isDark() ? "rgba(255,120,100,0.7)" : "rgba(180,50,30,0.6)")
-        : (isDark() ? "rgba(100,220,130,0.8)" : "rgba(40,140,60,0.7)");
+        ? isDark()
+          ? "rgba(255,120,100,0.7)"
+          : "rgba(180,50,30,0.6)"
+        : isDark()
+          ? "rgba(100,220,130,0.8)"
+          : "rgba(40,140,60,0.7)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.beginPath();
@@ -905,14 +1119,22 @@
       ctx.beginPath();
       ctx.arc(px, py, r, 0, Math.PI * 2);
       if (connected) {
-        ctx.fillStyle = isDark() ? "rgba(140,180,220,0.7)" : "rgba(60,100,140,0.6)";
+        ctx.fillStyle = isDark()
+          ? "rgba(140,180,220,0.7)"
+          : "rgba(60,100,140,0.6)";
       } else if (optional) {
-        ctx.fillStyle = isDark() ? "rgba(100,120,140,0.2)" : "rgba(120,140,160,0.18)";
+        ctx.fillStyle = isDark()
+          ? "rgba(100,120,140,0.2)"
+          : "rgba(120,140,160,0.18)";
       } else {
-        ctx.fillStyle = isDark() ? "rgba(100,120,140,0.4)" : "rgba(120,140,160,0.35)";
+        ctx.fillStyle = isDark()
+          ? "rgba(100,120,140,0.4)"
+          : "rgba(120,140,160,0.35)";
       }
       ctx.fill();
-      ctx.strokeStyle = isDark() ? "rgba(200,220,240,0.5)" : "rgba(255,255,255,0.8)";
+      ctx.strokeStyle = isDark()
+        ? "rgba(200,220,240,0.5)"
+        : "rgba(255,255,255,0.8)";
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
@@ -922,7 +1144,12 @@
     /** Returns { tx, ty, tw } describing the track geometry for the i-th pinned slider. */
     _sliderTrackRect(node, i) {
       const tx = node.x + SLIDER_TRACK_LEFT;
-      const ty = node.y + LABEL_H + SLIDER_PAD + i * SLIDER_H + (SLIDER_H - SLIDER_TRACK_H) / 2;
+      const ty =
+        node.y +
+        LABEL_H +
+        SLIDER_PAD +
+        i * SLIDER_H +
+        (SLIDER_H - SLIDER_TRACK_H) / 2;
       const tw = NODE_W - SLIDER_TRACK_LEFT - SLIDER_VAL_W - SLIDER_RIGHT;
       return { tx, ty, tw };
     }
@@ -955,7 +1182,9 @@
         // track background
         ctx.beginPath();
         ctx.roundRect(tx, ty, tw, SLIDER_TRACK_H, 2);
-        ctx.fillStyle = isDark() ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+        ctx.fillStyle = isDark()
+          ? "rgba(255,255,255,0.08)"
+          : "rgba(0,0,0,0.08)";
         ctx.fill();
 
         // track fill (left portion)
@@ -974,7 +1203,9 @@
         ctx.arc(thumbX, thumbY, SLIDER_THUMB_R, 0, Math.PI * 2);
         ctx.fillStyle = nodeColor(node, 0.9);
         ctx.fill();
-        ctx.strokeStyle = isDark() ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.15)";
+        ctx.strokeStyle = isDark()
+          ? "rgba(255,255,255,0.3)"
+          : "rgba(0,0,0,0.15)";
         ctx.lineWidth = 1;
         ctx.stroke();
 
@@ -1019,9 +1250,19 @@
           const { tx, ty, tw } = this._sliderTrackRect(n, j);
           // generous hit area: full row height
           const rowY = n.y + LABEL_H + SLIDER_PAD + j * SLIDER_H;
-          if (wx >= tx - SLIDER_THUMB_R && wx <= tx + tw + SLIDER_THUMB_R &&
-              wy >= rowY && wy <= rowY + SLIDER_H) {
-            return { nodeId: n.id, paramKey: n.pinnedParams[j], tx, tw, sliderIndex: j };
+          if (
+            wx >= tx - SLIDER_THUMB_R &&
+            wx <= tx + tw + SLIDER_THUMB_R &&
+            wy >= rowY &&
+            wy <= rowY + SLIDER_H
+          ) {
+            return {
+              nodeId: n.id,
+              paramKey: n.pinnedParams[j],
+              tx,
+              tw,
+              sliderIndex: j,
+            };
           }
         }
       }
@@ -1032,7 +1273,12 @@
       // reverse order so topmost node wins
       for (let i = this.nodes.length - 1; i >= 0; i--) {
         const n = this.nodes[i];
-        if (wx >= n.x && wx <= n.x + NODE_W && wy >= n.y && wy <= n.y + this._nodeH(n)) {
+        if (
+          wx >= n.x &&
+          wx <= n.x + NODE_W &&
+          wy >= n.y &&
+          wy <= n.y + this._nodeH(n)
+        ) {
           return n;
         }
       }
@@ -1123,7 +1369,10 @@
         for (let s = 1; s <= 24; s++) {
           const t = s / 24;
           const cur = this._bezierPoint(x1, y1, c1x, c1y, c2x, c2y, x2, y2, t);
-          if (this._distPointToSegment(wx, wy, prev.x, prev.y, cur.x, cur.y) <= threshold) {
+          if (
+            this._distPointToSegment(wx, wy, prev.x, prev.y, cur.x, cur.y) <=
+            threshold
+          ) {
             return conn;
           }
           prev = cur;
@@ -1173,15 +1422,15 @@
     // ---- event binding -----------------------------------------------------
 
     _bind() {
-      this.canvas.addEventListener("mousedown",   (e) => this._onMouseDown(e));
-      this.canvas.addEventListener("mousemove",    (e) => this._onMouseMove(e));
-      this.canvas.addEventListener("mouseup",      (e) => this._onMouseUp(e));
-      this.canvas.addEventListener("dblclick",     (e) => this._onDoubleClick(e));
-      document.addEventListener("mouseup",         (e) => {
+      this.canvas.addEventListener("mousedown", (e) => this._onMouseDown(e));
+      this.canvas.addEventListener("mousemove", (e) => this._onMouseMove(e));
+      this.canvas.addEventListener("mouseup", (e) => this._onMouseUp(e));
+      this.canvas.addEventListener("dblclick", (e) => this._onDoubleClick(e));
+      document.addEventListener("mouseup", (e) => {
         if (this._action && e.target !== this.canvas) this._onMouseUp(e);
       });
-      this.canvas.addEventListener("contextmenu",  (e) => e.preventDefault());
-      this.canvas.addEventListener("mouseleave",   ()  => this._onMouseLeave());
+      this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+      this.canvas.addEventListener("mouseleave", () => this._onMouseLeave());
       document.addEventListener("keydown", (e) => this._onKeyDown(e));
 
       // close context menu on outside click
@@ -1295,15 +1544,28 @@
       const port = this._hitPort(wx, wy);
       const sliderHov = this._hitSlider(wx, wy);
       const node = this._hitNode(wx, wy);
-      const wire = (!port && !node) ? this._hitWire(wx, wy) : null;
+      const wire = !port && !node ? this._hitWire(wx, wy) : null;
       const prevHovNode = this._hoveredNode;
       const prevHovPort = this._hoveredPort;
       const prevHovWire = this._hoveredWire;
       this._hoveredNode = node ? node.id : null;
       this._hoveredPort = port;
       this._hoveredWire = wire;
-      if (this._hoveredNode !== prevHovNode || this._hoveredPort !== prevHovPort || this._hoveredWire !== prevHovWire || sliderHov) {
-        this.canvas.style.cursor = sliderHov ? "ew-resize" : (port ? "crosshair" : (node ? "grab" : (wire ? "pointer" : "default")));
+      if (
+        this._hoveredNode !== prevHovNode ||
+        this._hoveredPort !== prevHovPort ||
+        this._hoveredWire !== prevHovWire ||
+        sliderHov
+      ) {
+        this.canvas.style.cursor = sliderHov
+          ? "ew-resize"
+          : port
+            ? "crosshair"
+            : node
+              ? "grab"
+              : wire
+                ? "pointer"
+                : "default";
         this.draw();
       }
     }
@@ -1348,7 +1610,7 @@
             );
           }
           this._connectFrom = null;
-          this._connectEnd  = null;
+          this._connectEnd = null;
           this._connectPort = null;
           this._connectPortIndex = null;
           this.draw();
@@ -1400,30 +1662,112 @@
     }
 
     _onKeyDown(e) {
-      if (!this.selectedId) return;
-      if (e.key === "Delete" || e.key === "Backspace") {
-        const node = this._nodeById(this.selectedId);
-        if (node && !node.fixed) {
-          // prevent browser back-navigation
-          e.preventDefault();
-          this.removeNode(this.selectedId);
-        }
+      if (this._shouldIgnoreKeyEvent(e)) return;
+
+      const key = String(e.key || "");
+      const lowerKey = key.toLowerCase();
+
+      if (key === "Escape") {
+        e.preventDefault();
+        this._hideMenu();
+        if (this.selectedId) this.selectNode(null);
+        return;
       }
+
+      if (lowerKey === "a") {
+        e.preventDefault();
+        this._hideMenu();
+        const rect = this.canvas.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        this._showMenu(cx, cy, null, null);
+        return;
+      }
+
+      if (key === "Tab") {
+        const effects = this.nodes.filter((n) => !n.fixed);
+        if (!effects.length) return;
+        e.preventDefault();
+        const dir = e.shiftKey ? -1 : 1;
+        const current = effects.findIndex((n) => n.id === this.selectedId);
+        const start = current >= 0 ? current : dir > 0 ? -1 : 0;
+        const next = (start + dir + effects.length) % effects.length;
+        this.selectNode(effects[next].id);
+        return;
+      }
+
+      if (!this.selectedId) return;
+      const node = this._nodeById(this.selectedId);
+      if (!node || node.fixed) return;
+
+      if (key === "Delete" || key === "Backspace") {
+        // prevent browser back-navigation
+        e.preventDefault();
+        this.removeNode(this.selectedId);
+        return;
+      }
+
+      if (lowerKey === "b") {
+        e.preventDefault();
+        node.bypassed = !node.bypassed;
+        this._emitChange();
+        this.draw();
+        return;
+      }
+
+      const step = e.shiftKey ? 24 : 8;
+      if (key === "ArrowLeft") {
+        e.preventDefault();
+        node.x -= step;
+      } else if (key === "ArrowRight") {
+        e.preventDefault();
+        node.x += step;
+      } else if (key === "ArrowUp") {
+        e.preventDefault();
+        node.y -= step;
+      } else if (key === "ArrowDown") {
+        e.preventDefault();
+        node.y += step;
+      } else {
+        return;
+      }
+      this._emitChange();
+      this.draw();
+    }
+
+    _shouldIgnoreKeyEvent(e) {
+      if (e.defaultPrevented) return true;
+      if (e.ctrlKey || e.metaKey || e.altKey) return true;
+      const target = e.target;
+      if (!(target instanceof Element)) return false;
+      if (target.isContentEditable) return true;
+      return !!target.closest(
+        "input, textarea, select, button, [contenteditable='true']",
+      );
     }
 
     // ---- connection management ---------------------------------------------
 
-    _createConnection(fromId, fromPort, toId, toPort, fromPortIndex = null, toPortIndex = null) {
+    _createConnection(
+      fromId,
+      fromPort,
+      toId,
+      toPort,
+      fromPortIndex = null,
+      toPortIndex = null,
+    ) {
       // normalise direction: always from output to input
       let srcId, dstId;
       let srcPortIndex = null;
       let dstPortIndex = null;
       if (fromPort === "output" && toPort === "input") {
-        srcId = fromId; dstId = toId;
+        srcId = fromId;
+        dstId = toId;
         srcPortIndex = fromPortIndex;
         dstPortIndex = toPortIndex;
       } else if (fromPort === "input" && toPort === "output") {
-        srcId = toId; dstId = fromId;
+        srcId = toId;
+        dstId = fromId;
         srcPortIndex = toPortIndex;
         dstPortIndex = fromPortIndex;
       } else {
@@ -1445,11 +1789,19 @@
       this.connections = this.connections.filter((c) => {
         if (c.from === srcId && srcOutLimit === 1) return false;
         if (dstNode.type === "sum" && c.to === dstId) {
-          if (typeof dstPortIndex === "number" && c.toPortIndex === dstPortIndex) return false;
+          if (
+            typeof dstPortIndex === "number" &&
+            c.toPortIndex === dstPortIndex
+          )
+            return false;
           return true;
         }
         if (this._inputPortCount(dstNode.type) > 1 && c.to === dstId) {
-          if (typeof dstPortIndex === "number" && c.toPortIndex === dstPortIndex) return false;
+          if (
+            typeof dstPortIndex === "number" &&
+            c.toPortIndex === dstPortIndex
+          )
+            return false;
           return true;
         }
         if (c.to === dstId && dstInLimit === 1) return false;
@@ -1462,7 +1814,9 @@
           : 0;
       }
       if (dstNode.type === "sum") {
-        const preferredIndex = Number.isInteger(dstPortIndex) ? dstPortIndex : this._firstFreeSumPort(dstId);
+        const preferredIndex = Number.isInteger(dstPortIndex)
+          ? dstPortIndex
+          : this._firstFreeSumPort(dstId);
         newConn.toPortIndex = preferredIndex;
       } else if (this._inputPortCount(dstNode.type) > 1) {
         const preferredIndex = Number.isInteger(dstPortIndex)
@@ -1524,10 +1878,10 @@
       let bestConn = null;
       for (const conn of this.connections) {
         const fromNode = this._nodeById(conn.from);
-        const toNode   = this._nodeById(conn.to);
+        const toNode = this._nodeById(conn.to);
         if (!fromNode || !toNode) continue;
         const fromX = fromNode.x + NODE_W / 2;
-        const toX   = toNode.x + NODE_W / 2;
+        const toX = toNode.x + NODE_W / 2;
         // insert between the pair that most closely straddles this node
         if (fromX <= nx && toX >= nx) {
           bestConn = conn;
@@ -1547,10 +1901,12 @@
         const oldFromPortIndex = bestConn.fromPortIndex;
         const oldToPortIndex = bestConn.toPortIndex;
         bestConn.to = nodeId;
-        if (Number.isInteger(oldFromPortIndex)) bestConn.fromPortIndex = oldFromPortIndex;
+        if (Number.isInteger(oldFromPortIndex))
+          bestConn.fromPortIndex = oldFromPortIndex;
         if (Number.isInteger(oldToPortIndex)) delete bestConn.toPortIndex;
         const bridge = { from: nodeId, to: oldTo };
-        if (Number.isInteger(oldToPortIndex)) bridge.toPortIndex = oldToPortIndex;
+        if (Number.isInteger(oldToPortIndex))
+          bridge.toPortIndex = oldToPortIndex;
         this.connections.push(bridge);
       } else {
         // no chain yet, connect input -> node -> output
@@ -1570,7 +1926,7 @@
       }
       // remove all connections involving this node
       this.connections = this.connections.filter(
-        (c) => c.from !== nodeId && c.to !== nodeId
+        (c) => c.from !== nodeId && c.to !== nodeId,
       );
       this._normalizeSumPortIndexes();
     }
@@ -1608,21 +1964,36 @@
             if (!grouped.has(category)) grouped.set(category, []);
             grouped.get(category).push([type, def]);
           }
-          const categoryOrder = ["Filters", "Dynamics", "Modulation", "Time/Space", "Pitch", "Spatial", "Color", "Routing", "Other"];
+          const categoryOrder = [
+            "Filters",
+            "Dynamics",
+            "Modulation",
+            "Time/Space",
+            "Pitch",
+            "Spatial",
+            "Color",
+            "Routing",
+            "Other",
+          ];
           const hideSubmenu = () => {
-            if (this._submenu) { this._submenu.remove(); this._submenu = null; }
+            if (this._submenu) {
+              this._submenu.remove();
+              this._submenu = null;
+            }
           };
           const placeSubmenu = (submenu, anchor) => {
             const ar = anchor.getBoundingClientRect();
             const sr = submenu.getBoundingClientRect();
             let left = ar.right + 6;
-            let top  = ar.top - 4;
-            if (left + sr.width  > window.innerWidth  - 8) left = ar.left - sr.width - 6;
+            let top = ar.top - 4;
+            if (left + sr.width > window.innerWidth - 8)
+              left = ar.left - sr.width - 6;
             if (left < 8) left = 8;
-            if (top  + sr.height > window.innerHeight - 8) top  = window.innerHeight - sr.height - 8;
-            if (top  < 8) top  = 8;
+            if (top + sr.height > window.innerHeight - 8)
+              top = window.innerHeight - sr.height - 8;
+            if (top < 8) top = 8;
             submenu.style.left = left + "px";
-            submenu.style.top  = top  + "px";
+            submenu.style.top = top + "px";
           };
           const showTypesFlyout = (category, anchor) => {
             hideSubmenu();
@@ -1639,8 +2010,8 @@
               item.textContent = def.label;
               item.addEventListener("click", () => {
                 const newParams = this.opts.createParams?.(type) || {};
-                nodeUnderCursor.type   = type;
-                nodeUnderCursor.label  = def.label;
+                nodeUnderCursor.type = type;
+                nodeUnderCursor.label = def.label;
                 nodeUnderCursor.params = newParams;
                 this._emitChange();
                 this._hideMenu();
@@ -1658,8 +2029,12 @@
             const item = document.createElement("button");
             item.className = "chain-menu-item chain-menu-item--submenu";
             item.textContent = category;
-            item.addEventListener("mouseenter", () => showTypesFlyout(category, item));
-            item.addEventListener("click",      () => showTypesFlyout(category, item));
+            item.addEventListener("mouseenter", () =>
+              showTypesFlyout(category, item),
+            );
+            item.addEventListener("click", () =>
+              showTypesFlyout(category, item),
+            );
             menu.appendChild(item);
           }
         }
@@ -1677,7 +2052,9 @@
         removeConnItem.className = "chain-menu-item chain-menu-item--danger";
         removeConnItem.textContent = "Remove Connection";
         removeConnItem.addEventListener("click", () => {
-          this.connections = this.connections.filter((c) => c !== wireUnderCursor);
+          this.connections = this.connections.filter(
+            (c) => c !== wireUnderCursor,
+          );
           this._normalizeSumPortIndexes();
           this._emitChange();
           this._hideMenu();
@@ -1697,7 +2074,17 @@
           if (!grouped.has(category)) grouped.set(category, []);
           grouped.get(category).push([type, def]);
         }
-        const categoryOrder = ["Filters", "Dynamics", "Modulation", "Time/Space", "Pitch", "Spatial", "Color", "Routing", "Other"];
+        const categoryOrder = [
+          "Filters",
+          "Dynamics",
+          "Modulation",
+          "Time/Space",
+          "Pitch",
+          "Spatial",
+          "Color",
+          "Routing",
+          "Other",
+        ];
         const hideSubmenu = () => {
           if (this._submenu) {
             this._submenu.remove();
@@ -1709,9 +2096,11 @@
           const sr = submenu.getBoundingClientRect();
           let left = ar.right + 6;
           let top = ar.top - 4;
-          if (left + sr.width > window.innerWidth - 8) left = ar.left - sr.width - 6;
+          if (left + sr.width > window.innerWidth - 8)
+            left = ar.left - sr.width - 6;
           if (left < 8) left = 8;
-          if (top + sr.height > window.innerHeight - 8) top = window.innerHeight - sr.height - 8;
+          if (top + sr.height > window.innerHeight - 8)
+            top = window.innerHeight - sr.height - 8;
           if (top < 8) top = 8;
           submenu.style.left = left + "px";
           submenu.style.top = top + "px";
@@ -1740,11 +2129,18 @@
               const label = defNode.label;
               const params = this.opts.createParams?.(type) || {};
               this.nodes.push({
-                id: newId, type, label,
-                x: wx - NODE_W / 2, y: wy - NODE_H / 2,
-                bypassed: false, fixed: false, params,
+                id: newId,
+                type,
+                label,
+                x: wx - NODE_W / 2,
+                y: wy - NODE_H / 2,
+                bypassed: false,
+                fixed: false,
+                params,
               });
-              this.connections = this.connections.filter((c) => c !== wireUnderCursor);
+              this.connections = this.connections.filter(
+                (c) => c !== wireUnderCursor,
+              );
               this.connections.push({
                 from: wireUnderCursor.from,
                 to: newId,
@@ -1772,7 +2168,9 @@
           const item = document.createElement("button");
           item.className = "chain-menu-item chain-menu-item--submenu";
           item.textContent = category;
-          item.addEventListener("mouseenter", () => showTypesFlyout(category, item));
+          item.addEventListener("mouseenter", () =>
+            showTypesFlyout(category, item),
+          );
           item.addEventListener("click", () => showTypesFlyout(category, item));
           menu.appendChild(item);
         }
@@ -1790,7 +2188,17 @@
           if (!grouped.has(category)) grouped.set(category, []);
           grouped.get(category).push([type, def]);
         }
-        const categoryOrder = ["Filters", "Dynamics", "Modulation", "Time/Space", "Pitch", "Spatial", "Color", "Routing", "Other"];
+        const categoryOrder = [
+          "Filters",
+          "Dynamics",
+          "Modulation",
+          "Time/Space",
+          "Pitch",
+          "Spatial",
+          "Color",
+          "Routing",
+          "Other",
+        ];
         const hideSubmenu = () => {
           if (this._submenu) {
             this._submenu.remove();
@@ -1850,7 +2258,9 @@
           const item = document.createElement("button");
           item.className = "chain-menu-item chain-menu-item--submenu";
           item.textContent = category;
-          item.addEventListener("mouseenter", () => showTypesFlyout(category, item));
+          item.addEventListener("mouseenter", () =>
+            showTypesFlyout(category, item),
+          );
           item.addEventListener("click", () => showTypesFlyout(category, item));
           menu.appendChild(item);
         }
@@ -1858,14 +2268,16 @@
 
       // position
       menu.style.left = clientX + "px";
-      menu.style.top  = clientY + "px";
+      menu.style.top = clientY + "px";
       document.body.appendChild(menu);
 
       // keep within viewport
       requestAnimationFrame(() => {
         const mr = menu.getBoundingClientRect();
-        if (mr.right > window.innerWidth)  menu.style.left = (window.innerWidth  - mr.width  - 8) + "px";
-        if (mr.bottom > window.innerHeight) menu.style.top  = (window.innerHeight - mr.height - 8) + "px";
+        if (mr.right > window.innerWidth)
+          menu.style.left = window.innerWidth - mr.width - 8 + "px";
+        if (mr.bottom > window.innerHeight)
+          menu.style.top = window.innerHeight - mr.height - 8 + "px";
       });
 
       this._menu = menu;
@@ -1889,7 +2301,15 @@
     }
 
     _addFixedNode(id, label, x, y) {
-      this.nodes.push({ id, type: id, label, x, y, bypassed: false, fixed: true });
+      this.nodes.push({
+        id,
+        type: id,
+        label,
+        x,
+        y,
+        bypassed: false,
+        fixed: true,
+      });
     }
 
     _incomingLimit(type) {
@@ -1921,7 +2341,10 @@
     }
 
     _sumInputCount(nodeId) {
-      const connected = this.connections.reduce((n, c) => n + (c.to === nodeId ? 1 : 0), 0);
+      const connected = this.connections.reduce(
+        (n, c) => n + (c.to === nodeId ? 1 : 0),
+        0,
+      );
       return Math.max(2, connected + 1);
     }
 
@@ -1951,7 +2374,7 @@
         if (count <= 1) return this._portMidY(node);
         const mid = this._portMidY(node);
         const offset = SUM_PORT_SPACING / 2;
-        return portIndex === 1 ? (mid + offset) : (mid - offset);
+        return portIndex === 1 ? mid + offset : mid - offset;
       }
       const ys = this._sumInputYs(node);
       if (ys.length === 0) return this._portMidY(node);
@@ -1960,7 +2383,9 @@
     }
 
     _hasIncomingAtPort(nodeId, portIndex) {
-      return this.connections.some((c) => c.to === nodeId && c.toPortIndex === portIndex);
+      return this.connections.some(
+        (c) => c.to === nodeId && c.toPortIndex === portIndex,
+      );
     }
 
     _firstFreeSumPort(nodeId) {
@@ -1982,7 +2407,9 @@
     }
 
     _hasOutgoingAtPort(nodeId, portIndex) {
-      return this.connections.some((c) => c.from === nodeId && c.fromPortIndex === portIndex);
+      return this.connections.some(
+        (c) => c.from === nodeId && c.fromPortIndex === portIndex,
+      );
     }
 
     _outputPortY(node, portIndex) {
@@ -1990,20 +2417,27 @@
       if (node.type !== "split-freq") return this._portMidY(node);
       const mid = this._portMidY(node);
       const offset = SUM_PORT_SPACING / 2;
-      return portIndex === 1 ? (mid + offset) : (mid - offset);
+      return portIndex === 1 ? mid + offset : mid - offset;
     }
 
     _normalizeSumPortIndexes() {
-      const sumIds = new Set(this.nodes.filter((n) => n.type === "sum").map((n) => n.id));
+      const sumIds = new Set(
+        this.nodes.filter((n) => n.type === "sum").map((n) => n.id),
+      );
       for (const sumId of sumIds) {
         const incoming = this.connections
           .map((c, idx) => ({ c, idx }))
           .filter((v) => v.c.to === sumId);
         incoming.sort((a, b) => {
-          const ai = Number.isInteger(a.c.toPortIndex) ? a.c.toPortIndex : Number.MAX_SAFE_INTEGER;
-          const bi = Number.isInteger(b.c.toPortIndex) ? b.c.toPortIndex : Number.MAX_SAFE_INTEGER;
+          const ai = Number.isInteger(a.c.toPortIndex)
+            ? a.c.toPortIndex
+            : Number.MAX_SAFE_INTEGER;
+          const bi = Number.isInteger(b.c.toPortIndex)
+            ? b.c.toPortIndex
+            : Number.MAX_SAFE_INTEGER;
           if (ai !== bi) return ai - bi;
-          if (a.c.from !== b.c.from) return String(a.c.from).localeCompare(String(b.c.from));
+          if (a.c.from !== b.c.from)
+            return String(a.c.from).localeCompare(String(b.c.from));
           return a.idx - b.idx;
         });
         for (let i = 0; i < incoming.length; i++) {
