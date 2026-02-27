@@ -7,6 +7,11 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/crossover"
 )
 
+const (
+	chainInputNodeID  = "_input"
+	chainOutputNodeID = "_output"
+)
+
 // processEffectsInPlace routes to graph-based or legacy serial processing.
 func (e *Engine) processEffectsInPlace(block []float64) {
 	if len(block) == 0 {
@@ -24,6 +29,13 @@ func (e *Engine) processEffectsInPlace(block []float64) {
 
 // processEffectsLegacyInPlace applies the fixed-order serial effect chain.
 func (e *Engine) processEffectsLegacyInPlace(block []float64) {
+	e.processLegacyPreDynamicsInPlace(block)
+	e.processLegacyModulationInPlace(block)
+	e.processLegacyPitchInPlace(block)
+	e.processLegacyReverbInPlace(block)
+}
+
+func (e *Engine) processLegacyPreDynamicsInPlace(block []float64) {
 	if e.effects.HarmonicBassEnabled {
 		e.bass.ProcessInPlace(block)
 	}
@@ -31,7 +43,9 @@ func (e *Engine) processEffectsLegacyInPlace(block []float64) {
 	if e.effects.DelayEnabled {
 		e.delay.ProcessInPlace(block)
 	}
+}
 
+func (e *Engine) processLegacyModulationInPlace(block []float64) {
 	if e.effects.ChorusEnabled {
 		e.chorus.ProcessInPlace(block)
 	}
@@ -59,7 +73,9 @@ func (e *Engine) processEffectsLegacyInPlace(block []float64) {
 	if e.effects.TremoloEnabled {
 		_ = e.tremolo.ProcessInPlace(block)
 	}
+}
 
+func (e *Engine) processLegacyPitchInPlace(block []float64) {
 	if e.effects.TimePitchEnabled {
 		e.tp.ProcessInPlace(block)
 	}
@@ -67,36 +83,63 @@ func (e *Engine) processEffectsLegacyInPlace(block []float64) {
 	if e.effects.SpectralPitchEnabled {
 		e.sp.ProcessInPlace(block)
 	}
+}
 
-	if e.effects.ReverbEnabled {
-		if e.effects.ReverbModel == "fdn" {
-			e.fdn.ProcessInPlace(block)
-		} else {
-			e.reverb.ProcessInPlace(block)
-		}
+func (e *Engine) processLegacyReverbInPlace(block []float64) {
+	if !e.effects.ReverbEnabled {
+		return
 	}
+
+	if e.effects.ReverbModel == "fdn" {
+		e.fdn.ProcessInPlace(block)
+
+		return
+	}
+
+	e.reverb.ProcessInPlace(block)
 }
 
 // processEffectsByGraphInPlace traverses the DAG in topological order and applies
 // each effect node. Returns false if the graph is missing required I/O nodes.
 func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainGraph) bool {
+	if g == nil || !hasRequiredGraphIONodes(g) {
+		return false
+	}
+
+	buffers, splitLow, splitHigh, mixBuf := e.prepareGraphProcessingBuffers(block, g)
+	edgeSrc := graphEdgeSource(g, buffers, splitLow, splitHigh)
+
+	for _, id := range g.Order {
+		if id == chainInputNodeID {
+			continue
+		}
+
+		e.processGraphNode(id, g, buffers, splitLow, splitHigh, mixBuf, edgeSrc)
+	}
+
+	return copyGraphOutputToBlock(block, buffers)
+}
+
+func hasRequiredGraphIONodes(g *compiledChainGraph) bool {
 	if g == nil {
 		return false
 	}
 
-	const (
-		inputID  = "_input"
-		outputID = "_output"
-	)
-
-	if _, ok := g.Nodes[inputID]; !ok {
+	if _, ok := g.Nodes[chainInputNodeID]; !ok {
 		return false
 	}
 
-	if _, ok := g.Nodes[outputID]; !ok {
+	if _, ok := g.Nodes[chainOutputNodeID]; !ok {
 		return false
 	}
 
+	return true
+}
+
+func (e *Engine) prepareGraphProcessingBuffers(
+	block []float64,
+	g *compiledChainGraph,
+) (map[string][]float64, map[string][]float64, map[string][]float64, []float64) {
 	if e.chainOutBuf == nil {
 		e.chainOutBuf = make(map[string][]float64, len(g.Nodes))
 	}
@@ -118,7 +161,7 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 	splitHigh := e.chainSplitHighBuf
 
 	for _, id := range g.Order {
-		if id == inputID {
+		if id == chainInputNodeID {
 			buffers[id] = block
 			continue
 		}
@@ -128,8 +171,7 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 			buf = make([]float64, len(block))
 		}
 
-		buf = buf[:len(block)]
-		buffers[id] = buf
+		buffers[id] = buf[:len(block)]
 
 		low := splitLow[id]
 		if cap(low) < len(block) {
@@ -150,136 +192,207 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 		e.chainMixBuf = make([]float64, len(block))
 	}
 
-	mixBuf := e.chainMixBuf[:len(block)]
+	return buffers, splitLow, splitHigh, e.chainMixBuf[:len(block)]
+}
 
-	for _, id := range g.Order {
-		if id == inputID {
-			continue
+func graphEdgeSource(
+	g *compiledChainGraph,
+	buffers map[string][]float64,
+	splitLow map[string][]float64,
+	splitHigh map[string][]float64,
+) func(edge compiledChainEdge) []float64 {
+	return func(edge compiledChainEdge) []float64 {
+		parentNode := g.Nodes[edge.From]
+		if parentNode.Type == "split-freq" {
+			if edge.FromPortIndex == 1 {
+				return splitHigh[edge.From]
+			}
+
+			return splitLow[edge.From]
 		}
 
-		node := g.Nodes[id]
-		dst := buffers[id]
+		return buffers[edge.From]
+	}
+}
 
-		parents := g.Incoming[id]
-		edgeSrc := func(edge compiledChainEdge) []float64 {
-			parentNode := g.Nodes[edge.From]
-			if parentNode.Type == "split-freq" {
-				if edge.FromPortIndex == 1 {
-					return splitHigh[edge.From]
-				}
+func splitMainAndSideParents(nodeType string, parents []compiledChainEdge) ([]compiledChainEdge, []compiledChainEdge) {
+	mainParents := parents
+	var sideParents []compiledChainEdge
 
-				return splitLow[edge.From]
-			}
-
-			return buffers[edge.From]
-		}
-
-		mainParents := parents
-		sideParents := []compiledChainEdge(nil)
-
-		if node.Type == "dyn-lookahead" || node.Type == "vocoder" {
-			mainParents = mainParents[:0]
-
-			for _, edge := range parents {
-				if edge.ToPortIndex == 1 {
-					sideParents = append(sideParents, edge)
-				} else {
-					mainParents = append(mainParents, edge)
-				}
-			}
-		}
-
-		mixParentEdgesInto(mainParents, dst, mixBuf, edgeSrc)
-
-		if node.Type == "split-freq" {
-			low := splitLow[id]
-			high := splitHigh[id]
-
-			freq := getNodeNum(node, "freqHz", 1200)
-			if freq < 20 {
-				freq = 20
-			}
-
-			nyquist := e.sampleRate * 0.5
-
-			maxFreq := math.Max(20, nyquist*0.95)
-			if freq > maxFreq {
-				freq = maxFreq
-			}
-
-			xo := e.chainCrossover[id]
-			if xo == nil || math.Abs(xo.Freq()-freq) > 1e-9 {
-				newXO, err := crossover.New(freq, 4, e.sampleRate)
-				if err == nil {
-					if e.chainCrossover == nil {
-						e.chainCrossover = map[string]*crossover.Crossover{}
-					}
-
-					e.chainCrossover[id] = newXO
-					xo = newXO
-				}
-			}
-
-			if xo != nil {
-				xo.ProcessBlock(dst, low, high)
-			} else {
-				copy(low, dst)
-				copy(high, dst)
-			}
-
-			continue
-		}
-
-		if id == outputID || node.Bypassed {
-			continue
-		}
-
-		if node.Type == "dyn-lookahead" {
-			rt := e.chainNodes[node.ID]
-			if rt != nil {
-				if lookahead, ok := rt.effect.(*lookaheadLimiterChainRuntime); ok {
-					sideBuf := e.chainMixBuf[:len(dst)]
-					mixParentEdgesInto(sideParents, sideBuf, mixBuf, edgeSrc)
-
-					if len(sideParents) == 0 {
-						copy(sideBuf, dst)
-					}
-
-					lookahead.ProcessWithSidechain(dst, sideBuf)
-
-					continue
-				}
-			}
-		}
-
-		if node.Type == "vocoder" {
-			rt := e.chainNodes[node.ID]
-			if rt != nil {
-				if voc, ok := rt.effect.(*vocoderChainRuntime); ok {
-					// Ensure carrier buffer is large enough.
-					if len(voc.carrierBuf) < len(dst) {
-						voc.carrierBuf = make([]float64, len(dst))
-					}
-
-					carrierBuf := voc.carrierBuf[:len(dst)]
-					mixParentEdgesInto(sideParents, carrierBuf, mixBuf, edgeSrc)
-
-					if len(sideParents) == 0 {
-						copy(carrierBuf, dst)
-					}
-
-					// dst = modulator (port 0), carrierBuf = carrier (port 1).
-					voc.processVocoder(dst, carrierBuf)
-
-					continue
-				}
-			}
-		}
-
-		e.applyCompiledNode(node, dst)
+	if nodeType != "dyn-lookahead" && nodeType != "vocoder" {
+		return mainParents, sideParents
 	}
 
-	out := buffers[outputID]
+	mainParents = mainParents[:0]
+
+	for _, edge := range parents {
+		if edge.ToPortIndex == 1 {
+			sideParents = append(sideParents, edge)
+			continue
+		}
+
+		mainParents = append(mainParents, edge)
+	}
+
+	return mainParents, sideParents
+}
+
+func (e *Engine) processGraphNode(
+	id string,
+	g *compiledChainGraph,
+	buffers map[string][]float64,
+	splitLow map[string][]float64,
+	splitHigh map[string][]float64,
+	mixBuf []float64,
+	edgeSrc func(edge compiledChainEdge) []float64,
+) {
+	node := g.Nodes[id]
+	dst := buffers[id]
+
+	parents := g.Incoming[id]
+	mainParents, sideParents := splitMainAndSideParents(node.Type, parents)
+	mixParentEdgesInto(mainParents, dst, mixBuf, edgeSrc)
+
+	if e.processSplitFreqNode(id, node, dst, splitLow, splitHigh) {
+		return
+	}
+
+	if id == chainOutputNodeID || node.Bypassed {
+		return
+	}
+
+	if e.processLookaheadNode(node, dst, sideParents, mixBuf, edgeSrc) {
+		return
+	}
+
+	if e.processVocoderNode(node, dst, sideParents, mixBuf, edgeSrc) {
+		return
+	}
+
+	e.applyCompiledNode(node, dst)
+}
+
+func (e *Engine) processSplitFreqNode(
+	id string,
+	node compiledChainNode,
+	dst []float64,
+	splitLow map[string][]float64,
+	splitHigh map[string][]float64,
+) bool {
+	if node.Type != "split-freq" {
+		return false
+	}
+
+	low := splitLow[id]
+	high := splitHigh[id]
+
+	freq := getNodeNum(node, "freqHz", 1200)
+	if freq < 20 {
+		freq = 20
+	}
+
+	nyquist := e.sampleRate * 0.5
+
+	maxFreq := math.Max(20, nyquist*0.95)
+	if freq > maxFreq {
+		freq = maxFreq
+	}
+
+	xo := e.chainCrossover[id]
+	if xo == nil || math.Abs(xo.Freq()-freq) > 1e-9 {
+		newXO, err := crossover.New(freq, 4, e.sampleRate)
+		if err == nil {
+			if e.chainCrossover == nil {
+				e.chainCrossover = map[string]*crossover.Crossover{}
+			}
+
+			e.chainCrossover[id] = newXO
+			xo = newXO
+		}
+	}
+
+	if xo != nil {
+		xo.ProcessBlock(dst, low, high)
+	} else {
+		copy(low, dst)
+		copy(high, dst)
+	}
+
+	return true
+}
+
+func (e *Engine) processLookaheadNode(
+	node compiledChainNode,
+	dst []float64,
+	sideParents []compiledChainEdge,
+	mixBuf []float64,
+	edgeSrc func(edge compiledChainEdge) []float64,
+) bool {
+	if node.Type != "dyn-lookahead" {
+		return false
+	}
+
+	rt := e.chainNodes[node.ID]
+	if rt == nil {
+		return false
+	}
+
+	lookahead, ok := rt.effect.(*lookaheadLimiterChainRuntime)
+	if !ok {
+		return false
+	}
+
+	sideBuf := e.chainMixBuf[:len(dst)]
+	mixParentEdgesInto(sideParents, sideBuf, mixBuf, edgeSrc)
+
+	if len(sideParents) == 0 {
+		copy(sideBuf, dst)
+	}
+
+	lookahead.ProcessWithSidechain(dst, sideBuf)
+
+	return true
+}
+
+func (e *Engine) processVocoderNode(
+	node compiledChainNode,
+	dst []float64,
+	sideParents []compiledChainEdge,
+	mixBuf []float64,
+	edgeSrc func(edge compiledChainEdge) []float64,
+) bool {
+	if node.Type != "vocoder" {
+		return false
+	}
+
+	rt := e.chainNodes[node.ID]
+	if rt == nil {
+		return false
+	}
+
+	voc, ok := rt.effect.(*vocoderChainRuntime)
+	if !ok {
+		return false
+	}
+
+	if len(voc.carrierBuf) < len(dst) {
+		voc.carrierBuf = make([]float64, len(dst))
+	}
+
+	carrierBuf := voc.carrierBuf[:len(dst)]
+	mixParentEdgesInto(sideParents, carrierBuf, mixBuf, edgeSrc)
+
+	if len(sideParents) == 0 {
+		copy(carrierBuf, dst)
+	}
+
+	voc.processVocoder(dst, carrierBuf)
+
+	return true
+}
+
+func copyGraphOutputToBlock(block []float64, buffers map[string][]float64) bool {
+	out := buffers[chainOutputNodeID]
 	if out == nil {
 		return false
 	}
