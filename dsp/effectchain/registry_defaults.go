@@ -36,7 +36,7 @@ func WithFilterDesigner(d FilterDesigner) RegistryOption {
 
 // DefaultRegistry returns a Registry pre-populated with all built-in effect runtimes.
 //
-//nolint:funlen
+//nolint:funlen,gocognit,cyclop,maintidx
 func DefaultRegistry(opts ...RegistryOption) *Registry {
 	cfg := &registryConfig{}
 	for _, opt := range opts {

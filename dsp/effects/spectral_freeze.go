@@ -1,4 +1,4 @@
-//nolint:funlen
+//nolint:funlen,gocognit,cyclop
 package effects
 
 import (

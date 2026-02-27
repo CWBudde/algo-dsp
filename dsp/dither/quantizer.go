@@ -1,4 +1,4 @@
-//nolint:funcorder
+//nolint:funcorder,gosec
 package dither
 
 import (

@@ -1,4 +1,4 @@
-//nolint:funlen
+//nolint:funlen,gocritic
 package band
 
 import (

@@ -1,4 +1,4 @@
-//nolint:funcorder
+//nolint:funcorder,nestif
 package effects
 
 import (

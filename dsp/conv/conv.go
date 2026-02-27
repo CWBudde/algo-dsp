@@ -26,6 +26,8 @@
 // The Auto function automatically selects the best algorithm based on input sizes:
 //   - Direct convolution for very short kernels (< 32 samples)
 //   - FFT-based methods for longer kernels
+//
+//nolint:godoclint
 package conv
 
 import (

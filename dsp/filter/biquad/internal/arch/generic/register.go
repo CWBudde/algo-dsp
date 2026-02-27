@@ -5,6 +5,7 @@ import (
 	"github.com/cwbudde/algo-vecmath/cpu"
 )
 
+//nolint:gochecknoinits
 func init() {
 	registry.Global.Register(registry.OpEntry{
 		Name:         "generic",

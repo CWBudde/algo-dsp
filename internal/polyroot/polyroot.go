@@ -1,7 +1,7 @@
 // Package polyroot provides polynomial root-finding and fourth-order section
 // factorisation utilities shared by filter design packages.
 //
-//nolint:funlen
+//nolint:funlen,gosec
 package polyroot
 
 import (

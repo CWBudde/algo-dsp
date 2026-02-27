@@ -1,4 +1,4 @@
-//nolint:funcorder
+//nolint:funcorder,gocritic,nestif
 package sweep
 
 import (

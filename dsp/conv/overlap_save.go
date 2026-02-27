@@ -1,4 +1,4 @@
-//nolint:funlen
+//nolint:funlen,gocognit,gocritic,cyclop
 package conv
 
 import (

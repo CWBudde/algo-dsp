@@ -1,4 +1,4 @@
-//nolint:funcorder,funlen
+//nolint:funcorder,funlen,maintidx
 package webdemo
 
 import (

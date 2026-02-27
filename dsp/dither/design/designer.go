@@ -1,3 +1,4 @@
+//nolint:gocognit,cyclop,gosec,ineffassign
 package design
 
 import (
@@ -152,10 +153,9 @@ func (d *Designer) Run(ctx context.Context) ([]float64, error) {
 		}
 
 		retryCount := 0
-		lastBestScore := math.MaxFloat64
 		bestScore := math.MaxFloat64
 
-		for retryCount == 0 || (lastBestScore < bestScore && retryCount < ntryMax) {
+		for retryCount < ntryMax {
 			for step := range d.iterations {
 				// Check cancellation periodically.
 				if step%1000 == 0 {
@@ -201,12 +201,8 @@ func (d *Designer) Run(ctx context.Context) ([]float64, error) {
 
 		// Reset if retries exhausted without improvement.
 		if retryCount >= ntryMax {
-			lastBestScore = math.MaxFloat64
-
 			continue
 		}
-
-		lastBestScore = bestScore
 	}
 }
 

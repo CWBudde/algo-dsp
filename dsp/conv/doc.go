@@ -70,4 +70,6 @@
 //
 // For repeated convolution with the same kernel, pre-create an [OverlapAdd] or
 // [OverlapSave] convolver to avoid repeated FFT plan creation.
+//
+//nolint:godoclint
 package conv

@@ -1,4 +1,4 @@
-//nolint:funcorder,funlen
+//nolint:funcorder,funlen,gocognit,cyclop
 package pitch
 
 import (

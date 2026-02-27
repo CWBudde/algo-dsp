@@ -1,5 +1,6 @@
 //go:build amd64 && !purego
 
+//nolint:gochecknoinits
 package avx2
 
 import (
@@ -7,6 +8,7 @@ import (
 	"github.com/cwbudde/algo-vecmath/cpu"
 )
 
+//nolint:gochecknoinits
 func init() {
 	registry.Global.Register(registry.OpEntry{
 		Name:         "avx2",

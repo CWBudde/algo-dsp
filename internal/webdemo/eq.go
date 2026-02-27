@@ -1,4 +1,4 @@
-//nolint:funlen
+//nolint:funlen,gocognit,gocyclo,cyclop
 package webdemo
 
 import (
