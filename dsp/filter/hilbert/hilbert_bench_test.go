@@ -11,13 +11,11 @@ func BenchmarkProcessSample64(b *testing.B) {
 		b.Fatalf("New64Default() error = %v", err)
 	}
 
-	x := 0.0
-
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := range b.N {
-		x = math.Sin(float64(i) * 2 * math.Pi / 97)
+		x := math.Sin(float64(i) * 2 * math.Pi / 97)
 		_, _ = p.ProcessSample(x)
 	}
 }
@@ -55,13 +53,11 @@ func BenchmarkProcessSample32(b *testing.B) {
 		b.Fatalf("New32Default() error = %v", err)
 	}
 
-	x := float32(0)
-
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := range b.N {
-		x = float32(math.Sin(float64(i) * 2 * math.Pi / 97))
+		x := float32(math.Sin(float64(i) * 2 * math.Pi / 97))
 		_, _ = p.ProcessSample(x)
 	}
 }

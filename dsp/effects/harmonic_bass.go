@@ -66,7 +66,7 @@ func NewHarmonicBass(sampleRate float64) (*HarmonicBass, error) {
 
 	l, err := dynamics.NewLimiter(sampleRate)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("harmonic bass: create limiter: %w", err)
 	}
 
 	b := &HarmonicBass{
@@ -284,10 +284,15 @@ func (b *HarmonicBass) applyResponse() error {
 
 	err := b.limiter.SetRelease(b.responseMs)
 	if err != nil {
-		return err
+		return fmt.Errorf("harmonic bass: set limiter release: %w", err)
 	}
 
-	return b.limiter.SetThreshold(0)
+	err = b.limiter.SetThreshold(0)
+	if err != nil {
+		return fmt.Errorf("harmonic bass: set limiter threshold: %w", err)
+	}
+
+	return nil
 }
 
 func (b *HarmonicBass) rebuildFilters() error {
@@ -341,7 +346,12 @@ func (b *HarmonicBass) rebuildFilters() error {
 	b.highpass = biquad.NewChain(hpCoeffs)
 
 	if b.limiter != nil {
-		return b.limiter.SetSampleRate(b.sampleRate)
+		err := b.limiter.SetSampleRate(b.sampleRate)
+		if err != nil {
+			return fmt.Errorf("harmonic bass: set limiter sample rate: %w", err)
+		}
+
+		return nil
 	}
 
 	return nil

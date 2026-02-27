@@ -200,7 +200,10 @@ func TestQuadFromRoots_ConjugatePair(t *testing.T) {
 func TestQuadFromRoots_NotConjugate_ReturnsError(t *testing.T) {
 	pair := [2]complex128{complex(0.5, 0.3), complex(0.6, -0.3)}
 
-	_, _, _, err := QuadFromRoots(pair)
+	b0, b1, _, err := QuadFromRoots(pair)
+	_ = b0
+	_ = b1
+
 	if err == nil {
 		t.Error("expected error for non-conjugate pair")
 	}

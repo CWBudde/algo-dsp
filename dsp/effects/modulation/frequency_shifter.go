@@ -48,7 +48,7 @@ func WithFrequencyShiftHz(shiftHz float64) FrequencyShifterOption {
 func WithFrequencyShifterHilbertPreset(preset hilbert.Preset) FrequencyShifterOption {
 	return func(cfg *frequencyShifterConfig) error {
 		if _, _, err := hilbert.PresetConfig(preset); err != nil {
-			return err
+			return fmt.Errorf("frequency shifter: invalid hilbert preset: %w", err)
 		}
 
 		cfg.useCustomDesign = false
@@ -62,7 +62,7 @@ func WithFrequencyShifterHilbertPreset(preset hilbert.Preset) FrequencyShifterOp
 func WithFrequencyShifterHilbertDesign(numberOfCoeffs int, transition float64) FrequencyShifterOption {
 	return func(cfg *frequencyShifterConfig) error {
 		if _, err := hilbert.DesignCoefficients(numberOfCoeffs, transition); err != nil {
-			return err
+			return fmt.Errorf("frequency shifter: invalid hilbert design: %w", err)
 		}
 
 		cfg.useCustomDesign = true
@@ -119,7 +119,7 @@ func NewFrequencyShifter(sampleRate float64, opts ...FrequencyShifterOption) (*F
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("frequency shifter: create hilbert processor: %w", err)
 	}
 
 	f := &FrequencyShifter{
@@ -169,7 +169,7 @@ func (f *FrequencyShifter) SetShiftHz(shiftHz float64) error {
 func (f *FrequencyShifter) SetHilbertPreset(preset hilbert.Preset) error {
 	h, err := hilbert.New64Preset(preset)
 	if err != nil {
-		return err
+		return fmt.Errorf("frequency shifter: set hilbert preset: %w", err)
 	}
 
 	f.hilbert = h
@@ -185,7 +185,7 @@ func (f *FrequencyShifter) SetHilbertPreset(preset hilbert.Preset) error {
 func (f *FrequencyShifter) SetHilbertDesign(numberOfCoeffs int, transition float64) error {
 	h, err := hilbert.New64(numberOfCoeffs, transition)
 	if err != nil {
-		return err
+		return fmt.Errorf("frequency shifter: set hilbert design: %w", err)
 	}
 
 	f.hilbert = h

@@ -23,15 +23,21 @@ func almostEqual(a, b, tol float64) bool {
 	return math.Abs(a-b) <= tol
 }
 
-// generateSine creates a sine wave with the given amplitude, frequency, and sample rate.
+// generateSine creates a unit-amplitude 1000 Hz sine wave at 48 kHz.
 // It generates exactly numCycles full cycles.
-func generateSine(amplitude, freq, sampleRate float64, numCycles int) []float64 {
-	samplesPerCycle := int(sampleRate / freq)
+
+const (
+	testSineFreqHz   = 1000.0
+	testSampleRateHz = 48000.0
+)
+
+func generateSine(numCycles int) []float64 {
+	samplesPerCycle := int(testSampleRateHz / testSineFreqHz)
 	n := samplesPerCycle * numCycles
 
 	out := make([]float64, n)
 	for i := range out {
-		out[i] = amplitude * math.Sin(2*math.Pi*freq*float64(i)/sampleRate)
+		out[i] = math.Sin(2 * math.Pi * testSineFreqHz * float64(i) / testSampleRateHz)
 	}
 
 	return out
@@ -47,14 +53,14 @@ func generateDC(value float64, length int) []float64 {
 	return out
 }
 
-// generateSquare creates a +val/-val alternating square wave.
-func generateSquare(val float64, length int) []float64 {
+// generateSquare creates a +1/-1 alternating square wave.
+func generateSquare(length int) []float64 {
 	out := make([]float64, length)
 	for i := range out {
 		if i%2 == 0 {
-			out[i] = val
+			out[i] = 1
 		} else {
-			out[i] = -val
+			out[i] = -1
 		}
 	}
 
@@ -142,7 +148,7 @@ func TestCalculate_DCSignal(t *testing.T) {
 
 func TestCalculate_SineWave(t *testing.T) {
 	// 1000 Hz sine at 48000 SR, 10 full cycles.
-	signal := generateSine(1.0, 1000, 48000, 10)
+	signal := generateSine(10)
 	s := Calculate(signal)
 
 	expectedRMS := 1.0 / math.Sqrt(2)
@@ -180,7 +186,7 @@ func TestCalculate_SineWave(t *testing.T) {
 }
 
 func TestCalculate_SquareWave(t *testing.T) {
-	signal := generateSquare(1.0, 1000)
+	signal := generateSquare(1000)
 	s := Calculate(signal)
 
 	if !almostEqual(s.DC, 0, tolerance) {
@@ -413,7 +419,7 @@ func TestRMS(t *testing.T) {
 		{"empty", nil, 0},
 		{"dc", generateDC(1.0, 100), 1.0},
 		{"single", []float64{4.0}, 4.0},
-		{"square", generateSquare(1.0, 1000), 1.0},
+		{"square", generateSquare(1000), 1.0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -433,7 +439,7 @@ func TestDC(t *testing.T) {
 	}{
 		{"empty", nil, 0},
 		{"dc", generateDC(3.0, 100), 3.0},
-		{"symmetric", generateSquare(1.0, 1000), 0},
+		{"symmetric", generateSquare(1000), 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -475,7 +481,7 @@ func TestCrestFactor(t *testing.T) {
 		{"empty", nil, 0},
 		{"dc", generateDC(1.0, 100), 1.0},
 		{"zero", make([]float64, 10), 0},
-		{"square", generateSquare(1.0, 1000), 1.0},
+		{"square", generateSquare(1000), 1.0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -497,7 +503,7 @@ func TestZeroCrossings(t *testing.T) {
 		{"single", []float64{1}, 0},
 		{"no_crossings", []float64{1, 2, 3}, 0},
 		{"one_crossing", []float64{1, -1}, 1},
-		{"alternating", generateSquare(1.0, 10), 9},
+		{"alternating", generateSquare(10), 9},
 		{"through_zero", []float64{1, 0, -1}, 0}, // 1*0=0, 0*(-1)=0, neither < 0
 	}
 	for _, tt := range tests {
@@ -560,7 +566,7 @@ func TestMoments(t *testing.T) {
 	})
 
 	t.Run("matches_calculate", func(t *testing.T) {
-		signal := generateSine(1.0, 1000, 48000, 5)
+		signal := generateSine(5)
 		s := Calculate(signal)
 		mean, variance, skewness, kurtosis := Moments(signal)
 
@@ -587,8 +593,8 @@ func TestMoments(t *testing.T) {
 func TestIndividualFunctionsMatchCalculate(t *testing.T) {
 	signals := map[string][]float64{
 		"dc":     generateDC(2.5, 500),
-		"sine":   generateSine(1.0, 1000, 48000, 5),
-		"square": generateSquare(1.0, 1000),
+		"sine":   generateSine(5),
+		"square": generateSquare(1000),
 	}
 
 	for name, signal := range signals {
@@ -630,8 +636,8 @@ func TestIndividualFunctionsMatchCalculate(t *testing.T) {
 func TestStreamingStats_MatchesCalculate(t *testing.T) {
 	signals := map[string][]float64{
 		"dc":      generateDC(1.0, 1000),
-		"sine":    generateSine(1.0, 1000, 48000, 10),
-		"square":  generateSquare(1.0, 1000),
+		"sine":    generateSine(10),
+		"square":  generateSquare(1000),
 		"uniform": generateUniform(10001),
 	}
 
@@ -704,7 +710,7 @@ func TestStreamingStats_SingleSample(t *testing.T) {
 }
 
 func TestStreamingStats_SampleBySample(t *testing.T) {
-	signal := generateSine(1.0, 1000, 48000, 2)
+	signal := generateSine(2)
 	expected := Calculate(signal)
 
 	ss := NewStreamingStats()

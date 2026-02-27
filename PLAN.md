@@ -186,7 +186,7 @@ Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  ✅ Complete
 Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
 Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  ✅ Complete
 Phase 29: Dither and Noise Shaping                    [3 weeks]  ✅ Complete
-Phase 30: Polyphase Hilbert / Analytic Signal         [2 weeks]  📋 Planned
+Phase 30: Polyphase Hilbert / Analytic Signal         [2 weeks]  ✅ Complete
 Phase 31: Vocoder                                      [3 weeks]  🔄 In Progress
 Phase 32: Interpolation Kernel Expansion               [2 weeks]  📋 Planned
 Phase 35: API Stabilization and v1.0                   [2 weeks]  🔄 In Progress
@@ -532,7 +532,7 @@ Exit criteria:
 - [ ] `go test ./...` and `go test -tags purego ./...` pass.
 - [ ] `BENCHMARKS.md` baselines updated with date + Go version + machine info.
 
-### Phase 29: Polyphase Hilbert / Analytic Signal (Planned)
+### Phase 29: Polyphase Hilbert / Analytic Signal (Complete)
 
 Goal:
 
@@ -540,25 +540,25 @@ Goal:
 
 Tasks:
 
-- [ ] Polyphase Hilbert core
-  - [ ] Implement 32-bit and 64-bit processor variants with reusable state.
-  - [ ] Implement two-path polyphase/allpass structure producing quadrature outputs (A/B) with half-sample alignment handling.
-  - [ ] Implement coefficient-count-specialized fast paths for small orders and generic fallback path.
-- [ ] API and processing modes
-  - [ ] Expose `ProcessSample`, `ProcessBlock`, `Reset/ClearBuffers`, and coefficient-configuration APIs.
-  - [ ] Provide envelope helper derived from analytic signal magnitude.
-  - [ ] Define coefficient source/validation contracts and numeric safety checks.
-- [ ] Validation and characterization
-  - [ ] Add phase-quadrature tests (near 90° target across passband).
-  - [ ] Add amplitude-matching and image-rejection tests for analytic signal generation.
-  - [ ] Add parity-oriented checks against legacy outputs for selected coefficient sets.
-  - [ ] Add benchmarks and allocation checks for block/sample APIs.
+- [x] Polyphase Hilbert core
+  - [x] Implement 32-bit and 64-bit processor variants with reusable state.
+  - [x] Implement two-path polyphase/allpass structure producing quadrature outputs (A/B) with half-sample alignment handling.
+  - [x] Implement coefficient-count-specialized fast paths for small orders and generic fallback path.
+- [x] API and processing modes
+  - [x] Expose `ProcessSample`, `ProcessBlock`, `Reset/ClearBuffers`, and coefficient-configuration APIs.
+  - [x] Provide envelope helper derived from analytic signal magnitude.
+  - [x] Define coefficient source/validation contracts and numeric safety checks.
+- [x] Validation and characterization
+  - [x] Add phase-quadrature tests (near 90° target across passband).
+  - [x] Add amplitude-matching and image-rejection tests for analytic signal generation.
+  - [x] Add parity-oriented checks against legacy outputs for selected coefficient sets.
+  - [x] Add benchmarks and allocation checks for block/sample APIs.
 
 Exit criteria:
 
-- [ ] Hilbert processor achieves documented quadrature and image-rejection targets.
-- [ ] Streaming and block APIs pass race/tests with no unexpected allocations.
-- [ ] Runnable examples for quadrature and envelope extraction are included.
+- [x] Hilbert processor achieves documented quadrature and image-rejection targets.
+- [x] Streaming and block APIs pass race/tests with no unexpected allocations.
+- [x] Runnable examples for quadrature and envelope extraction are included.
 
 ### Phase 30: Interpolation Kernel Expansion (Planned)
 

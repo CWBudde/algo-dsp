@@ -131,12 +131,12 @@ func deconvolveNaive(signal, kernel []float64) ([]float64, error) {
 
 	err = plan.Forward(signalFreq, signalPadded)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: forward FFT signal failed: %w", err)
 	}
 
 	err = plan.Forward(kernelFreq, kernelPadded)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: forward FFT kernel failed: %w", err)
 	}
 
 	// Spectral division
@@ -155,7 +155,7 @@ func deconvolveNaive(signal, kernel []float64) ([]float64, error) {
 
 	err = plan.Inverse(resultTime, resultFreq)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: inverse FFT failed: %w", err)
 	}
 
 	// Extract real part
@@ -203,12 +203,12 @@ func deconvolveRegularized(signal, kernel []float64, epsilon float64) ([]float64
 
 	err = plan.Forward(signalFreq, signalPadded)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: forward FFT signal failed: %w", err)
 	}
 
 	err = plan.Forward(kernelFreq, kernelPadded)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: forward FFT kernel failed: %w", err)
 	}
 
 	// Regularized division: Y * conj(H) / (|H|^2 + epsilon)
@@ -224,7 +224,7 @@ func deconvolveRegularized(signal, kernel []float64, epsilon float64) ([]float64
 
 	err = plan.Inverse(resultTime, resultFreq)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: inverse FFT failed: %w", err)
 	}
 
 	// Extract real part
@@ -293,12 +293,12 @@ func deconvolveWiener(signal, kernel []float64, opts DeconvOptions) ([]float64, 
 
 	err = plan.Forward(signalFreq, signalPadded)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: forward FFT signal failed: %w", err)
 	}
 
 	err = plan.Forward(kernelFreq, kernelPadded)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: forward FFT kernel failed: %w", err)
 	}
 
 	// Wiener filter: Y * conj(H) / (|H|^2 + NSR)
@@ -314,7 +314,7 @@ func deconvolveWiener(signal, kernel []float64, opts DeconvOptions) ([]float64, 
 
 	err = plan.Inverse(resultTime, resultFreq)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: inverse FFT failed: %w", err)
 	}
 
 	// Extract real part
@@ -381,7 +381,7 @@ func InverseFilter(kernel []float64, length int, epsilon float64) ([]float64, er
 
 	err = plan.Forward(kernelFreq, kernelPadded)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: forward FFT kernel failed: %w", err)
 	}
 
 	// Compute inverse: conj(H) / (|H|^2 + epsilon)
@@ -397,7 +397,7 @@ func InverseFilter(kernel []float64, length int, epsilon float64) ([]float64, er
 
 	err = plan.Inverse(invTime, invFreq)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("conv: inverse FFT failed: %w", err)
 	}
 
 	// Extract real part

@@ -100,7 +100,7 @@ func registerChainEffectFactory(effectType string, factory chainEffectFactory) {
 }
 
 func init() {
-	registerChainEffectFactory("chorus", func(e *Engine) (chainEffectRuntime, error) {
+	registerChainEffectFactory("chorus", func(_ *Engine) (chainEffectRuntime, error) {
 		fx, err := modulation.NewChorus()
 		if err != nil {
 			return nil, err
@@ -206,7 +206,7 @@ func init() {
 	}
 	for _, effectType := range filterNodeTypes {
 		t := effectType
-		registerChainEffectFactory(t, func(e *Engine) (chainEffectRuntime, error) {
+		registerChainEffectFactory(t, func(_ *Engine) (chainEffectRuntime, error) {
 			return &filterChainRuntime{fx: biquad.NewChain([]biquad.Coefficients{{B0: 1}})}, nil
 		})
 	}
@@ -332,7 +332,7 @@ func init() {
 
 		return &transientShaperChainRuntime{fx: fx}, nil
 	})
-	registerChainEffectFactory("dyn-multiband", func(e *Engine) (chainEffectRuntime, error) {
+	registerChainEffectFactory("dyn-multiband", func(_ *Engine) (chainEffectRuntime, error) {
 		return &multibandChainRuntime{}, nil
 	})
 	registerChainEffectFactory("vocoder", func(e *Engine) (chainEffectRuntime, error) {

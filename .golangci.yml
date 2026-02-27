@@ -6,23 +6,23 @@ run:
 linters:
   default: all
   disable:
-    - depguard          # no import allow/deny lists needed
-    - err113            # sentinel errors too verbose for this codebase
-    - exhaustive        # don't require exhaustive switch on enums
-    - exhaustruct       # don't require all struct fields populated
-    - gochecknoglobals  # sync.Pools, singletons, config vars are fine
-    - godox             # allow TODO/FIXME comments
-    - ireturn           # allow returning interfaces
-    - lll               # long lines acceptable in math-heavy code
-    - mnd               # magic numbers acceptable in math-heavy code
-    - musttag           # no struct tag enforcement needed
-    - nlreturn          # no blank-line-before-return enforcement
-    - nonamedreturns    # named returns useful for complex signatures
-    - paralleltest      # not enforcing t.Parallel everywhere
-    - sqlclosecheck     # no SQL in this project
-    - testpackage       # allow white-box tests in same package
-    - varnamelen        # short names idiomatic in math/tensor code
-    - wsl               # use wsl_v5 instead
+    - depguard # no import allow/deny lists needed
+    - err113 # sentinel errors too verbose for this codebase
+    - exhaustive # don't require exhaustive switch on enums
+    - exhaustruct # don't require all struct fields populated
+    - gochecknoglobals # sync.Pools, singletons, config vars are fine
+    - godox # allow TODO/FIXME comments
+    - ireturn # allow returning interfaces
+    - lll # long lines acceptable in math-heavy code
+    - mnd # magic numbers acceptable in math-heavy code
+    - musttag # no struct tag enforcement needed
+    - nlreturn # no blank-line-before-return enforcement
+    - nonamedreturns # named returns useful for complex signatures
+    - paralleltest # not enforcing t.Parallel everywhere
+    - sqlclosecheck # no SQL in this project
+    - testpackage # allow white-box tests in same package
+    - varnamelen # short names idiomatic in math/tensor code
+    - wsl # use wsl_v5 instead
   enable:
     - wsl_v5
 
@@ -59,7 +59,21 @@ linters:
         text: empty-block
 
       # test files are more relaxed
-      - linters: [funlen, cyclop, gocognit, maintidx, wrapcheck, dupl, noctx, forcetypeassert, gosec, thelper, usetesting, goconst]
+      - linters:
+          [
+            funlen,
+            cyclop,
+            gocognit,
+            maintidx,
+            wrapcheck,
+            dupl,
+            noctx,
+            forcetypeassert,
+            gosec,
+            thelper,
+            usetesting,
+            goconst,
+          ]
         path: _test\.go
 
       # unsafe is intentional in SIMD/tensor code

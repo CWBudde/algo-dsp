@@ -538,7 +538,7 @@ func (e *Engine) Render(dst []float32) {
 
 	for i := range dst {
 		if e.running {
-			e.samplesUntilNextStep -= 1
+			e.samplesUntilNextStep--
 			for e.samplesUntilNextStep <= 0 {
 				stepIndex := e.currentStep
 				e.triggerCurrentStep()
