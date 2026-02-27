@@ -126,7 +126,7 @@ func printList() {
 	sort.Strings(names)
 
 	for _, n := range names {
-		fmt.Println(n)
+		_, _ = fmt.Fprintln(os.Stdout, n)
 	}
 }
 

@@ -234,7 +234,13 @@ func OverlapAddConvolve(signal, kernel []float64) ([]float64, error) {
 	// Get a pooled instance
 	pool := getOverlapAddPool(fftSize)
 
-	oa := pool.Get().(*OverlapAdd)
+	v := pool.Get()
+
+	oa, ok := v.(*OverlapAdd)
+	if !ok || oa == nil {
+		panic("conv: overlap-add pool returned unexpected type")
+	}
+
 	defer pool.Put(oa)
 
 	// Initialize/reinitialize the instance for this kernel

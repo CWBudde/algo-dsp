@@ -22,7 +22,13 @@ func NewPool() *Pool {
 // Get returns a Buffer with the requested length. The buffer is zeroed.
 // Callers must return it via Put when done.
 func (p *Pool) Get(length int) *Buffer {
-	b := p.pool.Get().(*Buffer)
+	v := p.pool.Get()
+
+	b, ok := v.(*Buffer)
+	if !ok || b == nil {
+		panic("buffer: pool returned unexpected type")
+	}
+
 	b.Resize(length)
 	b.Zero()
 

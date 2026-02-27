@@ -322,7 +322,13 @@ func OverlapSaveConvolve(signal, kernel []float64) ([]float64, error) {
 	// Get a pooled instance
 	pool := getOverlapSavePool(fftSize)
 
-	os := pool.Get().(*OverlapSave)
+	v := pool.Get()
+
+	os, ok := v.(*OverlapSave)
+	if !ok || os == nil {
+		panic("conv: overlap-save pool returned unexpected type")
+	}
+
 	defer pool.Put(os)
 
 	// Initialize/reinitialize the instance for this kernel

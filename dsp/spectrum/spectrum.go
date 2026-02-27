@@ -21,7 +21,13 @@ var scratchPool = sync.Pool{
 }
 
 func getScratch(n int) (re, im []float64, buf *scratchBuf) {
-	buf = scratchPool.Get().(*scratchBuf)
+	v := scratchPool.Get()
+	var ok bool
+
+	buf, ok = v.(*scratchBuf)
+	if !ok || buf == nil {
+		panic("spectrum: scratch pool returned unexpected type")
+	}
 
 	need := 2 * n
 	if cap(buf.data) < need {

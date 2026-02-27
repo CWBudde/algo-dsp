@@ -32,7 +32,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/cwbudde/algo-vecmath"
+	vecmath "github.com/cwbudde/algo-vecmath"
 )
 
 // Errors returned by convolution functions.
@@ -124,7 +124,13 @@ func directToScalar(dst, a, b []float64, n, m int) {
 // Uses vecmath operations to vectorize the inner loop.
 func directToSIMD(dst, a, b []float64, n, m int) {
 	// Get scratch buffer from pool
-	bufPtr := scratchPool.Get().(*[]float64)
+	v := scratchPool.Get()
+
+	bufPtr, ok := v.(*[]float64)
+	if !ok || bufPtr == nil {
+		panic("conv: scratch pool returned unexpected type")
+	}
+
 	defer scratchPool.Put(bufPtr)
 
 	// Ensure scratch buffer is large enough

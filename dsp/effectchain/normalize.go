@@ -59,7 +59,7 @@ func normalizeFilterKind(nodeType, raw string) string {
 	case "filter-allpass":
 		return "allpass"
 	case "filter-peak":
-		return "peak"
+		return kindPeak
 	case "filter-lowshelf":
 		return "lowshelf"
 	case "filter-highshelf":
