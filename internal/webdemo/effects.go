@@ -140,7 +140,7 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 		p.SpectralPitchHop = 1
 	}
 
-	if p.ReverbModel != "fdn" && p.ReverbModel != "freeverb" {
+	if p.ReverbModel != reverbModelFDN && p.ReverbModel != "freeverb" {
 		p.ReverbModel = "freeverb"
 	}
 
@@ -170,24 +170,18 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 		p.HarmonicBassHighpass = 2
 	}
 
-	graph, err := parseChainGraph(p.ChainGraphJSON)
-	if err != nil {
-		return err
-	}
-
 	e.effects = p
 
-	err = e.rebuildEffects()
+	err := e.rebuildEffects()
 	if err != nil {
 		return err
 	}
 
-	err = e.syncChainEffectNodes(graph)
+	err = e.chain.LoadGraph(p.ChainGraphJSON)
 	if err != nil {
 		return err
 	}
 
-	e.chainGraph = graph
 	if prevChorusEnabled && !p.ChorusEnabled {
 		e.chorus.Reset()
 	}
@@ -470,7 +464,7 @@ func (e *Engine) rebuildReverbEffect() error {
 		return nil
 	}
 
-	if e.effects.ReverbModel == "fdn" {
+	if e.effects.ReverbModel == reverbModelFDN {
 		return configureFDNReverb(
 			e.fdn,
 			e.sampleRate,

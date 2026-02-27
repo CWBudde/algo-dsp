@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/cmplx"
 
+	"github.com/cwbudde/algo-dsp/dsp/effectchain"
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
 	"github.com/cwbudde/algo-dsp/dsp/effects/modulation"
@@ -12,7 +13,6 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
 	"github.com/cwbudde/algo-dsp/dsp/effects/spatial"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
-	"github.com/cwbudde/algo-dsp/dsp/filter/crossover"
 	algofft "github.com/cwbudde/algo-fft"
 )
 
@@ -219,16 +219,10 @@ type Engine struct {
 	limParams LimiterParams
 	limiter   *dynamics.Limiter
 
-	renderBlock       []float64
-	chainBuf          []float64
-	chainMixBuf       []float64
-	chainOutBuf       map[string][]float64
-	chainSplitLowBuf  map[string][]float64
-	chainSplitHighBuf map[string][]float64
-	chainCrossover    map[string]*crossover.Crossover
+	renderBlock []float64
+	chainBuf    []float64
 
-	chainGraph *compiledChainGraph
-	chainNodes map[string]*chainNodeRuntime
+	chain *effectchain.Chain
 
 	spectrum             SpectrumParams
 	spectrumWindow       []float64
@@ -494,6 +488,15 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 		e.irLib = lib
 	}
 
+	reg := effectchain.DefaultRegistry(
+		effectchain.WithIRProvider(&irLibAdapter{lib: e.irLib}),
+		effectchain.WithFilterDesigner(&eqFilterDesigner{}),
+	)
+	e.chain = effectchain.New(
+		effectchain.Context{SampleRate: sampleRate},
+		reg,
+	)
+
 	err = e.rebuildEffects()
 	if err != nil {
 		return nil, err
@@ -625,7 +628,7 @@ func (e *Engine) NodeResponseCurveDB(node string, freqs []float64) []float64 {
 		chain = e.low
 	case "mid":
 		chain = e.mid
-	case "high":
+	case eqNodeHigh:
 		chain = e.high
 	case "lp":
 		chain = e.lp
