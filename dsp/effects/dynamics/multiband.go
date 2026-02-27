@@ -89,7 +89,8 @@ type MultibandCompressor struct {
 // Use [MultibandCompressor.SetBandThreshold] and related methods to configure
 // per-band compression.
 func NewMultibandCompressor(freqs []float64, order int, sampleRate float64) (*MultibandCompressor, error) {
-	if err := validateMultibandParams(freqs, order, sampleRate); err != nil {
+	err := validateMultibandParams(freqs, order, sampleRate)
+	if err != nil {
 		return nil, err
 	}
 

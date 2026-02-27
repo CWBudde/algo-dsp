@@ -267,35 +267,42 @@ func TestValidationAndEdgeCases(t *testing.T) {
 		t.Fatalf("expected nil for zero length, got %v", got)
 	}
 
-	if _, err := Hann(0); err == nil {
+	_, err := Hann(0)
+	if err == nil {
 		t.Fatal("expected size validation error")
 	}
 
-	if _, err := Kaiser(16, -1); err == nil {
+	_, err = Kaiser(16, -1)
+	if err == nil {
 		t.Fatal("expected beta validation error")
 	}
 
-	if _, err := Tukey(16, 2); err == nil {
+	_, err = Tukey(16, 2)
+	if err == nil {
 		t.Fatal("expected alpha validation error")
 	}
 
-	if _, err := Gaussian(16, 0); err == nil {
+	_, err = Gaussian(16, 0)
+	if err == nil {
 		t.Fatal("expected gauss alpha validation error")
 	}
 
-	if _, err := EquivalentNoiseBandwidth(nil); err == nil {
+	_, err = EquivalentNoiseBandwidth(nil)
+	if err == nil {
 		t.Fatal("expected empty coeffs error")
 	}
 
-	if _, err := EquivalentNoiseBandwidth([]float64{0, 0, 0}); err == nil {
+	_, err = EquivalentNoiseBandwidth([]float64{0, 0, 0})
+	if err == nil {
 		t.Fatal("expected zero coherent gain error")
 	}
 
-	if _, err := ApplyCoefficients([]float64{1, 2}, []float64{1}); err == nil {
+	_, err = ApplyCoefficients([]float64{1, 2}, []float64{1})
+	if err == nil {
 		t.Fatal("expected mismatch error")
 	}
 
-	err := ApplyCoefficientsInPlace([]float64{1, 2}, []float64{1})
+	err = ApplyCoefficientsInPlace([]float64{1, 2}, []float64{1})
 	if err == nil {
 		t.Fatal("expected mismatch error")
 	}

@@ -31,7 +31,8 @@ func TestTremoloProcessInPlaceMatchesProcess(t *testing.T) {
 	got := make([]float64, len(input))
 	copy(got, input)
 
-	if err := tremolo2.ProcessInPlace(got); err != nil {
+	err = tremolo2.ProcessInPlace(got)
+	if err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
 
@@ -90,15 +91,18 @@ func TestTremoloDepthZeroIsTransparent(t *testing.T) {
 }
 
 func TestTremoloValidation(t *testing.T) {
-	if _, err := NewTremolo(0); err == nil {
+	_, err := NewTremolo(0)
+	if err == nil {
 		t.Fatal("NewTremolo() expected error for invalid sample rate")
 	}
 
-	if _, err := NewTremolo(48000, WithTremoloDepth(1.2)); err == nil {
+	_, err = NewTremolo(48000, WithTremoloDepth(1.2))
+	if err == nil {
 		t.Fatal("NewTremolo() expected error for invalid depth")
 	}
 
-	if _, err := NewTremolo(48000, WithTremoloSmoothingMs(-1)); err == nil {
+	_, err = NewTremolo(48000, WithTremoloSmoothingMs(-1))
+	if err == nil {
 		t.Fatal("NewTremolo() expected error for invalid smoothing")
 	}
 }

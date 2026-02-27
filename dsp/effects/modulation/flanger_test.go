@@ -31,7 +31,8 @@ func TestFlangerProcessInPlaceMatchesProcess(t *testing.T) {
 	got := make([]float64, len(input))
 	copy(got, input)
 
-	if err := f2.ProcessInPlace(got); err != nil {
+	err = f2.ProcessInPlace(got)
+	if err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
 
@@ -102,18 +103,21 @@ func TestFlangerImpulseAtConfiguredDelayWhenDepthZero(t *testing.T) {
 }
 
 func TestFlangerValidation(t *testing.T) {
-	if _, err := NewFlanger(0); err == nil {
+	_, err := NewFlanger(0)
+	if err == nil {
 		t.Fatal("NewFlanger() expected error for invalid sample rate")
 	}
 
-	if _, err := NewFlanger(48000, WithFlangerMix(2)); err == nil {
+	_, err = NewFlanger(48000, WithFlangerMix(2))
+	if err == nil {
 		t.Fatal("NewFlanger() expected error for invalid mix")
 	}
 
-	if _, err := NewFlanger(48000,
+	_, err = NewFlanger(48000,
 		WithFlangerBaseDelaySeconds(0.009),
 		WithFlangerDepthSeconds(0.002),
-	); err == nil {
+	)
+	if err == nil {
 		t.Fatal("NewFlanger() expected error for base+depth > max")
 	}
 }
@@ -130,7 +134,8 @@ func TestFlangerSetDepthSecondsRollsBackOnInvalidCombination(t *testing.T) {
 	prevBase := f.BaseDelaySeconds()
 	prevDepth := f.DepthSeconds()
 
-	if err := f.SetDepthSeconds(0.0014); err == nil {
+	err = f.SetDepthSeconds(0.0014)
+	if err == nil {
 		t.Fatal("SetDepthSeconds() expected error for base+depth > max")
 	}
 
@@ -142,7 +147,8 @@ func TestFlangerSetDepthSecondsRollsBackOnInvalidCombination(t *testing.T) {
 		t.Fatalf("depth changed after failed update: got=%g want=%g", got, prevDepth)
 	}
 
-	if err := f.SetDepthSeconds(0.0011); err != nil {
+	err = f.SetDepthSeconds(0.0011)
+	if err != nil {
 		t.Fatalf("SetDepthSeconds() error after rollback = %v", err)
 	}
 }
@@ -159,7 +165,8 @@ func TestFlangerSetBaseDelaySecondsRollsBackOnInvalidCombination(t *testing.T) {
 	prevBase := f.BaseDelaySeconds()
 	prevDepth := f.DepthSeconds()
 
-	if err := f.SetBaseDelaySeconds(0.007); err == nil {
+	err = f.SetBaseDelaySeconds(0.007)
+	if err == nil {
 		t.Fatal("SetBaseDelaySeconds() expected error for base+depth > max")
 	}
 
@@ -171,7 +178,8 @@ func TestFlangerSetBaseDelaySecondsRollsBackOnInvalidCombination(t *testing.T) {
 		t.Fatalf("depth changed after failed update: got=%g want=%g", got, prevDepth)
 	}
 
-	if err := f.SetBaseDelaySeconds(0.0055); err != nil {
+	err = f.SetBaseDelaySeconds(0.0055)
+	if err != nil {
 		t.Fatalf("SetBaseDelaySeconds() error after rollback = %v", err)
 	}
 }

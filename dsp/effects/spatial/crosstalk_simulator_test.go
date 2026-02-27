@@ -21,11 +21,13 @@ func TestCrosstalkSimulatorValidation(t *testing.T) {
 		t.Fatal("expected error for invalid mix")
 	}
 
-	if _, err := NewCrosstalkSimulator(48000, WithSimulatorPreset(CrosstalkPreset(99))); err == nil {
+	_, err = NewCrosstalkSimulator(48000, WithSimulatorPreset(CrosstalkPreset(99)))
+	if err == nil {
 		t.Fatal("expected error for invalid preset")
 	}
 
-	if _, err := NewCrosstalkSimulator(48000, WithSimulatorSpeedOfSound(200)); err == nil {
+	_, err = NewCrosstalkSimulator(48000, WithSimulatorSpeedOfSound(200))
+	if err == nil {
 		t.Fatal("expected error for invalid speed of sound")
 	}
 }

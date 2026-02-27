@@ -173,7 +173,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
 
-	if err := d.SetFrequency(8000); err != nil {
+	err = d.SetFrequency(8000)
+	if err != nil {
 		t.Fatalf("SetFrequency() error = %v", err)
 	}
 
@@ -181,7 +182,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("Frequency() = %g, want 8000", d.Frequency())
 	}
 
-	if err := d.SetQ(2.0); err != nil {
+	err = d.SetQ(2.0)
+	if err != nil {
 		t.Fatalf("SetQ() error = %v", err)
 	}
 
@@ -189,7 +191,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("Q() = %g, want 2", d.Q())
 	}
 
-	if err := d.SetThreshold(-30); err != nil {
+	err = d.SetThreshold(-30)
+	if err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
 
@@ -197,7 +200,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("Threshold() = %g, want -30", d.Threshold())
 	}
 
-	if err := d.SetRatio(8); err != nil {
+	err = d.SetRatio(8)
+	if err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
@@ -205,7 +209,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("Ratio() = %g, want 8", d.Ratio())
 	}
 
-	if err := d.SetKnee(6); err != nil {
+	err = d.SetKnee(6)
+	if err != nil {
 		t.Fatalf("SetKnee() error = %v", err)
 	}
 
@@ -213,7 +218,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("Knee() = %g, want 6", d.Knee())
 	}
 
-	if err := d.SetAttack(1); err != nil {
+	err = d.SetAttack(1)
+	if err != nil {
 		t.Fatalf("SetAttack() error = %v", err)
 	}
 
@@ -221,7 +227,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("Attack() = %g, want 1", d.Attack())
 	}
 
-	if err := d.SetRelease(50); err != nil {
+	err = d.SetRelease(50)
+	if err != nil {
 		t.Fatalf("SetRelease() error = %v", err)
 	}
 
@@ -229,7 +236,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("Release() = %g, want 50", d.Release())
 	}
 
-	if err := d.SetRange(-40); err != nil {
+	err = d.SetRange(-40)
+	if err != nil {
 		t.Fatalf("SetRange() error = %v", err)
 	}
 
@@ -237,7 +245,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("Range() = %g, want -40", d.Range())
 	}
 
-	if err := d.SetMode(DeEsserWideband); err != nil {
+	err = d.SetMode(DeEsserWideband)
+	if err != nil {
 		t.Fatalf("SetMode() error = %v", err)
 	}
 
@@ -245,7 +254,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("Mode() = %d, want %d", d.Mode(), DeEsserWideband)
 	}
 
-	if err := d.SetDetector(DeEsserDetectHighpass); err != nil {
+	err = d.SetDetector(DeEsserDetectHighpass)
+	if err != nil {
 		t.Fatalf("SetDetector() error = %v", err)
 	}
 
@@ -259,7 +269,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Error("Listen() = false, want true")
 	}
 
-	if err := d.SetFilterOrder(3); err != nil {
+	err = d.SetFilterOrder(3)
+	if err != nil {
 		t.Fatalf("SetFilterOrder() error = %v", err)
 	}
 
@@ -267,7 +278,8 @@ func TestDeEsserSettersUpdate(t *testing.T) {
 		t.Errorf("FilterOrder() = %d, want 3", d.FilterOrder())
 	}
 
-	if err := d.SetSampleRate(96000); err != nil {
+	err = d.SetSampleRate(96000)
+	if err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
 
@@ -301,7 +313,8 @@ func TestDeEsserLowFrequencyTransparent(t *testing.T) {
 	// Set threshold very low to be sensitive — but the low-frequency signal
 	// should still not trigger reduction because the detection filter
 	// rejects it.
-	if err := d.SetThreshold(-60); err != nil {
+	err = d.SetThreshold(-60)
+	if err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
 
@@ -346,11 +359,13 @@ func TestDeEsserReducesSibilance(t *testing.T) {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
 	// Very sensitive threshold, aggressive ratio.
-	if err := d.SetThreshold(-40); err != nil {
+	err = d.SetThreshold(-40)
+	if err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
 
-	if err := d.SetRatio(20); err != nil {
+	err = d.SetRatio(20)
+	if err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
@@ -395,15 +410,18 @@ func TestDeEsserWidebandMode(t *testing.T) {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
 
-	if err := d.SetMode(DeEsserWideband); err != nil {
+	err = d.SetMode(DeEsserWideband)
+	if err != nil {
 		t.Fatalf("SetMode() error = %v", err)
 	}
 
-	if err := d.SetThreshold(-40); err != nil {
+	err = d.SetThreshold(-40)
+	if err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
 
-	if err := d.SetRatio(20); err != nil {
+	err = d.SetRatio(20)
+	if err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
@@ -504,15 +522,18 @@ func TestDeEsserHighpassDetector(t *testing.T) {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
 
-	if err := d.SetDetector(DeEsserDetectHighpass); err != nil {
+	err = d.SetDetector(DeEsserDetectHighpass)
+	if err != nil {
 		t.Fatalf("SetDetector() error = %v", err)
 	}
 
-	if err := d.SetThreshold(-40); err != nil {
+	err = d.SetThreshold(-40)
+	if err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
 
-	if err := d.SetRatio(10); err != nil {
+	err = d.SetRatio(10)
+	if err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
@@ -616,7 +637,8 @@ func TestDeEsserMetrics(t *testing.T) {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
 
-	if err := d.SetThreshold(-30); err != nil {
+	err = d.SetThreshold(-30)
+	if err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
 
@@ -653,11 +675,13 @@ func TestDeEsserHardKnee(t *testing.T) {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
 
-	if err := d.SetKnee(0); err != nil {
+	err = d.SetKnee(0)
+	if err != nil {
 		t.Fatalf("SetKnee() error = %v", err)
 	}
 
-	if err := d.SetThreshold(-30); err != nil {
+	err = d.SetThreshold(-30)
+	if err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
 
@@ -690,7 +714,8 @@ func TestDeEsserFilterOrderEffect(t *testing.T) {
 			t.Fatalf("NewDeEsser() error = %v", err)
 		}
 
-		if err := d.SetFilterOrder(order); err != nil {
+		err = d.SetFilterOrder(order)
+		if err != nil {
 			t.Fatalf("SetFilterOrder() error = %v", err)
 		}
 
@@ -730,23 +755,28 @@ func TestDeEsserRangeLimit(t *testing.T) {
 	}
 
 	// Very aggressive settings.
-	if err := d.SetThreshold(-60); err != nil {
+	err = d.SetThreshold(-60)
+	if err != nil {
 		t.Fatalf("SetThreshold() error = %v", err)
 	}
 
-	if err := d.SetRatio(100); err != nil {
+	err = d.SetRatio(100)
+	if err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
-	if err := d.SetRange(-12); err != nil {
+	err = d.SetRange(-12)
+	if err != nil {
 		t.Fatalf("SetRange() error = %v", err)
 	}
 
-	if err := d.SetMode(DeEsserWideband); err != nil {
+	err = d.SetMode(DeEsserWideband)
+	if err != nil {
 		t.Fatalf("SetMode() error = %v", err)
 	}
 
-	if err := d.SetKnee(0); err != nil {
+	err = d.SetKnee(0)
+	if err != nil {
 		t.Fatalf("SetKnee() error = %v", err)
 	}
 
@@ -776,11 +806,13 @@ func TestDeEsserRatioOneIsTransparent(t *testing.T) {
 		t.Fatalf("NewDeEsser() error = %v", err)
 	}
 
-	if err := d.SetRatio(1); err != nil {
+	err = d.SetRatio(1)
+	if err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
-	if err := d.SetMode(DeEsserWideband); err != nil {
+	err = d.SetMode(DeEsserWideband)
+	if err != nil {
 		t.Fatalf("SetMode() error = %v", err)
 	}
 

@@ -369,22 +369,26 @@ func TestSetChebyshevWeightsValidation(t *testing.T) {
 	}
 
 	// Too many weights (>16) must return an error.
-	if err := d.SetChebyshevWeights(make([]float64, 17)); err == nil {
+	err = d.SetChebyshevWeights(make([]float64, 17))
+	if err == nil {
 		t.Fatal("expected error for >16 weights")
 	}
 
 	// NaN weight must return an error.
-	if err := d.SetChebyshevWeights([]float64{math.NaN()}); err == nil {
+	err = d.SetChebyshevWeights([]float64{math.NaN()})
+	if err == nil {
 		t.Fatal("expected error for NaN weight")
 	}
 
 	// Inf weight must return an error.
-	if err := d.SetChebyshevWeights([]float64{math.Inf(1)}); err == nil {
+	err = d.SetChebyshevWeights([]float64{math.Inf(1)})
+	if err == nil {
 		t.Fatal("expected error for Inf weight")
 	}
 
 	// Valid 3-element weights must succeed.
-	if err := d.SetChebyshevWeights([]float64{1, 0, 0}); err != nil {
+	err = d.SetChebyshevWeights([]float64{1, 0, 0})
+	if err != nil {
 		t.Fatalf("unexpected error for valid weights: %v", err)
 	}
 
@@ -413,7 +417,8 @@ func TestChebyshevWeightsZeroAfterSet(t *testing.T) {
 		t.Fatalf("NewDistortion() error = %v", err)
 	}
 
-	if err := d.SetChebyshevWeights([]float64{1, 0, 0}); err != nil {
+	err = d.SetChebyshevWeights([]float64{1, 0, 0})
+	if err != nil {
 		t.Fatalf("SetChebyshevWeights([1,0,0]) error = %v", err)
 	}
 
@@ -429,7 +434,8 @@ func TestChebyshevWeightsZeroAfterSet(t *testing.T) {
 	}
 
 	// Reset weights to all zeros -> legacy T_3 path.
-	if err := d.SetChebyshevWeights([]float64{0, 0, 0}); err != nil {
+	err = d.SetChebyshevWeights([]float64{0, 0, 0})
+	if err != nil {
 		t.Fatalf("SetChebyshevWeights([0,0,0]) error = %v", err)
 	}
 

@@ -8,7 +8,8 @@ import (
 func TestNewSpectralFreezeRejectsInvalidSampleRate(t *testing.T) {
 	invalid := []float64{0, -1, math.NaN(), math.Inf(1)}
 	for _, sampleRate := range invalid {
-		if _, err := NewSpectralFreeze(sampleRate); err == nil {
+		_, err := NewSpectralFreeze(sampleRate)
+		if err == nil {
 			t.Fatalf("NewSpectralFreeze(%v) expected error", sampleRate)
 		}
 	}
@@ -20,7 +21,8 @@ func TestSpectralFreezeMixZeroPassthrough(t *testing.T) {
 		t.Fatalf("NewSpectralFreeze() error = %v", err)
 	}
 
-	if err := freeze.SetMix(0); err != nil {
+	err = freeze.SetMix(0)
+	if err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
 
@@ -54,11 +56,13 @@ func TestSpectralFreezeInPlaceMatchesOutOfPlace(t *testing.T) {
 		t.Fatalf("NewSpectralFreeze() error = %v", err)
 	}
 
-	if err := f1.SetPhaseMode(SpectralFreezePhaseAdvance); err != nil {
+	err = f1.SetPhaseMode(SpectralFreezePhaseAdvance)
+	if err != nil {
 		t.Fatalf("SetPhaseMode() error = %v", err)
 	}
 
-	if err := f2.SetPhaseMode(SpectralFreezePhaseAdvance); err != nil {
+	err = f2.SetPhaseMode(SpectralFreezePhaseAdvance)
+	if err != nil {
 		t.Fatalf("SetPhaseMode() error = %v", err)
 	}
 
@@ -78,7 +82,8 @@ func TestSpectralFreezeInPlaceMatchesOutOfPlace(t *testing.T) {
 	got := make([]float64, len(input))
 	copy(got, input)
 
-	if err := f2.ProcessInPlaceWithError(got); err != nil {
+	err = f2.ProcessInPlaceWithError(got)
+	if err != nil {
 		t.Fatalf("ProcessInPlaceWithError() error = %v", err)
 	}
 
@@ -129,15 +134,18 @@ func TestSpectralFreezeSustainsEnergyOnSilenceTail(t *testing.T) {
 		t.Fatalf("NewSpectralFreeze() error = %v", err)
 	}
 
-	if err := freeze.SetFrameSize(256); err != nil {
+	err = freeze.SetFrameSize(256)
+	if err != nil {
 		t.Fatalf("SetFrameSize() error = %v", err)
 	}
 
-	if err := freeze.SetHopSize(64); err != nil {
+	err = freeze.SetHopSize(64)
+	if err != nil {
 		t.Fatalf("SetHopSize() error = %v", err)
 	}
 
-	if err := freeze.SetPhaseMode(SpectralFreezePhaseAdvance); err != nil {
+	err = freeze.SetPhaseMode(SpectralFreezePhaseAdvance)
+	if err != nil {
 		t.Fatalf("SetPhaseMode() error = %v", err)
 	}
 

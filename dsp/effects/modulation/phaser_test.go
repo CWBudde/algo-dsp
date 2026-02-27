@@ -31,7 +31,8 @@ func TestPhaserProcessInPlaceMatchesProcess(t *testing.T) {
 	got := make([]float64, len(input))
 	copy(got, input)
 
-	if err := phaser2.ProcessInPlace(got); err != nil {
+	err = phaser2.ProcessInPlace(got)
+	if err != nil {
 		t.Fatalf("ProcessInPlace() error = %v", err)
 	}
 
@@ -71,19 +72,23 @@ func TestPhaserResetRestoresState(t *testing.T) {
 }
 
 func TestPhaserValidation(t *testing.T) {
-	if _, err := NewPhaser(0); err == nil {
+	_, err := NewPhaser(0)
+	if err == nil {
 		t.Fatal("NewPhaser() expected error for invalid sample rate")
 	}
 
-	if _, err := NewPhaser(48000, WithPhaserStages(0)); err == nil {
+	_, err = NewPhaser(48000, WithPhaserStages(0))
+	if err == nil {
 		t.Fatal("NewPhaser() expected error for invalid stage count")
 	}
 
-	if _, err := NewPhaser(48000, WithPhaserFrequencyRangeHz(1000, 800)); err == nil {
+	_, err = NewPhaser(48000, WithPhaserFrequencyRangeHz(1000, 800))
+	if err == nil {
 		t.Fatal("NewPhaser() expected error for invalid frequency range")
 	}
 
-	if _, err := NewPhaser(48000, WithPhaserFrequencyRangeHz(1000, 30000)); err == nil {
+	_, err = NewPhaser(48000, WithPhaserFrequencyRangeHz(1000, 30000))
+	if err == nil {
 		t.Fatal("NewPhaser() expected error for above-nyquist frequency")
 	}
 }

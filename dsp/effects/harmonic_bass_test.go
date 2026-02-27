@@ -66,35 +66,43 @@ func TestHarmonicBassSetters(t *testing.T) {
 		t.Fatalf("NewHarmonicBass() error = %v", err)
 	}
 
-	if err := b.SetFrequency(5); err == nil {
+	err = b.SetFrequency(5)
+	if err == nil {
 		t.Fatal("expected error for frequency below min")
 	}
 
-	if err := b.SetFrequency(200); err != nil {
+	err = b.SetFrequency(200)
+	if err != nil {
 		t.Fatalf("SetFrequency() error = %v", err)
 	}
 
-	if err := b.SetRatio(0); err == nil {
+	err = b.SetRatio(0)
+	if err == nil {
 		t.Fatal("expected error for non-positive ratio")
 	}
 
-	if err := b.SetRatio(2); err != nil {
+	err = b.SetRatio(2)
+	if err != nil {
 		t.Fatalf("SetRatio() error = %v", err)
 	}
 
-	if err := b.SetResponse(math.NaN()); err == nil {
+	err = b.SetResponse(math.NaN())
+	if err == nil {
 		t.Fatal("expected error for NaN response")
 	}
 
-	if err := b.SetResponse(10); err != nil {
+	err = b.SetResponse(10)
+	if err != nil {
 		t.Fatalf("SetResponse() error = %v", err)
 	}
 
-	if err := b.SetDecay(math.Inf(1)); err == nil {
+	err = b.SetDecay(math.Inf(1))
+	if err == nil {
 		t.Fatal("expected error for infinite decay")
 	}
 
-	if err := b.SetDecay(0.25); err != nil {
+	err = b.SetDecay(0.25)
+	if err != nil {
 		t.Fatalf("SetDecay() error = %v", err)
 	}
 }
@@ -105,7 +113,8 @@ func TestHarmonicBassProcessSampleFinite(t *testing.T) {
 		t.Fatalf("NewHarmonicBass() error = %v", err)
 	}
 
-	if err := b.SetHarmonicBassLevel(1); err != nil {
+	err = b.SetHarmonicBassLevel(1)
+	if err != nil {
 		t.Fatalf("SetHarmonicBassLevel() error = %v", err)
 	}
 

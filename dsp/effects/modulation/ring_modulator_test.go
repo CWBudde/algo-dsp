@@ -256,27 +256,33 @@ func TestRingModulatorSetterValidation(t *testing.T) {
 		t.Fatalf("NewRingModulator() error = %v", err)
 	}
 
-	if err := ringModulator.SetSampleRate(0); err == nil {
+	err = ringModulator.SetSampleRate(0)
+	if err == nil {
 		t.Error("SetSampleRate(0) expected error")
 	}
 
-	if err := ringModulator.SetSampleRate(math.NaN()); err == nil {
+	err = ringModulator.SetSampleRate(math.NaN())
+	if err == nil {
 		t.Error("SetSampleRate(NaN) expected error")
 	}
 
-	if err := ringModulator.SetCarrierHz(0); err == nil {
+	err = ringModulator.SetCarrierHz(0)
+	if err == nil {
 		t.Error("SetCarrierHz(0) expected error")
 	}
 
-	if err := ringModulator.SetCarrierHz(-1); err == nil {
+	err = ringModulator.SetCarrierHz(-1)
+	if err == nil {
 		t.Error("SetCarrierHz(-1) expected error")
 	}
 
-	if err := ringModulator.SetMix(-0.1); err == nil {
+	err = ringModulator.SetMix(-0.1)
+	if err == nil {
 		t.Error("SetMix(-0.1) expected error")
 	}
 
-	if err := ringModulator.SetMix(1.1); err == nil {
+	err = ringModulator.SetMix(1.1)
+	if err == nil {
 		t.Error("SetMix(1.1) expected error")
 	}
 }
@@ -309,7 +315,8 @@ func TestRingModulatorSettersUpdateState(t *testing.T) {
 		t.Fatalf("NewRingModulator() error = %v", err)
 	}
 
-	if err := ringModulator.SetSampleRate(96000); err != nil {
+	err = ringModulator.SetSampleRate(96000)
+	if err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
 
@@ -317,7 +324,8 @@ func TestRingModulatorSettersUpdateState(t *testing.T) {
 		t.Errorf("SampleRate() = %g, want 96000", ringModulator.SampleRate())
 	}
 
-	if err := ringModulator.SetCarrierHz(1000); err != nil {
+	err = ringModulator.SetCarrierHz(1000)
+	if err != nil {
 		t.Fatalf("SetCarrierHz() error = %v", err)
 	}
 
@@ -325,7 +333,8 @@ func TestRingModulatorSettersUpdateState(t *testing.T) {
 		t.Errorf("CarrierHz() = %g, want 1000", ringModulator.CarrierHz())
 	}
 
-	if err := ringModulator.SetMix(0.5); err != nil {
+	err = ringModulator.SetMix(0.5)
+	if err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
 

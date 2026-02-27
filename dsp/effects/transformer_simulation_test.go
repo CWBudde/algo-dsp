@@ -6,19 +6,23 @@ import (
 )
 
 func TestTransformerSimulationValidation(t *testing.T) {
-	if _, err := NewTransformerSimulation(0); err == nil {
+	_, err := NewTransformerSimulation(0)
+	if err == nil {
 		t.Fatal("expected error for invalid sample rate")
 	}
 
-	if _, err := NewTransformerSimulation(48000, WithTransformerOversampling(3)); err == nil {
+	_, err = NewTransformerSimulation(48000, WithTransformerOversampling(3))
+	if err == nil {
 		t.Fatal("expected error for invalid oversampling factor")
 	}
 
-	if _, err := NewTransformerSimulation(48000, WithTransformerHighpassHz(0)); err == nil {
+	_, err = NewTransformerSimulation(48000, WithTransformerHighpassHz(0))
+	if err == nil {
 		t.Fatal("expected error for invalid high-pass frequency")
 	}
 
-	if _, err := NewTransformerSimulation(48000, WithTransformerDampingHz(50)); err == nil {
+	_, err = NewTransformerSimulation(48000, WithTransformerDampingHz(50))
+	if err == nil {
 		t.Fatal("expected error for invalid damping frequency")
 	}
 }
@@ -118,7 +122,9 @@ func TestTransformerSimulationSampleRateAwareUpdate(t *testing.T) {
 	}
 
 	baseline := ts.ProcessSample(0.5)
-	if err := ts.SetSampleRate(96000); err != nil {
+
+	err = ts.SetSampleRate(96000)
+	if err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
 

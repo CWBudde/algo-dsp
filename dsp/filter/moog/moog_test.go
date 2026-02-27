@@ -21,7 +21,8 @@ func TestNewValidation(t *testing.T) {
 		t.Fatal("expected error for resonance out of range")
 	}
 
-	if _, err := New(48000, WithOversampling(3)); err == nil {
+	_, err = New(48000, WithOversampling(3))
+	if err == nil {
 		t.Fatal("expected error for invalid oversampling")
 	}
 }
@@ -94,7 +95,8 @@ func TestStateRoundTrip(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	if err := clone.SetState(s); err != nil {
+	err = clone.SetState(s)
+	if err != nil {
 		t.Fatalf("SetState() error = %v", err)
 	}
 
@@ -119,7 +121,9 @@ func TestSetStateRejectsNonFinite(t *testing.T) {
 	st := State{}
 
 	st.Stage[0] = math.NaN()
-	if err := f.SetState(st); err == nil {
+
+	err = f.SetState(st)
+	if err == nil {
 		t.Fatal("expected error for non-finite state")
 	}
 }
@@ -417,7 +421,8 @@ func TestCutoffConstraintUsesBaseSampleRateNyquist(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	if err := f.SetCutoffHz(30000); err == nil {
+	err = f.SetCutoffHz(30000)
+	if err == nil {
 		t.Fatal("expected error for cutoff above base-rate Nyquist")
 	}
 }
@@ -532,7 +537,8 @@ func TestZDFStateRoundTrip(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	if err := clone.SetState(state); err != nil {
+	err = clone.SetState(state)
+	if err != nil {
 		t.Fatalf("SetState() error = %v", err)
 	}
 
@@ -916,11 +922,13 @@ func TestZDFNewtonConvergence(t *testing.T) {
 }
 
 func TestNewtonIterationsValidation(t *testing.T) {
-	if _, err := New(48000, WithNewtonIterations(0)); err == nil {
+	_, err := New(48000, WithNewtonIterations(0))
+	if err == nil {
 		t.Fatal("expected error for 0 newton iterations")
 	}
 
-	if _, err := New(48000, WithNewtonIterations(9)); err == nil {
+	_, err = New(48000, WithNewtonIterations(9))
+	if err == nil {
 		t.Fatal("expected error for 9 newton iterations")
 	}
 
@@ -933,7 +941,8 @@ func TestNewtonIterationsValidation(t *testing.T) {
 		t.Fatalf("expected 2 newton iterations, got %d", f.NewtonIterations())
 	}
 
-	if err := f.SetNewtonIterations(6); err != nil {
+	err = f.SetNewtonIterations(6)
+	if err != nil {
 		t.Fatalf("SetNewtonIterations(6) error = %v", err)
 	}
 

@@ -73,17 +73,20 @@ func TestChorusDelayIndependentOfRate(t *testing.T) {
 		t.Fatalf("NewChorus() error = %v", err)
 	}
 
-	if err := c.SetDepth(0.003); err != nil {
+	err = c.SetDepth(0.003)
+	if err != nil {
 		t.Fatalf("SetDepth() error = %v", err)
 	}
 
-	if err := c.SetSpeedHz(0.25); err != nil {
+	err = c.SetSpeedHz(0.25)
+	if err != nil {
 		t.Fatalf("SetSpeedHz() error = %v", err)
 	}
 
 	slowMax := c.maxDelay
 
-	if err := c.SetSpeedHz(2.5); err != nil {
+	err = c.SetSpeedHz(2.5)
+	if err != nil {
 		t.Fatalf("SetSpeedHz() error = %v", err)
 	}
 

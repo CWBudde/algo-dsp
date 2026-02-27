@@ -34,7 +34,8 @@ type LookaheadLimiter struct {
 
 // NewLookaheadLimiter creates a lookahead limiter with production defaults.
 func NewLookaheadLimiter(sampleRate float64) (*LookaheadLimiter, error) {
-	if err := validateSampleRate(sampleRate); err != nil {
+	err := validateSampleRate(sampleRate)
+	if err != nil {
 		return nil, fmt.Errorf("lookahead limiter %w", err)
 	}
 
@@ -53,15 +54,18 @@ func NewLookaheadLimiter(sampleRate float64) (*LookaheadLimiter, error) {
 		return nil, err
 	}
 
-	if err := c.SetKnee(0.0); err != nil {
+	err = c.SetKnee(0.0)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := c.SetAutoMakeup(false); err != nil {
+	err = c.SetAutoMakeup(false)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := c.SetMakeupGain(0.0); err != nil {
+	err = c.SetMakeupGain(0.0)
+	if err != nil {
 		return nil, err
 	}
 
@@ -72,15 +76,19 @@ func NewLookaheadLimiter(sampleRate float64) (*LookaheadLimiter, error) {
 		releaseMs:   defaultLookaheadLimiterReleaseMs,
 		lookaheadMs: defaultLookaheadLimiterLookaheadMs,
 	}
-	if err := lookaheadLimiter.SetThreshold(lookaheadLimiter.thresholdDB); err != nil {
+
+	err = lookaheadLimiter.SetThreshold(lookaheadLimiter.thresholdDB)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := lookaheadLimiter.SetRelease(lookaheadLimiter.releaseMs); err != nil {
+	err = lookaheadLimiter.SetRelease(lookaheadLimiter.releaseMs)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := lookaheadLimiter.SetLookahead(lookaheadLimiter.lookaheadMs); err != nil {
+	err = lookaheadLimiter.SetLookahead(lookaheadLimiter.lookaheadMs)
+	if err != nil {
 		return nil, err
 	}
 
@@ -141,7 +149,8 @@ func (l *LookaheadLimiter) SetSampleRate(sr float64) error {
 		return fmt.Errorf("lookahead limiter %w", err)
 	}
 
-	if err := l.comp.SetSampleRate(sr); err != nil {
+	err = l.comp.SetSampleRate(sr)
+	if err != nil {
 		return err
 	}
 

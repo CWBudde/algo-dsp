@@ -170,12 +170,15 @@ func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 	}
 
 	// --- INDEX chunk ---
-	if _, err = r.Seek(int64(indexOffset), io.SeekStart); err != nil {
+	_, err = r.Seek(int64(indexOffset), io.SeekStart)
+	if err != nil {
 		return nil, fmt.Errorf("irlib: seeking to index: %w", err)
 	}
 
 	var indxMagic [4]byte
-	if _, err = io.ReadFull(r, indxMagic[:]); err != nil {
+
+	_, err = io.ReadFull(r, indxMagic[:])
+	if err != nil {
 		return nil, fmt.Errorf("irlib: reading INDX magic: %w", err)
 	}
 
@@ -197,25 +200,29 @@ func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 	for indxBodyRead < indxSize {
 		var entry indexEntry
 
-		if err := binary.Read(r, binary.LittleEndian, &entry.offset); err != nil {
+		err = binary.Read(r, binary.LittleEndian, &entry.offset)
+		if err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry offset: %w", err)
 		}
 
 		indxBodyRead += 8
 
-		if err := binary.Read(r, binary.LittleEndian, &entry.sampleRate); err != nil {
+		err = binary.Read(r, binary.LittleEndian, &entry.sampleRate)
+		if err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry sampleRate: %w", err)
 		}
 
 		indxBodyRead += 8
 
-		if err := binary.Read(r, binary.LittleEndian, &entry.channels); err != nil {
+		err = binary.Read(r, binary.LittleEndian, &entry.channels)
+		if err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry channels: %w", err)
 		}
 
 		indxBodyRead += 4
 
-		if err := binary.Read(r, binary.LittleEndian, &entry.length); err != nil {
+		err = binary.Read(r, binary.LittleEndian, &entry.length)
+		if err != nil {
 			return nil, fmt.Errorf("irlib: reading index entry length: %w", err)
 		}
 
@@ -258,12 +265,15 @@ func readIRLib(r io.ReadSeeker) ([]IRData, error) {
 
 // readIRChunk seeks to entry.offset and reads one IR-- chunk.
 func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
-	if _, err := r.Seek(int64(entry.offset), io.SeekStart); err != nil {
+	_, err := r.Seek(int64(entry.offset), io.SeekStart)
+	if err != nil {
 		return IRData{}, fmt.Errorf("irlib: seeking to IR at %d: %w", entry.offset, err)
 	}
 
 	var irMagic [4]byte
-	if _, err := io.ReadFull(r, irMagic[:]); err != nil {
+
+	_, err = io.ReadFull(r, irMagic[:])
+	if err != nil {
 		return IRData{}, fmt.Errorf("irlib: reading IR magic: %w", err)
 	}
 
@@ -273,7 +283,7 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 
 	var chunkSize uint64
 
-	err := binary.Read(r, binary.LittleEndian, &chunkSize)
+	err = binary.Read(r, binary.LittleEndian, &chunkSize)
 	if err != nil {
 		return IRData{}, fmt.Errorf("irlib: reading IR chunk size: %w", err)
 	}
@@ -291,7 +301,9 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 
 	for chunkRead < chunkSize {
 		var subMagic [4]byte
-		if _, err := io.ReadFull(r, subMagic[:]); err != nil {
+
+		_, err = io.ReadFull(r, subMagic[:])
+		if err != nil {
 			break
 		}
 
@@ -309,17 +321,23 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 		switch subMagic {
 		case [4]byte{'M', 'E', 'T', 'A'}:
 			var sampleRate float64
-			if err := binary.Read(r, binary.LittleEndian, &sampleRate); err != nil {
+
+			err = binary.Read(r, binary.LittleEndian, &sampleRate)
+			if err != nil {
 				return IRData{}, fmt.Errorf("irlib: reading META sampleRate: %w", err)
 			}
 
 			var channels uint32
-			if err := binary.Read(r, binary.LittleEndian, &channels); err != nil {
+
+			err = binary.Read(r, binary.LittleEndian, &channels)
+			if err != nil {
 				return IRData{}, fmt.Errorf("irlib: reading META channels: %w", err)
 			}
 
 			var length uint32
-			if err := binary.Read(r, binary.LittleEndian, &length); err != nil {
+
+			err = binary.Read(r, binary.LittleEndian, &length)
+			if err != nil {
 				return IRData{}, fmt.Errorf("irlib: reading META length: %w", err)
 			}
 
@@ -341,14 +359,17 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 			}
 
 			var tagCount uint16
-			if err := binary.Read(r, binary.LittleEndian, &tagCount); err != nil {
+
+			err = binary.Read(r, binary.LittleEndian, &tagCount)
+			if err != nil {
 				return IRData{}, fmt.Errorf("irlib: reading META tag count: %w", err)
 			}
 
 			for i := range int(tagCount) {
 				_ = i
 
-				if _, err := readString(r); err != nil {
+				_, err := readString(r)
+				if err != nil {
 					return IRData{}, fmt.Errorf("irlib: reading META tag: %w", err)
 				}
 			}
@@ -364,7 +385,9 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 
 		case [4]byte{'A', 'U', 'D', 'I'}:
 			rawAudio := make([]byte, subSize)
-			if _, err := io.ReadFull(r, rawAudio); err != nil {
+
+			_, err := io.ReadFull(r, rawAudio)
+			if err != nil {
 				return IRData{}, fmt.Errorf("irlib: reading AUDI data: %w", err)
 			}
 
@@ -402,7 +425,8 @@ func readIRChunk(r io.ReadSeeker, entry indexEntry) (IRData, error) {
 
 		default:
 			// Skip unknown sub-chunks.
-			if _, err := r.Seek(int64(subSize), io.SeekCurrent); err != nil {
+			_, err = r.Seek(int64(subSize), io.SeekCurrent)
+			if err != nil {
 				return IRData{}, fmt.Errorf("irlib: skipping sub-chunk %q: %w", subMagic, err)
 			}
 		}

@@ -130,15 +130,18 @@ func TestInterpolateLinear(t *testing.T) {
 }
 
 func TestInterpolateLinearErrors(t *testing.T) {
-	if _, err := InterpolateLinear(nil, nil, []float64{1}); err == nil {
+	_, err := InterpolateLinear(nil, nil, []float64{1})
+	if err == nil {
 		t.Fatalf("expected error for empty x/y")
 	}
 
-	if _, err := InterpolateLinear([]float64{0, 1}, []float64{1}, []float64{1}); err == nil {
+	_, err = InterpolateLinear([]float64{0, 1}, []float64{1}, []float64{1})
+	if err == nil {
 		t.Fatalf("expected error for mismatch")
 	}
 
-	if _, err := InterpolateLinear([]float64{0, 0}, []float64{1, 2}, []float64{1}); err == nil {
+	_, err = InterpolateLinear([]float64{0, 0}, []float64{1, 2}, []float64{1})
+	if err == nil {
 		t.Fatalf("expected error for non-monotonic x")
 	}
 }
@@ -204,23 +207,28 @@ func TestPowerFromParts(t *testing.T) {
 }
 
 func TestSmoothFractionalOctaveErrors(t *testing.T) {
-	if _, err := SmoothFractionalOctave(nil, nil, 3); err == nil {
+	_, err := SmoothFractionalOctave(nil, nil, 3)
+	if err == nil {
 		t.Fatalf("expected error for empty")
 	}
 
-	if _, err := SmoothFractionalOctave([]float64{1}, []float64{1, 2}, 3); err == nil {
+	_, err = SmoothFractionalOctave([]float64{1}, []float64{1, 2}, 3)
+	if err == nil {
 		t.Fatalf("expected error for mismatch")
 	}
 
-	if _, err := SmoothFractionalOctave([]float64{1}, []float64{1}, 0); err == nil {
+	_, err = SmoothFractionalOctave([]float64{1}, []float64{1}, 0)
+	if err == nil {
 		t.Fatalf("expected error for invalid fraction")
 	}
 
-	if _, err := SmoothFractionalOctave([]float64{0, 2}, []float64{1, 2}, 3); err == nil {
+	_, err = SmoothFractionalOctave([]float64{0, 2}, []float64{1, 2}, 3)
+	if err == nil {
 		t.Fatalf("expected error for non-positive frequency")
 	}
 
-	if _, err := SmoothFractionalOctave([]float64{2, 2}, []float64{1, 2}, 3); err == nil {
+	_, err = SmoothFractionalOctave([]float64{2, 2}, []float64{1, 2}, 3)
+	if err == nil {
 		t.Fatalf("expected error for non-increasing frequency")
 	}
 }

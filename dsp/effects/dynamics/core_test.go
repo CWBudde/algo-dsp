@@ -8,39 +8,48 @@ func TestCompressorTopologyAndDetectorModes(t *testing.T) {
 		t.Fatalf("NewCompressor() error = %v", err)
 	}
 
-	if err := c.SetAutoMakeup(false); err != nil {
+	err = c.SetAutoMakeup(false)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetMakeupGain(0); err != nil {
+	err = c.SetMakeupGain(0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetThreshold(-18); err != nil {
+	err = c.SetThreshold(-18)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetRatio(6); err != nil {
+	err = c.SetRatio(6)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetAttack(2); err != nil {
+	err = c.SetAttack(2)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetRelease(100); err != nil {
+	err = c.SetRelease(100)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetDetectorMode(DetectorModeRMS); err != nil {
+	err = c.SetDetectorMode(DetectorModeRMS)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetRMSWindow(20); err != nil {
+	err = c.SetRMSWindow(20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetTopology(DynamicsTopologyFeedback); err != nil {
+	err = c.SetTopology(DynamicsTopologyFeedback)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,7 +60,8 @@ func TestCompressorTopologyAndDetectorModes(t *testing.T) {
 
 	c.Reset()
 
-	if err := c.SetTopology(DynamicsTopologyFeedforward); err != nil {
+	err = c.SetTopology(DynamicsTopologyFeedforward)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -71,19 +81,23 @@ func TestCompressorSidechainFilterValidation(t *testing.T) {
 		t.Fatalf("NewCompressor() error = %v", err)
 	}
 
-	if err := c.SetSidechainLowCut(24000); err == nil {
+	err = c.SetSidechainLowCut(24000)
+	if err == nil {
 		t.Fatal("expected error for low-cut >= nyquist")
 	}
 
-	if err := c.SetSidechainHighCut(24000); err == nil {
+	err = c.SetSidechainHighCut(24000)
+	if err == nil {
 		t.Fatal("expected error for high-cut >= nyquist")
 	}
 
-	if err := c.SetSidechainHighCut(1000); err != nil {
+	err = c.SetSidechainHighCut(1000)
+	if err != nil {
 		t.Fatalf("unexpected high-cut error: %v", err)
 	}
 
-	if err := c.SetSidechainLowCut(2000); err == nil {
+	err = c.SetSidechainLowCut(2000)
+	if err == nil {
 		t.Fatal("expected error for low-cut >= high-cut")
 	}
 }
@@ -94,27 +108,33 @@ func TestCompressorSidechainProcessingPath(t *testing.T) {
 		t.Fatalf("NewCompressor() error = %v", err)
 	}
 
-	if err := c.SetAutoMakeup(false); err != nil {
+	err = c.SetAutoMakeup(false)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetMakeupGain(0); err != nil {
+	err = c.SetMakeupGain(0)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetThreshold(-30); err != nil {
+	err = c.SetThreshold(-30)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetRatio(8); err != nil {
+	err = c.SetRatio(8)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetSidechainLowCut(300); err != nil {
+	err = c.SetSidechainLowCut(300)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := c.SetSidechainHighCut(6000); err != nil {
+	err = c.SetSidechainHighCut(6000)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -135,23 +155,28 @@ func TestGateTopologyAndDetectorModes(t *testing.T) {
 		t.Fatalf("NewGate() error = %v", err)
 	}
 
-	if err := g.SetThreshold(-20); err != nil {
+	err = g.SetThreshold(-20)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetRatio(8); err != nil {
+	err = g.SetRatio(8)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetDetectorMode(DetectorModeRMS); err != nil {
+	err = g.SetDetectorMode(DetectorModeRMS)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetRMSWindow(25); err != nil {
+	err = g.SetRMSWindow(25)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetTopology(DynamicsTopologyFeedback); err != nil {
+	err = g.SetTopology(DynamicsTopologyFeedback)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -162,7 +187,8 @@ func TestGateTopologyAndDetectorModes(t *testing.T) {
 
 	g.Reset()
 
-	if err := g.SetTopology(DynamicsTopologyFeedforward); err != nil {
+	err = g.SetTopology(DynamicsTopologyFeedforward)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -182,19 +208,23 @@ func TestGateSidechainProcessingPath(t *testing.T) {
 		t.Fatalf("NewGate() error = %v", err)
 	}
 
-	if err := g.SetThreshold(-30); err != nil {
+	err = g.SetThreshold(-30)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetRange(-60); err != nil {
+	err = g.SetRange(-60)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetSidechainLowCut(400); err != nil {
+	err = g.SetSidechainLowCut(400)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := g.SetSidechainHighCut(5000); err != nil {
+	err = g.SetSidechainHighCut(5000)
+	if err != nil {
 		t.Fatal(err)
 	}
 

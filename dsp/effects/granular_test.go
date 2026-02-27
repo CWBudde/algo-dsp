@@ -8,7 +8,8 @@ import (
 func TestNewGranularRejectsInvalidSampleRate(t *testing.T) {
 	invalid := []float64{0, -1, math.NaN(), math.Inf(1)}
 	for _, sampleRate := range invalid {
-		if _, err := NewGranular(sampleRate); err == nil {
+		_, err := NewGranular(sampleRate)
+		if err == nil {
 			t.Fatalf("NewGranular(%v) expected error", sampleRate)
 		}
 	}
@@ -89,7 +90,8 @@ func TestGranularMixZeroTransparent(t *testing.T) {
 		t.Fatalf("NewGranular() error = %v", err)
 	}
 
-	if err := g.SetMix(0); err != nil {
+	err = g.SetMix(0)
+	if err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
 
@@ -142,27 +144,33 @@ func TestGranularSettersValidation(t *testing.T) {
 		t.Fatalf("NewGranular() error = %v", err)
 	}
 
-	if err := g.SetGrainSeconds(0); err == nil {
+	err = g.SetGrainSeconds(0)
+	if err == nil {
 		t.Fatalf("SetGrainSeconds(0) expected error")
 	}
 
-	if err := g.SetOverlap(1); err == nil {
+	err = g.SetOverlap(1)
+	if err == nil {
 		t.Fatalf("SetOverlap(1) expected error")
 	}
 
-	if err := g.SetMix(-0.1); err == nil {
+	err = g.SetMix(-0.1)
+	if err == nil {
 		t.Fatalf("SetMix(-0.1) expected error")
 	}
 
-	if err := g.SetPitch(10); err == nil {
+	err = g.SetPitch(10)
+	if err == nil {
 		t.Fatalf("SetPitch(10) expected error")
 	}
 
-	if err := g.SetSpray(2); err == nil {
+	err = g.SetSpray(2)
+	if err == nil {
 		t.Fatalf("SetSpray(2) expected error")
 	}
 
-	if err := g.SetBaseDelay(3); err == nil {
+	err = g.SetBaseDelay(3)
+	if err == nil {
 		t.Fatalf("SetBaseDelay(3) expected error")
 	}
 }

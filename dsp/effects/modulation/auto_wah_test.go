@@ -207,19 +207,23 @@ func TestAutoWahSetterValidation(t *testing.T) {
 		t.Fatal("SetQ(0) expected error")
 	}
 
-	if err := autoWah.SetSensitivity(-1); err == nil {
+	err = autoWah.SetSensitivity(-1)
+	if err == nil {
 		t.Fatal("SetSensitivity(-1) expected error")
 	}
 
-	if err := autoWah.SetAttackMs(-1); err == nil {
+	err = autoWah.SetAttackMs(-1)
+	if err == nil {
 		t.Fatal("SetAttackMs(-1) expected error")
 	}
 
-	if err := autoWah.SetReleaseMs(-1); err == nil {
+	err = autoWah.SetReleaseMs(-1)
+	if err == nil {
 		t.Fatal("SetReleaseMs(-1) expected error")
 	}
 
-	if err := autoWah.SetMix(1.1); err == nil {
+	err = autoWah.SetMix(1.1)
+	if err == nil {
 		t.Fatal("SetMix(1.1) expected error")
 	}
 }
@@ -230,27 +234,33 @@ func TestAutoWahGettersAndSetters(t *testing.T) {
 		t.Fatalf("NewAutoWah() error = %v", err)
 	}
 
-	if err := autoWah.SetFrequencyRangeHz(350, 1800); err != nil {
+	err = autoWah.SetFrequencyRangeHz(350, 1800)
+	if err != nil {
 		t.Fatalf("SetFrequencyRangeHz() error = %v", err)
 	}
 
-	if err := autoWah.SetQ(1.2); err != nil {
+	err = autoWah.SetQ(1.2)
+	if err != nil {
 		t.Fatalf("SetQ() error = %v", err)
 	}
 
-	if err := autoWah.SetSensitivity(3.5); err != nil {
+	err = autoWah.SetSensitivity(3.5)
+	if err != nil {
 		t.Fatalf("SetSensitivity() error = %v", err)
 	}
 
-	if err := autoWah.SetAttackMs(3); err != nil {
+	err = autoWah.SetAttackMs(3)
+	if err != nil {
 		t.Fatalf("SetAttackMs() error = %v", err)
 	}
 
-	if err := autoWah.SetReleaseMs(90); err != nil {
+	err = autoWah.SetReleaseMs(90)
+	if err != nil {
 		t.Fatalf("SetReleaseMs() error = %v", err)
 	}
 
-	if err := autoWah.SetMix(0.7); err != nil {
+	err = autoWah.SetMix(0.7)
+	if err != nil {
 		t.Fatalf("SetMix() error = %v", err)
 	}
 

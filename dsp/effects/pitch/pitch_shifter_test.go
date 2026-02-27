@@ -77,12 +77,15 @@ func TestPitchShifterSetOverlapRejectsOverlapAboveSequence(t *testing.T) {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
 
-	if err := p.SetSequence(20); err != nil {
+	err = p.SetSequence(20)
+	if err != nil {
 		t.Fatalf("SetSequence() error = %v", err)
 	}
 
 	old := p.Overlap()
-	if err := p.SetOverlap(30); err == nil {
+
+	err = p.SetOverlap(30)
+	if err == nil {
 		t.Fatalf("SetOverlap(30) should fail when sequence is 20 ms")
 	}
 
@@ -132,11 +135,13 @@ func TestPitchShifterProcessInPlaceMatchesProcess(t *testing.T) {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
 
-	if err := p1.SetPitchSemitones(7); err != nil {
+	err = p1.SetPitchSemitones(7)
+	if err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
 
-	if err := p2.SetPitchSemitones(7); err != nil {
+	err = p2.SetPitchSemitones(7)
+	if err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
 
@@ -177,7 +182,8 @@ func TestPitchShifterPitchAccuracy(t *testing.T) {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
 
-	if err := up.SetPitchSemitones(shiftSem); err != nil {
+	err = up.SetPitchSemitones(shiftSem)
+	if err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
 
@@ -194,7 +200,8 @@ func TestPitchShifterPitchAccuracy(t *testing.T) {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
 
-	if err := down.SetPitchSemitones(-shiftSem); err != nil {
+	err = down.SetPitchSemitones(-shiftSem)
+	if err != nil {
 		t.Fatalf("SetPitchSemitones() error = %v", err)
 	}
 
@@ -213,7 +220,8 @@ func TestPitchShifterShortBufferProducesFiniteValues(t *testing.T) {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
 
-	if err := p.SetPitchRatio(1.7); err != nil {
+	err = p.SetPitchRatio(1.7)
+	if err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
 
@@ -237,7 +245,8 @@ func TestPitchShifterResetDeterministic(t *testing.T) {
 		t.Fatalf("NewPitchShifter() error = %v", err)
 	}
 
-	if err := p.SetPitchRatio(0.75); err != nil {
+	err = p.SetPitchRatio(0.75)
+	if err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
 
@@ -341,7 +350,8 @@ func TestPitchShifterSignalQuality(t *testing.T) {
 				t.Fatalf("NewPitchShifter() error = %v", err)
 			}
 
-			if err := p.SetPitchRatio(tc.ratio); err != nil {
+			err = p.SetPitchRatio(tc.ratio)
+			if err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
 
@@ -406,15 +416,18 @@ func TestPitchShifterSignalQualityWSSOLAParams(t *testing.T) {
 				t.Fatalf("NewPitchShifter() error = %v", err)
 			}
 
-			if err := p.SetSequence(testCase.sequenceMs); err != nil {
+			err = p.SetSequence(testCase.sequenceMs)
+			if err != nil {
 				t.Fatalf("SetSequence() error = %v", err)
 			}
 
-			if err := p.SetOverlap(testCase.overlapMs); err != nil {
+			err = p.SetOverlap(testCase.overlapMs)
+			if err != nil {
 				t.Fatalf("SetOverlap() error = %v", err)
 			}
 
-			if err := p.SetPitchRatio(ratio); err != nil {
+			err = p.SetPitchRatio(ratio)
+			if err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
 
@@ -465,7 +478,8 @@ func TestPitchShifterTwoToneWellSeparated(t *testing.T) {
 				t.Fatalf("NewPitchShifter() error = %v", err)
 			}
 
-			if err := p.SetPitchRatio(tc.ratio); err != nil {
+			err = p.SetPitchRatio(tc.ratio)
+			if err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
 
@@ -521,7 +535,8 @@ func TestPitchShifterTwoToneCloselySpaced(t *testing.T) {
 				t.Fatalf("NewPitchShifter() error = %v", err)
 			}
 
-			if err := p.SetPitchRatio(tc.ratio); err != nil {
+			err = p.SetPitchRatio(tc.ratio)
+			if err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
 
@@ -566,7 +581,8 @@ func measureTimeDomainTwoToneSNR(t *testing.T, out []float64, freq1, freq2, samp
 		fftIn[i] = complex(v, 0)
 	}
 
-	if err := plan.Forward(fftOut, fftIn); err != nil {
+	err = plan.Forward(fftOut, fftIn)
+	if err != nil {
 		t.Fatalf("Forward FFT error: %v", err)
 	}
 
@@ -615,7 +631,8 @@ func measureTimeDomainSNR(t *testing.T, out []float64, targetFreq, sampleRate fl
 		fftIn[i] = complex(v, 0)
 	}
 
-	if err := plan.Forward(fftOut, fftIn); err != nil {
+	err = plan.Forward(fftOut, fftIn)
+	if err != nil {
 		t.Fatalf("Forward FFT error: %v", err)
 	}
 

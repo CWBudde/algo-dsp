@@ -32,7 +32,9 @@ func TestFrequencyShifterProcessBlockMatchesSample(t *testing.T) {
 	gotUp := make([]float64, len(input))
 
 	gotDown := make([]float64, len(input))
-	if err := fBlock.ProcessBlock(input, gotUp, gotDown); err != nil {
+
+	err = fBlock.ProcessBlock(input, gotUp, gotDown)
+	if err != nil {
 		t.Fatalf("ProcessBlock() error = %v", err)
 	}
 
@@ -82,19 +84,23 @@ func TestFrequencyShifterResetRestoresState(t *testing.T) {
 }
 
 func TestFrequencyShifterValidation(t *testing.T) {
-	if _, err := NewFrequencyShifter(0); err == nil {
+	_, err := NewFrequencyShifter(0)
+	if err == nil {
 		t.Fatal("expected error for invalid sample rate")
 	}
 
-	if _, err := NewFrequencyShifter(48000, WithFrequencyShiftHz(0)); err == nil {
+	_, err = NewFrequencyShifter(48000, WithFrequencyShiftHz(0))
+	if err == nil {
 		t.Fatal("expected error for invalid shift Hz")
 	}
 
-	if _, err := NewFrequencyShifter(48000, WithFrequencyShifterHilbertPreset(hilbert.Preset(999))); err == nil {
+	_, err = NewFrequencyShifter(48000, WithFrequencyShifterHilbertPreset(hilbert.Preset(999)))
+	if err == nil {
 		t.Fatal("expected error for invalid preset")
 	}
 
-	if _, err := NewFrequencyShifter(48000, WithFrequencyShifterHilbertDesign(0, 0.1)); err == nil {
+	_, err = NewFrequencyShifter(48000, WithFrequencyShifterHilbertDesign(0, 0.1))
+	if err == nil {
 		t.Fatal("expected error for invalid custom design")
 	}
 }
@@ -105,15 +111,18 @@ func TestFrequencyShifterSetters(t *testing.T) {
 		t.Fatalf("NewFrequencyShifter() error = %v", err)
 	}
 
-	if err := f.SetSampleRate(96000); err != nil {
+	err = f.SetSampleRate(96000)
+	if err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
 
-	if err := f.SetShiftHz(80); err != nil {
+	err = f.SetShiftHz(80)
+	if err != nil {
 		t.Fatalf("SetShiftHz() error = %v", err)
 	}
 
-	if err := f.SetHilbertPreset(hilbert.PresetLowFrequency); err != nil {
+	err = f.SetHilbertPreset(hilbert.PresetLowFrequency)
+	if err != nil {
 		t.Fatalf("SetHilbertPreset() error = %v", err)
 	}
 
@@ -121,7 +130,8 @@ func TestFrequencyShifterSetters(t *testing.T) {
 		t.Fatalf("preset design mismatch: (%d,%g)", n, tr)
 	}
 
-	if err := f.SetHilbertDesign(10, 0.08); err != nil {
+	err = f.SetHilbertDesign(10, 0.08)
+	if err != nil {
 		t.Fatalf("SetHilbertDesign() error = %v", err)
 	}
 

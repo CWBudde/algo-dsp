@@ -266,7 +266,8 @@ func TestVocoderSetSampleRate(t *testing.T) {
 		t.Fatalf("NewVocoder() error = %v", err)
 	}
 
-	if err := v.SetSampleRate(44100); err != nil {
+	err = v.SetSampleRate(44100)
+	if err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
 
@@ -287,7 +288,8 @@ func TestVocoderSetSampleRate(t *testing.T) {
 	}
 
 	// Invalid sample rate.
-	if err := v.SetSampleRate(0); err == nil {
+	err = v.SetSampleRate(0)
+	if err == nil {
 		t.Error("expected error for zero sample rate")
 	}
 }
@@ -298,7 +300,8 @@ func TestVocoderSetterGetterRoundtrip(t *testing.T) {
 		t.Fatalf("NewVocoder() error = %v", err)
 	}
 
-	if err := v.SetAttack(5.0); err != nil {
+	err = v.SetAttack(5.0)
+	if err != nil {
 		t.Fatalf("SetAttack() error = %v", err)
 	}
 
@@ -306,7 +309,8 @@ func TestVocoderSetterGetterRoundtrip(t *testing.T) {
 		t.Errorf("Attack() = %g, want 5.0", v.Attack())
 	}
 
-	if err := v.SetRelease(50.0); err != nil {
+	err = v.SetRelease(50.0)
+	if err != nil {
 		t.Fatalf("SetRelease() error = %v", err)
 	}
 
@@ -314,7 +318,8 @@ func TestVocoderSetterGetterRoundtrip(t *testing.T) {
 		t.Errorf("Release() = %g, want 50.0", v.Release())
 	}
 
-	if err := v.SetInputLevel(0.5); err != nil {
+	err = v.SetInputLevel(0.5)
+	if err != nil {
 		t.Fatalf("SetInputLevel() error = %v", err)
 	}
 
@@ -322,7 +327,8 @@ func TestVocoderSetterGetterRoundtrip(t *testing.T) {
 		t.Errorf("InputLevel() = %g, want 0.5", v.InputLevel())
 	}
 
-	if err := v.SetSynthLevel(0.3); err != nil {
+	err = v.SetSynthLevel(0.3)
+	if err != nil {
 		t.Fatalf("SetSynthLevel() error = %v", err)
 	}
 
@@ -330,7 +336,8 @@ func TestVocoderSetterGetterRoundtrip(t *testing.T) {
 		t.Errorf("SynthLevel() = %g, want 0.3", v.SynthLevel())
 	}
 
-	if err := v.SetVocoderLevel(0.8); err != nil {
+	err = v.SetVocoderLevel(0.8)
+	if err != nil {
 		t.Fatalf("SetVocoderLevel() error = %v", err)
 	}
 
@@ -345,23 +352,28 @@ func TestVocoderSetterValidation(t *testing.T) {
 		t.Fatalf("NewVocoder() error = %v", err)
 	}
 
-	if err := v.SetAttack(-1); err == nil {
+	err = v.SetAttack(-1)
+	if err == nil {
 		t.Error("expected error for negative attack")
 	}
 
-	if err := v.SetRelease(-1); err == nil {
+	err = v.SetRelease(-1)
+	if err == nil {
 		t.Error("expected error for negative release")
 	}
 
-	if err := v.SetInputLevel(-1); err == nil {
+	err = v.SetInputLevel(-1)
+	if err == nil {
 		t.Error("expected error for negative input level")
 	}
 
-	if err := v.SetSynthLevel(-1); err == nil {
+	err = v.SetSynthLevel(-1)
+	if err == nil {
 		t.Error("expected error for negative synth level")
 	}
 
-	if err := v.SetVocoderLevel(-1); err == nil {
+	err = v.SetVocoderLevel(-1)
+	if err == nil {
 		t.Error("expected error for negative vocoder level")
 	}
 }
@@ -1098,7 +1110,8 @@ func thirdOctaveBandEnergiesDB(signal []float64, sampleRate float64, fftSize int
 		in[i] = complex(signal[mid+i]*w, 0)
 	}
 
-	if err := plan.Forward(out, in); err != nil {
+	err = plan.Forward(out, in)
+	if err != nil {
 		return nil, fmt.Errorf("Forward: %w", err)
 	}
 
@@ -1220,7 +1233,8 @@ func TestVocoderDownsamplingSetSampleRateRecomputes(t *testing.T) {
 	copy(factorsBefore, v.DownsampleFactors())
 
 	// Changing to a much lower sample rate should change the factors.
-	if err := v.SetSampleRate(16000); err != nil {
+	err = v.SetSampleRate(16000)
+	if err != nil {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
 

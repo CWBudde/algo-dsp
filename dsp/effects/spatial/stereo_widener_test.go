@@ -38,7 +38,8 @@ func TestStereoWidenerInPlaceMatchesProcessStereo(t *testing.T) {
 	copy(gotL, inL)
 	copy(gotR, inR)
 
-	if err := widener2.ProcessStereoInPlace(gotL, gotR); err != nil {
+	err = widener2.ProcessStereoInPlace(gotL, gotR)
+	if err != nil {
 		t.Fatalf("ProcessStereoInPlace() error = %v", err)
 	}
 
@@ -86,7 +87,8 @@ func TestStereoWidenerInterleavedMatchesProcessStereo(t *testing.T) {
 		interleaved[2*i+1] = inR[i]
 	}
 
-	if err := widener2.ProcessInterleavedInPlace(interleaved); err != nil {
+	err = widener2.ProcessInterleavedInPlace(interleaved)
+	if err != nil {
 		t.Fatalf("ProcessInterleavedInPlace() error = %v", err)
 	}
 
@@ -318,50 +320,61 @@ func TestStereoWidenerBassMonoPreservesHigh(t *testing.T) {
 
 func TestStereoWidenerValidation(t *testing.T) {
 	// Invalid sample rate.
-	if _, err := NewStereoWidener(0); err == nil {
+	_, err := NewStereoWidener(0)
+	if err == nil {
 		t.Fatal("expected error for zero sample rate")
 	}
 
-	if _, err := NewStereoWidener(-1); err == nil {
+	_, err = NewStereoWidener(-1)
+	if err == nil {
 		t.Fatal("expected error for negative sample rate")
 	}
 
-	if _, err := NewStereoWidener(math.NaN()); err == nil {
+	_, err = NewStereoWidener(math.NaN())
+	if err == nil {
 		t.Fatal("expected error for NaN sample rate")
 	}
 
-	if _, err := NewStereoWidener(math.Inf(1)); err == nil {
+	_, err = NewStereoWidener(math.Inf(1))
+	if err == nil {
 		t.Fatal("expected error for Inf sample rate")
 	}
 
 	// Invalid width.
-	if _, err := NewStereoWidener(48000, WithWidth(-0.1)); err == nil {
+	_, err = NewStereoWidener(48000, WithWidth(-0.1))
+	if err == nil {
 		t.Fatal("expected error for negative width")
 	}
 
-	if _, err := NewStereoWidener(48000, WithWidth(5)); err == nil {
+	_, err = NewStereoWidener(48000, WithWidth(5))
+	if err == nil {
 		t.Fatal("expected error for width > max")
 	}
 
-	if _, err := NewStereoWidener(48000, WithWidth(math.NaN())); err == nil {
+	_, err = NewStereoWidener(48000, WithWidth(math.NaN()))
+	if err == nil {
 		t.Fatal("expected error for NaN width")
 	}
 
 	// Invalid bass mono freq.
-	if _, err := NewStereoWidener(48000, WithBassMonoFreq(10)); err == nil {
+	_, err = NewStereoWidener(48000, WithBassMonoFreq(10))
+	if err == nil {
 		t.Fatal("expected error for bass mono freq below min")
 	}
 
-	if _, err := NewStereoWidener(48000, WithBassMonoFreq(600)); err == nil {
+	_, err = NewStereoWidener(48000, WithBassMonoFreq(600))
+	if err == nil {
 		t.Fatal("expected error for bass mono freq above max")
 	}
 
-	if _, err := NewStereoWidener(48000, WithBassMonoFreq(math.NaN())); err == nil {
+	_, err = NewStereoWidener(48000, WithBassMonoFreq(math.NaN()))
+	if err == nil {
 		t.Fatal("expected error for NaN bass mono freq")
 	}
 
 	// 0 is valid (disables bass mono).
-	if _, err := NewStereoWidener(48000, WithBassMonoFreq(0)); err != nil {
+	_, err = NewStereoWidener(48000, WithBassMonoFreq(0))
+	if err != nil {
 		t.Fatalf("unexpected error for bass mono freq 0: %v", err)
 	}
 }
@@ -372,15 +385,18 @@ func TestStereoWidenerSetterValidation(t *testing.T) {
 		t.Fatalf("NewStereoWidener() error = %v", err)
 	}
 
-	if err := w.SetWidth(-1); err == nil {
+	err = w.SetWidth(-1)
+	if err == nil {
 		t.Fatal("SetWidth: expected error for negative width")
 	}
 
-	if err := w.SetWidth(5); err == nil {
+	err = w.SetWidth(5)
+	if err == nil {
 		t.Fatal("SetWidth: expected error for width > max")
 	}
 
-	if err := w.SetWidth(2); err != nil {
+	err = w.SetWidth(2)
+	if err != nil {
 		t.Fatalf("SetWidth(2) unexpected error: %v", err)
 	}
 
@@ -388,11 +404,13 @@ func TestStereoWidenerSetterValidation(t *testing.T) {
 		t.Fatalf("Width() = %g, want 2", w.Width())
 	}
 
-	if err := w.SetSampleRate(0); err == nil {
+	err = w.SetSampleRate(0)
+	if err == nil {
 		t.Fatal("SetSampleRate: expected error for zero")
 	}
 
-	if err := w.SetSampleRate(44100); err != nil {
+	err = w.SetSampleRate(44100)
+	if err != nil {
 		t.Fatalf("SetSampleRate(44100) unexpected error: %v", err)
 	}
 
@@ -400,11 +418,13 @@ func TestStereoWidenerSetterValidation(t *testing.T) {
 		t.Fatalf("SampleRate() = %g, want 44100", w.SampleRate())
 	}
 
-	if err := w.SetBassMonoFreq(10); err == nil {
+	err = w.SetBassMonoFreq(10)
+	if err == nil {
 		t.Fatal("SetBassMonoFreq: expected error for freq below min")
 	}
 
-	if err := w.SetBassMonoFreq(100); err != nil {
+	err = w.SetBassMonoFreq(100)
+	if err != nil {
 		t.Fatalf("SetBassMonoFreq(100) unexpected error: %v", err)
 	}
 
@@ -413,7 +433,8 @@ func TestStereoWidenerSetterValidation(t *testing.T) {
 	}
 
 	// Disable bass mono.
-	if err := w.SetBassMonoFreq(0); err != nil {
+	err = w.SetBassMonoFreq(0)
+	if err != nil {
 		t.Fatalf("SetBassMonoFreq(0) unexpected error: %v", err)
 	}
 
@@ -429,7 +450,9 @@ func TestStereoWidenerInterleavedOddLength(t *testing.T) {
 	}
 
 	buf := make([]float64, 3)
-	if err := w.ProcessInterleavedInPlace(buf); err == nil {
+
+	err = w.ProcessInterleavedInPlace(buf)
+	if err == nil {
 		t.Fatal("ProcessInterleavedInPlace: expected error for odd-length buffer")
 	}
 }
@@ -443,7 +466,9 @@ func TestStereoWidenerMismatchedBufferLengths(t *testing.T) {
 	left := make([]float64, 4)
 
 	right := make([]float64, 5)
-	if err := w.ProcessStereoInPlace(left, right); err == nil {
+
+	err = w.ProcessStereoInPlace(left, right)
+	if err == nil {
 		t.Fatal("ProcessStereoInPlace: expected error for mismatched lengths")
 	}
 }

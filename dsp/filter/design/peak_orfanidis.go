@@ -25,7 +25,8 @@ var ErrInvalidPeakParams = errors.New("design: invalid peaking parameters")
 // Returns biquad.Coefficients in the DF-II-T sign convention with a0
 // normalized to 1.
 func PeakRaw(G0, G1, G, GB, w0, dw float64) (biquad.Coefficients, error) {
-	if err := validatePeakRawInputs(G0, G1, G, GB, w0, dw); err != nil {
+	err := validatePeakRawInputs(G0, G1, G, GB, w0, dw)
+	if err != nil {
 		return biquad.Coefficients{}, ErrInvalidPeakParams
 	}
 

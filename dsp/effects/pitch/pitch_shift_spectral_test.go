@@ -114,27 +114,33 @@ func TestSpectralPitchShifterSettersValidate(t *testing.T) {
 		t.Fatalf("SetSampleRate() error = %v", err)
 	}
 
-	if err := s.SetFrameSize(1000); err == nil {
+	err = s.SetFrameSize(1000)
+	if err == nil {
 		t.Fatal("expected error for non power-of-two frame size")
 	}
 
-	if err := s.SetFrameSize(32); err == nil {
+	err = s.SetFrameSize(32)
+	if err == nil {
 		t.Fatal("expected error for too-small frame size")
 	}
 
-	if err := s.SetFrameSize(2048); err != nil {
+	err = s.SetFrameSize(2048)
+	if err != nil {
 		t.Fatalf("SetFrameSize() error = %v", err)
 	}
 
-	if err := s.SetAnalysisHop(0); err == nil {
+	err = s.SetAnalysisHop(0)
+	if err == nil {
 		t.Fatal("expected error for zero hop")
 	}
 
-	if err := s.SetAnalysisHop(2048); err == nil {
+	err = s.SetAnalysisHop(2048)
+	if err == nil {
 		t.Fatal("expected error for hop >= frame size")
 	}
 
-	if err := s.SetAnalysisHop(512); err != nil {
+	err = s.SetAnalysisHop(512)
+	if err != nil {
 		t.Fatalf("SetAnalysisHop() error = %v", err)
 	}
 }
@@ -145,7 +151,8 @@ func TestSpectralPitchShifterProcessLengthAndFinite(t *testing.T) {
 		t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 	}
 
-	if err := s.SetPitchRatio(1.25); err != nil {
+	err = s.SetPitchRatio(1.25)
+	if err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
 
@@ -165,7 +172,8 @@ func TestSpectralPitchShifterProcessInPlaceMatchesProcess(t *testing.T) {
 		t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 	}
 
-	if err := s.SetPitchRatio(0.8); err != nil {
+	err = s.SetPitchRatio(0.8)
+	if err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
 
@@ -200,7 +208,8 @@ func TestSpectralPitchShifterIdentityKeepsDominantFrequency(t *testing.T) {
 		t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 	}
 
-	if err := spectral.SetPitchRatio(1); err != nil {
+	err = spectral.SetPitchRatio(1)
+	if err != nil {
 		t.Fatalf("SetPitchRatio() error = %v", err)
 	}
 
@@ -238,7 +247,8 @@ func TestSpectralPitchShifterMovesDominantFrequency(t *testing.T) {
 				t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 			}
 
-			if err := s.SetPitchRatio(testCase.ratio); err != nil {
+			err = s.SetPitchRatio(testCase.ratio)
+			if err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
 
@@ -284,7 +294,8 @@ func TestSpectralPitchShifterSignalQuality(t *testing.T) {
 				t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 			}
 
-			if err := s.SetPitchRatio(tc.ratio); err != nil {
+			err = s.SetPitchRatio(tc.ratio)
+			if err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
 
@@ -318,7 +329,8 @@ func TestSpectralPitchShifterSignalQuality(t *testing.T) {
 				fftIn[i] = complex(v, 0)
 			}
 
-			if err := plan.Forward(fftOut, fftIn); err != nil {
+			err = plan.Forward(fftOut, fftIn)
+			if err != nil {
 				t.Fatalf("Forward FFT error: %v", err)
 			}
 
@@ -383,15 +395,18 @@ func TestSpectralPitchShifterSignalQualityOverlap(t *testing.T) {
 				t.Fatalf("NewSpectralPitchShifter() error = %v", err)
 			}
 
-			if err := s.SetFrameSize(tc.frameSize); err != nil {
+			err = s.SetFrameSize(tc.frameSize)
+			if err != nil {
 				t.Fatalf("SetFrameSize() error = %v", err)
 			}
 
-			if err := s.SetAnalysisHop(tc.analysisHop); err != nil {
+			err = s.SetAnalysisHop(tc.analysisHop)
+			if err != nil {
 				t.Fatalf("SetAnalysisHop() error = %v", err)
 			}
 
-			if err := s.SetPitchRatio(ratio); err != nil {
+			err = s.SetPitchRatio(ratio)
+			if err != nil {
 				t.Fatalf("SetPitchRatio() error = %v", err)
 			}
 
@@ -439,7 +454,8 @@ func measureSNR(t *testing.T, out []float64, targetFreq, sampleRate float64, fft
 		fftIn[i] = complex(v, 0)
 	}
 
-	if err := plan.Forward(fftOut, fftIn); err != nil {
+	err = plan.Forward(fftOut, fftIn)
+	if err != nil {
 		t.Fatalf("Forward FFT error: %v", err)
 	}
 
@@ -485,7 +501,8 @@ func dominantFrequencyHz(t *testing.T, signal []float64, sampleRate float64) flo
 		in[i] = complex(v, 0)
 	}
 
-	if err := plan.Forward(out, in); err != nil {
+	err = plan.Forward(out, in)
+	if err != nil {
 		t.Fatalf("forward FFT failed: %v", err)
 	}
 
