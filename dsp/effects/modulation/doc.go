@@ -7,5 +7,6 @@
 //   - FrequencyShifter: Bode-style upshift/downshift single-sideband shifter.
 //   - Phaser: Allpass-cascade modulation effect.
 //   - RingModulator: Carrier multiply and dry/wet blend.
+//   - RotarySpeaker: Leslie-style rotary cabinet with horn and drum rotors.
 //   - Tremolo: LFO amplitude modulation.
 package modulation
