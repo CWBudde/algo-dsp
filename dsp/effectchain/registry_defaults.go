@@ -125,6 +125,14 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 
 		return &tremoloRuntime{fx: fx}, nil
 	})
+	r.MustRegister("rotary", func(_ Context) (Runtime, error) {
+		fx, err := modulation.NewRotarySpeaker()
+		if err != nil {
+			return nil, wrapRuntimeInitErr("rotary", err)
+		}
+
+		return &rotaryRuntime{fx: fx}, nil
+	})
 	r.MustRegister("delay", func(ctx Context) (Runtime, error) {
 		fx, err := effects.NewDelay(ctx.SampleRate)
 		if err != nil {

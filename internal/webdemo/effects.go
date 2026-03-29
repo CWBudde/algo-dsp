@@ -1,6 +1,8 @@
 //nolint:funlen,gocognit,gocyclo,cyclop,maintidx
 package webdemo
 
+import "github.com/cwbudde/algo-dsp/dsp/effects/modulation"
+
 // SetCompressor updates compressor parameters.
 func (e *Engine) SetCompressor(param CompressorParams) error {
 	prevEnabled := e.compParams.Enabled
@@ -54,6 +56,7 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	prevWidenerEnabled := e.effects.WidenerEnabled
 	prevPhaserEnabled := e.effects.PhaserEnabled
 	prevTremoloEnabled := e.effects.TremoloEnabled
+	prevRotaryEnabled := e.effects.RotarySpeakerEnabled
 	prevDelayEnabled := e.effects.DelayEnabled
 	prevReverbEnabled := e.effects.ReverbEnabled
 	prevReverbModel := e.effects.ReverbModel
@@ -116,6 +119,10 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	p.TremoloDepth = clamp(p.TremoloDepth, 0, 1)
 	p.TremoloSmoothingMs = clamp(p.TremoloSmoothingMs, 0, 200)
 	p.TremoloMix = clamp(p.TremoloMix, 0, 1)
+	p.RotaryMix = clamp(p.RotaryMix, 0, 1)
+	p.RotaryDrive = clamp(p.RotaryDrive, 0.01, 10)
+	p.RotaryStereoWidth = clamp(p.RotaryStereoWidth, 0, 1)
+	p.RotaryCrossoverHz = clamp(p.RotaryCrossoverHz, 50, 12000)
 	p.DelayTime = clamp(p.DelayTime, 0.001, 2.0)
 	p.DelayFeedback = clamp(p.DelayFeedback, 0, 0.99)
 	p.DelayMix = clamp(p.DelayMix, 0, 1)
@@ -209,6 +216,10 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 
 	if prevTremoloEnabled && !p.TremoloEnabled {
 		e.tremolo.Reset()
+	}
+
+	if prevRotaryEnabled && !p.RotarySpeakerEnabled {
+		e.rotary.Reset()
 	}
 
 	if prevDelayEnabled && !p.DelayEnabled {
@@ -314,6 +325,7 @@ func (e *Engine) rebuildEffects() error {
 		e.rebuildWidenerEffect,
 		e.rebuildPhaserEffect,
 		e.rebuildTremoloEffect,
+		e.rebuildRotaryEffect,
 		e.rebuildDelayEffect,
 		e.rebuildTimePitchEffect,
 		e.rebuildSpectralPitchEffect,
@@ -501,6 +513,44 @@ func (e *Engine) rebuildHarmonicBassEffect() error {
 		e.effects.HarmonicBassResponseMs,
 		e.effects.HarmonicBassHighpass,
 	)
+}
+
+func (e *Engine) rebuildRotaryEffect() error {
+	if !e.effects.RotarySpeakerEnabled {
+		return nil
+	}
+
+	mode := modulation.SpeedModeChorale
+	if e.effects.RotarySpeedFast {
+		mode = modulation.SpeedModeTremolo
+	}
+
+	err := e.rotary.SetSampleRate(e.sampleRate)
+	if err != nil {
+		return err
+	}
+
+	err = e.rotary.SetMix(e.effects.RotaryMix)
+	if err != nil {
+		return err
+	}
+
+	err = e.rotary.SetDrive(e.effects.RotaryDrive)
+	if err != nil {
+		return err
+	}
+
+	err = e.rotary.SetStereoWidth(e.effects.RotaryStereoWidth)
+	if err != nil {
+		return err
+	}
+
+	err = e.rotary.SetCrossoverHz(e.effects.RotaryCrossoverHz)
+	if err != nil {
+		return err
+	}
+
+	return e.rotary.SetSpeedMode(mode)
 }
 
 func sanitizeSpectralPitchFrameSize(n int) int {

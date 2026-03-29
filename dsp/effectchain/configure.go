@@ -326,6 +326,35 @@ func configureTremolo(fx *modulation.Tremolo, sampleRate, rateHz, depth, smoothi
 	return wrapConfigureErr(fx.SetMix(mix))
 }
 
+func configureRotary(fx *modulation.RotarySpeaker, sampleRate, mix, drive, stereoWidth, crossoverHz float64, mode modulation.SpeedMode) error {
+	err := fx.SetSampleRate(sampleRate)
+	if err != nil {
+		return wrapConfigureErr(err)
+	}
+
+	err = fx.SetMix(mix)
+	if err != nil {
+		return wrapConfigureErr(err)
+	}
+
+	err = fx.SetDrive(drive)
+	if err != nil {
+		return wrapConfigureErr(err)
+	}
+
+	err = fx.SetStereoWidth(stereoWidth)
+	if err != nil {
+		return wrapConfigureErr(err)
+	}
+
+	err = fx.SetCrossoverHz(crossoverHz)
+	if err != nil {
+		return wrapConfigureErr(err)
+	}
+
+	return wrapConfigureErr(fx.SetSpeedMode(mode))
+}
+
 func configureDelay(fx *effects.Delay, sampleRate, time, feedback, mix float64) error {
 	err := fx.SetSampleRate(sampleRate)
 	if err != nil {

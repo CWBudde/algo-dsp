@@ -12,6 +12,7 @@
     ringmod: { label: "Ring Mod", hue: 320, category: "Modulation" },
     phaser: { label: "Phaser", hue: 140, category: "Modulation" },
     tremolo: { label: "Tremolo", hue: 270, category: "Modulation" },
+    rotary: { label: "Rotary Speaker", hue: 55, category: "Modulation" },
     bitcrusher: { label: "Bit Crusher", hue: 24, category: "Color" },
     distortion: { label: "Distortion", hue: 6, category: "Color" },
     "dist-cheb": { label: "Chebyshev WS", hue: 18, category: "Color" },
@@ -348,6 +349,13 @@
       },
       smoothingMs: { label: "Smth", min: 0, max: 200, step: 1, unit: "ms" },
       mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+    },
+    rotary: {
+      fast: { label: "Fast", min: 0, max: 1, step: 1, unit: "", scale: 1 },
+      drive: { label: "Drive", min: 0.1, max: 5, step: 0.1, unit: "x" },
+      mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      stereoWidth: { label: "Width", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
+      crossoverHz: { label: "Xover", min: 100, max: 8000, step: 10, unit: "Hz" },
     },
     delay: {
       time: {

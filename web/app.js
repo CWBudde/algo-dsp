@@ -140,6 +140,12 @@ const state = {
     tremoloDepth: 0.6,
     tremoloSmoothingMs: 5,
     tremoloMix: 1,
+    rotarySpeakerEnabled: false,
+    rotaryMix: 1,
+    rotaryDrive: 1,
+    rotaryStereoWidth: 1,
+    rotaryCrossoverHz: 800,
+    rotarySpeedFast: false,
     delayEnabled: false,
     delayTime: 0.25,
     delayFeedback: 0.35,
@@ -499,6 +505,16 @@ const el = {
   tremoloSmoothingValue: document.getElementById("tremolo-smoothing-value"),
   tremoloMix: document.getElementById("tremolo-mix"),
   tremoloMixValue: document.getElementById("tremolo-mix-value"),
+  rotarySpeed: document.getElementById("rotary-speed"),
+  rotarySpeedValue: document.getElementById("rotary-speed-value"),
+  rotaryDrive: document.getElementById("rotary-drive"),
+  rotaryDriveValue: document.getElementById("rotary-drive-value"),
+  rotaryWidth: document.getElementById("rotary-width"),
+  rotaryWidthValue: document.getElementById("rotary-width-value"),
+  rotaryCrossover: document.getElementById("rotary-crossover"),
+  rotaryCrossoverValue: document.getElementById("rotary-crossover-value"),
+  rotaryMix: document.getElementById("rotary-mix"),
+  rotaryMixValue: document.getElementById("rotary-mix-value"),
   delayTime: document.getElementById("delay-time"),
   delayTimeValue: document.getElementById("delay-time-value"),
   delayFeedback: document.getElementById("delay-feedback"),
@@ -861,6 +877,7 @@ const EFFECT_NODE_DEFAULTS = {
     mix: 0.5,
   },
   tremolo: { rateHz: 4, depth: 0.6, smoothingMs: 5, mix: 1.0 },
+  rotary: { fast: 0, drive: 1, stereoWidth: 1, crossoverHz: 800, mix: 1.0 },
   delay: { time: 0.25, feedback: 0.35, mix: 0.25 },
   "delay-simple": { delayMs: 20 },
   bass: {
@@ -1167,6 +1184,13 @@ function applyNodeParamsToUI(node) {
       el.tremoloDepth.value = p.depth;
       el.tremoloSmoothing.value = p.smoothingMs;
       el.tremoloMix.value = p.mix;
+      break;
+    case "rotary":
+      el.rotarySpeed.value = p.fast || 0;
+      el.rotaryDrive.value = p.drive ?? 1;
+      el.rotaryWidth.value = p.stereoWidth ?? 1;
+      el.rotaryCrossover.value = p.crossoverHz ?? 800;
+      el.rotaryMix.value = p.mix ?? 1;
       break;
     case "delay":
       el.delayTime.value = p.time;
@@ -1475,6 +1499,14 @@ function collectNodeParamsFromUI(nodeType) {
         smoothingMs: Number(el.tremoloSmoothing.value),
         mix: Number(el.tremoloMix.value),
       };
+    case "rotary":
+      return {
+        fast: Number(el.rotarySpeed.value),
+        drive: Number(el.rotaryDrive.value),
+        stereoWidth: Number(el.rotaryWidth.value),
+        crossoverHz: Number(el.rotaryCrossover.value),
+        mix: Number(el.rotaryMix.value),
+      };
     case "delay":
       return {
         time: Number(el.delayTime.value),
@@ -1686,6 +1718,11 @@ function loadSettings() {
     if (el.tremoloSmoothing)
       el.tremoloSmoothing.value = state.effectsParams.tremoloSmoothingMs;
     if (el.tremoloMix) el.tremoloMix.value = state.effectsParams.tremoloMix;
+    if (el.rotarySpeed) el.rotarySpeed.value = state.effectsParams.rotarySpeedFast ? 1 : 0;
+    if (el.rotaryDrive) el.rotaryDrive.value = state.effectsParams.rotaryDrive;
+    if (el.rotaryWidth) el.rotaryWidth.value = state.effectsParams.rotaryStereoWidth;
+    if (el.rotaryCrossover) el.rotaryCrossover.value = state.effectsParams.rotaryCrossoverHz;
+    if (el.rotaryMix) el.rotaryMix.value = state.effectsParams.rotaryMix;
     if (el.delayTime) el.delayTime.value = state.effectsParams.delayTime;
     if (el.delayFeedback)
       el.delayFeedback.value = state.effectsParams.delayFeedback;
@@ -2178,6 +2215,7 @@ function readEffectsFromChain() {
     widenerEnabled: enabled.has("widener"),
     phaserEnabled: enabled.has("phaser"),
     tremoloEnabled: enabled.has("tremolo"),
+    rotarySpeakerEnabled: enabled.has("rotary"),
     delayEnabled: enabled.has("delay"),
     timePitchEnabled: enabled.has("pitch-time"),
     spectralPitchEnabled: enabled.has("pitch-spectral"),
@@ -2473,6 +2511,16 @@ function updateEffectsText() {
   el.tremoloDepthValue.textContent = `${Math.round(Number(el.tremoloDepth.value) * 100)}%`;
   el.tremoloSmoothingValue.textContent = `${Number(el.tremoloSmoothing.value).toFixed(1)} ms`;
   el.tremoloMixValue.textContent = `${Math.round(Number(el.tremoloMix.value) * 100)}%`;
+  if (el.rotarySpeed)
+    el.rotarySpeedValue.textContent = Number(el.rotarySpeed.value) >= 0.5 ? "Fast" : "Slow";
+  if (el.rotaryDrive)
+    el.rotaryDriveValue.textContent = `${Number(el.rotaryDrive.value).toFixed(1)}x`;
+  if (el.rotaryWidth)
+    el.rotaryWidthValue.textContent = `${Math.round(Number(el.rotaryWidth.value) * 100)}%`;
+  if (el.rotaryCrossover)
+    el.rotaryCrossoverValue.textContent = `${Number(el.rotaryCrossover.value).toFixed(0)} Hz`;
+  if (el.rotaryMix)
+    el.rotaryMixValue.textContent = `${Math.round(Number(el.rotaryMix.value) * 100)}%`;
   el.delayTimeValue.textContent = `${(Number(el.delayTime.value) * 1000).toFixed(0)} ms`;
   el.delayFeedbackValue.textContent = `${Math.round(Number(el.delayFeedback.value) * 100)}%`;
   el.delayMixValue.textContent = `${Math.round(Number(el.delayMix.value) * 100)}%`;
@@ -2920,6 +2968,11 @@ function bindEvents() {
     el.tremoloDepth,
     el.tremoloSmoothing,
     el.tremoloMix,
+    el.rotarySpeed,
+    el.rotaryDrive,
+    el.rotaryWidth,
+    el.rotaryCrossover,
+    el.rotaryMix,
     el.delayTime,
     el.delayFeedback,
     el.delayMix,
@@ -3255,6 +3308,11 @@ const PIN_MAP = {
   "tremolo-depth": { type: "tremolo", param: "depth" },
   "tremolo-smoothing": { type: "tremolo", param: "smoothingMs" },
   "tremolo-mix": { type: "tremolo", param: "mix" },
+  "rotary-speed": { type: "rotary", param: "fast" },
+  "rotary-drive": { type: "rotary", param: "drive" },
+  "rotary-width": { type: "rotary", param: "stereoWidth" },
+  "rotary-crossover": { type: "rotary", param: "crossoverHz" },
+  "rotary-mix": { type: "rotary", param: "mix" },
   "delay-time": { type: "delay", param: "time" },
   "delay-feedback": { type: "delay", param: "feedback" },
   "delay-mix": { type: "delay", param: "mix" },

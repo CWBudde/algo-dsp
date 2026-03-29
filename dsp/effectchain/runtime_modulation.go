@@ -319,6 +319,47 @@ func (r *delayRuntime) Process(block []float64) {
 	r.fx.ProcessInPlace(block)
 }
 
+type rotaryRuntime struct {
+	fx         *modulation.RotarySpeaker
+	scratchBuf []float64
+}
+
+func (r *rotaryRuntime) Configure(ctx Context, p Params) error {
+	mode := modulation.SpeedModeChorale
+	if p.GetNum("fast", 0) >= 0.5 {
+		mode = modulation.SpeedModeTremolo
+	}
+
+	return configureRotary(
+		r.fx,
+		ctx.SampleRate,
+		core.Clamp(p.GetNum("mix", 1), 0, 1),
+		core.Clamp(p.GetNum("drive", 1), 0.01, 10),
+		core.Clamp(p.GetNum("stereoWidth", 1), 0, 1),
+		core.Clamp(p.GetNum("crossoverHz", 800), 50, 12000),
+		mode,
+	)
+}
+
+func (r *rotaryRuntime) Process(block []float64) {
+	if len(block) == 0 {
+		return
+	}
+
+	if len(r.scratchBuf) < len(block) {
+		r.scratchBuf = make([]float64, len(block))
+	}
+
+	right := r.scratchBuf[:len(block)]
+	copy(right, block)
+
+	r.fx.ProcessStereoInPlace(block, right)
+
+	for i := range block {
+		block[i] = 0.5 * (block[i] + right[i])
+	}
+}
+
 type simpleDelayRuntime struct {
 	sampleRate   float64
 	delayMs      float64

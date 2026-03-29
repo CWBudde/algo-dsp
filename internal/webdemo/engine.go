@@ -107,6 +107,13 @@ type EffectsParams struct {
 	TremoloSmoothingMs float64
 	TremoloMix         float64
 
+	RotarySpeakerEnabled bool
+	RotaryMix            float64
+	RotaryDrive          float64
+	RotaryStereoWidth    float64
+	RotaryCrossoverHz    float64
+	RotarySpeedFast      bool
+
 	DelayEnabled  bool
 	DelayTime     float64
 	DelayFeedback float64
@@ -205,6 +212,7 @@ type Engine struct {
 	widener *spatial.StereoWidener
 	phaser  *modulation.Phaser
 	tremolo *modulation.Tremolo
+	rotary  *modulation.RotarySpeaker
 	delay   *effects.Delay
 	reverb  *reverb.Reverb
 	fdn     *reverb.FDNReverb
@@ -323,6 +331,12 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			TremoloDepth:           0.6,
 			TremoloSmoothingMs:     5,
 			TremoloMix:             1.0,
+			RotarySpeakerEnabled:   false,
+			RotaryMix:              1.0,
+			RotaryDrive:            1.0,
+			RotaryStereoWidth:      1.0,
+			RotaryCrossoverHz:      800.0,
+			RotarySpeedFast:        false,
 			DelayEnabled:           false,
 			DelayTime:              0.25,
 			DelayFeedback:          0.35,
@@ -433,6 +447,13 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 	}
 
 	e.tremolo = tremolo
+
+	rotary, err := modulation.NewRotarySpeaker()
+	if err != nil {
+		return nil, err
+	}
+
+	e.rotary = rotary
 
 	delay, err := effects.NewDelay(sampleRate)
 	if err != nil {

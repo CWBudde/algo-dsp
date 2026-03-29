@@ -59,6 +59,10 @@ func (e *Engine) processLegacyModulationInPlace(block []float64) {
 	if e.effects.TremoloEnabled {
 		_ = e.tremolo.ProcessInPlace(block)
 	}
+
+	if e.effects.RotarySpeakerEnabled {
+		e.processRotaryInPlace(block)
+	}
 }
 
 func (e *Engine) processLegacyPitchInPlace(block []float64) {
@@ -83,6 +87,25 @@ func (e *Engine) processLegacyReverbInPlace(block []float64) {
 	}
 
 	e.reverb.ProcessInPlace(block)
+}
+
+func (e *Engine) processRotaryInPlace(block []float64) {
+	if len(block) == 0 {
+		return
+	}
+
+	if len(e.chainBuf) < len(block) {
+		e.chainBuf = make([]float64, len(block))
+	}
+
+	right := e.chainBuf[:len(block)]
+	copy(right, block)
+
+	e.rotary.ProcessStereoInPlace(block, right)
+
+	for i := range block {
+		block[i] = 0.5 * (block[i] + right[i])
+	}
 }
 
 // processWidenerMonoInPlace applies the stereo widener to a mono signal using a
