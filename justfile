@@ -65,3 +65,7 @@ web-wasm:
 web-demo port="8787": web-wasm
     @echo "Serving web demo at http://localhost:{{port}}"
     python3 -m http.server {{port}} -d web
+
+fix:
+    just lint-fix
+    just fmt
