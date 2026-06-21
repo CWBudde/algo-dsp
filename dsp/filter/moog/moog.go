@@ -1,6 +1,7 @@
 package moog
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -8,371 +9,1014 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
 )
 
-// Variant selects the ladder topology used by a [Filter].
+const (
+	defaultCutoffHz       = 1000.0
+	defaultResonance      = 0.8
+	defaultDrive          = 1.0
+	defaultInputGain      = 1.0
+	defaultOutputGain     = 1.0
+	defaultThermalVoltage = 5.0
+	defaultOversampling   = 1
+	defaultNewtonIters    = 4
+
+	minCutoffHz       = 1.0
+	maxResonance      = 4.0
+	minDrive          = 0.1
+	maxDrive          = 24.0
+	minInputGain      = 0.0
+	maxInputGain      = 24.0
+	minOutputGain     = 0.0
+	maxOutputGain     = 24.0
+	minThermalVoltage = 0.1
+	maxThermalVoltage = 10.0
+	minNewtonIters    = 1
+	maxNewtonIters    = 8
+
+	stateLimit = 32.0
+)
+
+// Variant selects the nonlinear Moog ladder processing model.
 type Variant int
 
 const (
-	// SimpleClassic scales each stage update by the base coefficient g.
-	SimpleClassic Variant = iota
-
-	// ImprovedClassic additionally scales each stage update by
-	// 2*thermalVoltage, driving the saturating stages harder.
-	ImprovedClassic
+	// VariantClassic reproduces the classic four-stage nonlinear ladder from
+	// DAV_DspFilterMoog.pas using exact tanh.
+	VariantClassic Variant = iota
+	// VariantClassicLightweight reproduces the same topology but replaces tanh
+	// with a polynomial approximation for lower CPU use.
+	VariantClassicLightweight
+	// VariantImprovedClassic reproduces the legacy "improved classic" update
+	// rule from DAV_DspFilterMoog.pas.
+	VariantImprovedClassic
+	// VariantImprovedClassicLightweight reproduces legacy "improved classic"
+	// behavior with lightweight tanh approximation.
+	VariantImprovedClassicLightweight
+	// VariantHuovilainen applies Huovilainen-style tuning/resonance
+	// compensation and a half-sample feedback estimate.
+	VariantHuovilainen
+	// VariantZDF uses Zero-Delay Feedback topology with Newton-Raphson
+	// iteration. Based on Zavalishin's Topology-Preserving Transform (TPT)
+	// and D'Angelo & Välimäki's nonlinear ladder refinement. Provides the
+	// highest cutoff-frequency accuracy and most faithful self-oscillation
+	// behavior at the cost of additional computation per sample.
+	VariantZDF
 )
 
-const (
-	defaultThermalVoltage = 5.0
-	defaultGain           = 1.0
-
-	minResonance = 0.0
-	maxResonance = 10.0
-
-	// resonanceSelfOscillation is the feedback amount mapped to a normalized
-	// resonance of 1.0 (classic self-oscillation onset for a 4-pole ladder).
-	resonanceSelfOscillation = 4.0
-
-	// antiAliasOrder is the Butterworth order of the oversampling anti-alias
-	// filters used by the high-quality path.
-	antiAliasOrder = 4
-
-	// antiAliasCutoffScale places the anti-alias cutoff just below the base
-	// Nyquist frequency (relative to the base sample rate).
-	antiAliasCutoffScale = 0.45
-)
-
-// Filter is a stateful nonlinear Moog ladder lowpass filter.
-//
-// Use [New] to construct one, [Filter.ProcessSample] or
-// [Filter.ProcessInPlace] to filter audio, and [Filter.Reset] to clear state.
-type Filter struct {
-	variant  Variant
-	fastTanh bool
-
-	cutoff     float64
-	resonance  float64
-	thermalV   float64
-	gain       float64
-	sampleRate float64
-
-	// Derived coefficients (recomputed by recalc).
-	coeff       float64 // per-stage update gain k at the base rate
-	coeffOS     float64 // per-stage update gain k at the oversampled rate
-	scaleFactor float64 // output scaling
-	vtInv       float64 // 1 / thermalVoltage
-
-	// High-quality oversampling path (nil/1 when disabled).
-	oversampling int
-	upAA         *biquad.Chain // interpolation anti-alias filter (at OS rate)
-	downAA       *biquad.Chain // decimation anti-alias filter (at OS rate)
-
-	s      [4]float64 // ladder integrator states
-	t      [3]float64 // cached tanh outputs of stages 0..2
-	prevS3 float64    // previous fourth-stage state (half-sample feedback comp.)
+func (v Variant) String() string {
+	switch v {
+	case VariantClassic:
+		return "classic"
+	case VariantClassicLightweight:
+		return "classic_lightweight"
+	case VariantImprovedClassic:
+		return "improved_classic"
+	case VariantImprovedClassicLightweight:
+		return "improved_classic_lightweight"
+	case VariantHuovilainen:
+		return "huovilainen"
+	case VariantZDF:
+		return "zdf"
+	default:
+		return "unknown"
+	}
 }
+
+// Option mutates constructor configuration.
+type Option func(*config) error
 
 type config struct {
-	variant      Variant
-	fastTanh     bool
-	resonance    float64
-	thermalV     float64
-	gain         float64
-	oversampling int
+	variant         Variant
+	cutoffHz        float64
+	resonance       float64
+	drive           float64
+	inputGain       float64
+	outputGain      float64
+	thermalVoltage  float64
+	overSampling    int
+	normalizeOutput bool
+	newtonIters     int
 }
 
-// Option configures a [Filter] at construction time.
-type Option func(*config)
+func defaultConfig() config {
+	return config{
+		variant:         VariantHuovilainen,
+		cutoffHz:        defaultCutoffHz,
+		resonance:       defaultResonance,
+		drive:           defaultDrive,
+		inputGain:       defaultInputGain,
+		outputGain:      defaultOutputGain,
+		thermalVoltage:  defaultThermalVoltage,
+		overSampling:    defaultOversampling,
+		normalizeOutput: true,
+		newtonIters:     defaultNewtonIters,
+	}
+}
 
-// WithVariant selects the ladder topology (default [SimpleClassic]).
-func WithVariant(v Variant) Option { return func(c *config) { c.variant = v } }
+// WithVariant selects the nonlinear ladder variant.
+func WithVariant(variant Variant) Option {
+	return func(cfg *config) error {
+		if !validVariant(variant) {
+			return fmt.Errorf("moog: invalid variant: %d", variant)
+		}
 
-// WithFastTanh enables the faster polynomial tanh approximation (default off).
-func WithFastTanh(enabled bool) Option { return func(c *config) { c.fastTanh = enabled } }
+		cfg.variant = variant
 
-// WithResonance sets the raw feedback amount (default 0). See
-// [Filter.SetResonanceNormalized] for a musical [0, 1] control.
-func WithResonance(r float64) Option { return func(c *config) { c.resonance = r } }
+		return nil
+	}
+}
 
-// WithThermalVoltage sets the thermal-voltage shaping control (default 5).
-func WithThermalVoltage(vt float64) Option { return func(c *config) { c.thermalV = vt } }
+// WithCutoffHz sets cutoff in Hz. Must be finite and > 0.
+func WithCutoffHz(cutoffHz float64) Option {
+	return func(cfg *config) error {
+		err := validateFiniteRange(cutoffHz, minCutoffHz, math.Inf(1), "cutoff")
+		if err != nil {
+			return err
+		}
 
-// WithGain sets the output gain applied before resonance scaling (default 1).
-func WithGain(g float64) Option { return func(c *config) { c.gain = g } }
+		cfg.cutoffHz = cutoffHz
 
-// WithOversampling enables the high-quality oversampled path at the given
-// factor (1, 2, 4, or 8; default 1 = disabled). Factors above 1 run the ladder
-// at factor×sampleRate with anti-alias filtering and Huovilainen half-sample
-// feedback compensation, reducing aliasing at high drive and resonance.
-func WithOversampling(factor int) Option { return func(c *config) { c.oversampling = factor } }
+		return nil
+	}
+}
 
-// New creates a Moog ladder filter at the given cutoff (Hz) and sample rate.
+// WithResonance sets feedback resonance in [0, 4].
+func WithResonance(resonance float64) Option {
+	return func(cfg *config) error {
+		err := validateFiniteRange(resonance, 0, maxResonance, "resonance")
+		if err != nil {
+			return err
+		}
+
+		cfg.resonance = resonance
+
+		return nil
+	}
+}
+
+// WithDrive sets nonlinear drive in [0.1, 24].
+func WithDrive(drive float64) Option {
+	return func(cfg *config) error {
+		err := validateFiniteRange(drive, minDrive, maxDrive, "drive")
+		if err != nil {
+			return err
+		}
+
+		cfg.drive = drive
+
+		return nil
+	}
+}
+
+// WithInputGain sets linear pre-ladder gain in [0, 24].
+func WithInputGain(gain float64) Option {
+	return func(cfg *config) error {
+		err := validateFiniteRange(gain, minInputGain, maxInputGain, "input gain")
+		if err != nil {
+			return err
+		}
+
+		cfg.inputGain = gain
+
+		return nil
+	}
+}
+
+// WithOutputGain sets post-ladder output gain in [0, 24].
+func WithOutputGain(gain float64) Option {
+	return func(cfg *config) error {
+		err := validateFiniteRange(gain, minOutputGain, maxOutputGain, "output gain")
+		if err != nil {
+			return err
+		}
+
+		cfg.outputGain = gain
+
+		return nil
+	}
+}
+
+// WithThermalVoltage sets thermal-voltage-style shaping in [0.1, 10].
+func WithThermalVoltage(thermalVoltage float64) Option {
+	return func(cfg *config) error {
+		err := validateFiniteRange(thermalVoltage, minThermalVoltage, maxThermalVoltage, "thermal voltage")
+		if err != nil {
+			return err
+		}
+
+		cfg.thermalVoltage = thermalVoltage
+
+		return nil
+	}
+}
+
+// WithOversampling sets nonlinear oversampling mode. Allowed values: 1, 2, 4, 8.
+func WithOversampling(factor int) Option {
+	return func(cfg *config) error {
+		if !validOversampling(factor) {
+			return fmt.Errorf("moog: oversampling factor must be one of {1,2,4,8}: %d", factor)
+		}
+
+		cfg.overSampling = factor
+
+		return nil
+	}
+}
+
+// WithNormalizeOutput enables or disables output-level normalization.
+func WithNormalizeOutput(enabled bool) Option {
+	return func(cfg *config) error {
+		cfg.normalizeOutput = enabled
+		return nil
+	}
+}
+
+// WithNewtonIterations sets the number of Newton-Raphson iterations used by
+// VariantZDF. Values in [1, 8]; default 4. Ignored by other variants.
+func WithNewtonIterations(n int) Option {
+	return func(cfg *config) error {
+		if n < minNewtonIters || n > maxNewtonIters {
+			return fmt.Errorf("moog: newton iterations must be in [%d, %d]: %d",
+				minNewtonIters, maxNewtonIters, n)
+		}
+
+		cfg.newtonIters = n
+
+		return nil
+	}
+}
+
+// State contains explicit ladder runtime state for save/restore workflows.
+type State struct {
+	Stage      [4]float64
+	TanhLast   [3]float64
+	PrevInput  float64
+	PrevOutput float64
+}
+
+// Filter is a nonlinear 4-stage Moog ladder low-pass processor.
 //
-// The cutoff must lie in (0, sampleRate/2). Optional parameters are applied via
-// [Option] values. Returns an error for invalid parameters.
-func New(cutoffHz, sampleRate float64, opts ...Option) (*Filter, error) {
-	cfg := config{
-		variant:      SimpleClassic,
-		fastTanh:     false,
-		resonance:    0,
-		thermalV:     defaultThermalVoltage,
-		gain:         defaultGain,
-		oversampling: 1,
-	}
+// It supports legacy-faithful classic variants and a Huovilainen-style variant,
+// with optional oversampled anti-alias processing for the nonlinear path.
+type Filter struct {
+	sampleRate float64
 
-	for _, o := range opts {
-		o(&cfg)
-	}
+	variant         Variant
+	cutoffHz        float64
+	resonance       float64
+	drive           float64
+	inputGain       float64
+	outputGain      float64
+	thermalVoltage  float64
+	overSampling    int
+	normalizeOutput bool
+	newtonIters     int
 
-	if sampleRate <= 0 || !isFinite(sampleRate) {
-		return nil, fmt.Errorf("moog: sample rate must be positive and finite, got %v", sampleRate)
-	}
+	coefficient float64
+	feedback    float64
+	driveScale  float64
+	outputScale float64
 
-	if cutoffHz <= 0 || cutoffHz >= sampleRate/2 || !isFinite(cutoffHz) {
-		return nil, fmt.Errorf("moog: cutoff must be in (0, %v), got %v", sampleRate/2, cutoffHz)
-	}
+	// ZDF-specific pre-warped coefficients.
+	zdfG  float64 // tan(π * fc / fs)
+	zdfGK float64 // zdfG / (1 + zdfG)
 
-	if cfg.variant != SimpleClassic && cfg.variant != ImprovedClassic {
-		return nil, fmt.Errorf("moog: unknown variant %d", cfg.variant)
-	}
+	state State
 
-	if cfg.thermalV <= 0 || !isFinite(cfg.thermalV) {
-		return nil, fmt.Errorf("moog: thermal voltage must be positive and finite, got %v", cfg.thermalV)
-	}
-
-	if cfg.resonance < minResonance || cfg.resonance > maxResonance || !isFinite(cfg.resonance) {
-		return nil, fmt.Errorf("moog: resonance must be in [%v, %v], got %v", minResonance, maxResonance, cfg.resonance)
-	}
-
-	if !isFinite(cfg.gain) {
-		return nil, fmt.Errorf("moog: gain must be finite, got %v", cfg.gain)
-	}
-
-	if !validOversampling(cfg.oversampling) {
-		return nil, fmt.Errorf("moog: oversampling factor must be one of {1, 2, 4, 8}, got %d", cfg.oversampling)
-	}
-
-	f := &Filter{
-		variant:      cfg.variant,
-		fastTanh:     cfg.fastTanh,
-		cutoff:       cutoffHz,
-		resonance:    cfg.resonance,
-		thermalV:     cfg.thermalV,
-		gain:         cfg.gain,
-		sampleRate:   sampleRate,
-		oversampling: cfg.oversampling,
-	}
-	f.recalc()
-
-	return f, nil
+	antiAliasUp   *biquad.Section
+	antiAliasDown *biquad.Section
 }
 
-func validOversampling(factor int) bool {
-	return factor == 1 || factor == 2 || factor == 4 || factor == 8
+// New constructs a nonlinear Moog ladder filter.
+func New(sampleRate float64, opts ...Option) (*Filter, error) {
+	if !isFinite(sampleRate) || sampleRate <= 0 {
+		return nil, fmt.Errorf("moog: sample rate must be > 0 and finite: %f", sampleRate)
+	}
+
+	cfg := defaultConfig()
+
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+
+		err := opt(&cfg)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	filter := &Filter{
+		sampleRate:      sampleRate,
+		variant:         cfg.variant,
+		cutoffHz:        cfg.cutoffHz,
+		resonance:       cfg.resonance,
+		drive:           cfg.drive,
+		inputGain:       cfg.inputGain,
+		outputGain:      cfg.outputGain,
+		thermalVoltage:  cfg.thermalVoltage,
+		overSampling:    cfg.overSampling,
+		normalizeOutput: cfg.normalizeOutput,
+		newtonIters:     cfg.newtonIters,
+	}
+
+	err := filter.rebuild()
+	if err != nil {
+		return nil, err
+	}
+
+	return filter, nil
 }
 
-// recalc recomputes the derived coefficients from the current parameters.
-func (f *Filter) recalc() {
-	f.vtInv = 1 / f.thermalV
-	f.coeff = f.stageGain(f.sampleRate)
+// SampleRate returns the sample rate in Hz.
+func (f *Filter) SampleRate() float64 { return f.sampleRate }
 
-	amp := math.Pow(10, f.resonance/20) // dB_to_Amp(resonance)
-	f.scaleFactor = f.gain * amp * amp
+// Variant returns the nonlinear ladder variant.
+func (f *Filter) Variant() Variant { return f.variant }
 
-	if f.oversampling > 1 {
-		osRate := f.sampleRate * float64(f.oversampling)
-		f.coeffOS = f.stageGain(osRate)
+// CutoffHz returns the cutoff frequency in Hz.
+func (f *Filter) CutoffHz() float64 { return f.cutoffHz }
 
-		// Anti-alias cutoff just below the base Nyquist, designed at OS rate.
-		aaHz := antiAliasCutoffScale * f.sampleRate
-		coeffs := design.ButterworthLP(aaHz, antiAliasOrder, osRate)
-		f.upAA = biquad.NewChain(coeffs)
-		f.downAA = biquad.NewChain(coeffs)
-	} else {
-		f.coeffOS = 0
-		f.upAA = nil
-		f.downAA = nil
+// Resonance returns the feedback resonance.
+func (f *Filter) Resonance() float64 { return f.resonance }
+
+// Drive returns nonlinear drive.
+func (f *Filter) Drive() float64 { return f.drive }
+
+// InputGain returns linear input gain.
+func (f *Filter) InputGain() float64 { return f.inputGain }
+
+// OutputGain returns post-ladder gain.
+func (f *Filter) OutputGain() float64 { return f.outputGain }
+
+// ThermalVoltage returns the thermal-voltage-style shaping parameter.
+func (f *Filter) ThermalVoltage() float64 { return f.thermalVoltage }
+
+// Oversampling returns the nonlinear oversampling factor.
+func (f *Filter) Oversampling() int { return f.overSampling }
+
+// NormalizeOutput reports whether resonance-gain normalization is enabled.
+func (f *Filter) NormalizeOutput() bool { return f.normalizeOutput }
+
+// NewtonIterations returns the number of Newton-Raphson iterations (ZDF only).
+func (f *Filter) NewtonIterations() int { return f.newtonIters }
+
+// SetSampleRate updates sample rate and rebuilds coefficients.
+func (f *Filter) SetSampleRate(sampleRate float64) error {
+	if !isFinite(sampleRate) || sampleRate <= 0 {
+		return fmt.Errorf("moog: sample rate must be > 0 and finite: %f", sampleRate)
+	}
+
+	f.sampleRate = sampleRate
+
+	return f.rebuild()
+}
+
+// SetVariant updates nonlinear ladder variant and rebuilds coefficients.
+func (f *Filter) SetVariant(variant Variant) error {
+	if !validVariant(variant) {
+		return fmt.Errorf("moog: invalid variant: %d", variant)
+	}
+
+	f.variant = variant
+
+	return f.rebuild()
+}
+
+// SetCutoffHz updates cutoff and rebuilds coefficients.
+func (f *Filter) SetCutoffHz(cutoffHz float64) error {
+	err := validateFiniteRange(cutoffHz, minCutoffHz, math.Inf(1), "cutoff")
+	if err != nil {
+		return err
+	}
+
+	f.cutoffHz = cutoffHz
+
+	return f.rebuild()
+}
+
+// SetResonance updates resonance and rebuilds coefficients.
+func (f *Filter) SetResonance(resonance float64) error {
+	err := validateFiniteRange(resonance, 0, maxResonance, "resonance")
+	if err != nil {
+		return err
+	}
+
+	f.resonance = resonance
+
+	return f.rebuild()
+}
+
+// SetDrive updates nonlinear drive.
+func (f *Filter) SetDrive(drive float64) error {
+	err := validateFiniteRange(drive, minDrive, maxDrive, "drive")
+	if err != nil {
+		return err
+	}
+
+	f.drive = drive
+	f.driveScale = 0.5 * f.drive / f.thermalVoltage
+
+	return nil
+}
+
+// SetInputGain updates linear pre-ladder gain.
+func (f *Filter) SetInputGain(gain float64) error {
+	err := validateFiniteRange(gain, minInputGain, maxInputGain, "input gain")
+	if err != nil {
+		return err
+	}
+
+	f.inputGain = gain
+
+	return nil
+}
+
+// SetOutputGain updates post-ladder output gain.
+func (f *Filter) SetOutputGain(gain float64) error {
+	err := validateFiniteRange(gain, minOutputGain, maxOutputGain, "output gain")
+	if err != nil {
+		return err
+	}
+
+	f.outputGain = gain
+	f.updateOutputScale()
+
+	return nil
+}
+
+// SetThermalVoltage updates shaping and rebuilds coefficients.
+func (f *Filter) SetThermalVoltage(thermalVoltage float64) error {
+	err := validateFiniteRange(thermalVoltage, minThermalVoltage, maxThermalVoltage, "thermal voltage")
+	if err != nil {
+		return err
+	}
+
+	f.thermalVoltage = thermalVoltage
+
+	return f.rebuild()
+}
+
+// SetOversampling updates oversampling mode and rebuilds anti-alias filters.
+func (f *Filter) SetOversampling(factor int) error {
+	if !validOversampling(factor) {
+		return fmt.Errorf("moog: oversampling factor must be one of {1,2,4,8}: %d", factor)
+	}
+
+	f.overSampling = factor
+
+	return f.rebuild()
+}
+
+// SetNormalizeOutput enables or disables resonance normalization.
+func (f *Filter) SetNormalizeOutput(enabled bool) {
+	f.normalizeOutput = enabled
+	f.updateOutputScale()
+}
+
+// SetNewtonIterations updates the Newton-Raphson iteration count (ZDF only).
+func (f *Filter) SetNewtonIterations(n int) error {
+	if n < minNewtonIters || n > maxNewtonIters {
+		return fmt.Errorf("moog: newton iterations must be in [%d, %d]: %d",
+			minNewtonIters, maxNewtonIters, n)
+	}
+
+	f.newtonIters = n
+
+	return nil
+}
+
+// Reset clears ladder state.
+func (f *Filter) Reset() {
+	f.state = State{}
+
+	if f.antiAliasUp != nil {
+		f.antiAliasUp.Reset()
+	}
+
+	if f.antiAliasDown != nil {
+		f.antiAliasDown.Reset()
 	}
 }
 
-// stageGain returns the per-stage update coefficient at the given rate.
-func (f *Filter) stageGain(rate float64) float64 {
-	g := 2 * f.thermalV * (1 - math.Exp(-2*math.Pi*f.cutoff/rate))
-	if f.variant == ImprovedClassic {
-		g *= 2 * f.thermalV
-	}
-
-	return g
+// State returns a copy of the current processor state.
+func (f *Filter) State() State {
+	return f.state
 }
 
-// ProcessSample filters one input sample and returns the output.
-func (f *Filter) ProcessSample(x float64) float64 {
-	if f.oversampling > 1 {
-		return f.processOversampled(x)
+// SetState restores an externally saved processor state.
+func (f *Filter) SetState(state State) error {
+	if !stateIsFinite(state) {
+		return errors.New("moog: state contains NaN or Inf")
 	}
 
-	return f.ladderStep(x, f.coeff, f.s[3])
+	f.state = state
+
+	return nil
 }
 
-// ladderStep runs one ladder iteration at the given stage coefficient, using
-// feedback as the resonance feedback signal, and returns the scaled output.
-func (f *Filter) ladderStep(x, coeff, feedback float64) float64 {
-	tanhFn := math.Tanh
-	if f.fastTanh {
-		tanhFn = fastTanh
+// ProcessSample processes one sample.
+func (f *Filter) ProcessSample(input float64) float64 {
+	if !isFinite(input) {
+		input = 0
 	}
 
-	in := x - f.resonance*feedback
+	if f.overSampling <= 1 {
+		out := f.processCore(input)
+		f.state.PrevInput = input
 
-	f.s[0] += coeff * (tanhFn(0.5*in*f.vtInv) - f.t[0])
-	f.t[0] = tanhFn(0.5 * f.s[0] * f.vtInv)
+		return sanitizeOutput(out)
+	}
 
-	f.s[1] += coeff * (f.t[0] - f.t[1])
-	f.t[1] = tanhFn(0.5 * f.s[1] * f.vtInv)
-
-	f.s[2] += coeff * (f.t[1] - f.t[2])
-	f.t[2] = tanhFn(0.5 * f.s[2] * f.vtInv)
-
-	f.s[3] += coeff * (f.t[2] - tanhFn(0.5*f.s[3]*f.vtInv))
-
-	return f.scaleFactor * f.s[3]
-}
-
-// processOversampled runs the high-quality path: the input is zero-stuffed to
-// the oversampled rate, interpolation/decimation anti-alias filtered, and the
-// ladder is run per oversampled tick with Huovilainen half-sample feedback
-// compensation (the feedback averages the current and previous fourth-stage
-// state).
-func (f *Filter) processOversampled(x float64) float64 {
-	os := float64(f.oversampling)
+	prev := f.state.PrevInput
+	delta := (input - prev) / float64(f.overSampling)
 
 	var out float64
 
-	for i := range f.oversampling {
-		in := 0.0
-		if i == 0 {
-			in = x * os
+	for i := range f.overSampling {
+		subInput := prev + delta*float64(i+1)
+
+		if f.antiAliasUp != nil {
+			subInput = f.antiAliasUp.ProcessSample(subInput)
 		}
 
-		in = f.upAA.ProcessSample(in)
-
-		fb := 0.5 * (f.s[3] + f.prevS3)
-		f.prevS3 = f.s[3]
-
-		y := f.downAA.ProcessSample(f.ladderStep(in, f.coeffOS, fb))
-
-		if i == f.oversampling-1 {
-			out = y
+		subOutput := f.processCore(subInput)
+		if f.antiAliasDown != nil {
+			subOutput = f.antiAliasDown.ProcessSample(subOutput)
 		}
+
+		out = subOutput
 	}
 
-	return out
+	f.state.PrevInput = input
+
+	return sanitizeOutput(out)
 }
 
-// ProcessInPlace filters a block of samples in place.
+// ProcessInPlace processes a mono buffer in place.
 func (f *Filter) ProcessInPlace(buf []float64) {
 	for i := range buf {
 		buf[i] = f.ProcessSample(buf[i])
 	}
 }
 
-// Reset clears the internal ladder state.
-func (f *Filter) Reset() {
-	f.s = [4]float64{}
-	f.t = [3]float64{}
-	f.prevS3 = 0
-
-	if f.upAA != nil {
-		f.upAA.Reset()
+// ProcessTo processes src into dst. Both slices must have the same length.
+func (f *Filter) ProcessTo(dst, src []float64) {
+	n := len(src)
+	if n == 0 {
+		return
 	}
 
-	if f.downAA != nil {
-		f.downAA.Reset()
+	_ = dst[n-1]
+	for i, x := range src {
+		dst[i] = f.ProcessSample(x)
 	}
 }
 
-// SetCutoff updates the cutoff frequency (Hz) and recomputes coefficients.
-func (f *Filter) SetCutoff(hz float64) error {
-	if hz <= 0 || hz >= f.sampleRate/2 || !isFinite(hz) {
-		return fmt.Errorf("moog: cutoff must be in (0, %v), got %v", f.sampleRate/2, hz)
+func (f *Filter) processCore(input float64) float64 {
+	switch f.variant {
+	case VariantClassic:
+		return f.processClassic(input, math.Tanh, false)
+	case VariantClassicLightweight:
+		return f.processClassic(input, fastTanhApprox, false)
+	case VariantImprovedClassic:
+		return f.processClassic(input, math.Tanh, true)
+	case VariantImprovedClassicLightweight:
+		return f.processClassic(input, fastTanhApprox, true)
+	case VariantHuovilainen:
+		return f.processHuovilainen(input)
+	case VariantZDF:
+		return f.processZDF(input)
+	default:
+		return 0
+	}
+}
+
+func (f *Filter) processClassic(input float64, tanhFn func(float64) float64, improved bool) float64 {
+	state := &f.state
+	newInput := input*f.inputGain - f.feedback*state.Stage[3]
+
+	stageCoefficient := f.coefficient
+	if improved {
+		stageCoefficient *= 2 * f.thermalVoltage
 	}
 
-	f.cutoff = hz
-	f.recalc()
+	tanhInput := tanhFn(f.driveScale * newInput)
+	state.Stage[0] = clipState(state.Stage[0] + stageCoefficient*(tanhInput-state.TanhLast[0]))
+	state.TanhLast[0] = tanhFn(f.driveScale * state.Stage[0])
+
+	state.Stage[1] = clipState(state.Stage[1] + stageCoefficient*(state.TanhLast[0]-state.TanhLast[1]))
+	state.TanhLast[1] = tanhFn(f.driveScale * state.Stage[1])
+
+	state.Stage[2] = clipState(state.Stage[2] + stageCoefficient*(state.TanhLast[1]-state.TanhLast[2]))
+	state.TanhLast[2] = tanhFn(f.driveScale * state.Stage[2])
+
+	state.Stage[3] = clipState(state.Stage[3] + stageCoefficient*(state.TanhLast[2]-tanhFn(f.driveScale*state.Stage[3])))
+	state.PrevOutput = state.Stage[3]
+
+	return f.outputScale * state.Stage[3]
+}
+
+func (f *Filter) processHuovilainen(input float64) float64 {
+	s := &f.state
+
+	feedbackSample := 0.5 * (s.Stage[3] + s.PrevOutput)
+	driveInput := input*f.inputGain - f.feedback*feedbackSample
+
+	shape := f.driveScale
+	t0 := math.Tanh(shape * driveInput)
+	tS0 := math.Tanh(shape * s.Stage[0])
+	tS1 := math.Tanh(shape * s.Stage[1])
+	tS2 := math.Tanh(shape * s.Stage[2])
+	tS3 := math.Tanh(shape * s.Stage[3])
+
+	g := f.coefficient
+	s.Stage[0] = clipState(s.Stage[0] + g*(t0-tS0))
+	s.TanhLast[0] = math.Tanh(shape * s.Stage[0])
+
+	s.Stage[1] = clipState(s.Stage[1] + g*(s.TanhLast[0]-tS1))
+	s.TanhLast[1] = math.Tanh(shape * s.Stage[1])
+
+	s.Stage[2] = clipState(s.Stage[2] + g*(s.TanhLast[1]-tS2))
+	s.TanhLast[2] = math.Tanh(shape * s.Stage[2])
+
+	s.Stage[3] = clipState(s.Stage[3] + g*(s.TanhLast[2]-tS3))
+	s.PrevOutput = s.Stage[3]
+
+	return f.outputScale * s.Stage[3]
+}
+
+// processZDF implements the Zero-Delay Feedback ladder using the
+// Topology-Preserving Transform (Zavalishin 2012) with Newton-Raphson
+// iteration to solve the implicit nonlinear feedback loop (D'Angelo &
+// Välimäki 2014).
+//
+// Each stage models the analog integrator ds/dt = ωc * (f(x) - f(s))
+// where f(x) = tanh(shape*x)/shape is a normalized saturator (f(x) ≈ x for
+// small x). The TPT discretization yields:
+//
+//	v_i = g/((1+g)*shape) * (tanh(shape*x_i) - tanh(shape*s_i))
+//	y_i = v_i + s_i
+//	s_i_new = s_i + 2*v_i
+//
+// The normalization by 1/shape ensures that small-signal behavior matches the
+// linear one-pole (DC gain = 1, -3 dB at cutoff). The feedback path
+// u = input - k*y3 creates an implicit equation solved via Newton-Raphson.
+//
+//nolint:funlen
+func (f *Filter) processZDF(input float64) float64 {
+	state := &f.state
+	gk := f.zdfGK // g/(1+g)
+	shape := f.driveScale
+	k := f.feedback
+	inp := input * f.inputGain
+
+	// Normalized coefficient: dividing by shape makes the small-signal gain
+	// equal to gk (matching the linear TPT one-pole).
+	vScale := gk / shape
+
+	// Cache state tanh values (invariant across Newton iterations).
+	s0, s1, s2, s3 := state.Stage[0], state.Stage[1], state.Stage[2], state.Stage[3]
+	tS0 := math.Tanh(shape * s0)
+	tS1 := math.Tanh(shape * s1)
+	tS2 := math.Tanh(shape * s2)
+	tS3 := math.Tanh(shape * s3)
+
+	// Initial estimate: previous output.
+	y3est := state.PrevOutput
+
+	for range f.newtonIters {
+		u := inp - k*y3est
+
+		// Stage 0: dy0/du = gk * sech²(shape*u) (shape cancels in derivative).
+		tU := math.Tanh(shape * u)
+		v0 := vScale * (tU - tS0)
+		y0 := v0 + s0
+		d0 := gk * (1 - tU*tU)
+
+		// Stage 1
+		tY0 := math.Tanh(shape * y0)
+		v1 := vScale * (tY0 - tS1)
+		y1 := v1 + s1
+		d1 := gk * (1 - tY0*tY0)
+
+		// Stage 2
+		tY1 := math.Tanh(shape * y1)
+		v2 := vScale * (tY1 - tS2)
+		y2 := v2 + s2
+		d2 := gk * (1 - tY1*tY1)
+
+		// Stage 3
+		tY2 := math.Tanh(shape * y2)
+		v3 := vScale * (tY2 - tS3)
+		y3 := v3 + s3
+		d3 := gk * (1 - tY2*tY2)
+
+		// Newton update: F(y3est) = y3 - y3est, J = dF/dy3est.
+		residual := y3 - y3est
+		J := d0*d1*d2*d3*(-k) - 1.0
+
+		if math.Abs(residual) < 1e-15 {
+			y3est = y3
+
+			break
+		}
+
+		if math.Abs(J) < 1e-15 {
+			break
+		}
+
+		y3est -= residual / J
+	}
+
+	// Final forward pass with converged y3est; update states.
+	u := inp - k*y3est
+
+	tU := math.Tanh(shape * u)
+	v0 := vScale * (tU - tS0)
+	y0 := v0 + s0
+
+	tY0 := math.Tanh(shape * y0)
+	v1 := vScale * (tY0 - tS1)
+	y1 := v1 + s1
+
+	tY1 := math.Tanh(shape * y1)
+	v2 := vScale * (tY1 - tS2)
+	y2 := v2 + s2
+
+	tY2 := math.Tanh(shape * y2)
+	v3 := vScale * (tY2 - tS3)
+	y3 := v3 + s3
+
+	state.Stage[0] = clipState(s0 + 2*v0)
+	state.Stage[1] = clipState(s1 + 2*v1)
+	state.Stage[2] = clipState(s2 + 2*v2)
+	state.Stage[3] = clipState(s3 + 2*v3)
+	state.TanhLast[0] = math.Tanh(shape * state.Stage[0])
+	state.TanhLast[1] = math.Tanh(shape * state.Stage[1])
+	state.TanhLast[2] = math.Tanh(shape * state.Stage[2])
+	state.PrevOutput = y3
+
+	return f.outputScale * y3
+}
+
+//nolint:funlen
+func (f *Filter) rebuild() error {
+	if !validVariant(f.variant) {
+		return fmt.Errorf("moog: invalid variant: %d", f.variant)
+	}
+
+	err := validateFiniteRange(f.cutoffHz, minCutoffHz, math.Inf(1), "cutoff")
+	if err != nil {
+		return err
+	}
+
+	err = validateFiniteRange(f.resonance, 0, maxResonance, "resonance")
+	if err != nil {
+		return err
+	}
+
+	err = validateFiniteRange(f.drive, minDrive, maxDrive, "drive")
+	if err != nil {
+		return err
+	}
+
+	err = validateFiniteRange(f.inputGain, minInputGain, maxInputGain, "input gain")
+	if err != nil {
+		return err
+	}
+
+	err = validateFiniteRange(f.outputGain, minOutputGain, maxOutputGain, "output gain")
+	if err != nil {
+		return err
+	}
+
+	err = validateFiniteRange(f.thermalVoltage, minThermalVoltage, maxThermalVoltage, "thermal voltage")
+	if err != nil {
+		return err
+	}
+
+	if !validOversampling(f.overSampling) {
+		return fmt.Errorf("moog: oversampling factor must be one of {1,2,4,8}: %d", f.overSampling)
+	}
+
+	baseNyquist := f.sampleRate * 0.5
+	if f.cutoffHz >= baseNyquist {
+		return fmt.Errorf("moog: cutoff must be < Nyquist (%f Hz): %f", baseNyquist, f.cutoffHz)
+	}
+
+	effectiveSampleRate := f.sampleRate * float64(f.overSampling)
+	fc := f.cutoffHz / effectiveSampleRate
+	f.driveScale = 0.5 * f.drive / f.thermalVoltage
+
+	f.feedback = f.resonance
+	f.coefficient = 2 * f.thermalVoltage * (1 - math.Exp(-2*math.Pi*fc))
+
+	switch f.variant {
+	case VariantHuovilainen:
+		fcr := 1.8730*fc*fc*fc + 0.4955*fc*fc - 0.6490*fc + 0.9988
+		if fcr < 0 {
+			fcr = 0
+		}
+
+		f.coefficient = 2 * f.thermalVoltage * (1 - math.Exp(-2*math.Pi*fcr*fc))
+
+		resonanceComp := -3.9364*fc*fc + 1.8409*fc + 0.9968
+		if resonanceComp < 0 {
+			resonanceComp = 0
+		}
+
+		f.feedback = f.resonance * resonanceComp
+	case VariantZDF:
+		// Pre-warped coefficient: exact frequency mapping via bilinear transform.
+		// No polynomial correction needed — tan(π*fc/fs) is exact by construction.
+		f.zdfG = math.Tan(math.Pi * fc)
+		f.zdfGK = f.zdfG / (1 + f.zdfG)
+		f.feedback = f.resonance
+	}
+
+	f.updateOutputScale()
+	f.buildAntiAliasFilters()
 
 	return nil
 }
 
-// SetResonance updates the raw feedback amount and recomputes coefficients.
-func (f *Filter) SetResonance(r float64) error {
-	if r < minResonance || r > maxResonance || !isFinite(r) {
-		return fmt.Errorf("moog: resonance must be in [%v, %v], got %v", minResonance, maxResonance, r)
+func (f *Filter) updateOutputScale() {
+	legacyResonanceScale := dbToAmp(f.resonance)
+	legacyResonanceScale *= legacyResonanceScale
+
+	norm := 1.0
+	if f.normalizeOutput {
+		norm = 1 / (1 + 0.5*f.resonance)
 	}
 
-	f.resonance = r
-	f.recalc()
+	f.outputScale = f.outputGain * legacyResonanceScale * norm
+}
+
+func (f *Filter) buildAntiAliasFilters() {
+	if f.overSampling <= 1 {
+		f.antiAliasUp = nil
+		f.antiAliasDown = nil
+
+		return
+	}
+
+	osRate := f.sampleRate * float64(f.overSampling)
+
+	antiAliasHz := f.sampleRate * 0.225
+	if antiAliasHz >= osRate*0.5 {
+		antiAliasHz = osRate * 0.225
+	}
+
+	coeff := design.Lowpass(antiAliasHz, 0.7071067811865476, osRate)
+	f.antiAliasUp = biquad.NewSection(coeff)
+	f.antiAliasDown = biquad.NewSection(coeff)
+}
+
+// Stereo is a helper that runs one Moog filter state per channel.
+type Stereo struct {
+	left  *Filter
+	right *Filter
+}
+
+// NewStereo constructs a stereo helper with independent left/right state.
+func NewStereo(sampleRate float64, opts ...Option) (*Stereo, error) {
+	left, err := New(sampleRate, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	right, err := New(sampleRate, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Stereo{left: left, right: right}, nil
+}
+
+// Left returns the left-channel filter.
+func (s *Stereo) Left() *Filter { return s.left }
+
+// Right returns the right-channel filter.
+func (s *Stereo) Right() *Filter { return s.right }
+
+// Reset clears both channel states.
+func (s *Stereo) Reset() {
+	s.left.Reset()
+	s.right.Reset()
+}
+
+// ProcessSample processes one stereo sample frame.
+func (s *Stereo) ProcessSample(leftIn, rightIn float64) (leftOut, rightOut float64) {
+	return s.left.ProcessSample(leftIn), s.right.ProcessSample(rightIn)
+}
+
+// ProcessInPlace processes stereo planar buffers in place.
+func (s *Stereo) ProcessInPlace(left, right []float64) {
+	n := len(left)
+	if n == 0 {
+		return
+	}
+
+	_ = right[n-1]
+
+	for i := range n {
+		left[i], right[i] = s.ProcessSample(left[i], right[i])
+	}
+}
+
+// ProcessFramesInPlace processes interleaved [left,right] frames in place.
+func (s *Stereo) ProcessFramesInPlace(frames [][2]float64) {
+	for i := range frames {
+		frames[i][0], frames[i][1] = s.ProcessSample(frames[i][0], frames[i][1])
+	}
+}
+
+func validVariant(variant Variant) bool {
+	return variant >= VariantClassic && variant <= VariantZDF
+}
+
+func validOversampling(factor int) bool {
+	return factor == 1 || factor == 2 || factor == 4 || factor == 8
+}
+
+func validateFiniteRange(value, minValue, maxValue float64, name string) error {
+	if !isFinite(value) {
+		return fmt.Errorf("moog: %s must be finite: %v", name, value)
+	}
+
+	if value < minValue || value > maxValue {
+		return fmt.Errorf("moog: %s must be in [%g, %g]: %f", name, minValue, maxValue, value)
+	}
 
 	return nil
 }
 
-// SetResonanceNormalized sets resonance from a musical [0, 1] control, where
-// 1.0 maps to the classic self-oscillation onset.
-func (f *Filter) SetResonanceNormalized(r float64) error {
-	if r < 0 || r > 1 || !isFinite(r) {
-		return fmt.Errorf("moog: normalized resonance must be in [0, 1], got %v", r)
+func sanitizeOutput(value float64) float64 {
+	if !isFinite(value) {
+		return 0
 	}
 
-	return f.SetResonance(r * resonanceSelfOscillation)
+	return value
 }
 
-// SetOversampling updates the oversampling factor (1, 2, 4, or 8) and rebuilds
-// the anti-alias filters. The internal state is reset.
-func (f *Filter) SetOversampling(factor int) error {
-	if !validOversampling(factor) {
-		return fmt.Errorf("moog: oversampling factor must be one of {1, 2, 4, 8}, got %d", factor)
+func clipState(value float64) float64 {
+	if value > stateLimit {
+		return stateLimit
 	}
 
-	f.oversampling = factor
-	f.recalc()
-	f.Reset()
+	if value < -stateLimit {
+		return -stateLimit
+	}
 
-	return nil
+	return value
 }
 
-// SetSampleRate updates the sample rate (Hz) and recomputes coefficients.
-// The current cutoff must remain below the new Nyquist frequency.
-func (f *Filter) SetSampleRate(sr float64) error {
-	if sr <= 0 || !isFinite(sr) {
-		return fmt.Errorf("moog: sample rate must be positive and finite, got %v", sr)
+func fastTanhApprox(x float64) float64 {
+	if x > 3 {
+		return 1
 	}
 
-	if f.cutoff >= sr/2 {
-		return fmt.Errorf("moog: cutoff %v exceeds Nyquist for sample rate %v", f.cutoff, sr)
+	if x < -3 {
+		return -1
 	}
 
-	f.sampleRate = sr
-	f.recalc()
+	x2 := x * x
 
-	return nil
+	return clamp(x*(27+x2)/(27+9*x2), -1, 1)
 }
 
-// Cutoff returns the cutoff frequency in Hz.
-func (f *Filter) Cutoff() float64 { return f.cutoff }
+func clamp(x, lo, hi float64) float64 {
+	if x < lo {
+		return lo
+	}
 
-// Resonance returns the raw feedback amount.
-func (f *Filter) Resonance() float64 { return f.resonance }
+	if x > hi {
+		return hi
+	}
 
-// SampleRate returns the sample rate in Hz.
-func (f *Filter) SampleRate() float64 { return f.sampleRate }
+	return x
+}
 
-// ThermalVoltage returns the thermal-voltage shaping control.
-func (f *Filter) ThermalVoltage() float64 { return f.thermalV }
+func dbToAmp(db float64) float64 {
+	return math.Pow(10, db/20)
+}
 
-// Variant returns the ladder topology in use.
-func (f *Filter) Variant() Variant { return f.variant }
+func stateIsFinite(state State) bool {
+	for _, v := range state.Stage {
+		if !isFinite(v) {
+			return false
+		}
+	}
 
-// Oversampling returns the oversampling factor (1 when the high-quality path is
-// disabled).
-func (f *Filter) Oversampling() int { return f.oversampling }
+	for _, v := range state.TanhLast {
+		if !isFinite(v) {
+			return false
+		}
+	}
 
-func isFinite(v float64) bool {
-	return !math.IsNaN(v) && !math.IsInf(v, 0)
+	return isFinite(state.PrevInput) && isFinite(state.PrevOutput)
+}
+
+func isFinite(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0)
 }

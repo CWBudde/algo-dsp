@@ -5,110 +5,138 @@ import (
 	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/moog"
-	"github.com/cwbudde/algo-dsp/dsp/spectrum"
 )
 
-// ExampleFilter_ProcessSample shows that the ladder lowpass settles a DC input
-// to its steady-state gain.
-func ExampleFilter_ProcessSample() {
-	f, _ := moog.New(1000, 48000)
-
-	var y float64
-	for range 5000 {
-		y = f.ProcessSample(1.0)
-	}
-
-	fmt.Printf("DC steady state: %.3f\n", y)
-	// Output:
-	// DC steady state: 1.000
-}
-
-// ExampleFilter_SetResonanceNormalized demonstrates the musical [0, 1]
-// resonance control mapping onto the raw feedback amount.
-func ExampleFilter_SetResonanceNormalized() {
-	f, _ := moog.New(1000, 48000)
-
-	_ = f.SetResonanceNormalized(0.5)
-	fmt.Printf("feedback: %.1f\n", f.Resonance())
-
-	_ = f.SetResonanceNormalized(1.0)
-	fmt.Printf("feedback: %.1f\n", f.Resonance())
-	// Output:
-	// feedback: 2.0
-	// feedback: 4.0
-}
-
-// ExampleFilter_lowpass compares the attenuation of a low and a high tone.
-func ExampleFilter_lowpass() {
-	const (
-		sr     = 48000.0
-		cutoff = 1000.0
-		n      = 8192
+func ExampleNew_subtractiveSweep() {
+	f, err := moog.New(48000,
+		moog.WithVariant(moog.VariantHuovilainen),
+		moog.WithCutoffHz(300),
+		moog.WithResonance(1.4),
+		moog.WithDrive(2.2),
+		moog.WithOversampling(4),
 	)
-
-	rms := func(x []float64) float64 {
-		var sum float64
-		for _, v := range x {
-			sum += v * v
-		}
-
-		return math.Sqrt(sum / float64(len(x)))
+	if err != nil {
+		panic(err)
 	}
 
-	tone := func(freq float64) []float64 {
-		buf := make([]float64, n)
-		for i := range buf {
-			buf[i] = 0.05 * math.Sin(2*math.Pi*freq*float64(i)/sr)
+	out := make([]float64, 8)
+	for i := range out {
+		cutoff := 300 + float64(i)*500
+
+		err := f.SetCutoffHz(cutoff)
+		if err != nil {
+			panic(err)
 		}
 
-		return buf
+		saw := 2*math.Mod(float64(i)/8, 1) - 1
+		out[i] = f.ProcessSample(saw)
 	}
 
-	low := tone(100)
-	high := tone(12000)
-
-	fLow, _ := moog.New(cutoff, sr)
-	fHigh, _ := moog.New(cutoff, sr)
-
-	fLow.ProcessInPlace(low)
-	fHigh.ProcessInPlace(high)
-
-	fmt.Printf("100 Hz passes, 12 kHz attenuated: %v\n", rms(high[n/4:]) < 0.1*rms(low[n/4:]))
+	fmt.Printf("%.6f %.6f %.6f\n", out[0], out[1], out[2])
 	// Output:
-	// 100 Hz passes, 12 kHz attenuated: true
+	// -0.000000 -0.000004 -0.000128
 }
 
-// ExampleFilter_oversampling drives a 9 kHz tone hard into saturation. At the
-// base rate the 5th harmonic folds back to 3 kHz (aliasing); the high-quality
-// oversampled path removes it before decimation.
-func ExampleFilter_oversampling() {
-	const (
-		sr     = 48000.0
-		f0     = 9000.0
-		cutoff = 10000.0
-		n      = 19200
+func ExampleNew_resonanceEmphasis() {
+	lowRes, err := moog.New(48000,
+		moog.WithVariant(moog.VariantHuovilainen),
+		moog.WithCutoffHz(1200),
+		moog.WithResonance(0.5),
+		moog.WithNormalizeOutput(false),
 	)
-
-	aliasPower := func(os int) float64 {
-		f, _ := moog.New(cutoff, sr, moog.WithOversampling(os), moog.WithResonance(2))
-
-		in := make([]float64, n)
-		for i := range in {
-			in[i] = 40 * math.Sin(2*math.Pi*f0*float64(i)/sr)
-		}
-
-		f.ProcessInPlace(in)
-
-		g, _ := spectrum.NewGoertzel(3000, sr)
-		g.ProcessBlock(in[n-9600:])
-
-		return g.Power()
+	if err != nil {
+		panic(err)
 	}
 
-	base := aliasPower(1)
-	os4 := aliasPower(4)
+	highRes, err := moog.New(48000,
+		moog.WithVariant(moog.VariantHuovilainen),
+		moog.WithCutoffHz(1200),
+		moog.WithResonance(3.2),
+		moog.WithNormalizeOutput(false),
+	)
+	if err != nil {
+		panic(err)
+	}
 
-	fmt.Printf("4x oversampling cuts 3 kHz alias below 10%%: %v\n", os4 < 0.1*base)
+	peakLow := ringPeak(lowRes, 1024)
+	peakHigh := ringPeak(highRes, 1024)
+	fmt.Printf("%.3f %.3f\n", peakLow, peakHigh)
 	// Output:
-	// 4x oversampling cuts 3 kHz alias below 10%: true
+	// 0.037 0.056
+}
+
+func ExampleNew_drivenSaturationComparison() {
+	exact, err := moog.New(48000,
+		moog.WithVariant(moog.VariantClassic),
+		moog.WithCutoffHz(5000),
+		moog.WithResonance(0),
+		moog.WithDrive(8),
+		moog.WithNormalizeOutput(false),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	lightweight, err := moog.New(48000,
+		moog.WithVariant(moog.VariantClassicLightweight),
+		moog.WithCutoffHz(5000),
+		moog.WithResonance(0),
+		moog.WithDrive(8),
+		moog.WithNormalizeOutput(false),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	x := 0.75
+	yExact := exact.ProcessSample(x)
+	yLight := lightweight.ProcessSample(x)
+	fmt.Printf("%.6f %.6f\n", yExact, yLight)
+	// Output:
+	// 4.798519 4.802974
+}
+
+func ExampleNew_zdfHighAccuracy() {
+	// VariantZDF uses Zero-Delay Feedback with Newton-Raphson iteration
+	// for the most accurate cutoff tuning and self-oscillation behavior.
+	f, err := moog.New(48000,
+		moog.WithVariant(moog.VariantZDF),
+		moog.WithCutoffHz(2000),
+		moog.WithResonance(2.5),
+		moog.WithDrive(3.0),
+		moog.WithNewtonIterations(4),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	out := make([]float64, 8)
+	for i := range out {
+		saw := 2*math.Mod(float64(i)/8, 1) - 1
+		out[i] = f.ProcessSample(saw)
+	}
+
+	fmt.Printf("%.6f %.6f %.6f\n", out[0], out[1], out[2])
+	// Output:
+	// -0.000140 -0.001099 -0.004210
+}
+
+func ringPeak(f *moog.Filter, n int) float64 {
+	peak := 0.0
+
+	for i := range n {
+		x := 0.0
+		if i == 0 {
+			x = 1.0
+		}
+
+		y := f.ProcessSample(x)
+
+		a := math.Abs(y)
+		if a > peak {
+			peak = a
+		}
+	}
+
+	return peak
 }

@@ -1,48 +1,23 @@
-// Package moog provides nonlinear Moog ladder filter runtime implementations.
+// Package moog provides nonlinear Moog ladder low-pass filters with
+// legacy-faithful, Huovilainen-style, and Zero-Delay Feedback variants.
 //
-// A [Filter] is a classic resonant lowpass: four cascaded one-pole sections
-// (24 dB/oct) with a tanh nonlinearity per stage and a negative feedback path
-// from the fourth stage output that produces the characteristic resonant peak
-// and self-oscillation. The implementation is a faithful Go port of the legacy
-// Pascal reference (DAV_DspFilterMoog.pas) and follows the Huovilainen model:
+// Supported variants:
+//   - VariantClassic / VariantImprovedClassic:
+//     Legacy DAV_DspFilterMoog-inspired topology with exact tanh.
+//   - VariantClassicLightweight / VariantImprovedClassicLightweight:
+//     Same topology with polynomial tanh approximation.
+//   - VariantHuovilainen:
+//     Huovilainen-style tuning/resonance compensation with half-sample
+//     feedback estimate for robust high-resonance behavior.
+//   - VariantZDF:
+//     Zero-Delay Feedback topology (Zavalishin 2012) with Newton-Raphson
+//     iteration (D'Angelo & Välimäki 2014). Provides the most accurate
+//     cutoff tuning and self-oscillation behavior at higher CPU cost.
+//     Newton iterations are configurable via WithNewtonIterations (default 4).
 //
-//	A. Huovilainen, "Non-Linear Digital Implementation of the Moog Ladder
-//	Filter", Proc. Int. Conf. on Digital Audio Effects (DAFx-04), 2004.
-//
-// # Variants
-//
-// Two ladder topologies are available via [WithVariant]:
-//
-//	SimpleClassic   - per-stage update scaled by the base coefficient g.
-//	ImprovedClassic - per-stage update additionally scaled by 2*thermalVoltage,
-//	                  giving a stronger drive into the saturating stages.
-//
-// Either variant can use the exact math.Tanh or a lower-latency polynomial-2^x
-// approximation ([WithFastTanh]); the approximation reduces the per-sample cost
-// of the tanh nonlinearity in the feedback-bound processing path at a small
-// accuracy cost.
-//
-// # High-quality (oversampled) path
-//
-// [WithOversampling] (factor 2, 4, or 8) runs the ladder at an integer multiple
-// of the sample rate with 4th-order Butterworth anti-alias filtering and
-// Huovilainen half-sample feedback compensation. This markedly reduces aliasing
-// produced by the saturating stages at high drive and resonance, at a
-// proportional CPU cost. The default factor of 1 keeps the single-rate path.
-//
-// # Parameters
-//
-// The core exposes the legacy parameters directly: cutoff (Hz), a raw
-// resonance feedback amount, a thermal-voltage shaping control, and an output
-// gain. For musical use, [Filter.SetResonanceNormalized] maps a [0, 1] control
-// onto the feedback amount, where 1.0 corresponds to the classic
-// self-oscillation onset.
-//
-// Coefficients are recomputed at construction and whenever cutoff, resonance,
-// thermal voltage, or sample rate change.
-//
-// Example:
-//
-//	f, _ := moog.New(1000, 48000, moog.WithResonance(2.5)) // 1 kHz, resonant
-//	y := f.ProcessSample(x)
+// All variants are stateful, deterministic, and support:
+//   - Per-sample and in-place block processing
+//   - Explicit state save/restore via State
+//   - Optional oversampled anti-alias processing for nonlinear drive
+//   - Stereo helper with per-channel independent state
 package moog
