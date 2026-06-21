@@ -8,7 +8,8 @@ import (
 )
 
 func BenchmarkFrequencyShifterProcessSample(b *testing.B) {
-	f, err := NewFrequencyShifter(48000,
+	f, err := NewFrequencyShifter(
+		48000,
 		WithFrequencyShiftHz(120),
 		WithFrequencyShifterHilbertPreset(hilbert.PresetBalanced),
 	)
@@ -26,7 +27,8 @@ func BenchmarkFrequencyShifterProcessSample(b *testing.B) {
 }
 
 func BenchmarkFrequencyShifterProcessBlock(b *testing.B) {
-	f, err := NewFrequencyShifter(48000,
+	f, err := NewFrequencyShifter(
+		48000,
 		WithFrequencyShiftHz(120),
 		WithFrequencyShifterHilbertPreset(hilbert.PresetBalanced),
 	)

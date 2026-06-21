@@ -67,5 +67,6 @@ func benchmarkStereoWidenerInterleaved(b *testing.B, n int) {
 	}
 }
 
-func BenchmarkStereoWidenerInterleaved256(b *testing.B)  { benchmarkStereoWidenerInterleaved(b, 256) }
+func BenchmarkStereoWidenerInterleaved256(b *testing.B) { benchmarkStereoWidenerInterleaved(b, 256) }
+
 func BenchmarkStereoWidenerInterleaved1024(b *testing.B) { benchmarkStereoWidenerInterleaved(b, 1024) }

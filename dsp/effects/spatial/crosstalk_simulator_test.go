@@ -54,7 +54,8 @@ func TestCrosstalkSimulatorDelayCalculation(t *testing.T) {
 }
 
 func TestCrosstalkSimulatorPresetsDifferentResponse(t *testing.T) {
-	hand, err := NewCrosstalkSimulator(48000,
+	hand, err := NewCrosstalkSimulator(
+		48000,
 		WithSimulatorPreset(CrosstalkPresetHandcrafted),
 		WithSimulatorCrossfeedMix(1),
 	)
@@ -62,7 +63,8 @@ func TestCrosstalkSimulatorPresetsDifferentResponse(t *testing.T) {
 		t.Fatalf("NewCrosstalkSimulator(handcrafted) error = %v", err)
 	}
 
-	ircam, err := NewCrosstalkSimulator(48000,
+	ircam, err := NewCrosstalkSimulator(
+		48000,
 		WithSimulatorPreset(CrosstalkPresetIRCAM),
 		WithSimulatorCrossfeedMix(1),
 	)
@@ -92,7 +94,8 @@ func TestCrosstalkSimulatorPresetsDifferentResponse(t *testing.T) {
 }
 
 func TestCrosstalkSimulatorPolarityInvert(t *testing.T) {
-	s1, err := NewCrosstalkSimulator(48000,
+	s1, err := NewCrosstalkSimulator(
+		48000,
 		WithSimulatorCrossfeedMix(1),
 		WithSimulatorPolarityInvert(false),
 	)
@@ -100,7 +103,8 @@ func TestCrosstalkSimulatorPolarityInvert(t *testing.T) {
 		t.Fatalf("NewCrosstalkSimulator() error = %v", err)
 	}
 
-	s2, err := NewCrosstalkSimulator(48000,
+	s2, err := NewCrosstalkSimulator(
+		48000,
 		WithSimulatorCrossfeedMix(1),
 		WithSimulatorPolarityInvert(true),
 	)

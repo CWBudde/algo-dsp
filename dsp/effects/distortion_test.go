@@ -42,7 +42,8 @@ func TestDistortionValidation(t *testing.T) {
 }
 
 func TestDistortionMixZeroPassthrough(t *testing.T) {
-	d, err := NewDistortion(48000,
+	d, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeHardClip),
 		WithDistortionDrive(10),
 		WithDistortionMix(0),
@@ -60,7 +61,8 @@ func TestDistortionMixZeroPassthrough(t *testing.T) {
 }
 
 func TestDistortionHardClipTransferCurve(t *testing.T) {
-	d, err := NewDistortion(48000,
+	d, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeHardClip),
 		WithDistortionDrive(1),
 		WithDistortionClipLevel(0.5),
@@ -107,7 +109,8 @@ func TestDistortionAllFormulaModesFiniteAndBounded(t *testing.T) {
 	}
 
 	for _, mode := range modes {
-		d, err := NewDistortion(48000,
+		d, err := NewDistortion(
+			48000,
 			WithDistortionMode(mode),
 			WithDistortionDrive(4),
 			WithDistortionShape(0.7),
@@ -131,7 +134,8 @@ func TestDistortionAllFormulaModesFiniteAndBounded(t *testing.T) {
 }
 
 func TestDistortionTanhApproxCloseToExact(t *testing.T) {
-	exact, err := NewDistortion(48000,
+	exact, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeTanh),
 		WithDistortionApproxMode(DistortionApproxExact),
 		WithDistortionDrive(2.5),
@@ -141,7 +145,8 @@ func TestDistortionTanhApproxCloseToExact(t *testing.T) {
 		t.Fatalf("NewDistortion(exact) error = %v", err)
 	}
 
-	approx, err := NewDistortion(48000,
+	approx, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeTanh),
 		WithDistortionApproxMode(DistortionApproxPolynomial),
 		WithDistortionDrive(2.5),
@@ -163,7 +168,8 @@ func TestDistortionTanhApproxCloseToExact(t *testing.T) {
 }
 
 func TestDistortionChebyshevHarmonicBalance(t *testing.T) {
-	d, err := NewDistortion(48000,
+	d, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeChebyshev),
 		WithChebyshevOrder(3),
 		WithChebyshevHarmonicMode(ChebyshevHarmonicOdd),
@@ -198,7 +204,8 @@ func TestDistortionChebyshevHarmonicBalance(t *testing.T) {
 }
 
 func TestDistortionChebyshevDCBypassReducesDC(t *testing.T) {
-	dNoDC, err := NewDistortion(48000,
+	dNoDC, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeChebyshev),
 		WithChebyshevOrder(2),
 		WithChebyshevHarmonicMode(ChebyshevHarmonicEven),
@@ -209,7 +216,8 @@ func TestDistortionChebyshevDCBypassReducesDC(t *testing.T) {
 		t.Fatalf("NewDistortion(no dc bypass) error = %v", err)
 	}
 
-	dWithDC, err := NewDistortion(48000,
+	dWithDC, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeChebyshev),
 		WithChebyshevOrder(2),
 		WithChebyshevHarmonicMode(ChebyshevHarmonicEven),
@@ -239,7 +247,8 @@ func TestDistortionChebyshevDCBypassReducesDC(t *testing.T) {
 }
 
 func TestDistortionProcessInPlace(t *testing.T) {
-	d1, err := NewDistortion(48000,
+	d1, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeSoftSat),
 		WithDistortionDrive(3),
 		WithDistortionMix(1),
@@ -248,7 +257,8 @@ func TestDistortionProcessInPlace(t *testing.T) {
 		t.Fatalf("NewDistortion() error = %v", err)
 	}
 
-	d2, err := NewDistortion(48000,
+	d2, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeSoftSat),
 		WithDistortionDrive(3),
 		WithDistortionMix(1),
@@ -280,7 +290,8 @@ func TestDistortionProcessInPlace(t *testing.T) {
 func TestChebyshevWeightsDefaultIsLegacyTN(t *testing.T) {
 	// With all-zero weights (default), ProcessSample should equal T_N(x)*gain.
 	// T_3(0.5) = 4*(0.5)^3 - 3*(0.5) = 0.5 - 1.5 = -1.0; clampUnitDist(-1.0) = -1.0
-	d, err := NewDistortion(48000,
+	d, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeChebyshev),
 		WithChebyshevOrder(3),
 		WithDistortionDrive(1),
@@ -357,7 +368,8 @@ func clampUnitDistHelper(v float64) float64 {
 }
 
 func TestSetChebyshevWeightsValidation(t *testing.T) {
-	d, err := NewDistortion(48000,
+	d, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeChebyshev),
 		WithChebyshevOrder(3),
 		WithDistortionDrive(1),
@@ -406,7 +418,8 @@ func TestSetChebyshevWeightsValidation(t *testing.T) {
 
 func TestChebyshevWeightsZeroAfterSet(t *testing.T) {
 	// Create distortion with order=3, set weights to [1,0,0] (selects T_1).
-	d, err := NewDistortion(48000,
+	d, err := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeChebyshev),
 		WithChebyshevOrder(3),
 		WithDistortionDrive(1),

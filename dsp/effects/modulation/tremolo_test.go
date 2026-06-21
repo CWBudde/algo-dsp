@@ -71,7 +71,8 @@ func TestTremoloResetRestoresState(t *testing.T) {
 }
 
 func TestTremoloDepthZeroIsTransparent(t *testing.T) {
-	tremolo, err := NewTremolo(48000,
+	tremolo, err := NewTremolo(
+		48000,
 		WithTremoloDepth(0),
 		WithTremoloMix(1),
 	)

@@ -43,7 +43,8 @@ func TestAutoWahProcessInPlaceMatchesProcess(t *testing.T) {
 }
 
 func TestAutoWahResetRestoresState(t *testing.T) {
-	autoWah, err := NewAutoWah(48000,
+	autoWah, err := NewAutoWah(
+		48000,
 		WithAutoWahSensitivity(4),
 	)
 	if err != nil {
@@ -75,7 +76,8 @@ func TestAutoWahResetRestoresState(t *testing.T) {
 }
 
 func TestAutoWahMixZeroIsTransparent(t *testing.T) {
-	autoWah, err := NewAutoWah(48000,
+	autoWah, err := NewAutoWah(
+		48000,
 		WithAutoWahMix(0),
 	)
 	if err != nil {
@@ -93,7 +95,8 @@ func TestAutoWahMixZeroIsTransparent(t *testing.T) {
 }
 
 func TestAutoWahCenterFrequencyTracksEnvelope(t *testing.T) {
-	autoWah, err := NewAutoWah(48000,
+	autoWah, err := NewAutoWah(
+		48000,
 		WithAutoWahFrequencyRangeHz(300, 2500),
 		WithAutoWahSensitivity(6),
 		WithAutoWahAttackMs(1),
@@ -125,7 +128,8 @@ func TestAutoWahCenterFrequencyTracksEnvelope(t *testing.T) {
 }
 
 func TestAutoWahFiniteOutput(t *testing.T) {
-	autoWah, err := NewAutoWah(48000,
+	autoWah, err := NewAutoWah(
+		48000,
 		WithAutoWahQ(8),
 		WithAutoWahSensitivity(8),
 		WithAutoWahMix(1),

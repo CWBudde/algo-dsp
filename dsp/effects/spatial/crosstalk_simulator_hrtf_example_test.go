@@ -18,7 +18,8 @@ func (exampleHRTFProvider) ImpulseResponses(sampleRate float64) (spatial.HRTFImp
 }
 
 func ExampleHRTFCrosstalkSimulator_ProcessStereo() {
-	s, err := spatial.NewHRTFCrosstalkSimulator(48000,
+	s, err := spatial.NewHRTFCrosstalkSimulator(
+		48000,
 		spatial.WithHRTFProvider(exampleHRTFProvider{}),
 		spatial.WithHRTFMode(spatial.HRTFModeComplete),
 	)
@@ -32,7 +33,8 @@ func ExampleHRTFCrosstalkSimulator_ProcessStereo() {
 }
 
 func ExampleHRTFCrosstalkSimulator_ProcessInPlace() {
-	s, err := spatial.NewHRTFCrosstalkSimulator(48000,
+	s, err := spatial.NewHRTFCrosstalkSimulator(
+		48000,
 		spatial.WithHRTFProvider(exampleHRTFProvider{}),
 	)
 	if err != nil {

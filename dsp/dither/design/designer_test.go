@@ -32,7 +32,8 @@ func TestDesignerValidation(t *testing.T) {
 }
 
 func TestDesignerConverges(t *testing.T) {
-	designer, err := NewDesigner(44100,
+	designer, err := NewDesigner(
+		44100,
 		WithOrder(5),
 		WithIterations(500),
 		WithSeed(42),
@@ -72,7 +73,8 @@ func TestDesignerConverges(t *testing.T) {
 func TestDesignerReturnsOnConvergence(t *testing.T) {
 	// With a context that is never cancelled, Run must still terminate once the
 	// stochastic search converges instead of looping forever.
-	designer, err := NewDesigner(44100,
+	designer, err := NewDesigner(
+		44100,
 		WithOrder(4),
 		WithIterations(200),
 		WithSeed(42),
@@ -103,7 +105,8 @@ func TestDesignerReturnsOnConvergence(t *testing.T) {
 }
 
 func TestDesignerCancellation(t *testing.T) {
-	designer, err := NewDesigner(44100,
+	designer, err := NewDesigner(
+		44100,
 		WithOrder(8),
 		WithIterations(1000000),
 		WithSeed(42),
@@ -129,7 +132,8 @@ func TestDesignerCancellation(t *testing.T) {
 func TestDesignerProgressCallback(t *testing.T) {
 	var callCount int
 
-	designer, err := NewDesigner(44100,
+	designer, err := NewDesigner(
+		44100,
 		WithOrder(3),
 		WithIterations(200),
 		WithSeed(42),
@@ -163,7 +167,8 @@ func TestDesignerProgressCallback(t *testing.T) {
 
 func TestDesignerDeterministic(t *testing.T) {
 	makeCoeffs := func() []float64 {
-		designer, err := NewDesigner(44100,
+		designer, err := NewDesigner(
+			44100,
 			WithOrder(3),
 			WithIterations(100),
 			WithSeed(42),
@@ -196,7 +201,8 @@ func TestDesignerDeterministic(t *testing.T) {
 func TestDesignerImprovesFitness(t *testing.T) {
 	// Verify that optimized coefficients produce lower peak weighted energy
 	// than zero coefficients (flat response).
-	designer, err := NewDesigner(44100,
+	designer, err := NewDesigner(
+		44100,
 		WithOrder(5),
 		WithIterations(500),
 		WithSeed(42),

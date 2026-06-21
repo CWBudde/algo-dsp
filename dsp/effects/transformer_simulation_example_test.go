@@ -7,7 +7,8 @@ import (
 )
 
 func ExampleTransformerSimulation_ProcessSample() {
-	ts, err := effects.NewTransformerSimulation(48000,
+	ts, err := effects.NewTransformerSimulation(
+		48000,
 		effects.WithTransformerQuality(effects.TransformerQualityHigh),
 		effects.WithTransformerDrive(4),
 		effects.WithTransformerMix(1),
@@ -22,7 +23,8 @@ func ExampleTransformerSimulation_ProcessSample() {
 }
 
 func ExampleTransformerSimulation_lightweight() {
-	ts, err := effects.NewTransformerSimulation(48000,
+	ts, err := effects.NewTransformerSimulation(
+		48000,
 		effects.WithTransformerQuality(effects.TransformerQualityLightweight),
 		effects.WithTransformerDrive(3),
 		effects.WithTransformerHighpassHz(30),

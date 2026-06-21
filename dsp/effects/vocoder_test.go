@@ -381,7 +381,8 @@ func TestVocoderSetterValidation(t *testing.T) {
 func TestVocoderEnvelopeAsymmetry(t *testing.T) {
 	// Verify attack is faster than release: after a burst, envelope should
 	// rise quickly and decay slowly.
-	v, err := NewVocoder(48000,
+	v, err := NewVocoder(
+		48000,
 		WithVocoderAttack(0.1),
 		WithVocoderRelease(200),
 	)
@@ -438,7 +439,8 @@ func TestVocoderEnvelopeAsymmetry(t *testing.T) {
 
 func TestVocoderDryMix(t *testing.T) {
 	// With vocoder level = 0 and input level = 1, output should be just the modulator.
-	v, err := NewVocoder(48000,
+	v, err := NewVocoder(
+		48000,
 		WithVocoderLevel(0),
 		WithVocoderInputLevel(1),
 	)
@@ -686,7 +688,8 @@ func TestVocoderDownsamplingProducesOutput(t *testing.T) {
 
 	for _, l := range layouts {
 		t.Run(l.name, func(t *testing.T) {
-			v, err := NewVocoder(48000,
+			v, err := NewVocoder(
+				48000,
 				WithBandLayout(l.layout),
 				WithDownsampling(true),
 			)

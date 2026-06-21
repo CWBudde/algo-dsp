@@ -362,3 +362,38 @@ func TestGoertzelBankValidation(t *testing.T) {
 		t.Error("expected error for frequency above Nyquist")
 	}
 }
+
+func TestAnalyzeBlock(t *testing.T) {
+	const (
+		sampleRate = 8000.0
+		blockSize  = 256
+	)
+
+	// AnalyzeBlock must equal the stateful Reset+ProcessBlock+Power path exactly.
+	for _, bin := range []int{1, 5, 32, 127} {
+		freq := float64(bin) * sampleRate / blockSize
+		samples := cosineBlock(blockSize, 0.8, float64(bin), 0.4)
+
+		got, err := AnalyzeBlock(samples, freq, sampleRate)
+		if err != nil {
+			t.Fatalf("AnalyzeBlock(%g): %v", freq, err)
+		}
+
+		analyzer, err := NewGoertzel(freq, sampleRate)
+		if err != nil {
+			t.Fatalf("NewGoertzel(%g): %v", freq, err)
+		}
+
+		analyzer.ProcessBlock(samples)
+
+		if want := analyzer.Power(); math.Abs(got-want) > 1e-9 {
+			t.Errorf("bin=%d: AnalyzeBlock power=%g want=%g", bin, got, want)
+		}
+	}
+}
+
+func TestAnalyzeBlockValidation(t *testing.T) {
+	if _, err := AnalyzeBlock([]float64{1, 2, 3}, 30000, 8000); err == nil {
+		t.Error("expected error for frequency above Nyquist")
+	}
+}

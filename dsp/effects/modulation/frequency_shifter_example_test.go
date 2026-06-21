@@ -8,7 +8,8 @@ import (
 )
 
 func ExampleFrequencyShifter_ProcessSample() {
-	shifter, err := modulation.NewFrequencyShifter(48000,
+	shifter, err := modulation.NewFrequencyShifter(
+		48000,
 		modulation.WithFrequencyShiftHz(100),
 		modulation.WithFrequencyShifterHilbertPreset(hilbert.PresetBalanced),
 	)

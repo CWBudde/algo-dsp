@@ -3,7 +3,8 @@ package effects
 import "testing"
 
 func BenchmarkDistortionTanhExact(b *testing.B) {
-	d, _ := NewDistortion(48000,
+	d, _ := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeTanh),
 		WithDistortionApproxMode(DistortionApproxExact),
 		WithDistortionDrive(3),
@@ -22,7 +23,8 @@ func BenchmarkDistortionTanhExact(b *testing.B) {
 }
 
 func BenchmarkDistortionTanhPolynomial(b *testing.B) {
-	d, _ := NewDistortion(48000,
+	d, _ := NewDistortion(
+		48000,
 		WithDistortionMode(DistortionModeTanh),
 		WithDistortionApproxMode(DistortionApproxPolynomial),
 		WithDistortionDrive(3),

@@ -7,7 +7,8 @@ import (
 )
 
 func ExampleCrosstalkSimulator_ProcessStereo() {
-	s, err := spatial.NewCrosstalkSimulator(48000,
+	s, err := spatial.NewCrosstalkSimulator(
+		48000,
 		spatial.WithSimulatorPreset(spatial.CrosstalkPresetIRCAM),
 		spatial.WithSimulatorCrossfeedMix(0.3),
 	)

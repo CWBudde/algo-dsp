@@ -7,7 +7,8 @@ import (
 )
 
 func ExampleBitCrusher_ProcessInPlace() {
-	bc, err := effects.NewBitCrusher(48000,
+	bc, err := effects.NewBitCrusher(
+		48000,
 		effects.WithBitCrusherBitDepth(8),
 		effects.WithBitCrusherDownsample(4),
 		effects.WithBitCrusherMix(1),

@@ -7,7 +7,8 @@ import (
 )
 
 func ExampleTremolo_ProcessInPlace() {
-	tremolo, err := modulation.NewTremolo(48000,
+	tremolo, err := modulation.NewTremolo(
+		48000,
 		modulation.WithTremoloRateHz(5),
 		modulation.WithTremoloDepth(0.7),
 		modulation.WithTremoloSmoothingMs(4),

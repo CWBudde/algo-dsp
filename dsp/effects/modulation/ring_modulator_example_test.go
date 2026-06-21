@@ -7,7 +7,8 @@ import (
 )
 
 func ExampleRingModulator_ProcessInPlace() {
-	ringModulator, err := modulation.NewRingModulator(48000,
+	ringModulator, err := modulation.NewRingModulator(
+		48000,
 		modulation.WithRingModCarrierHz(440),
 		modulation.WithRingModMix(1),
 	)

@@ -72,7 +72,8 @@ func TestQuantizerSilencePreservation(t *testing.T) {
 	// With no dither and no shaping, zero input produces a constant near-zero
 	// output. The +0.5 normalization offset in ProcessSample means the output
 	// is (0 + 0.5) * bitDiv, which is non-zero but extremely small.
-	quant, err := NewQuantizer(44100,
+	quant, err := NewQuantizer(
+		44100,
 		WithDitherType(DitherNone),
 		WithFIRPreset(PresetNone),
 	)
@@ -89,7 +90,8 @@ func TestQuantizerSilencePreservation(t *testing.T) {
 }
 
 func TestQuantizerProcessInteger(t *testing.T) {
-	quant, err := NewQuantizer(44100,
+	quant, err := NewQuantizer(
+		44100,
 		WithBitDepth(8),
 		WithDitherType(DitherNone),
 		WithFIRPreset(PresetNone),
@@ -108,7 +110,8 @@ func TestQuantizerProcessInteger(t *testing.T) {
 func TestQuantizerDeterministic(t *testing.T) {
 	// Two quantizers with the same RNG seed produce identical output.
 	makeQuant := func() *Quantizer {
-		quant, err := NewQuantizer(44100,
+		quant, err := NewQuantizer(
+			44100,
 			WithDitherType(DitherTriangular),
 			WithRNG(rand.New(rand.NewPCG(42, 0))),
 		)
@@ -133,7 +136,8 @@ func TestQuantizerDeterministic(t *testing.T) {
 }
 
 func TestQuantizerReset(t *testing.T) {
-	quant, err := NewQuantizer(44100,
+	quant, err := NewQuantizer(
+		44100,
 		WithDitherType(DitherNone),
 		WithFIRPreset(PresetEFB),
 	)
@@ -156,7 +160,8 @@ func TestQuantizerReset(t *testing.T) {
 }
 
 func TestQuantizerLimiting(t *testing.T) {
-	quant, err := NewQuantizer(44100,
+	quant, err := NewQuantizer(
+		44100,
 		WithBitDepth(8),
 		WithDitherType(DitherNone),
 		WithFIRPreset(PresetNone),
@@ -190,7 +195,8 @@ func TestQuantizerLimiting(t *testing.T) {
 }
 
 func TestQuantizerLimitDisabled(t *testing.T) {
-	quant, err := NewQuantizer(44100,
+	quant, err := NewQuantizer(
+		44100,
 		WithBitDepth(8),
 		WithDitherType(DitherNone),
 		WithFIRPreset(PresetNone),
@@ -210,7 +216,8 @@ func TestQuantizerLimitDisabled(t *testing.T) {
 func TestQuantizerStability(t *testing.T) {
 	rng := rand.New(rand.NewPCG(42, 0))
 
-	quant, err := NewQuantizer(44100,
+	quant, err := NewQuantizer(
+		44100,
 		WithDitherType(DitherTriangular),
 		WithFIRPreset(Preset9FC),
 		WithLimit(true),
@@ -238,13 +245,15 @@ func TestQuantizerProcessInPlaceParity(t *testing.T) {
 	rng1 := rand.New(rand.NewPCG(99, 0))
 	rng2 := rand.New(rand.NewPCG(99, 0))
 
-	quant1, _ := NewQuantizer(44100,
+	quant1, _ := NewQuantizer(
+		44100,
 		WithDitherType(DitherTriangular),
 		WithFIRPreset(Preset9FC),
 		WithRNG(rng1),
 	)
 
-	quant2, _ := NewQuantizer(44100,
+	quant2, _ := NewQuantizer(
+		44100,
 		WithDitherType(DitherTriangular),
 		WithFIRPreset(Preset9FC),
 		WithRNG(rng2),
@@ -280,7 +289,8 @@ func TestQuantizerProcessInPlaceParity(t *testing.T) {
 func TestQuantizerSharpPreset(t *testing.T) {
 	rates := []float64{40000, 44100, 48000, 64000, 96000}
 	for _, sampleRate := range rates {
-		quant, err := NewQuantizer(sampleRate,
+		quant, err := NewQuantizer(
+			sampleRate,
 			WithSharpPreset(),
 			WithDitherType(DitherNone),
 		)
@@ -297,7 +307,8 @@ func TestQuantizerSharpPreset(t *testing.T) {
 }
 
 func TestQuantizerIIRShelf(t *testing.T) {
-	quant, err := NewQuantizer(44100,
+	quant, err := NewQuantizer(
+		44100,
 		WithIIRShelf(10000),
 		WithDitherType(DitherNone),
 	)
@@ -329,7 +340,8 @@ func TestQuantizerNoiseShapingSpectralEffect(t *testing.T) {
 	}
 
 	quantizeWith := func(shaper NoiseShaper) []float64 {
-		quant, err := NewQuantizer(sampleRate,
+		quant, err := NewQuantizer(
+			sampleRate,
 			WithBitDepth(8), // aggressive quantization for visible noise
 			WithDitherType(DitherTriangular),
 			WithNoiseShaper(shaper),
@@ -458,7 +470,8 @@ func TestQuantizerAllDitherTypes(t *testing.T) {
 	}
 	for _, ditherType := range types {
 		t.Run(ditherType.String(), func(t *testing.T) {
-			quant, err := NewQuantizer(44100,
+			quant, err := NewQuantizer(
+				44100,
 				WithDitherType(ditherType),
 				WithRNG(rand.New(rand.NewPCG(42, 0))),
 			)
@@ -480,7 +493,8 @@ func TestQuantizerAllDitherTypes(t *testing.T) {
 func TestQuantizerBitDepthRange(t *testing.T) {
 	// Verify all valid bit depths work.
 	for bits := 1; bits <= 32; bits++ {
-		quant, err := NewQuantizer(44100,
+		quant, err := NewQuantizer(
+			44100,
 			WithBitDepth(bits),
 			WithDitherType(DitherNone),
 			WithFIRPreset(PresetNone),

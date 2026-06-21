@@ -74,3 +74,27 @@ func ExampleGoertzelBank() {
 	// Output:
 	// row=770 col=1336
 }
+
+// ExampleAnalyzeBlock measures the power at a single frequency in one call,
+// without managing an analyzer's lifecycle.
+func ExampleAnalyzeBlock() {
+	const (
+		sampleRate = 48000.0
+		blockSize  = 480 // exactly 10 cycles of 1 kHz
+	)
+
+	buf := make([]float64, blockSize)
+	for i := range buf {
+		buf[i] = 0.5 * math.Cos(2*math.Pi*1000*float64(i)/sampleRate)
+	}
+
+	power, err := spectrum.AnalyzeBlock(buf, 1000, sampleRate)
+	if err != nil {
+		fmt.Println("error")
+		return
+	}
+
+	fmt.Printf("power>0: %v\n", power > 0)
+	// Output:
+	// power>0: true
+}

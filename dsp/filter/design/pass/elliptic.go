@@ -168,7 +168,7 @@ func ellipticAnalogPrototype(order int, rippleDB, stopbandDB float64) ([]complex
 
 		dvals = append(dvals, dn)
 		if math.Abs(sn) > ellipticEpsilon {
-			zerosBase = append(zerosBase, complex(0, 1)/(complex(kmod*sn, 0)))
+			zerosBase = append(zerosBase, complex(0, 1)/complex(kmod*sn, 0))
 		}
 	}
 

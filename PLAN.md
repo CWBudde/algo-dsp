@@ -963,16 +963,16 @@ Quarter-end success criteria:
 
 ## Appendix H: Revision History
 
-| Version | Date       | Author  | Changes                                                       |
-| ------- | ---------- | ------- | ------------------------------------------------------------- |
-| 0.1     | 2026-02-06 | Codex   | Initial comprehensive plan                                    |
-| 0.2     | 2026-02-06 | Claude  | Expanded early phases + migration notes                       |
-| 0.3     | 2026-02-08 | Claude  | Added shelving filter design phase + known Chebyshev II bug   |
-| 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases |
-| 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis |
-| 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress |
-| 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete |
-| 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below. |
+| Version | Date       | Author  | Changes                                                                                                                                                                                                                                                                                                                                                     |
+| ------- | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.1     | 2026-02-06 | Codex   | Initial comprehensive plan                                                                                                                                                                                                                                                                                                                                  |
+| 0.2     | 2026-02-06 | Claude  | Expanded early phases + migration notes                                                                                                                                                                                                                                                                                                                     |
+| 0.3     | 2026-02-08 | Claude  | Added shelving filter design phase + known Chebyshev II bug                                                                                                                                                                                                                                                                                                 |
+| 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases                                                                                                                                                                                                                                                                                               |
+| 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis                                                                                                                                                                                                                                     |
+| 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress                                                                                                                                                                                                                            |
+| 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete                                                                                                                                                                                       |
+| 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below.                                                                                                                                                                   |
 | 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades). |
 
 ---
@@ -1001,11 +1001,16 @@ Moog (a functional superset — regained `VariantZDF`/Newton; main's reduced rei
 replaced, no callers broke); and the `dsp/effectchain` subsystem (which required upgrading
 `effects.Delay` and `effects.Distortion` to their release-line superset versions).
 
-**Outstanding backlog:** Goertzel exists on both lineages (independent reimplementations — `main`
-re-did Phase 27); reconcile if a single canonical version is wanted. Re-audit any remaining drift
-with `git diff --stat main v0.5.1 -- dsp/ measure/ stats/`. Consider archiving the orphan
-`claude/*` branches and re-cutting release tags from `main` once reconciliation is verified
-complete.
+**Goertzel reconciliation (done):** the two Goertzel implementations (independent reimplementations
+on each lineage) were fused into a single canonical `dsp/spectrum/goertzel.go` — `main`'s richer
+API (options/configurable `DB` floor, `Complex`, `NormalizedMagnitude`, allocation-free
+`GoertzelBank.Powers/Magnitudes(dst)`, pass-through `ProcessSample`, strict validation) as the
+base, plus the release line's faster register-hoisted `ProcessBlock` and its one-shot
+`AnalyzeBlock` helper.
+
+**Outstanding backlog:** Re-audit any remaining drift with
+`git diff --stat main v0.5.1 -- dsp/ measure/ stats/`. Consider archiving the orphan `claude/*`
+branches and re-cutting release tags from `main` once reconciliation is verified complete.
 
 ---
 

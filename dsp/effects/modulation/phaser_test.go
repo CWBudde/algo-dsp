@@ -89,7 +89,8 @@ func TestPhaserValidation(t *testing.T) {
 }
 
 func TestPhaserFiniteOutputUnderFeedback(t *testing.T) {
-	phaser, err := NewPhaser(48000,
+	phaser, err := NewPhaser(
+		48000,
 		WithPhaserFeedback(0.85),
 		WithPhaserMix(0.8),
 		WithPhaserStages(8),

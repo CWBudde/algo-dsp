@@ -9,7 +9,8 @@ import (
 )
 
 func ExampleDesigner() {
-	designer, err := design.NewDesigner(44100,
+	designer, err := design.NewDesigner(
+		44100,
 		design.WithOrder(5),
 		design.WithIterations(1000),
 		design.WithSeed(42),
