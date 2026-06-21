@@ -26,6 +26,7 @@ func BenchmarkStereoWidenerProcessStereoBassMono(b *testing.B) {
 
 func benchmarkStereoWidenerInPlace(b *testing.B, n int) {
 	b.Helper()
+
 	w, _ := NewStereoWidener(48000, WithWidth(1.5))
 	left := make([]float64, n)
 	right := make([]float64, n)
@@ -49,6 +50,8 @@ func BenchmarkStereoWidenerInPlace512(b *testing.B)  { benchmarkStereoWidenerInP
 func BenchmarkStereoWidenerInPlace1024(b *testing.B) { benchmarkStereoWidenerInPlace(b, 1024) }
 
 func benchmarkStereoWidenerInterleaved(b *testing.B, n int) {
+	b.Helper()
+
 	w, _ := NewStereoWidener(48000, WithWidth(1.5))
 
 	buf := make([]float64, 2*n)

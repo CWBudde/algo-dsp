@@ -246,6 +246,7 @@ func TestCrossoverPoints(t *testing.T) {
 		// Time direct
 		directResult := testing.Benchmark(func(b *testing.B) {
 			b.Helper()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = Direct(signal, kernel)
 			}
@@ -254,6 +255,7 @@ func TestCrossoverPoints(t *testing.T) {
 		// Time FFT
 		fftResult := testing.Benchmark(func(b *testing.B) {
 			b.Helper()
+
 			for i := 0; i < b.N; i++ {
 				_, _ = OverlapAddConvolve(signal, kernel)
 			}

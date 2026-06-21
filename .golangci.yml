@@ -12,39 +12,14 @@ linters:
     - thelper
     - tparallel
     - unused
-    - varnamelen
     - wsl_v5
 
     - revive
   settings:
-    varnamelen:
-      # Idiomatic math/DSP identifiers that are clear despite being short.
-      ignore-names:
-        - i
-        - j
-        - k
-        - n
-        - x
-        - y
-        - re
-        - im
-        - in
-        - q
-        - id
-        - b0
-        - b1
-        - b2
-        - a0
-        - a1
-        - a2
-        - d0
-        - d1
-        - y0
-        - y1
-        - y2
-        - dw
-        - i0
-        - i1
+    # varnamelen is intentionally not enabled: this is a numerical DSP library
+    # whose short identifiers (M, K, G0, Gb, b0, a1, ...) mirror the reference
+    # equations documented alongside the code. varnamelen flagged ~300 such
+    # names across the library, which are deliberate rather than unclear.
     revive:
       rules:
         - name: file-length-limit
