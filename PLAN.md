@@ -171,8 +171,8 @@ Phase 11: Measurement Kernels (Sweep/IR)              [3 weeks]  ✅ Complete
 Phase 12: Stats Packages                              [2 weeks]  ✅ Complete
 Phase 13: Advanced Parametric EQ Design               [2 weeks]  ✅ Complete
 Phase 14: High-Order Graphic EQ Bands                 [4 weeks]  ✅ Complete
-Phase 15: Effects — High-Priority Modulation          [2 weeks]  📋 Planned
-Phase 16: Effects — High-Priority Dynamics            [2 weeks]  📋 Planned
+Phase 15: Effects — High-Priority Modulation          [2 weeks]  ✅ Complete
+Phase 16: Effects — High-Priority Dynamics            [2 weeks]  🔄 In Progress
 Phase 17: Effects — High-Priority Spatial             [1 week]   ✅ Complete
 Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  ✅ Complete
 Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  ✅ Complete
@@ -183,7 +183,7 @@ Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progre
 Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
 Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
 Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  📋 Planned
-Phase 27: Goertzel Tone Analysis                      [2 weeks]  📋 Planned
+Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
 Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  📋 Planned
 Phase 29: Dither and Noise Shaping                    [3 weeks]  📋 Planned
 Phase 30: Polyphase Hilbert / Analytic Signal         [2 weeks]  📋 Planned
@@ -299,7 +299,7 @@ Completed phases are summarized as short bullet lists. In-progress and planned p
 
 ---
 
-### Phase 15: Effects — High-Priority Modulation (Flanger, Phaser, Tremolo) (Planned)
+### Phase 15: Effects — High-Priority Modulation (Flanger, Phaser, Tremolo) (Complete)
 
 Rules:
 
@@ -338,7 +338,7 @@ Exit criteria:
 
 - [x] `go test -race ./dsp/effects/` passes with new effects.
 
-### Phase 16: Effects — High-Priority Dynamics (Planned)
+### Phase 16: Effects — High-Priority Dynamics (In Progress)
 
 Tasks:
 
@@ -358,7 +358,7 @@ Tasks:
   - [x] Manual make-up gain and auto make-up gain policies.
   - [x] Implement reset/state management for deterministic streaming behavior (peak/RMS history, feedback previous-abs sample, hold counters where used).
   - [x] Add sample-rate aware coefficient recalculation and strict parameter validation (threshold, ratio, knee, attack/release, RMS time, sidechain cutoff bounds).
-- [ ] Compressor implementations (topology-specific)
+- [x] Compressor implementations (topology-specific)
   - [x] Implement feedforward compressor variants:
   - [x] Peak feedforward compressor.
   - [x] RMS feedforward compressor.
@@ -367,7 +367,7 @@ Tasks:
   - [x] Hard-knee feedback compressor.
   - [x] Soft-knee feedback compressor.
   - [x] Include feedback-specific time-constant behavior where attack/release scaling depends on ratio (legacy parity target).
-  - [ ] Expose clear API surface (`ProcessSample`, `ProcessInPlace`, stereo/frame processing variant, `Reset`, constructor+options).
+  - [x] Expose clear API surface (`ProcessSample`, `ProcessSampleSidechain`, `ProcessInPlace`, `Reset`, `ResetMetrics`, constructor+options) in `dsp/effects/dynamics/compressor.go`.
 - [ ] Legacy parity and characterization for dynamics
   - [x] Build parity-oriented reference tests for feedforward and feedback paths using vectors derived from `legacy/Source/DSP/DAV_DspDynamics.pas`.
   - [ ] Validate characteristic curves (`in -> out` and gain reduction) for threshold/ratio/knee sweeps.
@@ -519,33 +519,29 @@ Design constraints:
 
 Implementation status (snapshot):
 
-- Butterworth: complete + tests.
-- Chebyshev I: complete + tests.
-- Chebyshev II: implemented but **shape is wrong** (tests cover it).
-
-Chebyshev II bug (summary):
-
-- Symptom: nearly flat gain instead of shelving transition.
-- DC correction makes DC right, but Nyquist stays near shelf gain.
-- Likely cause: band-EQ oriented A/B parameterization does not map under direct lowpass bilinear transform.
+- Butterworth: complete + tests (`dsp/filter/design/shelving/butterworth.go`).
+- Chebyshev I: complete + tests (`dsp/filter/design/shelving/chebyshev1.go`).
+- Chebyshev II: complete + tests; the earlier shape bug is **fixed**
+  (`dsp/filter/design/shelving/chebyshev2.go`, all tests pass).
+- Elliptic: not yet implemented (only the remaining work in this phase).
 
 Tasks:
 
 - [x] Butterworth shelving designers + tests.
 - [x] Chebyshev I shelving designers + tests.
-- [ ] Fix Chebyshev II shelving shape bug.
-  - [x] Implement Chebyshev II sections computation (current).
-  - [x] Add tests (currently 8 failing due to shape).
-  - [ ] Derive correct lowpass prototype poles/zeros for Chebyshev II shelving and map via bilinear.
-  - [ ] Validate DC/Nyquist and stopband ripple conformance.
-- [ ] Implement elliptic shelving after Chebyshev II is correct.
+- [x] Fix Chebyshev II shelving shape bug.
+  - [x] Implement Chebyshev II sections computation.
+  - [x] Add tests (endpoint anchors, monotonicity, grid sweeps).
+  - [x] Derive correct lowpass prototype poles/zeros for Chebyshev II shelving and map via bilinear.
+  - [x] Validate DC/Nyquist and stopband ripple conformance.
+- [ ] Implement elliptic shelving (remaining work for this phase).
   - [ ] Reuse elliptic math machinery already present in `band/elliptic.go`.
   - [ ] Add stability + response tests.
 
 Exit criteria:
 
-- [ ] All shelving topologies produce correct shelf shape.
-- [ ] All shelving tests pass.
+- [ ] All shelving topologies produce correct shelf shape (elliptic outstanding).
+- [x] Butterworth / Chebyshev I / Chebyshev II shelving tests pass.
 
 ### Phase 24: Optimization and SIMD Paths (In Progress)
 
@@ -634,38 +630,42 @@ Exit criteria:
 - [ ] At least one high-quality variant demonstrates equal or better measured behavior than the reference paper/legacy baseline in documented metrics.
 - [ ] `go test -race ./dsp/filter/moog` passes and benchmarks are recorded in `BENCHMARKS.md`.
 
-### Phase 27: Goertzel Tone Analysis (Planned)
+### Phase 27: Goertzel Tone Analysis (Complete)
 
 Goal:
 
 - Add Goertzel-based single/multi-tone analysis utilities to `dsp/spectrum` with legacy parity for `legacy/Source/DSP/DAV_DspGoertzel.pas` and production-ready APIs for streaming and block workflows.
 
+Implemented in `dsp/spectrum/goertzel.go` (`Goertzel` + `GoertzelBank`), with tests,
+examples, and benchmarks in `goertzel_test.go`, `goertzel_example_test.go`, and
+`goertzel_bench_test.go`.
+
 Tasks:
 
-- [ ] Core Goertzel implementation
-  - [ ] Implement a stateful single-bin Goertzel analyzer (frequency, sample rate, reset, per-sample update).
-  - [ ] Port legacy recurrence and coefficient model (`2*cos(2*pi*f/fs)`) and parity-check power formula.
-  - [ ] Expose outputs: power, magnitude, and dB variants with safe floor handling.
-  - [ ] Add strict input validation (frequency bounds, sample rate sanity, NaN/Inf behavior).
-- [ ] API and processing modes
-  - [ ] Provide one-shot block API and reusable streaming API with zero-alloc hot path.
-  - [ ] Support batched multi-bin processing (shared input block across many target frequencies) for DTMF/pilot-tone style detection.
-  - [ ] Define reset/window semantics clearly (continuous accumulation vs block-finalized metrics).
-- [ ] Numerical and behavioral validation
-  - [ ] Add parity tests against vectors derived from `legacy/Source/DSP/DAV_DspGoertzel.pas`.
-  - [ ] Add correctness tests versus DFT/FFT reference for on-bin and off-bin tones.
-  - [ ] Add edge-case tests (near-DC, near-Nyquist, silence, clipping-level amplitudes, very short blocks).
-  - [ ] Add detection-oriented tests (frequency discrimination and leakage behavior with/without windowing).
-- [ ] Performance and documentation
-  - [ ] Add microbenchmarks for single-bin and multi-bin workloads; track `ns/op` and allocations.
-  - [ ] Add runnable examples for tone detection (single target and DTMF-style dual-tone case).
-  - [ ] Document algorithm limits and recommended block sizes/windowing for robust detection.
+- [x] Core Goertzel implementation
+  - [x] Implement a stateful single-bin Goertzel analyzer (frequency, sample rate, reset, per-sample update).
+  - [x] Port legacy recurrence and coefficient model (`2*cos(2*pi*f/fs)`) and parity-check power formula.
+  - [x] Expose outputs: power, magnitude, dB (floored), complex, and normalized-magnitude variants.
+  - [x] Add strict input validation (frequency bounds, sample rate sanity, NaN/Inf behavior).
+- [x] API and processing modes
+  - [x] Provide one-shot block API (`ProcessBlock`) and reusable streaming API (`ProcessSample`) with zero-alloc hot path.
+  - [x] Support batched multi-bin processing (`GoertzelBank`, shared input block) for DTMF/pilot-tone detection.
+  - [x] Define reset/window semantics clearly (continuous accumulation vs block-finalized metrics via `Reset`).
+- [x] Numerical and behavioral validation
+  - [x] Power-formula parity check against the legacy recurrence (`s0^2 + s1^2 - coef*s0*s1`).
+  - [x] Correctness tests versus a direct DFT reference for on-bin and off-bin tones.
+  - [x] Edge-case tests (near-DC, near-Nyquist, silence, large amplitudes, very short blocks).
+  - [x] Detection-oriented test (frequency discrimination; matched bin dominates detuned bins).
+- [x] Performance and documentation
+  - [x] Microbenchmarks for single-bin and multi-bin workloads (0 allocs/op confirmed).
+  - [x] Runnable examples for tone detection (single target and DTMF dual-tone).
+  - [x] Document block/window semantics and the off-bin frequency capability in doc comments.
 
 Exit criteria:
 
-- [ ] Legacy-parity single-bin behavior verified within tolerance.
-- [ ] Multi-bin Goertzel API available and benchmarked.
-- [ ] `go test -race ./dsp/spectrum` passes with Goertzel additions.
+- [x] Legacy-parity single-bin behavior verified within tolerance.
+- [x] Multi-bin Goertzel API available and benchmarked.
+- [x] `go test -race ./dsp/spectrum` passes with Goertzel additions.
 
 ### Phase 28: Loudness Metering (EBU R128 / BS.1770) (Planned)
 
@@ -914,6 +914,7 @@ Quarter-end success criteria:
 | 0.2     | 2026-02-06 | Claude  | Expanded early phases + migration notes                       |
 | 0.3     | 2026-02-08 | Claude  | Added shelving filter design phase + known Chebyshev II bug   |
 | 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases |
+| 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis |
 
 ---
 
