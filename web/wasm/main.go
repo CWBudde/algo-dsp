@@ -156,6 +156,12 @@ func main() {
 			TremoloDepth:           p.Get("tremoloDepth").Float(),
 			TremoloSmoothingMs:     p.Get("tremoloSmoothingMs").Float(),
 			TremoloMix:             p.Get("tremoloMix").Float(),
+			RotarySpeakerEnabled:   p.Get("rotarySpeakerEnabled").Bool(),
+			RotaryMix:              p.Get("rotaryMix").Float(),
+			RotaryDrive:            p.Get("rotaryDrive").Float(),
+			RotaryStereoWidth:      p.Get("rotaryStereoWidth").Float(),
+			RotaryCrossoverHz:      p.Get("rotaryCrossoverHz").Float(),
+			RotarySpeedFast:        p.Get("rotarySpeedFast").Bool(),
 			DelayEnabled:           p.Get("delayEnabled").Bool(),
 			DelayTime:              p.Get("delayTime").Float(),
 			DelayFeedback:          p.Get("delayFeedback").Float(),
@@ -356,6 +362,18 @@ func main() {
 			return -1
 		}
 		return engine.CurrentStep()
+	}))
+
+	api.Set("getIRNames", export(func(args []js.Value) any {
+		if engine == nil {
+			return js.Global().Get("Array").New(0)
+		}
+		names := engine.GetIRNames()
+		arr := js.Global().Get("Array").New(len(names))
+		for i, name := range names {
+			arr.SetIndex(i, name)
+		}
+		return arr
 	}))
 
 	js.Global().Set("AlgoDSPDemo", api)
