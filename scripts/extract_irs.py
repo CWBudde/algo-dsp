@@ -2,18 +2,39 @@
 """
 extract_irs.py – Extract selected IRs from an IRLB file, resample, and save.
 
-Reads /mnt/projekte/Code/pw_convoverb/assets/ir-library.irlib
-Writes /mnt/projekte/Code/algo-dsp/web/irs.irlib
+Writes the result to both the Go-embedded library
+(internal/webdemo/data/irs.irlib, the source of truth consumed via //go:embed)
+and the copy fetched by the web frontend (web/irs.irlib), keeping them in sync.
+
+Usage:
+    python scripts/extract_irs.py [SRC_IRLB]
+
+The source IR library lives outside this repository and is machine-specific.
+Pass its path as the first argument or set EXTRACT_IRS_SRC; the default below is
+only a convenience for the original author's machine.
 """
 
+import os
 import struct
 import sys
+from math import gcd
+from pathlib import Path
+
 import numpy as np
 from scipy.signal import resample_poly
-from math import gcd
 
-SRC_PATH = "/mnt/projekte/Code/pw_convoverb/assets/ir-library.irlib"
-DST_PATH = "/mnt/projekte/Code/algo-dsp/web/irs.irlib"
+# Repo root = parent of the scripts/ directory holding this file, so the output
+# paths are correct regardless of the current working directory.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+DEFAULT_SRC = "/mnt/projekte/Code/pw_convoverb/assets/ir-library.irlib"
+SRC_PATH = os.environ.get("EXTRACT_IRS_SRC", DEFAULT_SRC)
+
+# Both destinations are kept in sync: the Go-embedded library and the web copy.
+DST_PATHS = [
+    REPO_ROOT / "internal" / "webdemo" / "data" / "irs.irlib",
+    REPO_ROOT / "web" / "irs.irlib",
+]
 
 TARGET_RATE = 48000
 
@@ -301,8 +322,9 @@ def write_irlb(path, selected_irs):
 # ---------------------------------------------------------------------------
 
 def main():
-    print(f"Reading IRs from: {SRC_PATH}")
-    all_irs = read_irlb(SRC_PATH)
+    src_path = sys.argv[1] if len(sys.argv) > 1 else SRC_PATH
+    print(f"Reading IRs from: {src_path}")
+    all_irs = read_irlb(src_path)
 
     print(f"\nSelecting IRs: {sorted(WANTED_NAMES)}")
     selected = [ir for ir in all_irs if ir["name"] in WANTED_NAMES]
@@ -324,13 +346,12 @@ def main():
         else:
             print(f"  {ir['name']!r}: already at {TARGET_RATE} Hz, no resampling needed")
 
-    print(f"\nWriting output to: {DST_PATH}")
-    write_irlb(DST_PATH, selected)
+    for dst in DST_PATHS:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        print(f"\nWriting output to: {dst}")
+        write_irlb(str(dst), selected)
+        print(f"Output file size: {os.path.getsize(dst)} bytes")
 
-    # Verify.
-    import os
-    size = os.path.getsize(DST_PATH)
-    print(f"Output file size: {size} bytes")
     print("Done.")
 
 

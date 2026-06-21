@@ -67,10 +67,13 @@ func (e *Engine) rebuildEQ() error {
 	return nil
 }
 
-// updateEQBand applies new EQ parameters to an existing biquad chain in-place,
-// preserving delay-line state when the section count is unchanged (same filter
-// family, type, and order).  This avoids the output discontinuity that would
-// occur if the chain were replaced with a freshly-zeroed one.
+// updateEQBand applies new EQ parameters to an existing biquad chain in-place.
+// When the new configuration yields the same number of biquad sections as the
+// current chain, the coefficients are overwritten in place so the delay-line
+// state is preserved, avoiding the output discontinuity of a freshly-zeroed
+// chain. State is therefore preserved whenever the section count is unchanged —
+// which includes switching between filter kinds of equal order; only a change in
+// section count replaces the chain and resets state.
 func (e *Engine) updateEQBand(dst **biquad.Chain, family, kind string, order int, freq, gainDB, q float64) {
 	fresh := buildEQChain(family, kind, order, freq, gainDB, q, e.sampleRate)
 	if *dst == nil {

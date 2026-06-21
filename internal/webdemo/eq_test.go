@@ -51,9 +51,10 @@ func TestSetEQ_PreservesFilterStateOnSameOrder(t *testing.T) {
 	}
 }
 
-// TestSetEQ_ResetsStateOnFilterTypeChange verifies that switching to a
-// different filter order (which changes section count) resets state cleanly.
-func TestSetEQ_ResetsStateOnFilterTypeChange(t *testing.T) {
+// TestSetEQ_ResetsStateOnSectionCountChange verifies that a change altering the
+// number of biquad sections (here switching family and order) resets the
+// delay-line state cleanly.
+func TestSetEQ_ResetsStateOnSectionCountChange(t *testing.T) {
 	e := newTestEngine(t)
 
 	// Warm up state.
