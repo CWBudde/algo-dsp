@@ -154,7 +154,11 @@ func (d *Designer) Run(ctx context.Context) ([]float64, error) {
 		lastBestScore := math.MaxFloat64
 		bestScore := math.MaxFloat64
 
-		for retryCount == 0 || (lastBestScore < bestScore && retryCount < ntryMax) {
+		for retryCount == 0 || (bestScore < lastBestScore && retryCount < ntryMax) {
+			// Capture the score going into this pass so the loop condition can
+			// detect when a pass stops improving (convergence).
+			lastBestScore = bestScore
+
 			for step := range d.iterations {
 				// Check cancellation periodically.
 				if step%1000 == 0 {
@@ -198,10 +202,13 @@ func (d *Designer) Run(ctx context.Context) ([]float64, error) {
 			}
 		}
 
-		// Reset if retries exhausted without improvement.
+		// Reset if retries exhausted without improvement; otherwise the search
+		// converged (a pass stopped improving), so return the best result.
 		if retryCount >= ntryMax {
 			continue
 		}
+
+		return d.copyCoeffs(bestGlobal), nil
 	}
 }
 

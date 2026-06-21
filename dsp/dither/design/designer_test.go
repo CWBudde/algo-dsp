@@ -69,6 +69,39 @@ func TestDesignerConverges(t *testing.T) {
 	}
 }
 
+func TestDesignerReturnsOnConvergence(t *testing.T) {
+	// With a context that is never cancelled, Run must still terminate once the
+	// stochastic search converges instead of looping forever.
+	designer, err := NewDesigner(44100,
+		WithOrder(4),
+		WithIterations(200),
+		WithSeed(42),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan []float64, 1)
+
+	go func() {
+		coeffs, runErr := designer.Run(context.Background())
+		if runErr != nil {
+			t.Errorf("Run returned error: %v", runErr)
+		}
+
+		done <- coeffs
+	}()
+
+	select {
+	case coeffs := <-done:
+		if len(coeffs) != 4 {
+			t.Fatalf("got %d coefficients, want 4", len(coeffs))
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run did not converge within 10s with a non-cancelled context")
+	}
+}
+
 func TestDesignerCancellation(t *testing.T) {
 	designer, err := NewDesigner(44100,
 		WithOrder(8),

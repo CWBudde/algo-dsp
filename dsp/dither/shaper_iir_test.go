@@ -28,6 +28,8 @@ func TestIIRShelfShaperValidation(t *testing.T) {
 		{"Inf freq", math.Inf(1), 44100},
 		{"NaN sr", 10000, math.NaN()},
 		{"Inf sr", 10000, math.Inf(1)},
+		{"freq at Nyquist", 22050, 44100},
+		{"freq above Nyquist", 24000, 44100},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

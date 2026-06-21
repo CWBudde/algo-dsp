@@ -35,6 +35,13 @@ func NewIIRShelfShaper(freq, sampleRate float64) (*IIRShelfShaper, error) {
 		return nil, fmt.Errorf("dither: IIR shelf sample rate must be > 0 and finite: %f", sampleRate)
 	}
 
+	// The shelf design rejects frequencies at or above Nyquist by returning zero
+	// coefficients, which would silently turn Shape into a pass-through. Reject
+	// such configurations explicitly instead.
+	if nyquist := sampleRate / 2; freq >= nyquist {
+		return nil, fmt.Errorf("dither: IIR shelf frequency must be below Nyquist (%g Hz): %f", nyquist, freq)
+	}
+
 	coeffs := design.LowShelf(freq, iirShelfDefaultGainDB, iirShelfDefaultQ, sampleRate)
 
 	return &IIRShelfShaper{
