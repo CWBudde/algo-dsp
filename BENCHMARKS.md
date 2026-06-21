@@ -74,6 +74,19 @@ Zero-allocation fast paths:
 - `BenchmarkCalculate/fft=4096`: `66574 ns/op`, `246.22 MB/s`, `0 allocs/op`
 - `BenchmarkFlatness/fft=4096`: `38812 ns/op`, `422.34 MB/s`, `0 allocs/op`
 
+### `dsp/filter/moog`
+
+Command: `go test -bench=. -benchmem -benchtime=2s -run=^$ -cpu=1 ./dsp/filter/moog/`
+
+- `BenchmarkProcessSample/full`: `395.2 ns/op`, `0 allocs/op`
+- `BenchmarkProcessSample/fast`: `80.71 ns/op`, `0 allocs/op`
+- `BenchmarkProcessInPlace/full/N=4096`: `247191 ns/op`, `132.56 MB/s`, `0 allocs/op`
+- `BenchmarkProcessInPlace/fast/N=4096`: `322483 ns/op`, `101.61 MB/s`, `0 allocs/op`
+
+Note: the fast-tanh path has markedly lower per-sample latency (`ProcessSample`,
+a feedback-bound dependency chain), while Go's optimized `math.Tanh` retains
+slightly higher block throughput (`ProcessInPlace`). All paths are zero-alloc.
+
 ## SIMD vs Scalar (internal/vecmath, n=4096)
 
 Command:

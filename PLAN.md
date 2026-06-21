@@ -182,7 +182,7 @@ Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  📋 Planned
 Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
 Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
 Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
-Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  📋 Planned
+Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  🔄 In Progress
 Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
 Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  📋 Planned
 Phase 29: Dither and Noise Shaping                    [3 weeks]  📋 Planned
@@ -591,44 +591,55 @@ Exit criteria:
 
 - [ ] `v1.0.0` tag exists and release notes are published.
 
-### Phase 26: Nonlinear Moog Ladder Filters (Planned)
+### Phase 26: Nonlinear Moog Ladder Filters (In Progress)
 
 Goal:
 
 - Add production-quality nonlinear Moog ladder filter implementations in `dsp/filter/moog` that are at least on par with `legacy/Source/DSP/DAV_DspFilterMoog.pas`, with an optional path that exceeds the cited Huovilainen-method quality/performance envelope.
 
+Implementation status (snapshot):
+
+- Legacy-faithful core complete in `dsp/filter/moog` (`moog.go`, `fasttanh.go`): the four
+  Pascal variants (Simple/Improved × full-`tanh`/fast-`tanh`), constructor+options, setters,
+  `ProcessSample`/`ProcessInPlace`/`Reset`, validation, and a musical normalized-resonance
+  wrapper. Tests (`moog_test.go`, `legacy_parity_test.go`), examples (`example_test.go`), and
+  benchmarks (`moog_bench_test.go`) pass with race; coverage 96.5%; hot paths 0 allocs/op;
+  numbers recorded in `BENCHMARKS.md`.
+- The **paper-or-better track** (zero-delay/Newton refinement + oversampled anti-aliasing) is
+  the remaining work for this phase and is intentionally deferred.
+
 Tasks:
 
-- [ ] Core architecture and API
-  - [ ] Define Moog ladder processor API with constructor+options, sample/block processing, `Reset`, and explicit state type.
-  - [ ] Support mono first; add stereo/frame helper API consistent with existing DSP package style.
-  - [ ] Expose core controls: cutoff, resonance, drive/input gain, output gain/normalization, thermal-voltage-style shaping control (or equivalent musically-meaningful parameterization).
-  - [ ] Define strict parameter validation and numeric guard rails (NaN/Inf handling, cutoff bounds `< Fs/2`, resonance safety limits).
-- [ ] Legacy-faithful implementations (parity track)
-  - [ ] Implement classic 4-stage nonlinear ladder variant matching Pascal structure (per-stage `tanh` nonlinearity and resonant feedback path).
-  - [ ] Implement “improved classic” variant from legacy behavior and verify coefficient/update behavior parity.
-  - [ ] Implement fast-approximation variant(s) for `tanh` equivalent to legacy lightweight mode, guarded behind clear option/strategy flags.
-  - [ ] Reproduce legacy reset/state behavior and gain scaling semantics where practical.
+- [x] Core architecture and API
+  - [x] Define Moog ladder processor API with constructor+options, sample/block processing, `Reset`, and explicit state type.
+  - [x] Support mono first; add stereo/frame helper API consistent with existing DSP package style.
+  - [x] Expose core controls: cutoff, resonance, drive/input gain, output gain/normalization, thermal-voltage-style shaping control (or equivalent musically-meaningful parameterization).
+  - [x] Define strict parameter validation and numeric guard rails (NaN/Inf handling, cutoff bounds `< Fs/2`, resonance safety limits).
+- [x] Legacy-faithful implementations (parity track)
+  - [x] Implement classic 4-stage nonlinear ladder variant matching Pascal structure (per-stage `tanh` nonlinearity and resonant feedback path).
+  - [x] Implement “improved classic” variant from legacy behavior and verify coefficient/update behavior parity.
+  - [x] Implement fast-approximation variant(s) for `tanh` equivalent to legacy lightweight mode, guarded behind clear option/strategy flags.
+  - [x] Reproduce legacy reset/state behavior and gain scaling semantics where practical.
 - [ ] Paper-or-better implementation track
   - [ ] Implement Huovilainen-style nonlinear ladder reference path (as cited in the Pascal unit header) with documented discretization choices.
   - [ ] Evaluate and optionally implement a higher-accuracy path (e.g., zero-delay/newton refinement or equivalent) when it measurably improves tuning/resonance behavior at high cutoff/resonance.
   - [ ] Add optional anti-alias strategy for nonlinear drive path (e.g., oversampling mode) with documented CPU/quality tradeoffs.
   - [ ] Ensure the “high quality” path meets or exceeds reference behavior in tuning, self-oscillation onset consistency, and modulation robustness.
 - [ ] Validation, parity, and characterization
-  - [ ] Add parity-oriented tests against vectors derived from `legacy/Source/DSP/DAV_DspFilterMoog.pas` (classic + improved + lightweight modes).
-  - [ ] Add frequency-response/tuning tests across sample rates and cutoff/resonance grids.
+  - [x] Add parity-oriented tests against vectors derived from `legacy/Source/DSP/DAV_DspFilterMoog.pas` (classic + improved + lightweight modes).
+  - [x] Add frequency-response/tuning tests across sample rates and cutoff/resonance grids.
   - [ ] Add nonlinear behavior tests (drive sweep, harmonic growth trends, saturation symmetry, self-oscillation sanity).
-  - [ ] Add stability tests under rapid modulation (cutoff/resonance automation) and extreme parameter bounds.
-  - [ ] Add deterministic benchmark suite for scalar and fast modes; track `ns/op`, `allocs/op`, and quality deltas.
-- [ ] Documentation and examples
-  - [ ] Document algorithm variants and tradeoffs (faithful/fast/high-quality) with clear recommendation defaults.
-  - [ ] Add runnable examples: subtractive synth-style sweep, resonance emphasis, and driven saturation comparison.
+  - [x] Add stability tests under rapid modulation (cutoff/resonance automation) and extreme parameter bounds.
+  - [x] Add deterministic benchmark suite for scalar and fast modes; track `ns/op`, `allocs/op`, and quality deltas.
+- [x] Documentation and examples
+  - [x] Document algorithm variants and tradeoffs (faithful/fast/high-quality) with clear recommendation defaults.
+  - [x] Add runnable examples: subtractive synth-style sweep, resonance emphasis, and driven saturation comparison.
 
 Exit criteria:
 
-- [ ] Legacy-faithful Moog ladder variants pass parity-oriented tests.
+- [x] Legacy-faithful Moog ladder variants pass parity-oriented tests.
 - [ ] At least one high-quality variant demonstrates equal or better measured behavior than the reference paper/legacy baseline in documented metrics.
-- [ ] `go test -race ./dsp/filter/moog` passes and benchmarks are recorded in `BENCHMARKS.md`.
+- [x] `go test -race ./dsp/filter/moog` passes and benchmarks are recorded in `BENCHMARKS.md`.
 
 ### Phase 27: Goertzel Tone Analysis (Complete)
 
@@ -915,6 +926,7 @@ Quarter-end success criteria:
 | 0.3     | 2026-02-08 | Claude  | Added shelving filter design phase + known Chebyshev II bug   |
 | 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases |
 | 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis |
+| 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress |
 
 ---
 
