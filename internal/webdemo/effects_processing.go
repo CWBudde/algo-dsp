@@ -207,8 +207,8 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 				freq = maxFreq
 			}
 
-			xo := e.chainCrossover[id]
-			if xo == nil || math.Abs(xo.Freq()-freq) > 1e-9 {
+			crossoverFilter := e.chainCrossover[id]
+			if crossoverFilter == nil || math.Abs(crossoverFilter.Freq()-freq) > 1e-9 {
 				newXO, err := crossover.New(freq, 4, e.sampleRate)
 				if err == nil {
 					if e.chainCrossover == nil {
@@ -216,12 +216,12 @@ func (e *Engine) processEffectsByGraphInPlace(block []float64, g *compiledChainG
 					}
 
 					e.chainCrossover[id] = newXO
-					xo = newXO
+					crossoverFilter = newXO
 				}
 			}
 
-			if xo != nil {
-				xo.ProcessBlock(dst, low, high)
+			if crossoverFilter != nil {
+				crossoverFilter.ProcessBlock(dst, low, high)
 			} else {
 				copy(low, dst)
 				copy(high, dst)

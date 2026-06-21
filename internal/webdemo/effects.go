@@ -23,17 +23,17 @@ func (e *Engine) SetCompressor(param CompressorParams) error {
 }
 
 // SetLimiter updates limiter parameters.
-func (e *Engine) SetLimiter(p LimiterParams) error {
+func (e *Engine) SetLimiter(params LimiterParams) error {
 	prevEnabled := e.limParams.Enabled
-	p.Threshold = clamp(p.Threshold, -24, 0)
-	p.Release = clamp(p.Release, 1, 5000)
+	params.Threshold = clamp(params.Threshold, -24, 0)
+	params.Release = clamp(params.Release, 1, 5000)
 
-	e.limParams = p
+	e.limParams = params
 	if err := e.rebuildLimiter(); err != nil {
 		return err
 	}
 
-	if prevEnabled && !p.Enabled {
+	if prevEnabled && !params.Enabled {
 		e.limiter.Reset()
 	}
 
@@ -41,7 +41,7 @@ func (e *Engine) SetLimiter(p LimiterParams) error {
 }
 
 // SetEffects updates effect settings.
-func (e *Engine) SetEffects(p EffectsParams) error {
+func (e *Engine) SetEffects(params EffectsParams) error {
 	prevChorusEnabled := e.effects.ChorusEnabled
 	prevFlangerEnabled := e.effects.FlangerEnabled
 	prevRingModEnabled := e.effects.RingModEnabled
@@ -56,122 +56,122 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	prevTimePitchEnabled := e.effects.TimePitchEnabled
 	prevSpectralPitchEnabled := e.effects.SpectralPitchEnabled
 
-	p.ChorusMix = clamp(p.ChorusMix, 0, 1)
-	p.ChorusDepth = clamp(p.ChorusDepth, 0, 0.01)
+	params.ChorusMix = clamp(params.ChorusMix, 0, 1)
+	params.ChorusDepth = clamp(params.ChorusDepth, 0, 0.01)
 
-	p.ChorusSpeedHz = clamp(p.ChorusSpeedHz, 0.05, 5)
-	if p.ChorusStages < 1 {
-		p.ChorusStages = 1
+	params.ChorusSpeedHz = clamp(params.ChorusSpeedHz, 0.05, 5)
+	if params.ChorusStages < 1 {
+		params.ChorusStages = 1
 	}
 
-	if p.ChorusStages > 6 {
-		p.ChorusStages = 6
+	if params.ChorusStages > 6 {
+		params.ChorusStages = 6
 	}
 
-	p.FlangerRateHz = clamp(p.FlangerRateHz, 0.05, 5)
-	p.FlangerDepth = clamp(p.FlangerDepth, 0, 0.0099)
+	params.FlangerRateHz = clamp(params.FlangerRateHz, 0.05, 5)
+	params.FlangerDepth = clamp(params.FlangerDepth, 0, 0.0099)
 
-	p.FlangerBaseDelay = clamp(p.FlangerBaseDelay, 0.0001, 0.01)
-	if p.FlangerBaseDelay+p.FlangerDepth > 0.01 {
-		p.FlangerDepth = 0.01 - p.FlangerBaseDelay
+	params.FlangerBaseDelay = clamp(params.FlangerBaseDelay, 0.0001, 0.01)
+	if params.FlangerBaseDelay+params.FlangerDepth > 0.01 {
+		params.FlangerDepth = 0.01 - params.FlangerBaseDelay
 	}
 
-	p.FlangerFeedback = clamp(p.FlangerFeedback, -0.99, 0.99)
-	p.FlangerMix = clamp(p.FlangerMix, 0, 1)
-	p.RingModCarrierHz = clamp(p.RingModCarrierHz, 1, e.sampleRate*0.49)
-	p.RingModMix = clamp(p.RingModMix, 0, 1)
+	params.FlangerFeedback = clamp(params.FlangerFeedback, -0.99, 0.99)
+	params.FlangerMix = clamp(params.FlangerMix, 0, 1)
+	params.RingModCarrierHz = clamp(params.RingModCarrierHz, 1, e.sampleRate*0.49)
+	params.RingModMix = clamp(params.RingModMix, 0, 1)
 
-	p.BitCrusherBitDepth = clamp(p.BitCrusherBitDepth, 1, 32)
-	if p.BitCrusherDownsample < 1 {
-		p.BitCrusherDownsample = 1
+	params.BitCrusherBitDepth = clamp(params.BitCrusherBitDepth, 1, 32)
+	if params.BitCrusherDownsample < 1 {
+		params.BitCrusherDownsample = 1
 	}
 
-	if p.BitCrusherDownsample > 256 {
-		p.BitCrusherDownsample = 256
+	if params.BitCrusherDownsample > 256 {
+		params.BitCrusherDownsample = 256
 	}
 
-	p.BitCrusherMix = clamp(p.BitCrusherMix, 0, 1)
-	p.WidenerWidth = clamp(p.WidenerWidth, 0, 4)
-	p.WidenerMix = clamp(p.WidenerMix, 0, 1)
-	p.PhaserRateHz = clamp(p.PhaserRateHz, 0.05, 5)
-	p.PhaserMinFreqHz = clamp(p.PhaserMinFreqHz, 20, e.sampleRate*0.45)
+	params.BitCrusherMix = clamp(params.BitCrusherMix, 0, 1)
+	params.WidenerWidth = clamp(params.WidenerWidth, 0, 4)
+	params.WidenerMix = clamp(params.WidenerMix, 0, 1)
+	params.PhaserRateHz = clamp(params.PhaserRateHz, 0.05, 5)
+	params.PhaserMinFreqHz = clamp(params.PhaserMinFreqHz, 20, e.sampleRate*0.45)
 
-	p.PhaserMaxFreqHz = clamp(p.PhaserMaxFreqHz, p.PhaserMinFreqHz+1, e.sampleRate*0.49)
-	if p.PhaserStages < 1 {
-		p.PhaserStages = 1
+	params.PhaserMaxFreqHz = clamp(params.PhaserMaxFreqHz, params.PhaserMinFreqHz+1, e.sampleRate*0.49)
+	if params.PhaserStages < 1 {
+		params.PhaserStages = 1
 	}
 
-	if p.PhaserStages > 12 {
-		p.PhaserStages = 12
+	if params.PhaserStages > 12 {
+		params.PhaserStages = 12
 	}
 
-	p.PhaserFeedback = clamp(p.PhaserFeedback, -0.99, 0.99)
-	p.PhaserMix = clamp(p.PhaserMix, 0, 1)
-	p.TremoloRateHz = clamp(p.TremoloRateHz, 0.05, 20)
-	p.TremoloDepth = clamp(p.TremoloDepth, 0, 1)
-	p.TremoloSmoothingMs = clamp(p.TremoloSmoothingMs, 0, 200)
-	p.TremoloMix = clamp(p.TremoloMix, 0, 1)
-	p.DelayTime = clamp(p.DelayTime, 0.001, 2.0)
-	p.DelayFeedback = clamp(p.DelayFeedback, 0, 0.99)
-	p.DelayMix = clamp(p.DelayMix, 0, 1)
+	params.PhaserFeedback = clamp(params.PhaserFeedback, -0.99, 0.99)
+	params.PhaserMix = clamp(params.PhaserMix, 0, 1)
+	params.TremoloRateHz = clamp(params.TremoloRateHz, 0.05, 20)
+	params.TremoloDepth = clamp(params.TremoloDepth, 0, 1)
+	params.TremoloSmoothingMs = clamp(params.TremoloSmoothingMs, 0, 200)
+	params.TremoloMix = clamp(params.TremoloMix, 0, 1)
+	params.DelayTime = clamp(params.DelayTime, 0.001, 2.0)
+	params.DelayFeedback = clamp(params.DelayFeedback, 0, 0.99)
+	params.DelayMix = clamp(params.DelayMix, 0, 1)
 
-	p.TimePitchSemitones = clamp(p.TimePitchSemitones, -24, 24)
-	p.TimePitchSequence = clamp(p.TimePitchSequence, 20, 120)
+	params.TimePitchSemitones = clamp(params.TimePitchSemitones, -24, 24)
+	params.TimePitchSequence = clamp(params.TimePitchSequence, 20, 120)
 
-	p.TimePitchOverlap = clamp(p.TimePitchOverlap, 4, 60)
-	if p.TimePitchOverlap >= p.TimePitchSequence {
-		p.TimePitchOverlap = p.TimePitchSequence - 1
+	params.TimePitchOverlap = clamp(params.TimePitchOverlap, 4, 60)
+	if params.TimePitchOverlap >= params.TimePitchSequence {
+		params.TimePitchOverlap = params.TimePitchSequence - 1
 	}
 
-	p.TimePitchSearch = clamp(p.TimePitchSearch, 2, 40)
+	params.TimePitchSearch = clamp(params.TimePitchSearch, 2, 40)
 
-	p.SpectralPitchSemitones = clamp(p.SpectralPitchSemitones, -24, 24)
+	params.SpectralPitchSemitones = clamp(params.SpectralPitchSemitones, -24, 24)
 
-	p.SpectralPitchFrameSize = sanitizeSpectralPitchFrameSize(p.SpectralPitchFrameSize)
-	if p.SpectralPitchHop < 1 || p.SpectralPitchHop >= p.SpectralPitchFrameSize {
-		p.SpectralPitchHop = p.SpectralPitchFrameSize / 4
+	params.SpectralPitchFrameSize = sanitizeSpectralPitchFrameSize(params.SpectralPitchFrameSize)
+	if params.SpectralPitchHop < 1 || params.SpectralPitchHop >= params.SpectralPitchFrameSize {
+		params.SpectralPitchHop = params.SpectralPitchFrameSize / 4
 	}
 
-	if p.SpectralPitchHop < 1 {
-		p.SpectralPitchHop = 1
+	if params.SpectralPitchHop < 1 {
+		params.SpectralPitchHop = 1
 	}
 
-	if p.ReverbModel != "fdn" && p.ReverbModel != "freeverb" {
-		p.ReverbModel = "freeverb"
+	if params.ReverbModel != "fdn" && params.ReverbModel != "freeverb" {
+		params.ReverbModel = "freeverb"
 	}
 
-	p.ReverbWet = clamp(p.ReverbWet, 0, 1.5)
-	p.ReverbDry = clamp(p.ReverbDry, 0, 1.5)
-	p.ReverbRoomSize = clamp(p.ReverbRoomSize, 0, 0.98)
-	p.ReverbDamp = clamp(p.ReverbDamp, 0, 0.99)
-	p.ReverbGain = clamp(p.ReverbGain, 0, 0.1)
-	p.ReverbRT60 = clamp(p.ReverbRT60, 0.2, 8)
-	p.ReverbPreDelay = clamp(p.ReverbPreDelay, 0, 0.1)
-	p.ReverbModDepth = clamp(p.ReverbModDepth, 0, 0.01)
-	p.ReverbModRate = clamp(p.ReverbModRate, 0, 1)
+	params.ReverbWet = clamp(params.ReverbWet, 0, 1.5)
+	params.ReverbDry = clamp(params.ReverbDry, 0, 1.5)
+	params.ReverbRoomSize = clamp(params.ReverbRoomSize, 0, 0.98)
+	params.ReverbDamp = clamp(params.ReverbDamp, 0, 0.99)
+	params.ReverbGain = clamp(params.ReverbGain, 0, 0.1)
+	params.ReverbRT60 = clamp(params.ReverbRT60, 0.2, 8)
+	params.ReverbPreDelay = clamp(params.ReverbPreDelay, 0, 0.1)
+	params.ReverbModDepth = clamp(params.ReverbModDepth, 0, 0.01)
+	params.ReverbModRate = clamp(params.ReverbModRate, 0, 1)
 
-	p.HarmonicBassFrequency = clamp(p.HarmonicBassFrequency, 10, 500)
-	p.HarmonicBassInputGain = clamp(p.HarmonicBassInputGain, 0, 2)
-	p.HarmonicBassHighGain = clamp(p.HarmonicBassHighGain, 0, 2)
-	p.HarmonicBassOriginal = clamp(p.HarmonicBassOriginal, 0, 2)
-	p.HarmonicBassHarmonic = clamp(p.HarmonicBassHarmonic, 0, 2)
-	p.HarmonicBassDecay = clamp(p.HarmonicBassDecay, -1, 1)
+	params.HarmonicBassFrequency = clamp(params.HarmonicBassFrequency, 10, 500)
+	params.HarmonicBassInputGain = clamp(params.HarmonicBassInputGain, 0, 2)
+	params.HarmonicBassHighGain = clamp(params.HarmonicBassHighGain, 0, 2)
+	params.HarmonicBassOriginal = clamp(params.HarmonicBassOriginal, 0, 2)
+	params.HarmonicBassHarmonic = clamp(params.HarmonicBassHarmonic, 0, 2)
+	params.HarmonicBassDecay = clamp(params.HarmonicBassDecay, -1, 1)
 
-	p.HarmonicBassResponseMs = clamp(p.HarmonicBassResponseMs, 1, 200)
-	if p.HarmonicBassHighpass < 0 {
-		p.HarmonicBassHighpass = 0
+	params.HarmonicBassResponseMs = clamp(params.HarmonicBassResponseMs, 1, 200)
+	if params.HarmonicBassHighpass < 0 {
+		params.HarmonicBassHighpass = 0
 	}
 
-	if p.HarmonicBassHighpass > 2 {
-		p.HarmonicBassHighpass = 2
+	if params.HarmonicBassHighpass > 2 {
+		params.HarmonicBassHighpass = 2
 	}
 
-	graph, err := parseChainGraph(p.ChainGraphJSON)
+	graph, err := parseChainGraph(params.ChainGraphJSON)
 	if err != nil {
 		return err
 	}
 
-	e.effects = p
+	e.effects = params
 	if err := e.rebuildEffects(); err != nil {
 		return err
 	}
@@ -181,57 +181,57 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 	}
 
 	e.chainGraph = graph
-	if prevChorusEnabled && !p.ChorusEnabled {
+	if prevChorusEnabled && !params.ChorusEnabled {
 		e.chorus.Reset()
 	}
 
-	if prevFlangerEnabled && !p.FlangerEnabled {
+	if prevFlangerEnabled && !params.FlangerEnabled {
 		e.flanger.Reset()
 	}
 
-	if prevRingModEnabled && !p.RingModEnabled {
+	if prevRingModEnabled && !params.RingModEnabled {
 		e.ringMod.Reset()
 	}
 
-	if prevCrusherEnabled && !p.BitCrusherEnabled {
+	if prevCrusherEnabled && !params.BitCrusherEnabled {
 		e.crusher.Reset()
 	}
 
-	if prevWidenerEnabled && !p.WidenerEnabled {
+	if prevWidenerEnabled && !params.WidenerEnabled {
 		e.widener.Reset()
 	}
 
-	if prevPhaserEnabled && !p.PhaserEnabled {
+	if prevPhaserEnabled && !params.PhaserEnabled {
 		e.phaser.Reset()
 	}
 
-	if prevTremoloEnabled && !p.TremoloEnabled {
+	if prevTremoloEnabled && !params.TremoloEnabled {
 		e.tremolo.Reset()
 	}
 
-	if prevDelayEnabled && !p.DelayEnabled {
+	if prevDelayEnabled && !params.DelayEnabled {
 		e.delay.Reset()
 	}
 
-	if prevReverbEnabled && !p.ReverbEnabled {
+	if prevReverbEnabled && !params.ReverbEnabled {
 		e.reverb.Reset()
 		e.fdn.Reset()
 	}
 
-	if prevReverbModel != p.ReverbModel {
+	if prevReverbModel != params.ReverbModel {
 		e.reverb.Reset()
 		e.fdn.Reset()
 	}
 
-	if prevBassEnabled && !p.HarmonicBassEnabled {
+	if prevBassEnabled && !params.HarmonicBassEnabled {
 		e.bass.Reset()
 	}
 
-	if prevTimePitchEnabled && !p.TimePitchEnabled {
+	if prevTimePitchEnabled && !params.TimePitchEnabled {
 		e.tp.Reset()
 	}
 
-	if prevSpectralPitchEnabled && !p.SpectralPitchEnabled {
+	if prevSpectralPitchEnabled && !params.SpectralPitchEnabled {
 		e.sp.Reset()
 	}
 
