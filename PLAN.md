@@ -174,7 +174,7 @@ Phase 14: High-Order Graphic EQ Bands                 [4 weeks]  ✅ Complete
 Phase 15: Effects — High-Priority Modulation          [2 weeks]  📋 Planned
 Phase 16: Effects — High-Priority Dynamics            [2 weeks]  📋 Planned
 Phase 17: Effects — High-Priority Spatial             [1 week]   ✅ Complete
-Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  📋 Planned
+Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  ✅ Complete
 Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  ✅ Complete
 Phase 20: Effects — Medium-Priority Dynamics          [2 weeks]  ✅ Complete
 Phase 21: Effects — Spatial and Convolution Reverb    [2 weeks]  📋 Planned
@@ -415,7 +415,7 @@ Tasks:
   - [x] Implement convolution routing/mixing for left/right direct and opposite-channel crossfeed paths.
   - [x] Add deterministic tests (routing/parity sanity with fixture IRs), parameter validation, and runnable example.
 
-### Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi (Planned)
+### Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi (Complete)
 
 Tasks:
 
@@ -432,9 +432,9 @@ Tasks:
   - [x] Implement configurable high-pass and damping-frequency controls with sample-rate-aware updates.
   - [x] Provide both high-quality nonlinear path and lightweight polynomial approximation path; document tradeoffs.
   - [x] Add anti-aliasing validation (oversampling effectiveness), spectral characterization tests, and runnable example.
-- [ ] Bit crusher
-  - [ ] Implement bit depth + sample rate reduction.
-  - [ ] Add tests + example.
+- [x] Bit crusher
+  - [x] Implement bit depth + sample rate reduction (`dsp/effects/bit_crusher.go`: quantization + sample-and-hold).
+  - [x] Add tests + example.
 
 ### Phase 19: Effects — Medium-Priority Modulation (Complete)
 
