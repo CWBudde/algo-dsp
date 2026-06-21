@@ -90,6 +90,7 @@ func TestTransientShaperProcessInPlaceMatchesSamplePath(t *testing.T) {
 
 	want := make([]float64, len(input))
 	copy(want, input)
+
 	for i := range want {
 		want[i] = a.ProcessSample(want[i])
 	}
@@ -132,6 +133,7 @@ func TestTransientShaperNegativeSustainReducesDecayTail(t *testing.T) {
 	_ = shaped.SetRelease(40)
 
 	var neutralTail, shapedTail float64
+
 	count := 0
 
 	for i := 0; i < 600; i++ {
