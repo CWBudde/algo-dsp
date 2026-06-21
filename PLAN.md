@@ -21,7 +21,7 @@ This plan is **actionable**: every phase contains **checkable tasks and subtasks
 3. Architecture and Package Layout
 4. API Design Principles
 5. Phase Overview
-6. Detailed Phase Plan (Phases 0–31)
+6. Detailed Phase Plan (Phases 0–43)
 7. Appendices
    - Appendix A: Testing and Validation Strategy
    - Appendix B: Benchmarking and Performance Strategy
@@ -155,39 +155,59 @@ func (p *Processor) ProcessInPlace(buf []float64) error
 
 ## 5. Phase Overview
 
+Phases are strictly numbered (no sub-phases). Completed phases come first in their original
+order; remaining work follows in execution order, ending with the v1.0 release. Phases 16, 22,
+23, 24, and 30 are scoped to the work actually shipped — their open follow-ups are split out as
+separate numbered phases below.
+
 ```plain
-Phase 0:  Bootstrap & Governance                     [1 week]   ✅ Complete
-Phase 1:  Numeric Foundations & Core Utilities       [2 weeks]  ✅ Complete
-Phase 2:  Window Functions                            [2 weeks]  ✅ Complete
-Phase 3:  Filter Runtime Primitives                   [3 weeks]  ✅ Complete
-Phase 4:  Filter Design Toolkit                       [3 weeks]  ✅ Complete
-Phase 5:  Filter Banks and Weighting                  [2 weeks]  ✅ Complete
-Phase 6:  Spectrum Utilities                          [2 weeks]  ✅ Complete
-Phase 7:  Convolution and Correlation                 [2 weeks]  ✅ Complete
-Phase 8:  Resampling                                  [3 weeks]  ✅ Complete
-Phase 9:  Signal Generation and Utilities             [2 weeks]  ✅ Complete
-Phase 10: Measurement Kernels (THD)                   [3 weeks]  ✅ Complete
-Phase 11: Measurement Kernels (Sweep/IR)              [3 weeks]  ✅ Complete
-Phase 12: Stats Packages                              [2 weeks]  ✅ Complete
-Phase 13: Advanced Parametric EQ Design               [2 weeks]  ✅ Complete
-Phase 14: High-Order Graphic EQ Bands                 [4 weeks]  ✅ Complete
-Phase 15: Effects — High-Priority Modulation          [2 weeks]  ✅ Complete
-Phase 16: Effects — High-Priority Dynamics            [2 weeks]  🔄 In Progress
-Phase 17: Effects — High-Priority Spatial             [1 week]   ✅ Complete
-Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  ✅ Complete
-Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  ✅ Complete
-Phase 20: Effects — Medium-Priority Dynamics          [2 weeks]  ✅ Complete
-Phase 21: Effects — Spatial and Convolution Reverb    [2 weeks]  ✅ Complete
-Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  🔄 In Progress
-Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
-Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
-Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
-Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  ✅ Complete
-Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
-Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  ✅ Complete
-Phase 29: Dither and Noise Shaping                    [3 weeks]  ✅ Complete
-Phase 30: Polyphase Hilbert / Analytic Signal         [2 weeks]  ✅ Complete
-Phase 31: Interpolation Kernel Expansion               [2 weeks]  📋 Planned
+# Completed
+Phase 0:  Bootstrap & Governance                          [1 week]   ✅ Complete
+Phase 1:  Numeric Foundations & Core Utilities            [2 weeks]  ✅ Complete
+Phase 2:  Window Functions                                 [2 weeks]  ✅ Complete
+Phase 3:  Filter Runtime Primitives                        [3 weeks]  ✅ Complete
+Phase 4:  Filter Design Toolkit                            [3 weeks]  ✅ Complete
+Phase 5:  Filter Banks and Weighting                       [2 weeks]  ✅ Complete
+Phase 6:  Spectrum Utilities                               [2 weeks]  ✅ Complete
+Phase 7:  Convolution and Correlation                      [2 weeks]  ✅ Complete
+Phase 8:  Resampling                                       [3 weeks]  ✅ Complete
+Phase 9:  Signal Generation and Utilities                  [2 weeks]  ✅ Complete
+Phase 10: Measurement Kernels (THD)                        [3 weeks]  ✅ Complete
+Phase 11: Measurement Kernels (Sweep/IR)                   [3 weeks]  ✅ Complete
+Phase 12: Stats Packages                                   [2 weeks]  ✅ Complete
+Phase 13: Advanced Parametric EQ Design                    [2 weeks]  ✅ Complete
+Phase 14: High-Order Graphic EQ Bands                      [4 weeks]  ✅ Complete
+Phase 15: Effects — High-Priority Modulation               [2 weeks]  ✅ Complete
+Phase 16: Effects — High-Priority Dynamics (core)          [2 weeks]  ✅ Complete  → curve parity: P31
+Phase 17: Effects — High-Priority Spatial                  [1 week]   ✅ Complete
+Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi      [2 weeks]  ✅ Complete
+Phase 19: Effects — Medium-Priority Modulation             [2 weeks]  ✅ Complete
+Phase 20: Effects — Medium-Priority Dynamics               [2 weeks]  ✅ Complete
+Phase 21: Effects — Spatial and Convolution Reverb         [2 weeks]  ✅ Complete
+Phase 22: Effects — Specialized (Spectral Freeze, Granular)[2 weeks]  ✅ Complete  → rest: P33–P37
+Phase 23: High-Order Shelving (Butterworth, Chebyshev I/II)[2 weeks] ✅ Complete  → elliptic: P32
+Phase 24: Optimization — Spectrum Fast Path & Bench Harness[1 week]   ✅ Complete  → guard/SIMD: P40–P41
+Phase 25: Nonlinear Moog Ladder Filters                    [3 weeks]  ✅ Complete
+Phase 26: Goertzel Tone Analysis                           [2 weeks]  ✅ Complete
+Phase 27: Loudness Metering (EBU R128 / BS.1770)           [3 weeks]  ✅ Complete
+Phase 28: Dither and Noise Shaping                         [3 weeks]  ✅ Complete
+Phase 29: Polyphase Hilbert / Analytic Signal              [2 weeks]  ✅ Complete
+Phase 30: Interpolation Kernels (core)                     [2 weeks]  ✅ Complete  → expansion: P38–P39
+
+# Remaining (execution order)
+Phase 31: Dynamics — Static Characteristic-Curve Parity    [0.5 week] 🔄 In Progress
+Phase 32: Elliptic Shelving Designer                       [1 week]   📋 Planned
+Phase 33: Vocoder Finalization                             [0.5 week] 🔄 In Progress
+Phase 34: Stereo Panner                                    [0.5 week] 📋 Planned
+Phase 35: Dynamic EQ                                       [1 week]   📋 Planned
+Phase 36: Pitch Correction (YIN)                           [1 week]   📋 Planned
+Phase 37: Noise Reduction                                  [1 week]   📋 Planned
+Phase 38: Interpolation Kernel Expansion                   [1 week]   📋 Planned
+Phase 39: Interpolation Integration & Validation           [1 week]   📋 Planned
+Phase 40: Benchmark Regression Guard                       [1 week]   🔄 In Progress
+Phase 41: SIMD Modal Oscillator Bank                       [2 weeks]  📋 Planned
+Phase 42: Release Readiness (v1.0)                         [1 week]   📋 Planned
+Phase 43: Tag and Publish v1.0                             [0.5 week] 📋 Planned
 ```
 
 ---
@@ -299,565 +319,306 @@ Completed phases are summarized as short bullet lists. In-progress and planned p
 
 ---
 
-### Phase 15: Effects — High-Priority Modulation (Flanger, Phaser, Tremolo) (Complete)
+### Phase 15: Effects — High-Priority Modulation (Complete)
 
-Rules:
+- Flanger (short modulated delay + feedback + interpolated tap), phaser (4–12 stage allpass
+  cascade + LFO), tremolo (LFO amplitude mod + smoothing).
+- Constructor+options; `Process`/`ProcessInPlace`/`Reset` per effect.
+- Tests + runnable examples; `go test -race ./dsp/effects/` passes.
 
-- Algorithm-only; no I/O.
-- Constructor + options; `Process` + `ProcessInPlace` + `Reset`.
-- Tests + runnable example per effect.
+### Phase 16: Effects — High-Priority Dynamics (core) (Complete)
 
-Tasks:
+- Shared dynamics core (`dsp/effects/dynamics/core.go`) with feedforward + feedback topologies,
+  peak/RMS detectors, optional sidechain prefilter, hard/soft-knee gain computers
+  (`GainForLevel`), manual/auto make-up gain, deterministic reset, and sample-rate-aware
+  coefficient recalculation + strict validation.
+- Compressor variants — feedforward (peak/RMS/sidechain) and feedback (hard/soft knee, ratio-
+  dependent time constants); API surface (`ProcessSample`, `ProcessSampleSidechain`,
+  `ProcessInPlace`, `Reset`, `ResetMetrics`) in `dsp/effects/dynamics/compressor.go`.
+- De-esser, gate, limiter, expander (hard/soft knee + range), multiband compressor (crossover +
+  per-band, recombination gain-normalization + phase/latency checks) — each with tests + examples.
+- Streaming legacy parity (`legacy_parity_test.go`) + step/burst temporal tests + hot-path
+  benchmarks (near-zero allocs in-place).
 
-- [x] Flanger
-  - Algorithm: short modulated delay (0.1–10 ms) with feedback and wet/dry.
-  - API sketch:
-
-    ```go
-    func NewFlanger(sampleRate float64, opts ...Option) (*Flanger, error)
-    func (f *Flanger) Process(sample float64) float64
-    func (f *Flanger) ProcessInPlace(buf []float64) error
-    func (f *Flanger) Reset()
-    ```
-
-  - [x] Implement core algorithm (short modulated delay, feedback, mix).
-  - [x] Implement interpolation tap (reuse chorus approach).
-  - [x] Add tests (parameter validation + basic response sanity).
-  - [x] Add runnable example.
-
-- [x] Phaser
-  - Algorithm: allpass cascade with LFO modulation.
-  - [x] Implement allpass cascade (4–12 stages) with LFO modulation.
-  - [x] Add tests + example.
-- [x] Tremolo
-  - Algorithm: amplitude modulation with LFO and optional smoothing.
-  - [x] Implement LFO amplitude mod + smoothing.
-  - [x] Add tests + example.
-
-Exit criteria:
-
-- [x] `go test -race ./dsp/effects/` passes with new effects.
-
-### Phase 16: Effects — High-Priority Dynamics (In Progress)
-
-Tasks:
-
-- [x] De-esser
-  - [x] Implement split-band detection and reduction.
-  - [x] Add tests + example.
-- [x] Dynamics core architecture (feedforward + feedback)
-  - [x] Implement reusable dynamics core in `dsp/effects` with explicit detector/gain-computer separation and shared envelope state.
-  - [x] Add topology option: `Feedforward` (detect from input/sidechain) and `Feedback` (detect from output/previous gain), based on `legacy/Source/DSP/DAV_DspDynamics.pas`.
-  - [x] Implement detector modes:
-  - [x] `Peak` detector with attack/release smoothing coefficients.
-  - [x] `RMS` detector with configurable RMS window/time and ring-buffer update path.
-  - [x] Optional sidechain prefilter path (low-cut/high-cut) for detector-only control signal.
-  - [x] Implement gain-computer modes:
-  - [x] Hard-knee compression curve (threshold + ratio).
-  - [x] Soft-knee compression curve (knee width in dB, smooth transition around threshold).
-  - [x] Manual make-up gain and auto make-up gain policies.
-  - [x] Implement reset/state management for deterministic streaming behavior (peak/RMS history, feedback previous-abs sample, hold counters where used).
-  - [x] Add sample-rate aware coefficient recalculation and strict parameter validation (threshold, ratio, knee, attack/release, RMS time, sidechain cutoff bounds).
-- [x] Compressor implementations (topology-specific)
-  - [x] Implement feedforward compressor variants:
-  - [x] Peak feedforward compressor.
-  - [x] RMS feedforward compressor.
-  - [x] Sidechain-filtered feedforward compressor.
-  - [x] Implement feedback compressor variants:
-  - [x] Hard-knee feedback compressor.
-  - [x] Soft-knee feedback compressor.
-  - [x] Include feedback-specific time-constant behavior where attack/release scaling depends on ratio (legacy parity target).
-  - [x] Expose clear API surface (`ProcessSample`, `ProcessSampleSidechain`, `ProcessInPlace`, `Reset`, `ResetMetrics`, constructor+options) in `dsp/effects/dynamics/compressor.go`.
-- [ ] Legacy parity and characterization for dynamics
-  - [x] Build parity-oriented reference tests for feedforward and feedback paths using vectors derived from `legacy/Source/DSP/DAV_DspDynamics.pas`.
-  - [ ] Validate characteristic curves (`in -> out` and gain reduction) for threshold/ratio/knee sweeps.
-  - [x] Validate temporal behavior on step/burst tests (attack, release, feedback recovery, RMS window response).
-  - [x] Add benchmark coverage for hot paths and allocation checks (`allocs/op` near zero for in-place processing).
-- [x] Expander
-  - [x] Implement downward expander on top of shared dynamics core (feedforward first, optional feedback mode if stable).
-  - [x] Add hard-knee + soft-knee variants with range control where appropriate.
-  - [x] Add tests + runnable example.
-- [x] Multiband compressor
-  - [x] Implement crossover + per-band compressors using feedforward core initially.
-  - [x] Add optional feedback mode per band once single-band feedback parity is validated.
-  - [x] Add recombination gain-normalization checks and phase/latency sanity tests.
-  - [x] Add tests + runnable example.
-
-Exit criteria:
-
-- [ ] Feedforward and feedback compressor topologies both implemented and documented.
-- [ ] Parity/characterization tests pass for legacy-aligned behavior envelopes.
-- [ ] `go test -race ./dsp/effects/` passes with new dynamics processors.
+> Open follow-up: static characteristic-curve parity is split out as **Phase 31**.
 
 ### Phase 17: Effects — High-Priority Spatial (Complete)
 
-Tasks:
-
-- [x] Stereo widener
-  - [x] Implement M/S gain controls with safe bounds.
-  - [x] Add mono-compatibility tests + example.
-- [x] Crosstalk cancellation
-  - [x] Implement stereo crosstalk cancellation effect (`dsp/effects`) with constructor/options, `ProcessStereo`, `ProcessInPlace`, and `Reset`.
-  - [x] Port the legacy geometric delay model from `legacy/Source/DSP/DAV_DspCrosstalkCancellation.pas` (listener distance, speaker distance, head radius, attenuation, stage count).
-  - [x] Implement staged crossfeed cancellation path per channel: delay line + highshelf crosstalk filter + attenuation.
-  - [x] Add parameter validation and guard rails (distance constraints, stage bounds, sample-rate updates).
-  - [x] Add parity-oriented tests against legacy behavior (delay-time calculation + staged processing sanity) and runnable example.
-- [x] Crosstalk simulator (IIR model)
-  - [x] Implement stereo crosstalk simulator effect (`dsp/effects`) based on `legacy/Source/DSP/DAV_DspCrosstalkSimulator.pas`.
-  - [x] Port configurable model presets (`Handcrafted`, `IRCAM`, `HDPHX`) as cascaded biquad shaping on the crossfeed path.
-  - [x] Port delayed crossfeed buffer model with physical-diameter-derived delay (`diameter / speed_of_sound`), polarity toggle, and dry/crossfeed mix mapping.
-  - [x] Add parameter validation and sample-rate dependent delay/buffer recalculation.
-  - [x] Add parity-oriented tests for preset responses, delay-size calculation, and stereo processing behavior + runnable example.
-- [x] Crosstalk simulator (HRTF)
-  - [x] Implement HRTF-based stereo crosstalk simulator in `dsp/effects`, informed by `legacy/Source/DSP/DAV_DspCrosstalkSimulatorHRTF.pas`.
-  - [x] Provide two modes: simple crossfeed-only convolution and complete direct+crossfeed convolution.
-  - [x] Define an HRTF provider interface contract (transport-agnostic) and support impulse-response reload on HRTF/sample-rate changes.
-  - [x] Implement convolution routing/mixing for left/right direct and opposite-channel crossfeed paths.
-  - [x] Add deterministic tests (routing/parity sanity with fixture IRs), parameter validation, and runnable example.
+- Stereo widener (M/S gains with safe bounds + mono-compatibility tests).
+- Crosstalk cancellation: geometric delay-model port (delay line + highshelf + attenuation,
+  staged) with validation and parity tests.
+- Crosstalk simulator (IIR): `Handcrafted`/`IRCAM`/`HDPHX` presets as cascaded biquad shaping,
+  diameter-derived delayed crossfeed, polarity + dry/crossfeed mix.
+- Crosstalk simulator (HRTF): transport-agnostic HRTF-provider interface, crossfeed-only and
+  full direct+crossfeed convolution modes, IR reload on HRTF/sample-rate change.
+- Validation + runnable examples per effect.
 
 ### Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi (Complete)
 
-Tasks:
-
-- [x] Distortion
-  - [x] Implement baseline waveshapers (soft/hard clip, tanh) and expose selectable shaping modes.
-  - [x] Port and cover `legacy/Source/DSP/DAV_DspWaveshaper.pas` shaping family:
-  - [x] Formula waveshapers (`Waveshaper1..8`, `Saturate`, `Saturate2`, `SoftSat`) with parameter-range validation.
-  - [x] Chebyshev harmonic waveshaper core (order/gain-level/invert controls, odd/even constraints where applicable, optional DC bypass behavior).
-  - [x] Add fast polynomial/approximation path options where they are numerically close and measurably faster.
-  - [x] Add parity-oriented tests against legacy transfer-curve and harmonic-balance behavior + runnable examples.
-- [x] Transformer simulation (waveshaping-based)
-  - [x] Implement transformer-style saturation effect inspired by `legacy/Source/DSP/DAV_DspTransformerSimulation.pas`.
-  - [x] Recreate processing topology: pre-emphasis/damping filters + oversampling path + nonlinear waveshaper + downsampling.
-  - [x] Implement configurable high-pass and damping-frequency controls with sample-rate-aware updates.
-  - [x] Provide both high-quality nonlinear path and lightweight polynomial approximation path; document tradeoffs.
-  - [x] Add anti-aliasing validation (oversampling effectiveness), spectral characterization tests, and runnable example.
-- [x] Bit crusher
-  - [x] Implement bit depth + sample rate reduction (`dsp/effects/bit_crusher.go`: quantization + sample-and-hold).
-  - [x] Add tests + example.
+- Distortion: soft/hard/tanh shapers + legacy waveshaper family (`Waveshaper1..8`, `Saturate*`,
+  `SoftSat`) + Chebyshev harmonic core; fast polynomial paths; transfer-curve/harmonic parity tests.
+- Transformer simulation: pre-emphasis/damping + oversampling + nonlinear waveshaper +
+  downsampling, with HQ and approximation paths and anti-aliasing validation.
+- Bit crusher: bit-depth + sample-rate reduction (quantize + sample-and-hold).
+- Tests + runnable examples.
 
 ### Phase 19: Effects — Medium-Priority Modulation (Complete)
 
-Tasks:
-
-- [x] Auto-wah
-  - [x] Implement envelope follower modulating a filter.
-  - [x] Add tests + example.
-- [x] Ring modulator
-  - [x] Implement carrier multiply + mix.
-  - [x] Add tests + example.
-
-Web demo:
-
-- Live demo: [https://cwbudde.github.io/algo-dsp/](https://cwbudde.github.io/algo-dsp/)
+- Auto-wah (envelope follower modulating a filter) and ring modulator (carrier multiply + mix).
+- Tests + runnable examples.
+- Live web demo: <https://cwbudde.github.io/algo-dsp/>.
 
 ### Phase 20: Effects — Medium-Priority Dynamics (Complete)
 
-Tasks:
-
-- [x] Transient shaper
-  - [x] Implement attack/release split + shaping.
-  - [x] Add tests + example.
-- [x] Lookahead limiter
-  - [x] Implement delay + detector + gain.
-  - [x] Add tests + example.
+- Transient shaper (attack/release split + shaping) and lookahead limiter (delay + detector + gain).
+- Tests + runnable examples.
 
 ### Phase 21: Effects — Spatial and Convolution Reverb (Complete)
 
-Implementation status (snapshot):
+- Reverb suite in `dsp/effects/reverb`: `ConvolutionReverb` (FFT-backed partitioned-convolution
+  kernel `dsp/conv/partitioned.go`), `FDNReverb` (feedback delay network), and `Reverb`/Freeverb.
+- `HaasDelay` (`dsp/effects/spatial/haas.go`): short precedence delay reusing the package's
+  `monoDelay` ring buffer, with `ProcessStereo`/in-place/interleaved APIs.
+- Tests + runnable examples + benchmarks.
 
-- Reverb suite in `dsp/effects/reverb`: `ConvolutionReverb` (wraps the FFT-backed partitioned
-  convolution kernel `dsp/conv/partitioned.go`, with impulse-response/dry-path tests + example),
-  `FDNReverb` (feedback-delay-network, with tests + example), and `Reverb`/Freeverb (with tests).
-- Spatial side: the stereo widener and crosstalk processors are delivered under Phase 17; this
-  phase adds the `HaasDelay` (`dsp/effects/spatial/haas.go`) — a short single-channel precedence
-  delay reusing the package's `monoDelay` ring buffer, with `ProcessStereo`/in-place/interleaved
-  APIs, validation, tests, runnable example, and benchmarks.
+### Phase 22: Effects — Specialized (Spectral Freeze, Granular) (Complete)
 
-Tasks:
+Recovered onto `main` from the orphaned release lineage (see Appendix H):
 
-- [x] Convolution reverb
-  - [x] Implement partitioned convolution wrapper specialized for reverb usage.
-  - [x] Add tests + example.
-- [x] Haas delay
-  - [x] Implement short stereo delay + constraints.
-  - [x] Add tests + example.
+- Spectral freeze (`dsp/effects/spectral_freeze.go`): overlap-add STFT with magnitude hold and
+  `PhaseHold`/`PhaseAdvance` strategies; configurable frame/hop/window/mix. Tests + example.
+- Granular (`dsp/effects/granular.go`): real-time-safe grain scheduler with Hann-windowed
+  overlap-add and grain-size/overlap/pitch/spray controls. Tests + example.
 
-### Phase 22: Effects — Specialized / Lower-Priority (In Progress)
+> Open follow-ups (independent effects, each its own phase): vocoder finalization **Phase 33**,
+> stereo panner **Phase 34**, dynamic EQ **Phase 35**, pitch correction **Phase 36**, noise
+> reduction **Phase 37**.
 
-Implementation status (snapshot):
+### Phase 23: High-Order Shelving Filters (Butterworth, Chebyshev I/II) (Complete)
 
-- Recovered onto `main` from the orphaned release lineage (see Appendix H): spectral freeze
-  (`dsp/effects/spectral_freeze.go`, with tests + example), granular
-  (`dsp/effects/granular.go`, with tests + example), and vocoder (`dsp/effects/vocoder.go`,
-  with tests; runnable example still pending).
-- Still open: dynamic EQ, stereo panner, pitch correction (YIN), noise reduction, and the
-  vocoder example.
+High-order low/high-shelf designers in `dsp/filter/design/shelving/` returning SOS, with the
+signature `XxxLow/HighShelf(sampleRate, freqHz, gainDB float64, order int) ([]biquad.Coefficients, error)`
+(`order >= 1`; odd orders add a first-order section; `gainDB == 0` → passthrough; frequency-bound
+and NaN/Inf validation).
 
-Tasks:
+- Butterworth (`butterworth.go`), Chebyshev I (`chebyshev1.go`), and Chebyshev II (`chebyshev2.go`,
+  Orfanidis framework) designers + tests (endpoint anchors, monotonicity, grid sweeps, DC/Nyquist
+  + stopband ripple). The earlier Chebyshev II shape bug is fixed.
 
-- [x] Spectral freeze
-  - [x] Implement STFT magnitude hold + phase strategy.
-  - [x] Add tests + example.
-- [x] Granular
-  - [x] Implement grain scheduling + overlap-add.
-  - [x] Add tests + example.
-- [ ] Dynamic EQ
-  - [ ] Implement band filter + detector + gain mapping.
-  - [ ] Add tests + example.
-- [ ] Stereo panner
-  - [ ] Implement equal-power pan law.
-  - [ ] Add tests + example.
-- [ ] Vocoder
-  - [x] Implement analysis bank + envelopes + carrier shaping.
-  - [ ] Add tests + example.
-- [ ] Pitch correction
-  - [ ] Implement YIN helper + integrate with spectral shifter.
-  - [ ] Add tests + example.
-- [ ] Noise reduction
-  - [ ] Implement profiling + spectral subtraction/Wiener.
-  - [ ] Add tests + example.
+> Open follow-up: elliptic shelving is split out as **Phase 32**.
 
-Exit criteria:
+### Phase 24: Optimization — Spectrum Fast Path & Benchmark Harness (Complete)
 
-- [ ] New effects meet minimum coverage and include runnable examples.
+- Zero-alloc fast path in spectrum helpers (removed temporary-unpacking allocations); spectrum
+  code wired to prefer it; before/after recorded in `BENCHMARKS.md`.
+- Stable hot-path benchmark subset + a CI-friendly `just bench-ci` report target.
+- `algo-vecmath v0.1.0` SIMD primitives (ADD/MUL/SCALE/ADDMUL/MAXABS, with generic/AVX2/SSE2/NEON
+  paths) integrated and benchmarked (2.6–4.1× generic→SIMD; see `BENCHMARKS.md`).
+
+> Open follow-ups: benchmark regression guard **Phase 40**; SIMD modal oscillator bank **Phase 41**.
+> The v1.0 release work is **Phases 42–43**.
+
+### Phase 25: Nonlinear Moog Ladder Filters (Complete)
+
+- `dsp/filter/moog`: `New(sampleRate, ...Option)` with six variants via `WithVariant`
+  (`Classic`, `ClassicLightweight`, `ImprovedClassic`, `ImprovedClassicLightweight`,
+  `Huovilainen`, `ZDF`) and the full option/setter surface (cutoff, resonance, drive, in/out
+  gain + normalization, thermal voltage, oversampling, Newton iterations), with strict
+  validation/numeric guard rails and mono + stereo/frame helpers.
+- `VariantZDF`: zero-delay-feedback TPT with Newton-Raphson (Zavalishin / D'Angelo–Välimäki)
+  for accurate high-cutoff tuning and self-oscillation; oversampling (2/4/8×) with anti-alias
+  filtering + Huovilainen half-sample feedback compensation on the other variants.
+- Legacy parity (classic/improved/lightweight), tuning/frequency-response grids, nonlinear
+  drive/self-oscillation + rapid-modulation stability tests, examples, benchmarks; all `-race`.
+- Adopted from the release lineage during reconciliation (see Appendix H).
+
+### Phase 26: Goertzel Tone Analysis (Complete)
+
+- `dsp/spectrum/goertzel.go`: stateful single-bin `Goertzel` + batched `GoertzelBank`
+  (DTMF/pilot-tone) with legacy recurrence + power-formula parity, outputs (power/magnitude/
+  dB-floored/complex/normalized), and strict validation.
+- One-shot `ProcessBlock`/`AnalyzeBlock` + zero-alloc streaming `ProcessSample`; DFT-reference
+  and off-bin correctness tests, edge cases, examples, benchmarks (0 allocs/op).
+- Fused from the two lineages' implementations into one canonical file (see Appendix H).
+
+### Phase 27: Loudness Metering (EBU R128 / BS.1770) (Complete)
+
+- `measure/loudness` `Meter`: K-weighting prefilter, 400 ms momentary + 3 s short-term windows,
+  integrated loudness with absolute/relative gating, mono/stereo (`WithChannels`), true-peak
+  tracking, streaming APIs (`Reset`, `Start/StopIntegration`, `ProcessSample/Block`,
+  `Momentary`, `ShortTerm`, `Integrated`, `Peaks`).
+- R128/BS.1770 conformance + parity + sample-rate-matrix + long-run stability tests, examples,
+  benchmarks; depends only on `dsp/core`, `dsp/filter/biquad`, `dsp/filter/design`.
+- Recovered from the release lineage (see Appendix H).
+- Deferred: allocation-free callback/event-hook API; explicit loudness-range (LRA) metric.
+
+### Phase 28: Dither and Noise Shaping (Complete)
+
+- `dsp/dither`: dither PDFs (none/rectangular/triangular/gaussian/fast-gaussian) with injectable
+  RNG, a `Quantizer` (int/float modes + optional limiting), a `NoiseShaper` interface with FIR
+  error-feedback + IIR low-shelf implementations, and legacy coefficient presets
+  (E/F/IE/ME/SBM/sharp, with sample-rate-aware "sharp" selection).
+- `dsp/dither/design`: ATH/critical-band models + a stochastic ATH-weighted coefficient
+  optimizer with order/runtime guardrails and cancellation.
+- Null/error-spectrum + preset-parity tests, examples, benchmarks; all `-race`.
+- Recovered from the release lineage (see Appendix H).
+
+### Phase 29: Polyphase Hilbert / Analytic Signal (Complete)
+
+- `dsp/filter/hilbert`: 64-bit and 32-bit two-path polyphase/allpass quadrature (A/B)
+  processors with reusable state, count-specialized fast paths + generic fallback, analytic-
+  envelope helper, coefficient designer + presets, `ProcessSample/Block`, `Reset/ClearBuffers`.
+- Phase-quadrature, amplitude-matching, image-rejection, and legacy-parity tests, examples,
+  benchmarks; all `-race`.
+- Recovered from tags `v0.5.0`/`v0.5.1`; paired with `Chain.Gain`/`SetGain` on
+  `dsp/filter/biquad/chain.go`. Bundled frequency-shifter effect deferred (see Appendix H).
+
+### Phase 30: Interpolation Kernels (core) (Complete)
+
+- `dsp/interp` (`interp.go`): `Linear2`, `Hermite4`, `Lagrange4`, `Lanczos6`/`LanczosN`,
+  Blackman-windowed `SincInterp`, and a first-order allpass tick, selected via an `interp.Mode`
+  enum.
+- `dsp/delay/line.go`: `Line` ring buffer with `Write`/`Read`/`ReadFractional(delay)` and
+  `WithMode`/`WithSincN` options; `dsp/resample` polyphase FIR resampler (Kaiser-designed,
+  Fast/Balanced/Best quality) consumes fractional-phase interpolation internally.
+- Tests + docs. Both `dsp/interp` and `dsp/delay` are listed as new public packages in
+  `CHANGELOG.md`.
+
+> Open follow-ups: kernel expansion **Phase 38**; integration & validation **Phase 39**.
 
 ---
 
-### Phase 23: High-Order Shelving Filters (Holters/Zölzer + Orfanidis) (In Progress)
+The phases below are the remaining roadmap, in execution order. Each is intentionally small and
+ships with tests + a runnable example unless noted.
 
-Goal:
+### Phase 31: Dynamics — Static Characteristic-Curve Parity (In Progress)
 
-- High-order low-shelf and high-shelf filter designers returning SOS.
+Validate the steady-state transfer behavior of the Phase 16 dynamics suite against
+`legacy/Source/DSP/DAV_DspDynamics.pas`; today `legacy_parity_test.go` only covers streaming
+simulation, not static curves.
 
-Design constraints:
-
-- `order >= 1` supported; odd orders produce a first-order section.
-- `gainDB == 0` should yield a passthrough.
-- Validate frequency bounds (`0 < f < Fs/2`) and numeric sanity (NaN/Inf).
-
-Implementation status (snapshot):
-
-- Butterworth: complete + tests (`dsp/filter/design/shelving/butterworth.go`).
-- Chebyshev I: complete + tests (`dsp/filter/design/shelving/chebyshev1.go`).
-- Chebyshev II: complete + tests; the earlier shape bug is **fixed**
-  (`dsp/filter/design/shelving/chebyshev2.go`, all tests pass).
-- Elliptic: not yet implemented (only the remaining work in this phase).
-
-Tasks:
-
-- [x] Butterworth shelving designers + tests.
-- [x] Chebyshev I shelving designers + tests.
-- [x] Fix Chebyshev II shelving shape bug.
-  - [x] Implement Chebyshev II sections computation.
-  - [x] Add tests (endpoint anchors, monotonicity, grid sweeps).
-  - [x] Derive correct lowpass prototype poles/zeros for Chebyshev II shelving and map via bilinear.
-  - [x] Validate DC/Nyquist and stopband ripple conformance.
-- [ ] Implement elliptic shelving (remaining work for this phase).
-  - [ ] Reuse elliptic math machinery already present in `band/elliptic.go`.
-  - [ ] Add stability + response tests.
+- [ ] Add a static curve builder reusing the gain-computer path (`core.GainForLevel`, plus the
+  Gate's existing `CalculateOutputLevel`) so `in → out` and gain reduction can be sampled without
+  streaming; extend it to compressor/expander/multiband.
+- [ ] Validate `in → out` and gain-reduction curves across threshold/ratio/knee sweeps vs legacy.
 
 Exit criteria:
 
-- [ ] All shelving topologies produce correct shelf shape (elliptic outstanding).
-- [x] Butterworth / Chebyshev I / Chebyshev II shelving tests pass.
+- [ ] Characteristic-curve parity tests pass; `go test -race ./dsp/effects/dynamics` passes.
 
-### Phase 24: Optimization and SIMD Paths (In Progress)
+### Phase 32: Elliptic Shelving Designer (Planned)
 
-Status:
+Add the missing elliptic topology to `dsp/filter/design/shelving/`, matching the existing
+`XxxLow/HighShelf(sampleRate, freqHz, gainDB, order)` → `[]biquad.Coefficients` signature.
 
-- Core optimization work exists; remaining work is making performance regression detection repeatable.
-
-Tasks (must-do):
-
-- [x] Remove avoidable allocations in spectrum helpers caused by temporary unpacking.
-  - [x] Add/extend a zero-alloc fast path.
-  - [x] Wire spectrum code to prefer the fast path.
-  - [x] Record before/after numbers in `BENCHMARKS.md`.
-- [ ] Add a benchmark regression guard (advisory at first).
-  - [x] Choose a stable, small benchmark subset covering hot paths.
-  - [ ] Define regression thresholds (`ns/op`, `allocs/op`) and baseline update workflow.
-  - [x] Add a CI-friendly target (e.g. `just bench-ci`) emitting a report.
-  - [ ] Wire it into CI as advisory output.
-- [ ] Re-run full benchmarks on at least 2 machines and update `BENCHMARKS.md`.
-
-Optional SIMD track (modal oscillator bank; depends on `algo-vecmath`):
-
-- [ ] Add `dsp/osc` (or `dsp/modal`) package skeleton with scalar reference.
-  - [ ] Define block APIs for damped complex rotators (primary `float32`).
-  - [ ] Add parity tests vs scalar reference.
-  - [ ] Add microbenchmarks for modal workloads.
-  - [ ] Document denormal strategy.
+- [ ] Implement `EllipticLowShelf`/`EllipticHighShelf`, reusing `internal/ellipticmath`
+  (`EllipDeg`/`ASNE`/`CDE`) and the pole/zero placement in `band/elliptic.go` as a template.
+- [ ] Add a stopband-ripple parameter consistent with the band elliptic designer.
+- [ ] Stability + response tests (endpoint anchors, monotonic transition, ripple conformance).
 
 Exit criteria:
 
-- [ ] Key hot paths show no major regressions in allocations/op.
+- [ ] Elliptic shelf shape validated; `go test -race ./dsp/filter/design/shelving` passes.
+
+### Phase 33: Vocoder Finalization (In Progress)
+
+`dsp/effects/vocoder.go` already implements the analysis/synthesis vocoder
+(`NewVocoder(sampleRate, bandLayout, opts...)`, `ProcessBlock(analysis, synth)`,
+`BandLayoutThirdOctave`/`BandLayoutBark`, attack/release/Q/level options) with `vocoder_test.go`.
+
+- [ ] Add the missing runnable example (`vocoder_example_test.go`) and round out coverage.
+
+Exit criteria:
+
+- [ ] Example builds; `go test -race ./dsp/effects` passes.
+
+### Phase 34: Stereo Panner (Planned)
+
+- [ ] Equal-power (constant-power) pan law in `dsp/effects/spatial`, following the existing
+  spatial-effect API (constructor + options, `ProcessStereo`/in-place, `Reset`).
+- [ ] Tests (power preservation across the pan sweep; hard-left/right/center) + runnable example.
+
+### Phase 35: Dynamic EQ (Planned)
+
+- [ ] Per-band filter + detector + gain mapping, composing the Phase 16 dynamics core with biquad
+  bands (threshold-driven boost/cut per band).
+- [ ] Tests (static band gain vs detector level; multi-band interaction) + runnable example.
+
+### Phase 36: Pitch Correction (YIN) (Planned)
+
+- [ ] YIN fundamental-frequency detector (difference function + CMND + parabolic interpolation);
+  no detector exists today — `dsp/effects/pitch` only does pitch shifting.
+- [ ] Integrate detection with the existing pitch shifter / `frequency_shifter` to snap pitch to a
+  target/scale.
+- [ ] Tests (detection accuracy on synthetic tones; octave-error robustness) + runnable example.
+
+### Phase 37: Noise Reduction (Planned)
+
+- [ ] Noise-profile capture + spectral subtraction / Wiener filtering over an STFT (reuse the
+  spectral-freeze STFT scaffolding).
+- [ ] Tests (SNR improvement on profiled noise; musical-noise sanity) + runnable example.
+
+### Phase 38: Interpolation Kernel Expansion (Planned)
+
+Extend `dsp/interp` toward `legacy/Source/DSP/DAV_DspInterpolation.pas`, keeping deterministic,
+allocation-free behavior.
+
+- [ ] Add the remaining Hermite family (`Hermite1..3`) and B-spline kernels (4-point/3rd-order,
+  6-point/5th-order) with documented formulas and stable edge semantics.
+- [ ] Parity tests vs legacy formulas + reference vectors; smoothness/continuity tests across a
+  fractional sweep.
+
+### Phase 39: Interpolation Integration & Validation (Planned)
+
+- [ ] Optional complex/interleaved interpolation helpers for spectral/complex pipelines
+  (cf. `DAV_DspSpectrumInterpolation.pas`).
+- [ ] Unify interpolation-mode selection across `dsp/delay`, `dsp/resample`, and effects call
+  sites; expose low-level hot-path helpers where measured.
+- [ ] Kernel quality-vs-CPU benchmarks; boundary tests (short buffers, wrap/clamp policies).
+
+Exit criteria:
+
+- [ ] Legacy-equivalent kernels available with tests/docs; callers select strategy explicitly.
+- [ ] `go test -race ./dsp/interp ./dsp/delay ./dsp/resample` passes.
+
+### Phase 40: Benchmark Regression Guard (In Progress)
+
+Builds on the Phase 24 harness (`just bench-ci`, `BENCHMARKS.md`).
+
+- [ ] Define regression thresholds (`ns/op`, `allocs/op`) + a baseline-update workflow.
+- [ ] Wire the guard into CI as advisory output.
+- [ ] Re-run full benchmarks on ≥2 machines; refresh `BENCHMARKS.md`.
+
+Exit criteria:
+
+- [ ] Hot paths show no major allocations/op regressions.
 - [ ] `go test ./...` and `go test -tags purego ./...` pass.
-- [ ] `BENCHMARKS.md` baselines updated with date + Go version + machine info.
+- [ ] `BENCHMARKS.md` baselines updated (date + Go version + machine).
 
-### Phase 25: API Stabilization and v1.0 (In Progress)
+### Phase 41: SIMD Modal Oscillator Bank (Planned)
 
-Tasks:
+Optional; uses the already-present `algo-vecmath v0.1.0` dependency.
 
-- [ ] Run full benchmark pass and confirm no major regressions vs baselines.
-- [ ] Run full CI locally (`just ci`) including race (`go test -race ./...`).
-- [ ] Confirm `CHANGELOG.md` and `MIGRATION.md` are complete for `v1.0.0`.
-- [ ] Complete `API_REVIEW.md` checklist.
-- [ ] Tag and publish `v1.0.0` (tag + release notes).
-- [ ] Verify module proxy indexing (`go get` via `GOPROXY`).
+- [ ] `dsp/osc` (or `dsp/modal`) package skeleton with a scalar reference.
+- [ ] Block APIs for damped complex rotators (primary `float32`).
+- [ ] Parity tests vs the scalar reference + modal-workload microbenchmarks.
+- [ ] Document the denormal strategy (cf. `core.FlushDenormals`).
+
+### Phase 42: Release Readiness (v1.0) (Planned)
+
+- [ ] Full benchmark pass; confirm no major regressions vs baselines.
+- [ ] Full local CI (`just ci`) including race (`go test -race ./...`).
+- [ ] Finalize `CHANGELOG.md` and the placeholder `MIGRATION.md`; create the missing
+  `API_REVIEW.md` and complete its checklist for `v1.0.0`.
+
+### Phase 43: Tag and Publish v1.0 (Planned)
+
+- [ ] Tag and publish `v1.0.0` (tag + release notes), advancing from the current `v0.5.1`.
+- [ ] Verify module-proxy indexing (`go get` via `GOPROXY`).
 
 Exit criteria:
 
 - [ ] `v1.0.0` tag exists and release notes are published.
-
-### Phase 26: Nonlinear Moog Ladder Filters (Complete)
-
-Goal:
-
-- Add production-quality nonlinear Moog ladder filter implementations in `dsp/filter/moog` that are at least on par with `legacy/Source/DSP/DAV_DspFilterMoog.pas`, with an optional path that exceeds the cited Huovilainen-method quality/performance envelope.
-
-Implementation status (snapshot):
-
-- `dsp/filter/moog` now uses the more complete release-lineage implementation, adopted onto
-  `main` during the reconciliation pass (see Appendix H). `New(sampleRate, ...Option)` exposes
-  six variants via `WithVariant` — `VariantClassic`, `VariantClassicLightweight`,
-  `VariantImprovedClassic`, `VariantImprovedClassicLightweight`, `VariantHuovilainen`,
-  `VariantZDF` — plus the full option/setter surface (`WithCutoffHz`, `WithDrive`,
-  `WithInputGain`, `WithOutputGain`, `WithThermalVoltage`, `WithOversampling`,
-  `WithNormalizeOutput`, `WithNewtonIterations`, and matching setters).
-- `VariantZDF` adds the zero-delay-feedback topology with Newton-Raphson iteration (Zavalishin
-  TPT / D'Angelo–Välimäki) for the highest cutoff accuracy and most faithful self-oscillation —
-  the path the earlier main-only reimplementation lacked. Oversampling (`WithOversampling`,
-  2/4/8×) with anti-alias filtering and Huovilainen half-sample feedback compensation remains
-  available for the other variants.
-- Tests (`moog_test.go`), examples (`example_test.go`), and benchmarks (`moog_bench_test.go`)
-  pass with `-race`.
-
-Tasks:
-
-- [x] Core architecture and API
-  - [x] Define Moog ladder processor API with constructor+options, sample/block processing, `Reset`, and explicit state type.
-  - [x] Support mono first; add stereo/frame helper API consistent with existing DSP package style.
-  - [x] Expose core controls: cutoff, resonance, drive/input gain, output gain/normalization, thermal-voltage-style shaping control (or equivalent musically-meaningful parameterization).
-  - [x] Define strict parameter validation and numeric guard rails (NaN/Inf handling, cutoff bounds `< Fs/2`, resonance safety limits).
-- [x] Legacy-faithful implementations (parity track)
-  - [x] Implement classic 4-stage nonlinear ladder variant matching Pascal structure (per-stage `tanh` nonlinearity and resonant feedback path).
-  - [x] Implement “improved classic” variant from legacy behavior and verify coefficient/update behavior parity.
-  - [x] Implement fast-approximation variant(s) for `tanh` equivalent to legacy lightweight mode, guarded behind clear option/strategy flags.
-  - [x] Reproduce legacy reset/state behavior and gain scaling semantics where practical.
-- [x] Paper-or-better implementation track
-  - [x] Implement Huovilainen-style nonlinear ladder reference path (as cited in the Pascal unit header) with documented discretization choices.
-  - [x] Evaluate and optionally implement a higher-accuracy path (e.g., zero-delay/newton refinement or equivalent) when it measurably improves tuning/resonance behavior at high cutoff/resonance. (Chose oversampling + half-sample feedback compensation as the equivalent.)
-  - [x] Add optional anti-alias strategy for nonlinear drive path (e.g., oversampling mode) with documented CPU/quality tradeoffs.
-  - [x] Ensure the “high quality” path meets or exceeds reference behavior in tuning, self-oscillation onset consistency, and modulation robustness.
-- [x] Validation, parity, and characterization
-  - [x] Add parity-oriented tests against vectors derived from `legacy/Source/DSP/DAV_DspFilterMoog.pas` (classic + improved + lightweight modes).
-  - [x] Add frequency-response/tuning tests across sample rates and cutoff/resonance grids.
-  - [x] Add nonlinear behavior tests (drive sweep, harmonic growth trends, saturation symmetry, self-oscillation sanity).
-  - [x] Add stability tests under rapid modulation (cutoff/resonance automation) and extreme parameter bounds.
-  - [x] Add deterministic benchmark suite for scalar and fast modes; track `ns/op`, `allocs/op`, and quality deltas.
-- [x] Documentation and examples
-  - [x] Document algorithm variants and tradeoffs (faithful/fast/high-quality) with clear recommendation defaults.
-  - [x] Add runnable examples: subtractive synth-style sweep, resonance emphasis, and driven saturation comparison.
-
-Exit criteria:
-
-- [x] Legacy-faithful Moog ladder variants pass parity-oriented tests.
-- [x] At least one high-quality variant demonstrates equal or better measured behavior than the reference paper/legacy baseline in documented metrics.
-- [x] `go test -race ./dsp/filter/moog` passes and benchmarks are recorded in `BENCHMARKS.md`.
-
-### Phase 27: Goertzel Tone Analysis (Complete)
-
-Goal:
-
-- Add Goertzel-based single/multi-tone analysis utilities to `dsp/spectrum` with legacy parity for `legacy/Source/DSP/DAV_DspGoertzel.pas` and production-ready APIs for streaming and block workflows.
-
-Implemented in `dsp/spectrum/goertzel.go` (`Goertzel` + `GoertzelBank`), with tests,
-examples, and benchmarks in `goertzel_test.go`, `goertzel_example_test.go`, and
-`goertzel_bench_test.go`.
-
-Tasks:
-
-- [x] Core Goertzel implementation
-  - [x] Implement a stateful single-bin Goertzel analyzer (frequency, sample rate, reset, per-sample update).
-  - [x] Port legacy recurrence and coefficient model (`2*cos(2*pi*f/fs)`) and parity-check power formula.
-  - [x] Expose outputs: power, magnitude, dB (floored), complex, and normalized-magnitude variants.
-  - [x] Add strict input validation (frequency bounds, sample rate sanity, NaN/Inf behavior).
-- [x] API and processing modes
-  - [x] Provide one-shot block API (`ProcessBlock`) and reusable streaming API (`ProcessSample`) with zero-alloc hot path.
-  - [x] Support batched multi-bin processing (`GoertzelBank`, shared input block) for DTMF/pilot-tone detection.
-  - [x] Define reset/window semantics clearly (continuous accumulation vs block-finalized metrics via `Reset`).
-- [x] Numerical and behavioral validation
-  - [x] Power-formula parity check against the legacy recurrence (`s0^2 + s1^2 - coef*s0*s1`).
-  - [x] Correctness tests versus a direct DFT reference for on-bin and off-bin tones.
-  - [x] Edge-case tests (near-DC, near-Nyquist, silence, large amplitudes, very short blocks).
-  - [x] Detection-oriented test (frequency discrimination; matched bin dominates detuned bins).
-- [x] Performance and documentation
-  - [x] Microbenchmarks for single-bin and multi-bin workloads (0 allocs/op confirmed).
-  - [x] Runnable examples for tone detection (single target and DTMF dual-tone).
-  - [x] Document block/window semantics and the off-bin frequency capability in doc comments.
-
-Exit criteria:
-
-- [x] Legacy-parity single-bin behavior verified within tolerance.
-- [x] Multi-bin Goertzel API available and benchmarked.
-- [x] `go test -race ./dsp/spectrum` passes with Goertzel additions.
-
-### Phase 28: Loudness Metering (EBU R128 / BS.1770) (Complete)
-
-Goal:
-
-- Add standards-aligned loudness metering (momentary, short-term, integrated, loudness range, true peak track) with streaming APIs and parity checks against `legacy/Source/DSP/DAV_DspR128.pas`.
-
-Implementation status (snapshot):
-
-- `measure/loudness` package: a `Meter` with K-weighting prefilter chain, 400 ms momentary and
-  3 s short-term windows, integrated loudness with absolute/relative gating, multi-channel
-  (mono/stereo) support via `WithChannels`, true-peak tracking, and streaming APIs (`Reset`,
-  `StartIntegration`, `StopIntegration`, `ProcessSample`, `ProcessBlock`, `Momentary`,
-  `ShortTerm`, `Integrated`, `Peaks`).
-- R128/BS.1770 conformance tests (`r128_test.go`), runnable examples, and benchmarks pass
-  with `-race`. Depends only on `dsp/core`, `dsp/filter/biquad`, `dsp/filter/design`.
-- Recovered onto `main` from the orphaned release lineage (tag `v0.5.1`).
-- Deferred: allocation-free callback/event-hook API for periodic updates (left unchecked
-  below); explicit loudness-range (LRA) metric is not yet exposed.
-
-Tasks:
-
-- [x] R128 core implementation
-  - [x] Implement K-weighting prefilter chain (high-shelf + high-pass/RLB stage) per sample rate.
-  - [x] Implement 400 ms momentary and 3 s short-term integration windows with overlap updates.
-  - [x] Implement integrated loudness gating workflow (absolute gate and relative gate).
-  - [x] Implement mono and stereo processors with shared core.
-- [x] API and metrics surface
-  - [x] Expose streaming meter state with `Reset`, `StartIntegration`, `StopIntegration`, and block/sample update APIs.
-  - [x] Expose metrics: `LUFS-M`, `LUFS-S`, integrated LUFS, peak/hold, sample counters.
-  - [ ] Add optional callbacks/event hooks for periodic loudness/peak updates without allocations.
-- [x] Validation and conformance
-  - [x] Add parity-oriented tests vs `DAV_DspR128.pas` behavior envelope.
-  - [x] Add conformance tests against known R128/BS.1770 vectors and gating edge cases.
-  - [x] Add sample-rate matrix tests and long-run numerical-stability tests.
-  - [x] Add benchmarks for streaming/batch paths and allocation checks.
-
-Exit criteria:
-
-- [x] R128 meter outputs for momentary/short/integrated are validated against references within tolerance.
-- [x] Mono and stereo APIs documented with runnable examples.
-- [x] `go test -race ./measure/...` passes with loudness additions.
-
-### Phase 29: Dither and Noise Shaping (Complete)
-
-Goal:
-
-- Add quantization support with configurable dither PDFs and FIR/IIR noise-shaping paths, including predefined shaper sets and design tooling inspired by `legacy/Source/DSP/DAV_DspDitherNoiseShaper.pas` and `legacy/Source/DSP/DAV_DspNoiseShapingFilterDesigner.pas`.
-
-Implementation status (snapshot):
-
-- Self-contained `dsp/dither` package: `DitherType` enum and PDFs (none/rectangular/
-  triangular/gaussian/fast-gaussian) with deterministic RNG injection (`dither.go`,
-  `options.go`), a `Quantizer` with int/float output modes and optional limiting
-  (`quantizer.go`), a `NoiseShaper` interface with FIR error-feedback (`shaper_fir.go`) and
-  IIR low-shelf (`shaper_iir.go`) implementations, and legacy coefficient presets
-  (`presets.go`).
-- Design tooling in `dsp/dither/design`: ATH and critical-bandwidth models (`ath.go`) plus a
-  stochastic ATH-weighted coefficient optimizer with cancellation/guardrails (`designer.go`).
-- Tests, runnable examples, and benchmarks pass with `-race`; the package depends only on
-  `dsp/filter/biquad` and `dsp/filter/design` (both already present).
-- Ported onto `main` from the orphaned release lineage (see Appendix H history note).
-
-Tasks:
-
-- [x] Dither core
-  - [x] Implement bit-depth quantizer core with int/float output modes and optional output limiting.
-  - [x] Implement dither modes: none, rectangular/equal, triangular, gaussian, fast-gaussian.
-  - [x] Implement deterministic RNG injection for reproducible testing.
-- [x] Noise-shaping processors
-  - [x] Implement FIR error-feedback noise shaper with configurable coefficients and history ring buffer.
-  - [x] Port predefined coefficient families/presets from legacy (E/F/IE/ME/SBM/sharp variants).
-  - [x] Implement sample-rate-aware “sharp” preset selection logic.
-  - [x] Implement optional IIR shelf-based shaping variant for lightweight mode.
-- [x] Noise-shaping filter design tooling
-  - [x] Add a filter-designer utility package for psychoacoustically weighted noise-shaper coefficient search (ATH/critical-band weighting based objective).
-  - [x] Provide deterministic search mode and exportable coefficient outputs for embedding in runtime presets.
-  - [x] Add guardrails on order/loop-count/runtime and cancellation support for long searches.
-- [x] Validation and quality
-  - [x] Add null/error-spectrum tests validating expected in-band noise reduction behavior.
-  - [x] Add parity checks against legacy presets for representative sample rates.
-  - [x] Add benchmarks for per-sample quantization path and preset designer runtime.
-
-Exit criteria:
-
-- [x] Dither + FIR noise-shaper runtime paths are stable and documented.
-- [x] Preset and designed shapers are validated by spectral tests.
-- [x] `go test -race ./dsp/...` passes for new quantization/noise-shaping packages.
-
-### Phase 30: Polyphase Hilbert / Analytic Signal (Complete)
-
-Goal:
-
-- Add a production-quality polyphase half-pi Hilbert transformer for analytic signal and envelope extraction workflows, based on `legacy/Source/DSP/DAV_DspPolyphaseHilbert.pas` (HIIR-style allpass/polyphase approach).
-
-Implementation status (snapshot):
-
-- Self-contained `dsp/filter/hilbert` package with 64-bit (`hilbert64.go`) and 32-bit
-  (`hilbert32.go`) two-path polyphase/allpass processors producing quadrature (A/B) outputs
-  with reusable state, an analytic-envelope helper, a coefficient designer (`designer.go`),
-  and presets (`preset.go`).
-- Phase-quadrature, amplitude-matching, and image-rejection tests, runnable examples, and
-  benchmarks pass with `-race`.
-- Recovered onto `main` from tags `v0.5.0`/`v0.5.1` (commit `e3a6267`); paired with the
-  `Chain.Gain`/`SetGain` accessors added to `dsp/filter/biquad/chain.go`. The bundled
-  frequency-shifter effect and webdemo wiring from that commit were deferred to a later
-  effects-porting pass (see Appendix H history note).
-
-Tasks:
-
-- [x] Polyphase Hilbert core
-  - [x] Implement 32-bit and 64-bit processor variants with reusable state.
-  - [x] Implement two-path polyphase/allpass structure producing quadrature outputs (A/B) with half-sample alignment handling.
-  - [x] Implement coefficient-count-specialized fast paths for small orders and generic fallback path.
-- [x] API and processing modes
-  - [x] Expose `ProcessSample`, `ProcessBlock`, `Reset/ClearBuffers`, and coefficient-configuration APIs.
-  - [x] Provide envelope helper derived from analytic signal magnitude.
-  - [x] Define coefficient source/validation contracts and numeric safety checks.
-- [x] Validation and characterization
-  - [x] Add phase-quadrature tests (near 90° target across passband).
-  - [x] Add amplitude-matching and image-rejection tests for analytic signal generation.
-  - [x] Add parity-oriented checks against legacy outputs for selected coefficient sets.
-  - [x] Add benchmarks and allocation checks for block/sample APIs.
-
-Exit criteria:
-
-- [x] Hilbert processor achieves documented quadrature and image-rejection targets.
-- [x] Streaming and block APIs pass race/tests with no unexpected allocations.
-- [x] Runnable examples for quadrature and envelope extraction are included.
-
-### Phase 31: Interpolation Kernel Expansion (Planned)
-
-Goal:
-
-- Extend interpolation coverage beyond current primitives to include legacy-equivalent kernels and pointer/stride-oriented helpers from `legacy/Source/DSP/DAV_DspInterpolation.pas`, while preserving deterministic and allocation-free behavior.
-
-Tasks:
-
-- [ ] Kernel set expansion
-  - [ ] Add/verify Hermite variants (`Hermite1..4` style family) with clearly documented formulas.
-  - [ ] Add cubic and B-spline kernels (4-point/3rd-order and 6-point/5th-order variants) with stable edge semantics.
-  - [ ] Add optional complex/interleaved interpolation helpers for DSP spectral/complex pipelines.
-- [ ] API ergonomics and performance
-  - [ ] Provide pointer-free safe Go APIs plus optional low-level hot-path helpers for delay/resampler internals.
-  - [ ] Unify interpolation mode selection across delay/resample/effects call sites where beneficial.
-  - [ ] Add benchmark coverage comparing kernels for quality-vs-CPU tradeoffs.
-- [ ] Validation
-  - [ ] Add parity-oriented tests versus legacy formulas and known reference vectors.
-  - [ ] Add smoothness/continuity tests (value and derivative trends across fractional sweep).
-  - [ ] Add boundary-condition tests for short buffers and wrap/clamp policies.
-
-Exit criteria:
-
-- [ ] Legacy-equivalent interpolation kernels are available with tests and docs.
-- [ ] Callers can select interpolation strategy explicitly with clear tradeoffs.
-- [ ] `go test -race ./dsp/interp ./dsp/delay ./dsp/resample` passes.
 
 ---
 
@@ -997,6 +758,8 @@ Quarter-end success criteria:
 | 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades).                                                                                                                 |
 | 0.10    | 2026-06-21 | Claude  | Status refresh after the recovery: Phase 21 (convolution reverb done, Haas pending) and Phase 22 (spectral-freeze/granular/vocoder done; dynamic-EQ/panner/pitch-correction/noise-reduction pending) moved Planned → In Progress with their done items checked; refreshed the Phase 26 Moog snapshot to describe the adopted six-variant release-line filter (incl. `VariantZDF`); swapped the web demo to the `dsp/effectchain`-driven architecture + IR library (PR #14). |
 | 0.11    | 2026-06-21 | Claude  | Completed Phase 21: implemented the `HaasDelay` precedence effect (`dsp/effects/spatial`, reusing `monoDelay`) with tests/example/benchmarks, and added the missing convolution-reverb tests/example; snapshot now credits the full reverb suite (Convolution + FDN + Freeverb) plus Haas. Phase Complete.                                                                                                                                                                  |
+| 0.12    | 2026-06-21 | Claude  | Condensed all completed phases (15, 17–21, 26–30) to compact summaries; split the oversized undone phases into focused sub-phases — Phase 22 → 22.1–22.5 (vocoder finalize, panner, dynamic EQ, YIN pitch correction, noise reduction), Phase 24 → 24.1/24.2 (regression guard / SIMD modal track), Phase 25 → 25.1/25.2 (readiness / release), Phase 31 → 31.1/31.2 (kernels / integration); slimmed Phases 16 & 23 to done-summary + remaining item; refreshed Phase Overview to match. |
+| 0.13    | 2026-06-21 | Claude  | Reordered into completed-then-remaining and re-applied **strict integer numbering** (no `x.y` sub-phases). Completed phases come first (old 26–31 shifted to 25–30); partial phases 16/22/23/24 are now scoped to shipped work, with their open follow-ups split into standalone phases. Remaining roadmap is Phases 31–43 in execution order, ending with v1.0 (P42–P43). Open phases refined with concrete file paths / API hooks from a codebase audit (interpolation core found already complete → P30; dynamics static-curve path via `GainForLevel`/`CalculateOutputLevel`; elliptic reuse of `internal/ellipticmath`; `algo-vecmath` already a dependency; `API_REVIEW.md` still missing). **Note:** revision entries 0.1–0.12 reference the pre-0.13 phase numbers. |
 
 ---
 
