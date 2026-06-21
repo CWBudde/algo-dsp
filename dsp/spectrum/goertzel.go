@@ -175,8 +175,15 @@ func (g *Goertzel) Power() float64 {
 }
 
 // Magnitude returns the accumulated magnitude |X| at the target frequency.
+// Power is theoretically non-negative; a small negative value caused by
+// floating-point roundoff is clamped to zero so the result never becomes NaN.
 func (g *Goertzel) Magnitude() float64 {
-	return math.Sqrt(g.Power())
+	power := g.Power()
+	if power < 0 {
+		power = 0
+	}
+
+	return math.Sqrt(power)
 }
 
 // DB returns the power in decibels, 10*log10(Power), floored to avoid -Inf for
@@ -191,9 +198,11 @@ func (g *Goertzel) DB() float64 {
 }
 
 // Complex returns the complex spectral value at the target frequency in the
-// standard closed form re = s0 - s1*cos(w), im = s1*sin(w). Its magnitude
-// equals the magnitude of the corresponding DFT bin (the phase carries a
-// constant rotation relative to a textbook DFT).
+// standard closed form re = s0 - s1*cos(w), im = s1*sin(w). When the state
+// represents exactly one finite block (i.e. after [Goertzel.Reset] followed by
+// processing N samples) its magnitude equals the magnitude of the corresponding
+// DFT bin (the phase carries a constant rotation relative to a textbook DFT).
+// With continuous accumulation the returned value is not DFT-comparable.
 func (g *Goertzel) Complex() complex128 {
 	return complex(g.s0-g.s1*g.cosW, g.s1*g.sinW)
 }
@@ -220,8 +229,7 @@ func (g *Goertzel) SampleRate() float64 { return g.sampleRate }
 // pilot-tone analysis. Each bin is an independent [Goertzel] sharing the same
 // sample rate.
 type GoertzelBank struct {
-	sampleRate float64
-	bins       []*Goertzel
+	bins []*Goertzel
 }
 
 // NewGoertzelBank creates a bank of single-bin analyzers, one per target
@@ -242,7 +250,7 @@ func NewGoertzelBank(frequencies []float64, sampleRate float64, opts ...Goertzel
 		bins[idx] = analyzer
 	}
 
-	return &GoertzelBank{sampleRate: sampleRate, bins: bins}, nil
+	return &GoertzelBank{bins: bins}, nil
 }
 
 // Reset clears the accumulated state of every bin.
@@ -301,8 +309,9 @@ func (b *GoertzelBank) Bin(i int) *Goertzel { return b.bins[i] }
 // Len returns the number of bins.
 func (b *GoertzelBank) Len() int { return len(b.bins) }
 
-// SampleRate returns the sample rate in Hz.
-func (b *GoertzelBank) SampleRate() float64 { return b.sampleRate }
+// SampleRate returns the sample rate in Hz, read from the first bin so it always
+// reflects the bins that are actually processing.
+func (b *GoertzelBank) SampleRate() float64 { return b.bins[0].sampleRate }
 
 // resizeFloat64 returns a slice of length n, reusing dst's backing array when
 // its capacity is sufficient.

@@ -280,16 +280,16 @@ func TestGoertzelBankMatchesIndividual(t *testing.T) {
 	powers := bank.Powers(nil)
 	mags := bank.Magnitudes(nil)
 
-	for i, freq := range freqs {
+	for idx, freq := range freqs {
 		analyzer, _ := NewGoertzel(freq, sampleRate)
 		analyzer.ProcessBlock(samples)
 
-		if diff := math.Abs(powers[i] - analyzer.Power()); diff > 1e-9 {
-			t.Errorf("bin %d power=%g want=%g", i, powers[i], analyzer.Power())
+		if diff := math.Abs(powers[idx] - analyzer.Power()); diff > 1e-9 {
+			t.Errorf("bin %d power=%g want=%g", idx, powers[idx], analyzer.Power())
 		}
 
-		if diff := math.Abs(mags[i] - analyzer.Magnitude()); diff > 1e-9 {
-			t.Errorf("bin %d magnitude=%g want=%g", i, mags[i], analyzer.Magnitude())
+		if diff := math.Abs(mags[idx] - analyzer.Magnitude()); diff > 1e-9 {
+			t.Errorf("bin %d magnitude=%g want=%g", idx, mags[idx], analyzer.Magnitude())
 		}
 	}
 }
