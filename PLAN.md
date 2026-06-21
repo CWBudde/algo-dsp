@@ -973,6 +973,7 @@ Quarter-end success criteria:
 | 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress |
 | 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete |
 | 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below. |
+| 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades). |
 
 ---
 
@@ -983,21 +984,28 @@ ancestor** (the root `initial commit` differs: `main` roots at `7639b95`, the re
 `b3d2887`, both stamped `2026-02-06 15:23:50`). At some point `main` was re-initialised,
 orphaning the original development line.
 
-- **`main`** (root `7639b95`) carries the recent Moog / Goertzel / loudness work but lacked the
-  v0.2–v0.5 release content.
+- **`main`** (root `7639b95`) originally carried only the recent Moog / Goertzel work and
+  lacked the v0.2–v0.5 release content.
 - **Release lineage** (tags `v0.2.0`–`v0.5.1`, root `b3d2887`) and the `claude/*` branches
-  contain the dither, Hilbert, `effectchain`, rotary speaker, frequency shifter and the full
-  v0.2–v0.5 effect set, but none of `main`'s recent Moog/Goertzel work.
+  contained the dither, Hilbert, loudness, `effectchain`, and the full v0.2–v0.5 effect set,
+  but none of `main`'s recent Moog/Goertzel work.
 
 **Decision:** `main` is the source of truth; release-line work is forward-ported feature by
 feature (file-grab / cherry-pick), **not** merged — a cross-history `git merge` is
-inappropriate here. Phases 29 (dither, from `claude/next-plan-task-ZRUMF`) and 30 (Hilbert,
-from tag `v0.5.1` commit `e3a6267`) were ported this way.
+inappropriate here.
 
-**Outstanding port backlog** (still only on the release lineage, not on `main`): `dsp/effectchain`,
-rotary speaker, the bundled frequency shifter + its webdemo wiring, and other v0.2–v0.5 effects.
-Scope a future reconciliation pass with `git diff --stat main v0.5.1 -- dsp/`. Consider
-archiving the orphan branches once their unique work is ported.
+**Recovered onto `main`** (this reconciliation pass): Phase 28 (loudness), Phase 29 (dither),
+Phase 30 (Hilbert); the stranded effects (granular, spectral-freeze, vocoder, rotary speaker,
+frequency shifter, convolution reverb) + `dsp/conv` partitioned convolution; the release-line
+Moog (a functional superset — regained `VariantZDF`/Newton; main's reduced reimplementation was
+replaced, no callers broke); and the `dsp/effectchain` subsystem (which required upgrading
+`effects.Delay` and `effects.Distortion` to their release-line superset versions).
+
+**Outstanding backlog:** Goertzel exists on both lineages (independent reimplementations — `main`
+re-did Phase 27); reconcile if a single canonical version is wanted. Re-audit any remaining drift
+with `git diff --stat main v0.5.1 -- dsp/ measure/ stats/`. Consider archiving the orphan
+`claude/*` branches and re-cutting release tags from `main` once reconciliation is verified
+complete.
 
 ---
 
