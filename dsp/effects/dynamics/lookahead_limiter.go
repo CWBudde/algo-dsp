@@ -161,6 +161,7 @@ func (l *LookaheadLimiter) SampleRate() float64 { return l.sampleRate }
 // Reset clears limiter and delay state.
 func (l *LookaheadLimiter) Reset() {
 	l.comp.Reset()
+
 	l.writePos = 0
 	for i := range l.delayBuf {
 		l.delayBuf[i] = 0
@@ -182,6 +183,7 @@ func (l *LookaheadLimiter) ProcessSampleSidechain(input, sidechain float64) floa
 	_, gain := l.comp.core.ProcessSample(0, sidechain)
 
 	l.delayBuf[l.writePos] = input
+
 	readPos := l.writePos + 1
 	if readPos >= len(l.delayBuf) {
 		readPos = 0
