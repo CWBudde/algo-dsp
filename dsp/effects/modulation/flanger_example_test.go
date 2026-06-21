@@ -7,7 +7,8 @@ import (
 )
 
 func ExampleFlanger_ProcessInPlace() {
-	flanger, err := modulation.NewFlanger(48000,
+	flanger, err := modulation.NewFlanger(
+		48000,
 		modulation.WithFlangerRateHz(0.2),
 		modulation.WithFlangerDepthSeconds(0.0012),
 		modulation.WithFlangerBaseDelaySeconds(0.001),

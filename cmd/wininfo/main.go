@@ -189,7 +189,8 @@ func printAnalysis(entries []resolvedEntry, size int, baseOpts []window.Option) 
 			label = fmt.Sprintf("%s (a=%.2f)", entry.name, entry.alphaOverride)
 		}
 
-		if _, err := fmt.Fprintf(tabWriter, "%s\t%d\t%.6f\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\n",
+		if _, err := fmt.Fprintf(
+			tabWriter, "%s\t%d\t%.6f\t%.4f\t%.4f\t%.2f\t%.4f\t%.4f\n",
 			label,
 			size,
 			analyze.CoherentGain,

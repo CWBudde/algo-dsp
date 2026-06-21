@@ -24,7 +24,8 @@ func TestTransformerSimulationValidation(t *testing.T) {
 }
 
 func TestTransformerSimulationProcessInPlaceMatchesSample(t *testing.T) {
-	t1, err := NewTransformerSimulation(48000,
+	t1, err := NewTransformerSimulation(
+		48000,
 		WithTransformerQuality(TransformerQualityHigh),
 		WithTransformerOversampling(4),
 	)
@@ -32,7 +33,8 @@ func TestTransformerSimulationProcessInPlaceMatchesSample(t *testing.T) {
 		t.Fatalf("NewTransformerSimulation() error = %v", err)
 	}
 
-	t2, err := NewTransformerSimulation(48000,
+	t2, err := NewTransformerSimulation(
+		48000,
 		WithTransformerQuality(TransformerQualityHigh),
 		WithTransformerOversampling(4),
 	)
@@ -61,7 +63,8 @@ func TestTransformerSimulationProcessInPlaceMatchesSample(t *testing.T) {
 }
 
 func TestTransformerSimulationResetDeterministic(t *testing.T) {
-	ts, err := NewTransformerSimulation(48000,
+	ts, err := NewTransformerSimulation(
+		48000,
 		WithTransformerQuality(TransformerQualityHigh),
 		WithTransformerOversampling(4),
 	)
@@ -90,7 +93,8 @@ func TestTransformerSimulationResetDeterministic(t *testing.T) {
 }
 
 func TestTransformerSimulationMixZeroTransparent(t *testing.T) {
-	ts, err := NewTransformerSimulation(48000,
+	ts, err := NewTransformerSimulation(
+		48000,
 		WithTransformerDrive(20),
 		WithTransformerMix(0),
 	)
@@ -109,7 +113,8 @@ func TestTransformerSimulationMixZeroTransparent(t *testing.T) {
 }
 
 func TestTransformerSimulationSampleRateAwareUpdate(t *testing.T) {
-	ts, err := NewTransformerSimulation(48000,
+	ts, err := NewTransformerSimulation(
+		48000,
 		WithTransformerHighpassHz(30),
 		WithTransformerDampingHz(10000),
 	)
@@ -142,7 +147,8 @@ func TestTransformerSimulationHighQualityReducesAliasingSpurs(t *testing.T) {
 		k0 = 960 // 0.46875*fs near Nyquist
 	)
 
-	hq, err := NewTransformerSimulation(sr,
+	hq, err := NewTransformerSimulation(
+		sr,
 		WithTransformerQuality(TransformerQualityHigh),
 		WithTransformerDrive(18),
 		WithTransformerMix(1),
@@ -152,7 +158,8 @@ func TestTransformerSimulationHighQualityReducesAliasingSpurs(t *testing.T) {
 		t.Fatalf("NewTransformerSimulation(high) error = %v", err)
 	}
 
-	lw, err := NewTransformerSimulation(sr,
+	lw, err := NewTransformerSimulation(
+		sr,
 		WithTransformerQuality(TransformerQualityLightweight),
 		WithTransformerDrive(18),
 		WithTransformerMix(1),

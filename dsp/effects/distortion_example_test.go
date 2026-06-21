@@ -7,7 +7,8 @@ import (
 )
 
 func ExampleDistortion_ProcessSample() {
-	d, err := effects.NewDistortion(48000,
+	d, err := effects.NewDistortion(
+		48000,
 		effects.WithDistortionMode(effects.DistortionModeTanh),
 		effects.WithDistortionDrive(3),
 		effects.WithDistortionMix(1),
@@ -21,7 +22,8 @@ func ExampleDistortion_ProcessSample() {
 }
 
 func ExampleDistortion_chebyshev() {
-	d, err := effects.NewDistortion(48000,
+	d, err := effects.NewDistortion(
+		48000,
 		effects.WithDistortionMode(effects.DistortionModeChebyshev),
 		effects.WithChebyshevOrder(3),
 		effects.WithChebyshevHarmonicMode(effects.ChebyshevHarmonicOdd),

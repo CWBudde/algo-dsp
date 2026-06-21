@@ -7,7 +7,8 @@ import (
 )
 
 func ExampleCrosstalkCanceller_ProcessStereo() {
-	c, err := spatial.NewCrosstalkCanceller(48000,
+	c, err := spatial.NewCrosstalkCanceller(
+		48000,
 		spatial.WithCancellerStages(2),
 		spatial.WithCancellerAttenuation(0.7),
 	)

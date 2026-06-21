@@ -8,7 +8,8 @@ import (
 )
 
 func ExampleNew_subtractiveSweep() {
-	f, err := moog.New(48000,
+	f, err := moog.New(
+		48000,
 		moog.WithVariant(moog.VariantHuovilainen),
 		moog.WithCutoffHz(300),
 		moog.WithResonance(1.4),
@@ -38,7 +39,8 @@ func ExampleNew_subtractiveSweep() {
 }
 
 func ExampleNew_resonanceEmphasis() {
-	lowRes, err := moog.New(48000,
+	lowRes, err := moog.New(
+		48000,
 		moog.WithVariant(moog.VariantHuovilainen),
 		moog.WithCutoffHz(1200),
 		moog.WithResonance(0.5),
@@ -48,7 +50,8 @@ func ExampleNew_resonanceEmphasis() {
 		panic(err)
 	}
 
-	highRes, err := moog.New(48000,
+	highRes, err := moog.New(
+		48000,
 		moog.WithVariant(moog.VariantHuovilainen),
 		moog.WithCutoffHz(1200),
 		moog.WithResonance(3.2),
@@ -66,7 +69,8 @@ func ExampleNew_resonanceEmphasis() {
 }
 
 func ExampleNew_drivenSaturationComparison() {
-	exact, err := moog.New(48000,
+	exact, err := moog.New(
+		48000,
 		moog.WithVariant(moog.VariantClassic),
 		moog.WithCutoffHz(5000),
 		moog.WithResonance(0),
@@ -77,7 +81,8 @@ func ExampleNew_drivenSaturationComparison() {
 		panic(err)
 	}
 
-	lightweight, err := moog.New(48000,
+	lightweight, err := moog.New(
+		48000,
 		moog.WithVariant(moog.VariantClassicLightweight),
 		moog.WithCutoffHz(5000),
 		moog.WithResonance(0),
@@ -99,7 +104,8 @@ func ExampleNew_drivenSaturationComparison() {
 func ExampleNew_zdfHighAccuracy() {
 	// VariantZDF uses Zero-Delay Feedback with Newton-Raphson iteration
 	// for the most accurate cutoff tuning and self-oscillation behavior.
-	f, err := moog.New(48000,
+	f, err := moog.New(
+		48000,
 		moog.WithVariant(moog.VariantZDF),
 		moog.WithCutoffHz(2000),
 		moog.WithResonance(2.5),

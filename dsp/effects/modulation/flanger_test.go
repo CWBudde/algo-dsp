@@ -71,7 +71,8 @@ func TestFlangerResetRestoresState(t *testing.T) {
 }
 
 func TestFlangerImpulseAtConfiguredDelayWhenDepthZero(t *testing.T) {
-	f, err := NewFlanger(1000,
+	f, err := NewFlanger(
+		1000,
 		WithFlangerBaseDelaySeconds(0.005),
 		WithFlangerDepthSeconds(0),
 		WithFlangerMix(1),
@@ -110,7 +111,8 @@ func TestFlangerValidation(t *testing.T) {
 		t.Fatal("NewFlanger() expected error for invalid mix")
 	}
 
-	if _, err := NewFlanger(48000,
+	if _, err := NewFlanger(
+		48000,
 		WithFlangerBaseDelaySeconds(0.009),
 		WithFlangerDepthSeconds(0.002),
 	); err == nil {
@@ -119,7 +121,8 @@ func TestFlangerValidation(t *testing.T) {
 }
 
 func TestFlangerSetDepthSecondsRollsBackOnInvalidCombination(t *testing.T) {
-	f, err := NewFlanger(48000,
+	f, err := NewFlanger(
+		48000,
 		WithFlangerBaseDelaySeconds(0.0087),
 		WithFlangerDepthSeconds(0.0012),
 	)
@@ -148,7 +151,8 @@ func TestFlangerSetDepthSecondsRollsBackOnInvalidCombination(t *testing.T) {
 }
 
 func TestFlangerSetBaseDelaySecondsRollsBackOnInvalidCombination(t *testing.T) {
-	f, err := NewFlanger(48000,
+	f, err := NewFlanger(
+		48000,
 		WithFlangerBaseDelaySeconds(0.004),
 		WithFlangerDepthSeconds(0.004),
 	)

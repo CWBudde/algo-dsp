@@ -7,7 +7,8 @@ import (
 )
 
 func ExamplePhaser_ProcessInPlace() {
-	phaser, err := modulation.NewPhaser(48000,
+	phaser, err := modulation.NewPhaser(
+		48000,
 		modulation.WithPhaserRateHz(0.35),
 		modulation.WithPhaserFrequencyRangeHz(280, 1400),
 		modulation.WithPhaserStages(6),

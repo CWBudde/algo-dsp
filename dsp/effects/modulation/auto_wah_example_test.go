@@ -7,7 +7,8 @@ import (
 )
 
 func ExampleAutoWah_ProcessInPlace() {
-	autoWah, err := modulation.NewAutoWah(48000,
+	autoWah, err := modulation.NewAutoWah(
+		48000,
 		modulation.WithAutoWahFrequencyRangeHz(350, 2200),
 		modulation.WithAutoWahSensitivity(3.0),
 		modulation.WithAutoWahMix(0.8),

@@ -22,7 +22,8 @@ func BenchmarkProcessSample(b *testing.B) {
 
 	for _, tc := range tests {
 		b.Run(tc.name, func(b *testing.B) {
-			f, err := New(48000,
+			f, err := New(
+				48000,
 				WithVariant(tc.variant),
 				WithCutoffHz(1800),
 				WithResonance(1.2),
@@ -63,7 +64,8 @@ func BenchmarkProcessInPlace1024(b *testing.B) {
 
 	for _, tc := range tests {
 		b.Run(tc.name, func(b *testing.B) {
-			f, err := New(48000,
+			f, err := New(
+				48000,
 				WithVariant(tc.variant),
 				WithCutoffHz(1400),
 				WithResonance(1.0),

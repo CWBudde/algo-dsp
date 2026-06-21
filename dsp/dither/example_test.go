@@ -9,7 +9,8 @@ import (
 )
 
 func ExampleNewQuantizer() {
-	quant, err := dither.NewQuantizer(44100,
+	quant, err := dither.NewQuantizer(
+		44100,
 		dither.WithBitDepth(16),
 		dither.WithDitherType(dither.DitherTriangular),
 		dither.WithRNG(rand.New(rand.NewPCG(42, 0))),
@@ -27,7 +28,8 @@ func ExampleNewQuantizer() {
 }
 
 func ExampleQuantizer_ProcessInPlace() {
-	quant, err := dither.NewQuantizer(44100,
+	quant, err := dither.NewQuantizer(
+		44100,
 		dither.WithBitDepth(16),
 		dither.WithDitherType(dither.DitherNone),
 		dither.WithFIRPreset(dither.PresetNone),
@@ -50,7 +52,8 @@ func ExampleQuantizer_ProcessInPlace() {
 func ExampleNewQuantizer_sharpPreset() {
 	// The sharp preset automatically selects coefficients
 	// optimized for the given sample rate.
-	quant, err := dither.NewQuantizer(48000,
+	quant, err := dither.NewQuantizer(
+		48000,
 		dither.WithSharpPreset(),
 		dither.WithBitDepth(16),
 		dither.WithRNG(rand.New(rand.NewPCG(42, 0))),

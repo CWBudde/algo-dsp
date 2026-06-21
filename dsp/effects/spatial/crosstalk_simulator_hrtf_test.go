@@ -46,7 +46,8 @@ func TestHRTFCrosstalkSimulatorCrossfeedOnlyRouting(t *testing.T) {
 		RightCross: []float64{0.5},
 	}}
 
-	s, err := NewHRTFCrosstalkSimulator(48000,
+	s, err := NewHRTFCrosstalkSimulator(
+		48000,
 		WithHRTFProvider(provider),
 		WithHRTFMode(HRTFModeCrossfeedOnly),
 	)
@@ -72,7 +73,8 @@ func TestHRTFCrosstalkSimulatorCompleteRouting(t *testing.T) {
 		RightCross:  []float64{0.2},
 	}}
 
-	s, err := NewHRTFCrosstalkSimulator(48000,
+	s, err := NewHRTFCrosstalkSimulator(
+		48000,
 		WithHRTFProvider(provider),
 		WithHRTFMode(HRTFModeComplete),
 	)
@@ -98,7 +100,8 @@ func TestHRTFCrosstalkSimulatorResetDeterministic(t *testing.T) {
 		RightCross:  []float64{-0.1, 0.05},
 	}}
 
-	s, err := NewHRTFCrosstalkSimulator(48000,
+	s, err := NewHRTFCrosstalkSimulator(
+		48000,
 		WithHRTFProvider(provider),
 		WithHRTFMode(HRTFModeComplete),
 	)
@@ -139,7 +142,8 @@ func TestHRTFCrosstalkSimulatorProviderReload(t *testing.T) {
 		RightCross: []float64{0.5},
 	}}
 
-	s, err := NewHRTFCrosstalkSimulator(48000,
+	s, err := NewHRTFCrosstalkSimulator(
+		48000,
 		WithHRTFProvider(providerA),
 		WithHRTFMode(HRTFModeCrossfeedOnly),
 	)

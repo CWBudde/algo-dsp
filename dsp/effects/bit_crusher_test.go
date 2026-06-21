@@ -40,7 +40,8 @@ func TestBitCrusherProcessInPlaceMatchesSample(t *testing.T) {
 }
 
 func TestBitCrusherResetRestoresState(t *testing.T) {
-	bc, err := NewBitCrusher(48000,
+	bc, err := NewBitCrusher(
+		48000,
 		WithBitCrusherBitDepth(4),
 		WithBitCrusherDownsample(4),
 	)
@@ -73,7 +74,8 @@ func TestBitCrusherResetRestoresState(t *testing.T) {
 }
 
 func TestBitCrusherMixZeroIsTransparent(t *testing.T) {
-	bc, err := NewBitCrusher(48000,
+	bc, err := NewBitCrusher(
+		48000,
 		WithBitCrusherBitDepth(2),
 		WithBitCrusherDownsample(8),
 		WithBitCrusherMix(0),
@@ -95,7 +97,8 @@ func TestBitCrusherMixZeroIsTransparent(t *testing.T) {
 func TestBitCrusherHighBitDepthIsTransparent(t *testing.T) {
 	// At 32-bit depth with no downsampling, quantization error should be
 	// negligible for signals in [-1, 1].
-	bc, err := NewBitCrusher(48000,
+	bc, err := NewBitCrusher(
+		48000,
 		WithBitCrusherBitDepth(32),
 		WithBitCrusherDownsample(1),
 		WithBitCrusherMix(1),
@@ -117,7 +120,8 @@ func TestBitCrusherHighBitDepthIsTransparent(t *testing.T) {
 func TestBitCrusherQuantization(t *testing.T) {
 	// 1-bit depth → quantLevels = 2^0 = 1 → output is round(x*1)/1 = round(x)
 	// so output should be -1, 0, or 1 for any input in [-1.5, 1.5].
-	bc, err := NewBitCrusher(48000,
+	bc, err := NewBitCrusher(
+		48000,
 		WithBitCrusherBitDepth(1),
 		WithBitCrusherDownsample(1),
 		WithBitCrusherMix(1),
@@ -153,7 +157,8 @@ func TestBitCrusherQuantization(t *testing.T) {
 func TestBitCrusherDownsampleHold(t *testing.T) {
 	// With downsample=4, every group of 4 samples should output the same
 	// quantized value (the first sample of the group after reset).
-	bc, err := NewBitCrusher(48000,
+	bc, err := NewBitCrusher(
+		48000,
 		WithBitCrusherBitDepth(32),
 		WithBitCrusherDownsample(4),
 		WithBitCrusherMix(1),
@@ -202,7 +207,8 @@ func TestBitCrusherDownsampleHold(t *testing.T) {
 }
 
 func TestBitCrusherSilenceProducesSilence(t *testing.T) {
-	bc, err := NewBitCrusher(48000,
+	bc, err := NewBitCrusher(
+		48000,
 		WithBitCrusherBitDepth(4),
 		WithBitCrusherDownsample(2),
 		WithBitCrusherMix(1),
@@ -327,7 +333,8 @@ func TestBitCrusherSetterValidation(t *testing.T) {
 }
 
 func TestBitCrusherGetters(t *testing.T) {
-	bc, err := NewBitCrusher(48000,
+	bc, err := NewBitCrusher(
+		48000,
 		WithBitCrusherBitDepth(12),
 		WithBitCrusherDownsample(3),
 		WithBitCrusherMix(0.8),
@@ -407,7 +414,8 @@ func TestBitCrusherQuantizationError(t *testing.T) {
 	// With N-bit depth, quantization step = 1/2^(N-1).
 	// Maximum error should be at most half the step size.
 	for _, bits := range []float64{2, 4, 8, 16} {
-		bc, err := NewBitCrusher(48000,
+		bc, err := NewBitCrusher(
+			48000,
 			WithBitCrusherBitDepth(bits),
 			WithBitCrusherDownsample(1),
 			WithBitCrusherMix(1),
@@ -434,7 +442,8 @@ func TestBitCrusherQuantizationError(t *testing.T) {
 }
 
 func BenchmarkBitCrusherProcessSample(b *testing.B) {
-	bc, err := NewBitCrusher(48000,
+	bc, err := NewBitCrusher(
+		48000,
 		WithBitCrusherBitDepth(8),
 		WithBitCrusherDownsample(4),
 		WithBitCrusherMix(1),
@@ -452,7 +461,8 @@ func BenchmarkBitCrusherProcessSample(b *testing.B) {
 }
 
 func BenchmarkBitCrusherProcessInPlace(b *testing.B) {
-	bc, err := NewBitCrusher(48000,
+	bc, err := NewBitCrusher(
+		48000,
 		WithBitCrusherBitDepth(8),
 		WithBitCrusherDownsample(4),
 		WithBitCrusherMix(1),

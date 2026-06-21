@@ -28,7 +28,8 @@ func TestNewValidation(t *testing.T) {
 }
 
 func TestProcessInPlaceMatchesSample(t *testing.T) {
-	f1, err := New(48000,
+	f1, err := New(
+		48000,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(2400),
 		WithResonance(1.1),
@@ -39,7 +40,8 @@ func TestProcessInPlaceMatchesSample(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	f2, err := New(48000,
+	f2, err := New(
+		48000,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(2400),
 		WithResonance(1.1),
@@ -71,7 +73,8 @@ func TestProcessInPlaceMatchesSample(t *testing.T) {
 }
 
 func TestStateRoundTrip(t *testing.T) {
-	f, err := New(48000,
+	f, err := New(
+		48000,
 		WithVariant(VariantClassic),
 		WithCutoffHz(1200),
 		WithResonance(0.9),
@@ -86,7 +89,8 @@ func TestStateRoundTrip(t *testing.T) {
 
 	s := f.State()
 
-	clone, err := New(48000,
+	clone, err := New(
+		48000,
 		WithVariant(VariantClassic),
 		WithCutoffHz(1200),
 		WithResonance(0.9),
@@ -153,7 +157,8 @@ func TestLegacyParityClassicModes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			f, err := New(sr,
+			f, err := New(
+				sr,
 				WithVariant(tc.variant),
 				WithCutoffHz(cutoffHz),
 				WithResonance(resonance),
@@ -194,7 +199,8 @@ func TestCutoffTrackingSampleRateGrid(t *testing.T) {
 
 	for _, sr := range sampleRates {
 		for _, cutoff := range cutoffs {
-			f, err := New(sr,
+			f, err := New(
+				sr,
 				WithVariant(VariantHuovilainen),
 				WithCutoffHz(cutoff),
 				WithResonance(0),
@@ -234,7 +240,8 @@ func TestDriveSweepIncreasesHarmonics(t *testing.T) {
 		k0 = 220
 	)
 
-	lowDrive, err := New(sr,
+	lowDrive, err := New(
+		sr,
 		WithVariant(VariantClassic),
 		WithCutoffHz(16000),
 		WithResonance(0),
@@ -245,7 +252,8 @@ func TestDriveSweepIncreasesHarmonics(t *testing.T) {
 		t.Fatalf("New(lowDrive) error = %v", err)
 	}
 
-	highDrive, err := New(sr,
+	highDrive, err := New(
+		sr,
 		WithVariant(VariantClassic),
 		WithCutoffHz(16000),
 		WithResonance(0),
@@ -274,7 +282,8 @@ func TestDriveSweepIncreasesHarmonics(t *testing.T) {
 }
 
 func TestSaturationSymmetry(t *testing.T) {
-	f, err := New(48000,
+	f, err := New(
+		48000,
 		WithVariant(VariantClassic),
 		WithCutoffHz(16000),
 		WithResonance(0),
@@ -306,7 +315,8 @@ func TestHighResonanceSustainsLongerTail(t *testing.T) {
 		samples = 4096
 	)
 
-	lowRes, err := New(sr,
+	lowRes, err := New(
+		sr,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(cutoff),
 		WithResonance(0.5),
@@ -316,7 +326,8 @@ func TestHighResonanceSustainsLongerTail(t *testing.T) {
 		t.Fatalf("New(lowRes) error = %v", err)
 	}
 
-	highRes, err := New(sr,
+	highRes, err := New(
+		sr,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(cutoff),
 		WithResonance(3.6),
@@ -335,7 +346,8 @@ func TestHighResonanceSustainsLongerTail(t *testing.T) {
 }
 
 func TestRapidAutomationStaysFinite(t *testing.T) {
-	filter, err := New(48000,
+	filter, err := New(
+		48000,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(1000),
 		WithResonance(1.0),
@@ -376,7 +388,8 @@ func TestOversamplingReducesSpurs(t *testing.T) {
 		k0         = 944
 	)
 
-	base, err := New(sampleRate,
+	base, err := New(
+		sampleRate,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(12000),
 		WithResonance(1.0),
@@ -387,7 +400,8 @@ func TestOversamplingReducesSpurs(t *testing.T) {
 		t.Fatalf("New(base) error = %v", err)
 	}
 
-	os, err := New(sampleRate,
+	os, err := New(
+		sampleRate,
 		WithVariant(VariantHuovilainen),
 		WithCutoffHz(12000),
 		WithResonance(1.0),
@@ -428,7 +442,8 @@ func TestCutoffConstraintUsesBaseSampleRateNyquist(t *testing.T) {
 }
 
 func TestStereoHelpers(t *testing.T) {
-	st, err := NewStereo(48000,
+	st, err := NewStereo(
+		48000,
 		WithVariant(VariantClassic),
 		WithCutoffHz(1400),
 		WithResonance(0.9),
@@ -470,7 +485,8 @@ func TestStereoHelpers(t *testing.T) {
 }
 
 func TestZDFProcessInPlaceMatchesSample(t *testing.T) {
-	f1, err := New(48000,
+	f1, err := New(
+		48000,
 		WithVariant(VariantZDF),
 		WithCutoffHz(2400),
 		WithResonance(1.1),
@@ -481,7 +497,8 @@ func TestZDFProcessInPlaceMatchesSample(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 
-	f2, err := New(48000,
+	f2, err := New(
+		48000,
 		WithVariant(VariantZDF),
 		WithCutoffHz(2400),
 		WithResonance(1.1),
@@ -513,7 +530,8 @@ func TestZDFProcessInPlaceMatchesSample(t *testing.T) {
 }
 
 func TestZDFStateRoundTrip(t *testing.T) {
-	f, err := New(48000,
+	f, err := New(
+		48000,
 		WithVariant(VariantZDF),
 		WithCutoffHz(1200),
 		WithResonance(0.9),
@@ -528,7 +546,8 @@ func TestZDFStateRoundTrip(t *testing.T) {
 
 	state := f.State()
 
-	clone, err := New(48000,
+	clone, err := New(
+		48000,
 		WithVariant(VariantZDF),
 		WithCutoffHz(1200),
 		WithResonance(0.9),
@@ -560,7 +579,8 @@ func TestZDFCutoffTracking(t *testing.T) {
 
 	for _, sr := range sampleRates {
 		for _, cutoff := range cutoffs {
-			f, err := New(sr,
+			f, err := New(
+				sr,
 				WithVariant(VariantZDF),
 				WithCutoffHz(cutoff),
 				WithResonance(0),
@@ -614,7 +634,8 @@ func TestZDFHighFrequencyTuningAccuracy(t *testing.T) {
 			stopFreq = nyquist * 0.95
 		}
 
-		zdf, err := New(sr,
+		zdf, err := New(
+			sr,
 			WithVariant(VariantZDF),
 			WithCutoffHz(cutoff),
 			WithResonance(0),
@@ -625,7 +646,8 @@ func TestZDFHighFrequencyTuningAccuracy(t *testing.T) {
 			t.Fatalf("ZDF New(cutoff=%g) error = %v", cutoff, err)
 		}
 
-		huov, err := New(sr,
+		huov, err := New(
+			sr,
 			WithVariant(VariantHuovilainen),
 			WithCutoffHz(cutoff),
 			WithResonance(0),
@@ -666,7 +688,8 @@ func TestZDFHighFrequencyTuningAccuracy(t *testing.T) {
 }
 
 func TestZDFSaturationSymmetry(t *testing.T) {
-	f, err := New(48000,
+	f, err := New(
+		48000,
 		WithVariant(VariantZDF),
 		WithCutoffHz(16000),
 		WithResonance(0),
@@ -698,7 +721,8 @@ func TestZDFHighResonanceSustainsLongerTail(t *testing.T) {
 		samples = 4096
 	)
 
-	lowRes, err := New(sr,
+	lowRes, err := New(
+		sr,
 		WithVariant(VariantZDF),
 		WithCutoffHz(cutoff),
 		WithResonance(0.5),
@@ -708,7 +732,8 @@ func TestZDFHighResonanceSustainsLongerTail(t *testing.T) {
 		t.Fatalf("New(lowRes) error = %v", err)
 	}
 
-	highRes, err := New(sr,
+	highRes, err := New(
+		sr,
 		WithVariant(VariantZDF),
 		WithCutoffHz(cutoff),
 		WithResonance(3.6),
@@ -727,7 +752,8 @@ func TestZDFHighResonanceSustainsLongerTail(t *testing.T) {
 }
 
 func TestImpulseTailEnergy_NonDefaultLength(t *testing.T) {
-	f, err := New(48000,
+	f, err := New(
+		48000,
 		WithVariant(VariantClassic),
 		WithCutoffHz(1000),
 		WithResonance(0.8),
@@ -743,7 +769,8 @@ func TestImpulseTailEnergy_NonDefaultLength(t *testing.T) {
 }
 
 func TestZDFRapidAutomationStaysFinite(t *testing.T) {
-	moogFilter, err := New(48000,
+	moogFilter, err := New(
+		48000,
 		WithVariant(VariantZDF),
 		WithCutoffHz(1000),
 		WithResonance(1.0),
@@ -784,7 +811,8 @@ func TestZDFOversamplingReducesSpurs(t *testing.T) {
 		k0 = 944
 	)
 
-	base, err := New(sr,
+	base, err := New(
+		sr,
 		WithVariant(VariantZDF),
 		WithCutoffHz(12000),
 		WithResonance(1.0),
@@ -795,7 +823,8 @@ func TestZDFOversamplingReducesSpurs(t *testing.T) {
 		t.Fatalf("New(base) error = %v", err)
 	}
 
-	os, err := New(sr,
+	os, err := New(
+		sr,
 		WithVariant(VariantZDF),
 		WithCutoffHz(12000),
 		WithResonance(1.0),
@@ -830,7 +859,8 @@ func TestZDFDriveSweepIncreasesHarmonics(t *testing.T) {
 		k0 = 220
 	)
 
-	lowDrive, err := New(sr,
+	lowDrive, err := New(
+		sr,
 		WithVariant(VariantZDF),
 		WithCutoffHz(16000),
 		WithResonance(0),
@@ -841,7 +871,8 @@ func TestZDFDriveSweepIncreasesHarmonics(t *testing.T) {
 		t.Fatalf("New(lowDrive) error = %v", err)
 	}
 
-	highDrive, err := New(sr,
+	highDrive, err := New(
+		sr,
 		WithVariant(VariantZDF),
 		WithCutoffHz(16000),
 		WithResonance(0),
@@ -952,7 +983,8 @@ func TestNewtonIterationsValidation(t *testing.T) {
 }
 
 func TestZDFStereo(t *testing.T) {
-	st, err := NewStereo(48000,
+	st, err := NewStereo(
+		48000,
 		WithVariant(VariantZDF),
 		WithCutoffHz(1400),
 		WithResonance(0.9),

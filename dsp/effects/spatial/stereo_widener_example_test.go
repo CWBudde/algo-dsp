@@ -70,7 +70,8 @@ func ExampleStereoWidener_ProcessInterleavedInPlace() {
 }
 
 func ExampleStereoWidener_bassMono() {
-	w, err := spatial.NewStereoWidener(48000,
+	w, err := spatial.NewStereoWidener(
+		48000,
 		spatial.WithWidth(2.0),
 		spatial.WithBassMonoFreq(120),
 	)

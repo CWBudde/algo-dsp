@@ -22,7 +22,8 @@ func TestCrosstalkCancellerValidation(t *testing.T) {
 }
 
 func TestCrosstalkCancellerDelayCalculation(t *testing.T) {
-	c, err := NewCrosstalkCanceller(48000,
+	c, err := NewCrosstalkCanceller(
+		48000,
 		WithCancellerListenerDistance(1),
 		WithCancellerSpeakerDistance(2),
 		WithCancellerHeadRadius(0.0875),
@@ -47,7 +48,8 @@ func TestCrosstalkCancellerDelayCalculation(t *testing.T) {
 }
 
 func TestCrosstalkCancellerInPlaceMatchesSampleBySample(t *testing.T) {
-	c1, err := NewCrosstalkCanceller(48000,
+	c1, err := NewCrosstalkCanceller(
+		48000,
 		WithCancellerAttenuation(0.7),
 		WithCancellerStages(3),
 	)
@@ -55,7 +57,8 @@ func TestCrosstalkCancellerInPlaceMatchesSampleBySample(t *testing.T) {
 		t.Fatalf("NewCrosstalkCanceller() error = %v", err)
 	}
 
-	c2, err := NewCrosstalkCanceller(48000,
+	c2, err := NewCrosstalkCanceller(
+		48000,
 		WithCancellerAttenuation(0.7),
 		WithCancellerStages(3),
 	)

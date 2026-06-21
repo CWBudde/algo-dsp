@@ -8,7 +8,8 @@ import (
 )
 
 func TestFrequencyShifterProcessBlockMatchesSample(t *testing.T) {
-	fBlock, err := NewFrequencyShifter(48000,
+	fBlock, err := NewFrequencyShifter(
+		48000,
 		WithFrequencyShiftHz(120),
 		WithFrequencyShifterHilbertPreset(hilbert.PresetBalanced),
 	)
@@ -16,7 +17,8 @@ func TestFrequencyShifterProcessBlockMatchesSample(t *testing.T) {
 		t.Fatalf("NewFrequencyShifter() error = %v", err)
 	}
 
-	fSample, err := NewFrequencyShifter(48000,
+	fSample, err := NewFrequencyShifter(
+		48000,
 		WithFrequencyShiftHz(120),
 		WithFrequencyShifterHilbertPreset(hilbert.PresetBalanced),
 	)
@@ -51,7 +53,8 @@ func TestFrequencyShifterProcessBlockMatchesSample(t *testing.T) {
 }
 
 func TestFrequencyShifterResetRestoresState(t *testing.T) {
-	f, err := NewFrequencyShifter(48000,
+	f, err := NewFrequencyShifter(
+		48000,
 		WithFrequencyShiftHz(150),
 		WithFrequencyShifterHilbertPreset(hilbert.PresetBalanced),
 	)
@@ -148,7 +151,8 @@ func TestFrequencyShifterSpectralShift(t *testing.T) {
 		nSamples   = 48000
 	)
 
-	f, err := NewFrequencyShifter(sampleRate,
+	f, err := NewFrequencyShifter(
+		sampleRate,
 		WithFrequencyShiftHz(shiftHz),
 		WithFrequencyShifterHilbertPreset(hilbert.PresetBalanced),
 	)

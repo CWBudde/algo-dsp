@@ -40,7 +40,8 @@ func TestRingModulatorProcessInPlaceMatchesProcess(t *testing.T) {
 }
 
 func TestRingModulatorResetRestoresState(t *testing.T) {
-	ringModulator, err := NewRingModulator(48000,
+	ringModulator, err := NewRingModulator(
+		48000,
 		WithRingModCarrierHz(300),
 	)
 	if err != nil {
@@ -70,7 +71,8 @@ func TestRingModulatorResetRestoresState(t *testing.T) {
 }
 
 func TestRingModulatorMixZeroIsTransparent(t *testing.T) {
-	ringModulator, err := NewRingModulator(48000,
+	ringModulator, err := NewRingModulator(
+		48000,
 		WithRingModCarrierHz(1000),
 		WithRingModMix(0),
 	)
@@ -97,7 +99,8 @@ func TestRingModulatorDCInputProducesSine(t *testing.T) {
 		nSamples   = 480 // one full carrier cycle at 100 Hz / 48000 Hz
 	)
 
-	ringModulator, err := NewRingModulator(sampleRate,
+	ringModulator, err := NewRingModulator(
+		sampleRate,
 		WithRingModCarrierHz(carrierHz),
 		WithRingModMix(1),
 	)
@@ -117,7 +120,8 @@ func TestRingModulatorDCInputProducesSine(t *testing.T) {
 }
 
 func TestRingModulatorSilenceInputProducesSilence(t *testing.T) {
-	ringModulator, err := NewRingModulator(48000,
+	ringModulator, err := NewRingModulator(
+		48000,
 		WithRingModCarrierHz(1000),
 		WithRingModMix(1),
 	)
@@ -144,7 +148,8 @@ func TestRingModulatorSumDifferenceFrequencies(t *testing.T) {
 		nSamples   = 4800 // 100 ms
 	)
 
-	ringModulator, err := NewRingModulator(sampleRate,
+	ringModulator, err := NewRingModulator(
+		sampleRate,
 		WithRingModCarrierHz(carrierHz),
 		WithRingModMix(1),
 	)
@@ -281,7 +286,8 @@ func TestRingModulatorSetterValidation(t *testing.T) {
 }
 
 func TestRingModulatorGetters(t *testing.T) {
-	ringModulator, err := NewRingModulator(48000,
+	ringModulator, err := NewRingModulator(
+		48000,
 		WithRingModCarrierHz(300),
 		WithRingModMix(0.7),
 	)
@@ -345,7 +351,8 @@ func TestRingModulatorNilOption(t *testing.T) {
 }
 
 func BenchmarkRingModulatorProcessSample(b *testing.B) {
-	ringModulator, err := NewRingModulator(48000,
+	ringModulator, err := NewRingModulator(
+		48000,
 		WithRingModCarrierHz(440),
 		WithRingModMix(1),
 	)
@@ -362,7 +369,8 @@ func BenchmarkRingModulatorProcessSample(b *testing.B) {
 }
 
 func BenchmarkRingModulatorProcessInPlace(b *testing.B) {
-	ringModulator, err := NewRingModulator(48000,
+	ringModulator, err := NewRingModulator(
+		48000,
 		WithRingModCarrierHz(440),
 		WithRingModMix(1),
 	)
