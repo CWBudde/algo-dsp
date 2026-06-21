@@ -127,7 +127,8 @@ func (e *Engine) processWidenerMonoInPlace(block []float64) {
 	// then fold back to mono with user-controlled wet mix.
 	delaySamples := max(
 		// 1 ms
-		int(e.sampleRate*0.001), 1)
+		int(e.sampleRate*0.001), 1,
+	)
 
 	for i := range block {
 		left := dry[i]

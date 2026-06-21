@@ -2,6 +2,7 @@
 //
 // Included processors:
 //   - StereoWidener: Mid/side stereo image widening and narrowing.
+//   - HaasDelay: Short single-channel delay for precedence-based stereo widening.
 //   - CrosstalkCanceller: Staged geometric crosstalk cancellation for speaker playback.
 //   - CrosstalkSimulator: Delayed IIR-shaped stereo crossfeed simulation.
 //   - HRTFCrosstalkSimulator: FIR HRTF-based direct/crossfeed stereo simulation.
