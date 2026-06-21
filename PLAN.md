@@ -177,7 +177,7 @@ Phase 17: Effects — High-Priority Spatial             [1 week]   ✅ Complete
 Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  ✅ Complete
 Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  ✅ Complete
 Phase 20: Effects — Medium-Priority Dynamics          [2 weeks]  ✅ Complete
-Phase 21: Effects — Spatial and Convolution Reverb    [2 weeks]  🔄 In Progress
+Phase 21: Effects — Spatial and Convolution Reverb    [2 weeks]  ✅ Complete
 Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  🔄 In Progress
 Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
 Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
@@ -462,24 +462,26 @@ Tasks:
   - [x] Implement delay + detector + gain.
   - [x] Add tests + example.
 
-### Phase 21: Effects — Spatial and Convolution Reverb (In Progress)
+### Phase 21: Effects — Spatial and Convolution Reverb (Complete)
 
 Implementation status (snapshot):
 
-- Convolution reverb (`dsp/effects/reverb/convolution.go`) wraps the partitioned convolution
-  kernel (`dsp/conv/partitioned.go`, FFT-backed, tested). Recovered onto `main` from the
-  orphaned release lineage along with the rest of the effects (see Appendix H).
-- Still open: dedicated reverb-level tests/example for the convolution wrapper, and the Haas
-  delay.
+- Reverb suite in `dsp/effects/reverb`: `ConvolutionReverb` (wraps the FFT-backed partitioned
+  convolution kernel `dsp/conv/partitioned.go`, with impulse-response/dry-path tests + example),
+  `FDNReverb` (feedback-delay-network, with tests + example), and `Reverb`/Freeverb (with tests).
+- Spatial side: the stereo widener and crosstalk processors are delivered under Phase 17; this
+  phase adds the `HaasDelay` (`dsp/effects/spatial/haas.go`) — a short single-channel precedence
+  delay reusing the package's `monoDelay` ring buffer, with `ProcessStereo`/in-place/interleaved
+  APIs, validation, tests, runnable example, and benchmarks.
 
 Tasks:
 
-- [ ] Convolution reverb
+- [x] Convolution reverb
   - [x] Implement partitioned convolution wrapper specialized for reverb usage.
-  - [ ] Add tests + example.
-- [ ] Haas delay
-  - [ ] Implement short stereo delay + constraints.
-  - [ ] Add tests + example.
+  - [x] Add tests + example.
+- [x] Haas delay
+  - [x] Implement short stereo delay + constraints.
+  - [x] Add tests + example.
 
 ### Phase 22: Effects — Specialized / Lower-Priority (In Progress)
 
@@ -994,6 +996,7 @@ Quarter-end success criteria:
 | 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below.                                                                                                                                                                                                                                                                                   |
 | 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades).                                                                                                                 |
 | 0.10    | 2026-06-21 | Claude  | Status refresh after the recovery: Phase 21 (convolution reverb done, Haas pending) and Phase 22 (spectral-freeze/granular/vocoder done; dynamic-EQ/panner/pitch-correction/noise-reduction pending) moved Planned → In Progress with their done items checked; refreshed the Phase 26 Moog snapshot to describe the adopted six-variant release-line filter (incl. `VariantZDF`); swapped the web demo to the `dsp/effectchain`-driven architecture + IR library (PR #14). |
+| 0.11    | 2026-06-21 | Claude  | Completed Phase 21: implemented the `HaasDelay` precedence effect (`dsp/effects/spatial`, reusing `monoDelay`) with tests/example/benchmarks, and added the missing convolution-reverb tests/example; snapshot now credits the full reverb suite (Convolution + FDN + Freeverb) plus Haas. Phase Complete.                                                                                                                                                                |
 
 ---
 
