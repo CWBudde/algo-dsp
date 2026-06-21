@@ -195,7 +195,7 @@ Phase 29: Polyphase Hilbert / Analytic Signal              [2 weeks]  ✅ Comple
 Phase 30: Interpolation Kernels (core)                     [2 weeks]  ✅ Complete  → expansion: P38–P39
 
 # Remaining (execution order)
-Phase 31: Dynamics — Static Characteristic-Curve Parity    [0.5 week] 🔄 In Progress
+Phase 31: Dynamics — Static Characteristic-Curve Parity    [0.5 week] ✅ Complete
 Phase 32: Elliptic Shelving Designer                       [1 week]   📋 Planned
 Phase 33: Vocoder Finalization                             [0.5 week] 🔄 In Progress
 Phase 34: Stereo Panner                                    [0.5 week] 📋 Planned
@@ -491,20 +491,24 @@ and NaN/Inf validation).
 The phases below are the remaining roadmap, in execution order. Each is intentionally small and
 ships with tests + a runnable example unless noted.
 
-### Phase 31: Dynamics — Static Characteristic-Curve Parity (In Progress)
+### Phase 31: Dynamics — Static Characteristic-Curve Parity (Complete)
 
-Validate the steady-state transfer behavior of the Phase 16 dynamics suite against
-`legacy/Source/DSP/DAV_DspDynamics.pas`; today `legacy_parity_test.go` only covers streaming
-simulation, not static curves.
+Validated the steady-state transfer behavior of the Phase 16 dynamics suite against
+`legacy/Source/DSP/DAV_DspDynamics.pas` (`CharacteristicCurve`/`CharacteristicCurve_dB`); previously
+`legacy_parity_test.go` only covered streaming simulation, not static curves.
 
-- [ ] Add a static curve builder reusing the gain-computer path (`core.GainForLevel`, plus the
-  Gate's existing `CalculateOutputLevel`) so `in → out` and gain reduction can be sampled without
-  streaming; extend it to compressor/expander/multiband.
-- [ ] Validate `in → out` and gain-reduction curves across threshold/ratio/knee sweeps vs legacy.
+- [x] Added a static curve builder (`dsp/effects/dynamics/curve.go`): `StaticCurve(p, min, max,
+  step)` returning `[]CurvePoint{InputDB, OutputDB, GainReductionDB}` over a `StaticCurveProcessor`
+  interface satisfied by Compressor/Expander/Gate via their `CalculateOutputLevel` (gain-computer
+  path), plus `MultibandCompressor.BandStaticCurve` for per-band curves. No streaming/detector state
+  is touched (verified by a non-mutation test).
+- [x] Validated `in → out` and gain-reduction curves across threshold/ratio/knee sweeps: compressor
+  and expander match the legacy hard-knee transfer law exactly (1e-9), soft-knee rejoins the legacy
+  asymptote outside the knee and stays monotonic/non-amplifying within it.
 
 Exit criteria:
 
-- [ ] Characteristic-curve parity tests pass; `go test -race ./dsp/effects/dynamics` passes.
+- [x] Characteristic-curve parity tests pass; `go test -race ./dsp/effects/dynamics` passes; lint clean.
 
 ### Phase 32: Elliptic Shelving Designer (Planned)
 
