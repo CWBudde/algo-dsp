@@ -34,10 +34,7 @@ func (e *Engine) SetSpectrum(p SpectrumParams) error {
 		return fmt.Errorf("spectrum init fft plan: %w", err)
 	}
 
-	hop := int(math.Round(float64(cfg.FFTSize) * (1 - cfg.Overlap)))
-	if hop < 1 {
-		hop = 1
-	}
+	hop := max(int(math.Round(float64(cfg.FFTSize)*(1-cfg.Overlap))), 1)
 
 	e.spectrum = cfg
 	e.spectrumWindow = win
@@ -142,7 +139,7 @@ func (e *Engine) updateSpectrumFrame() {
 	)
 
 	read := e.spectrumWrite
-	for i := 0; i < e.spectrumFFTSize; i++ {
+	for i := range e.spectrumFFTSize {
 		s := e.spectrumRing[read]
 		e.spectrumInput[i] = complex(s*e.spectrumWindow[i], 0)
 
@@ -152,7 +149,8 @@ func (e *Engine) updateSpectrumFrame() {
 		}
 	}
 
-	if err := e.spectrumPlan.Forward(e.spectrumOutput, e.spectrumInput); err != nil {
+	err := e.spectrumPlan.Forward(e.spectrumOutput, e.spectrumInput)
+	if err != nil {
 		return
 	}
 

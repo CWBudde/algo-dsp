@@ -1,3 +1,4 @@
+//nolint:funcorder,funlen,maintidx
 package webdemo
 
 import (
@@ -5,6 +6,7 @@ import (
 	"math"
 	"math/cmplx"
 
+	"github.com/cwbudde/algo-dsp/dsp/effectchain"
 	"github.com/cwbudde/algo-dsp/dsp/effects"
 	"github.com/cwbudde/algo-dsp/dsp/effects/dynamics"
 	"github.com/cwbudde/algo-dsp/dsp/effects/modulation"
@@ -12,7 +14,6 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
 	"github.com/cwbudde/algo-dsp/dsp/effects/spatial"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
-	"github.com/cwbudde/algo-dsp/dsp/filter/crossover"
 	algofft "github.com/cwbudde/algo-fft"
 )
 
@@ -105,6 +106,13 @@ type EffectsParams struct {
 	TremoloDepth       float64
 	TremoloSmoothingMs float64
 	TremoloMix         float64
+
+	RotarySpeakerEnabled bool
+	RotaryMix            float64
+	RotaryDrive          float64
+	RotaryStereoWidth    float64
+	RotaryCrossoverHz    float64
+	RotarySpeedFast      bool
 
 	DelayEnabled  bool
 	DelayTime     float64
@@ -204,6 +212,7 @@ type Engine struct {
 	widener *spatial.StereoWidener
 	phaser  *modulation.Phaser
 	tremolo *modulation.Tremolo
+	rotary  *modulation.RotarySpeaker
 	delay   *effects.Delay
 	reverb  *reverb.Reverb
 	fdn     *reverb.FDNReverb
@@ -211,22 +220,18 @@ type Engine struct {
 	tp      *pitch.PitchShifter
 	sp      *pitch.SpectralPitchShifter
 
+	irLib *IRLibrary
+
 	compParams CompressorParams
 	compressor *dynamics.Compressor
 
 	limParams LimiterParams
 	limiter   *dynamics.Limiter
 
-	renderBlock       []float64
-	chainBuf          []float64
-	chainMixBuf       []float64
-	chainOutBuf       map[string][]float64
-	chainSplitLowBuf  map[string][]float64
-	chainSplitHighBuf map[string][]float64
-	chainCrossover    map[string]*crossover.Crossover
+	renderBlock []float64
+	chainBuf    []float64
 
-	chainGraph *compiledChainGraph
-	chainNodes map[string]*chainNodeRuntime
+	chain *effectchain.Chain
 
 	spectrum             SpectrumParams
 	spectrumWindow       []float64
@@ -245,6 +250,9 @@ type Engine struct {
 }
 
 // NewEngine creates a configured audio engine.
+//
+//nolint:cyclop
+//nolint:funlen
 func NewEngine(sampleRate float64) (*Engine, error) {
 	if sampleRate <= 0 {
 		return nil, fmt.Errorf("sample rate must be > 0: %f", sampleRate)
@@ -323,6 +331,12 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			TremoloDepth:           0.6,
 			TremoloSmoothingMs:     5,
 			TremoloMix:             1.0,
+			RotarySpeakerEnabled:   false,
+			RotaryMix:              1.0,
+			RotaryDrive:            1.0,
+			RotaryStereoWidth:      1.0,
+			RotaryCrossoverHz:      800.0,
+			RotarySpeedFast:        false,
 			DelayEnabled:           false,
 			DelayTime:              0.25,
 			DelayFeedback:          0.35,
@@ -379,7 +393,9 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 			Smoothing: 0.65,
 		},
 	}
-	if err := e.initSpectrumAnalyzer(); err != nil {
+
+	err := e.initSpectrumAnalyzer()
+	if err != nil {
 		return nil, err
 	}
 
@@ -432,6 +448,13 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 
 	e.tremolo = tremolo
 
+	rotary, err := modulation.NewRotarySpeaker()
+	if err != nil {
+		return nil, err
+	}
+
+	e.rotary = rotary
+
 	delay, err := effects.NewDelay(sampleRate)
 	if err != nil {
 		return nil, err
@@ -482,23 +505,42 @@ func NewEngine(sampleRate float64) (*Engine, error) {
 
 	e.limiter = lim
 
-	if err := e.rebuildEffects(); err != nil {
+	// Load the embedded IR library (best-effort; demo works without it).
+	lib, err := loadEmbeddedIRLib()
+	if err == nil {
+		e.irLib = lib
+	}
+
+	reg := effectchain.DefaultRegistry(
+		effectchain.WithIRProvider(&irLibAdapter{lib: e.irLib}),
+		effectchain.WithFilterDesigner(&eqFilterDesigner{}),
+	)
+	e.chain = effectchain.New(
+		effectchain.Context{SampleRate: sampleRate},
+		reg,
+	)
+
+	err = e.rebuildEffects()
+	if err != nil {
 		return nil, err
 	}
 
-	if err := e.rebuildCompressor(); err != nil {
+	err = e.rebuildCompressor()
+	if err != nil {
 		return nil, err
 	}
 
-	if err := e.rebuildLimiter(); err != nil {
+	err = e.rebuildLimiter()
+	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < stepCount; i++ {
+	for i := range stepCount {
 		e.steps[i] = StepConfig{Enabled: i%4 == 0, FreqHz: defaultStepFreq(i)}
 	}
 
-	if err := e.rebuildEQ(); err != nil {
+	err = e.rebuildEQ()
+	if err != nil {
 		return nil, err
 	}
 
@@ -512,6 +554,15 @@ func (e *Engine) CurrentStep() int {
 	return e.currentStep
 }
 
+// GetIRNames returns the names of available impulse responses, or nil if none loaded.
+func (e *Engine) GetIRNames() []string {
+	if e.irLib == nil {
+		return nil
+	}
+
+	return e.irLib.IRNames()
+}
+
 // Render fills dst with mono PCM samples in [-1, 1].
 func (e *Engine) Render(dst []float32) {
 	if len(dst) == 0 {
@@ -522,7 +573,7 @@ func (e *Engine) Render(dst []float32) {
 
 	for i := range dst {
 		if e.running {
-			e.samplesUntilNextStep -= 1
+			e.samplesUntilNextStep--
 			for e.samplesUntilNextStep <= 0 {
 				stepIndex := e.currentStep
 				e.triggerCurrentStep()
@@ -600,7 +651,7 @@ func (e *Engine) NodeResponseCurveDB(node string, freqs []float64) []float64 {
 		chain = e.low
 	case "mid":
 		chain = e.mid
-	case "high":
+	case eqNodeHigh:
 		chain = e.high
 	case "lp":
 		chain = e.lp

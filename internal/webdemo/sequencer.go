@@ -82,10 +82,7 @@ func (e *Engine) triggerCurrentStep() {
 		e.voices = e.voices[:maxVoices-1]
 	}
 
-	decaySamples := int(e.decaySec * e.sampleRate)
-	if decaySamples < 1 {
-		decaySamples = 1
-	}
+	decaySamples := max(int(e.decaySec*e.sampleRate), 1)
 
 	e.voices = append(e.voices, voice{
 		waveform:    e.waveform,
@@ -101,10 +98,7 @@ func (e *Engine) nextSample() float64 {
 		return 0
 	}
 
-	attackSamples := int(0.005 * e.sampleRate)
-	if attackSamples < 1 {
-		attackSamples = 1
-	}
+	attackSamples := max(int(0.005*e.sampleRate), 1)
 
 	sum := 0.0
 	write := 0
