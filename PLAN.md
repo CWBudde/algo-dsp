@@ -1001,11 +1001,16 @@ Moog (a functional superset — regained `VariantZDF`/Newton; main's reduced rei
 replaced, no callers broke); and the `dsp/effectchain` subsystem (which required upgrading
 `effects.Delay` and `effects.Distortion` to their release-line superset versions).
 
-**Outstanding backlog:** Goertzel exists on both lineages (independent reimplementations — `main`
-re-did Phase 27); reconcile if a single canonical version is wanted. Re-audit any remaining drift
-with `git diff --stat main v0.5.1 -- dsp/ measure/ stats/`. Consider archiving the orphan
-`claude/*` branches and re-cutting release tags from `main` once reconciliation is verified
-complete.
+**Goertzel reconciliation (done):** the two Goertzel implementations (independent reimplementations
+on each lineage) were fused into a single canonical `dsp/spectrum/goertzel.go` — `main`'s richer
+API (options/configurable `DB` floor, `Complex`, `NormalizedMagnitude`, allocation-free
+`GoertzelBank.Powers/Magnitudes(dst)`, pass-through `ProcessSample`, strict validation) as the
+base, plus the release line's faster register-hoisted `ProcessBlock` and its one-shot
+`AnalyzeBlock` helper.
+
+**Outstanding backlog:** Re-audit any remaining drift with
+`git diff --stat main v0.5.1 -- dsp/ measure/ stats/`. Consider archiving the orphan `claude/*`
+branches and re-cutting release tags from `main` once reconciliation is verified complete.
 
 ---
 

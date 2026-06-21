@@ -159,13 +159,18 @@ func (g *Goertzel) ProcessSample(in float64) float64 {
 	return in
 }
 
-// ProcessBlock feeds an entire block of samples into the analyzer.
+// ProcessBlock feeds an entire block of samples into the analyzer. The state is
+// hoisted into local variables for the duration of the loop so the recurrence
+// runs in registers rather than through repeated struct-field accesses.
 func (g *Goertzel) ProcessBlock(buf []float64) {
+	s0, s1, coef := g.s0, g.s1, g.coef
 	for _, x := range buf {
-		s := x + g.coef*g.s0 - g.s1
-		g.s1 = g.s0
-		g.s0 = s
+		s := x + coef*s0 - s1
+		s1 = s0
+		s0 = s
 	}
+
+	g.s0, g.s1 = s0, s1
 }
 
 // Power returns the accumulated power |X|^2 at the target frequency using the
@@ -224,6 +229,23 @@ func (g *Goertzel) Frequency() float64 { return g.frequency }
 // SampleRate returns the sample rate in Hz.
 func (g *Goertzel) SampleRate() float64 { return g.sampleRate }
 
+// AnalyzeBlock computes the Goertzel power |X|^2 at a single target frequency
+// over one finite block in a single call. It creates a transient analyzer,
+// processes the block from a cleared state, and returns the power, so the result
+// is comparable to the corresponding DFT bin of a block of the same length. For
+// repeated analysis of the same frequency, reuse a [Goertzel] instead to avoid
+// re-deriving the coefficient on every call.
+func AnalyzeBlock(input []float64, frequency, sampleRate float64) (float64, error) {
+	g, err := NewGoertzel(frequency, sampleRate)
+	if err != nil {
+		return 0, err
+	}
+
+	g.ProcessBlock(input)
+
+	return g.Power(), nil
+}
+
 // GoertzelBank evaluates several target frequencies over a shared input stream,
 // which is the efficient pattern for multi-tone detection such as DTMF or
 // pilot-tone analysis. Each bin is an independent [Goertzel] sharing the same
@@ -269,14 +291,13 @@ func (b *GoertzelBank) ProcessSample(in float64) {
 	}
 }
 
-// ProcessBlock feeds an entire block of samples into every bin.
+// ProcessBlock feeds an entire block of samples into every bin. Each bin is run
+// over the whole block in turn (reusing [Goertzel.ProcessBlock]) so its state
+// stays in registers across the block; the bins are independent, so the result
+// is identical to interleaving them sample by sample.
 func (b *GoertzelBank) ProcessBlock(buf []float64) {
-	for _, x := range buf {
-		for _, g := range b.bins {
-			s := x + g.coef*g.s0 - g.s1
-			g.s1 = g.s0
-			g.s0 = s
-		}
+	for _, g := range b.bins {
+		g.ProcessBlock(buf)
 	}
 }
 
