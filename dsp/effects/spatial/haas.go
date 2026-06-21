@@ -120,16 +120,17 @@ func NewHaasDelay(sampleRate float64, opts ...HaasDelayOption) (*HaasDelay, erro
 	return h, nil
 }
 
-// delaySamples converts the configured delay time to an integer sample count
-// (at least one sample).
+// delaySamples converts the configured delay time to an integer sample count.
+// It is floored at two samples, the smallest delay monoDelay can realize, so the
+// realized delay always equals this value (see rebuildLine).
 func (h *HaasDelay) delaySamples() int {
-	return max(int(math.Round(h.delayMs/1000*h.sampleRate)), 1)
+	return max(int(math.Round(h.delayMs/1000*h.sampleRate)), 2)
 }
 
 func (h *HaasDelay) rebuildLine() {
 	// monoDelay realizes a delay of (arg+1) samples, so pass one less to land on
-	// exactly delaySamples(). (For sub-2-sample requests the line clamps to its
-	// 1-sample minimum.)
+	// exactly delaySamples(). delaySamples() is floored at monoDelay's 2-sample
+	// minimum, so arg is always >= 1 and the line never clamps it further.
 	h.line.init(h.delaySamples() - 1)
 }
 

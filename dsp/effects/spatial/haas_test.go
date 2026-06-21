@@ -51,9 +51,10 @@ func TestNewHaasDelayDefaults(t *testing.T) {
 }
 
 // delayInSamples mirrors the internal conversion so tests can assert the exact
-// delay without depending on private helpers beyond the package.
+// delay without depending on private helpers beyond the package, including the
+// two-sample floor monoDelay imposes.
 func delayInSamples(delayMs, sampleRate float64) int {
-	return int(math.Round(delayMs / 1000 * sampleRate))
+	return max(int(math.Round(delayMs/1000*sampleRate)), 2)
 }
 
 func TestHaasDelayDelaysSelectedChannel(t *testing.T) {
