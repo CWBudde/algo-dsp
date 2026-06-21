@@ -184,7 +184,7 @@ Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progres
 Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
 Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  ✅ Complete
 Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
-Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  📋 Planned
+Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  ✅ Complete
 Phase 29: Dither and Noise Shaping                    [3 weeks]  ✅ Complete
 Phase 30: Polyphase Hilbert / Analytic Signal         [2 weeks]  ✅ Complete
 Phase 31: Interpolation Kernel Expansion               [2 weeks]  📋 Planned
@@ -682,34 +682,47 @@ Exit criteria:
 - [x] Multi-bin Goertzel API available and benchmarked.
 - [x] `go test -race ./dsp/spectrum` passes with Goertzel additions.
 
-### Phase 28: Loudness Metering (EBU R128 / BS.1770) (Planned)
+### Phase 28: Loudness Metering (EBU R128 / BS.1770) (Complete)
 
 Goal:
 
 - Add standards-aligned loudness metering (momentary, short-term, integrated, loudness range, true peak track) with streaming APIs and parity checks against `legacy/Source/DSP/DAV_DspR128.pas`.
 
+Implementation status (snapshot):
+
+- `measure/loudness` package: a `Meter` with K-weighting prefilter chain, 400 ms momentary and
+  3 s short-term windows, integrated loudness with absolute/relative gating, multi-channel
+  (mono/stereo) support via `WithChannels`, true-peak tracking, and streaming APIs (`Reset`,
+  `StartIntegration`, `StopIntegration`, `ProcessSample`, `ProcessBlock`, `Momentary`,
+  `ShortTerm`, `Integrated`, `Peaks`).
+- R128/BS.1770 conformance tests (`r128_test.go`), runnable examples, and benchmarks pass
+  with `-race`. Depends only on `dsp/core`, `dsp/filter/biquad`, `dsp/filter/design`.
+- Recovered onto `main` from the orphaned release lineage (tag `v0.5.1`).
+- Deferred: allocation-free callback/event-hook API for periodic updates (left unchecked
+  below); explicit loudness-range (LRA) metric is not yet exposed.
+
 Tasks:
 
-- [ ] R128 core implementation
-  - [ ] Implement K-weighting prefilter chain (high-shelf + high-pass/RLB stage) per sample rate.
-  - [ ] Implement 400 ms momentary and 3 s short-term integration windows with overlap updates.
-  - [ ] Implement integrated loudness gating workflow (absolute gate and relative gate).
-  - [ ] Implement mono and stereo processors with shared core.
-- [ ] API and metrics surface
-  - [ ] Expose streaming meter state with `Reset`, `StartIntegration`, `StopIntegration`, and block/sample update APIs.
-  - [ ] Expose metrics: `LUFS-M`, `LUFS-S`, integrated LUFS, peak/hold, sample counters.
+- [x] R128 core implementation
+  - [x] Implement K-weighting prefilter chain (high-shelf + high-pass/RLB stage) per sample rate.
+  - [x] Implement 400 ms momentary and 3 s short-term integration windows with overlap updates.
+  - [x] Implement integrated loudness gating workflow (absolute gate and relative gate).
+  - [x] Implement mono and stereo processors with shared core.
+- [x] API and metrics surface
+  - [x] Expose streaming meter state with `Reset`, `StartIntegration`, `StopIntegration`, and block/sample update APIs.
+  - [x] Expose metrics: `LUFS-M`, `LUFS-S`, integrated LUFS, peak/hold, sample counters.
   - [ ] Add optional callbacks/event hooks for periodic loudness/peak updates without allocations.
-- [ ] Validation and conformance
-  - [ ] Add parity-oriented tests vs `DAV_DspR128.pas` behavior envelope.
-  - [ ] Add conformance tests against known R128/BS.1770 vectors and gating edge cases.
-  - [ ] Add sample-rate matrix tests and long-run numerical-stability tests.
-  - [ ] Add benchmarks for streaming/batch paths and allocation checks.
+- [x] Validation and conformance
+  - [x] Add parity-oriented tests vs `DAV_DspR128.pas` behavior envelope.
+  - [x] Add conformance tests against known R128/BS.1770 vectors and gating edge cases.
+  - [x] Add sample-rate matrix tests and long-run numerical-stability tests.
+  - [x] Add benchmarks for streaming/batch paths and allocation checks.
 
 Exit criteria:
 
-- [ ] R128 meter outputs for momentary/short/integrated are validated against references within tolerance.
-- [ ] Mono and stereo APIs documented with runnable examples.
-- [ ] `go test -race ./measure/...` passes with loudness additions.
+- [x] R128 meter outputs for momentary/short/integrated are validated against references within tolerance.
+- [x] Mono and stereo APIs documented with runnable examples.
+- [x] `go test -race ./measure/...` passes with loudness additions.
 
 ### Phase 29: Dither and Noise Shaping (Complete)
 
