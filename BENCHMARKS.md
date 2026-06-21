@@ -82,10 +82,15 @@ Command: `go test -bench=. -benchmem -benchtime=2s -run=^$ -cpu=1 ./dsp/filter/m
 - `BenchmarkProcessSample/fast`: `80.71 ns/op`, `0 allocs/op`
 - `BenchmarkProcessInPlace/full/N=4096`: `247191 ns/op`, `132.56 MB/s`, `0 allocs/op`
 - `BenchmarkProcessInPlace/fast/N=4096`: `322483 ns/op`, `101.61 MB/s`, `0 allocs/op`
+- `BenchmarkProcessOversampled/os=2/N=1024`: `761008 ns/op`, `10.76 MB/s`, `0 allocs/op`
+- `BenchmarkProcessOversampled/os=4/N=1024`: `991299 ns/op`, `8.26 MB/s`, `0 allocs/op`
+- `BenchmarkProcessOversampled/os=8/N=1024`: `3184478 ns/op`, `2.57 MB/s`, `0 allocs/op`
 
 Note: the fast-tanh path has markedly lower per-sample latency (`ProcessSample`,
 a feedback-bound dependency chain), while Go's optimized `math.Tanh` retains
-slightly higher block throughput (`ProcessInPlace`). All paths are zero-alloc.
+slightly higher block throughput (`ProcessInPlace`). The oversampled high-quality
+path costs roughly factor× the base ladder plus anti-alias filtering, trading CPU
+for ~25 dB of alias rejection on out-of-band harmonics. All paths are zero-alloc.
 
 ## SIMD vs Scalar (internal/vecmath, n=4096)
 

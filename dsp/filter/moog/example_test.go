@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/moog"
+	"github.com/cwbudde/algo-dsp/dsp/spectrum"
 )
 
 // ExampleFilter_ProcessSample shows that the ladder lowpass settles a DC input
@@ -75,4 +76,39 @@ func ExampleFilter_lowpass() {
 	fmt.Printf("100 Hz passes, 12 kHz attenuated: %v\n", rms(high[n/4:]) < 0.1*rms(low[n/4:]))
 	// Output:
 	// 100 Hz passes, 12 kHz attenuated: true
+}
+
+// ExampleFilter_oversampling drives a 9 kHz tone hard into saturation. At the
+// base rate the 5th harmonic folds back to 3 kHz (aliasing); the high-quality
+// oversampled path removes it before decimation.
+func ExampleFilter_oversampling() {
+	const (
+		sr     = 48000.0
+		f0     = 9000.0
+		cutoff = 10000.0
+		n      = 19200
+	)
+
+	aliasPower := func(os int) float64 {
+		f, _ := moog.New(cutoff, sr, moog.WithOversampling(os), moog.WithResonance(2))
+
+		in := make([]float64, n)
+		for i := range in {
+			in[i] = 40 * math.Sin(2*math.Pi*f0*float64(i)/sr)
+		}
+
+		f.ProcessInPlace(in)
+
+		g, _ := spectrum.NewGoertzel(3000, sr)
+		g.ProcessBlock(in[n-9600:])
+
+		return g.Power()
+	}
+
+	base := aliasPower(1)
+	os4 := aliasPower(4)
+
+	fmt.Printf("4x oversampling cuts 3 kHz alias below 10%%: %v\n", os4 < 0.1*base)
+	// Output:
+	// 4x oversampling cuts 3 kHz alias below 10%: true
 }

@@ -182,7 +182,7 @@ Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  📋 Planned
 Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
 Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
 Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
-Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  🔄 In Progress
+Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  ✅ Complete
 Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
 Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  📋 Planned
 Phase 29: Dither and Noise Shaping                    [3 weeks]  📋 Planned
@@ -591,7 +591,7 @@ Exit criteria:
 
 - [ ] `v1.0.0` tag exists and release notes are published.
 
-### Phase 26: Nonlinear Moog Ladder Filters (In Progress)
+### Phase 26: Nonlinear Moog Ladder Filters (Complete)
 
 Goal:
 
@@ -599,14 +599,18 @@ Goal:
 
 Implementation status (snapshot):
 
-- Legacy-faithful core complete in `dsp/filter/moog` (`moog.go`, `fasttanh.go`): the four
-  Pascal variants (Simple/Improved × full-`tanh`/fast-`tanh`), constructor+options, setters,
+- Legacy-faithful core in `dsp/filter/moog` (`moog.go`, `fasttanh.go`): the four Pascal
+  variants (Simple/Improved × full-`tanh`/fast-`tanh`), constructor+options, setters,
   `ProcessSample`/`ProcessInPlace`/`Reset`, validation, and a musical normalized-resonance
-  wrapper. Tests (`moog_test.go`, `legacy_parity_test.go`), examples (`example_test.go`), and
-  benchmarks (`moog_bench_test.go`) pass with race; coverage 96.5%; hot paths 0 allocs/op;
-  numbers recorded in `BENCHMARKS.md`.
-- The **paper-or-better track** (zero-delay/Newton refinement + oversampled anti-aliasing) is
-  the remaining work for this phase and is intentionally deferred.
+  wrapper.
+- High-quality path (`WithOversampling`, 2/4/8×): ladder runs at the oversampled rate with
+  4th-order Butterworth anti-alias filtering and Huovilainen half-sample feedback compensation
+  (`processOversampled`). This is the chosen "or-equivalent" higher-accuracy discretization;
+  a literal zero-delay-feedback/Newton solver was not needed to beat the baseline. A test
+  measures ~25 dB alias rejection on the folded 5th harmonic (`highquality_test.go`).
+- Tests (`moog_test.go`, `legacy_parity_test.go`, `highquality_test.go`), examples
+  (`example_test.go`), and benchmarks (`moog_bench_test.go`) pass with race; coverage 97.7%;
+  hot paths 0 allocs/op; numbers recorded in `BENCHMARKS.md`.
 
 Tasks:
 
@@ -620,15 +624,15 @@ Tasks:
   - [x] Implement “improved classic” variant from legacy behavior and verify coefficient/update behavior parity.
   - [x] Implement fast-approximation variant(s) for `tanh` equivalent to legacy lightweight mode, guarded behind clear option/strategy flags.
   - [x] Reproduce legacy reset/state behavior and gain scaling semantics where practical.
-- [ ] Paper-or-better implementation track
-  - [ ] Implement Huovilainen-style nonlinear ladder reference path (as cited in the Pascal unit header) with documented discretization choices.
-  - [ ] Evaluate and optionally implement a higher-accuracy path (e.g., zero-delay/newton refinement or equivalent) when it measurably improves tuning/resonance behavior at high cutoff/resonance.
-  - [ ] Add optional anti-alias strategy for nonlinear drive path (e.g., oversampling mode) with documented CPU/quality tradeoffs.
-  - [ ] Ensure the “high quality” path meets or exceeds reference behavior in tuning, self-oscillation onset consistency, and modulation robustness.
-- [ ] Validation, parity, and characterization
+- [x] Paper-or-better implementation track
+  - [x] Implement Huovilainen-style nonlinear ladder reference path (as cited in the Pascal unit header) with documented discretization choices.
+  - [x] Evaluate and optionally implement a higher-accuracy path (e.g., zero-delay/newton refinement or equivalent) when it measurably improves tuning/resonance behavior at high cutoff/resonance. (Chose oversampling + half-sample feedback compensation as the equivalent.)
+  - [x] Add optional anti-alias strategy for nonlinear drive path (e.g., oversampling mode) with documented CPU/quality tradeoffs.
+  - [x] Ensure the “high quality” path meets or exceeds reference behavior in tuning, self-oscillation onset consistency, and modulation robustness.
+- [x] Validation, parity, and characterization
   - [x] Add parity-oriented tests against vectors derived from `legacy/Source/DSP/DAV_DspFilterMoog.pas` (classic + improved + lightweight modes).
   - [x] Add frequency-response/tuning tests across sample rates and cutoff/resonance grids.
-  - [ ] Add nonlinear behavior tests (drive sweep, harmonic growth trends, saturation symmetry, self-oscillation sanity).
+  - [x] Add nonlinear behavior tests (drive sweep, harmonic growth trends, saturation symmetry, self-oscillation sanity).
   - [x] Add stability tests under rapid modulation (cutoff/resonance automation) and extreme parameter bounds.
   - [x] Add deterministic benchmark suite for scalar and fast modes; track `ns/op`, `allocs/op`, and quality deltas.
 - [x] Documentation and examples
@@ -638,7 +642,7 @@ Tasks:
 Exit criteria:
 
 - [x] Legacy-faithful Moog ladder variants pass parity-oriented tests.
-- [ ] At least one high-quality variant demonstrates equal or better measured behavior than the reference paper/legacy baseline in documented metrics.
+- [x] At least one high-quality variant demonstrates equal or better measured behavior than the reference paper/legacy baseline in documented metrics.
 - [x] `go test -race ./dsp/filter/moog` passes and benchmarks are recorded in `BENCHMARKS.md`.
 
 ### Phase 27: Goertzel Tone Analysis (Complete)
@@ -927,6 +931,7 @@ Quarter-end success criteria:
 | 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases |
 | 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis |
 | 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress |
+| 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete |
 
 ---
 

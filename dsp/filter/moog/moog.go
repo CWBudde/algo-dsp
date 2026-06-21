@@ -3,6 +3,9 @@ package moog
 import (
 	"fmt"
 	"math"
+
+	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+	"github.com/cwbudde/algo-dsp/dsp/filter/design"
 )
 
 // Variant selects the ladder topology used by a [Filter].
@@ -27,6 +30,14 @@ const (
 	// resonanceSelfOscillation is the feedback amount mapped to a normalized
 	// resonance of 1.0 (classic self-oscillation onset for a 4-pole ladder).
 	resonanceSelfOscillation = 4.0
+
+	// antiAliasOrder is the Butterworth order of the oversampling anti-alias
+	// filters used by the high-quality path.
+	antiAliasOrder = 4
+
+	// antiAliasCutoffScale places the anti-alias cutoff just below the base
+	// Nyquist frequency (relative to the base sample rate).
+	antiAliasCutoffScale = 0.45
 )
 
 // Filter is a stateful nonlinear Moog ladder lowpass filter.
@@ -44,20 +55,28 @@ type Filter struct {
 	sampleRate float64
 
 	// Derived coefficients (recomputed by recalc).
-	coeff       float64 // per-stage update gain k
+	coeff       float64 // per-stage update gain k at the base rate
+	coeffOS     float64 // per-stage update gain k at the oversampled rate
 	scaleFactor float64 // output scaling
 	vtInv       float64 // 1 / thermalVoltage
 
-	s [4]float64 // ladder integrator states
-	t [3]float64 // cached tanh outputs of stages 0..2
+	// High-quality oversampling path (nil/1 when disabled).
+	oversampling int
+	upAA         *biquad.Chain // interpolation anti-alias filter (at OS rate)
+	downAA       *biquad.Chain // decimation anti-alias filter (at OS rate)
+
+	s      [4]float64 // ladder integrator states
+	t      [3]float64 // cached tanh outputs of stages 0..2
+	prevS3 float64    // previous fourth-stage state (half-sample feedback comp.)
 }
 
 type config struct {
-	variant   Variant
-	fastTanh  bool
-	resonance float64
-	thermalV  float64
-	gain      float64
+	variant      Variant
+	fastTanh     bool
+	resonance    float64
+	thermalV     float64
+	gain         float64
+	oversampling int
 }
 
 // Option configures a [Filter] at construction time.
@@ -79,17 +98,24 @@ func WithThermalVoltage(vt float64) Option { return func(c *config) { c.thermalV
 // WithGain sets the output gain applied before resonance scaling (default 1).
 func WithGain(g float64) Option { return func(c *config) { c.gain = g } }
 
+// WithOversampling enables the high-quality oversampled path at the given
+// factor (1, 2, 4, or 8; default 1 = disabled). Factors above 1 run the ladder
+// at factor×sampleRate with anti-alias filtering and Huovilainen half-sample
+// feedback compensation, reducing aliasing at high drive and resonance.
+func WithOversampling(factor int) Option { return func(c *config) { c.oversampling = factor } }
+
 // New creates a Moog ladder filter at the given cutoff (Hz) and sample rate.
 //
 // The cutoff must lie in (0, sampleRate/2). Optional parameters are applied via
 // [Option] values. Returns an error for invalid parameters.
 func New(cutoffHz, sampleRate float64, opts ...Option) (*Filter, error) {
 	cfg := config{
-		variant:   SimpleClassic,
-		fastTanh:  false,
-		resonance: 0,
-		thermalV:  defaultThermalVoltage,
-		gain:      defaultGain,
+		variant:      SimpleClassic,
+		fastTanh:     false,
+		resonance:    0,
+		thermalV:     defaultThermalVoltage,
+		gain:         defaultGain,
+		oversampling: 1,
 	}
 
 	for _, o := range opts {
@@ -120,55 +146,125 @@ func New(cutoffHz, sampleRate float64, opts ...Option) (*Filter, error) {
 		return nil, fmt.Errorf("moog: gain must be finite, got %v", cfg.gain)
 	}
 
+	if !validOversampling(cfg.oversampling) {
+		return nil, fmt.Errorf("moog: oversampling factor must be one of {1, 2, 4, 8}, got %d", cfg.oversampling)
+	}
+
 	f := &Filter{
-		variant:    cfg.variant,
-		fastTanh:   cfg.fastTanh,
-		cutoff:     cutoffHz,
-		resonance:  cfg.resonance,
-		thermalV:   cfg.thermalV,
-		gain:       cfg.gain,
-		sampleRate: sampleRate,
+		variant:      cfg.variant,
+		fastTanh:     cfg.fastTanh,
+		cutoff:       cutoffHz,
+		resonance:    cfg.resonance,
+		thermalV:     cfg.thermalV,
+		gain:         cfg.gain,
+		sampleRate:   sampleRate,
+		oversampling: cfg.oversampling,
 	}
 	f.recalc()
 
 	return f, nil
 }
 
+func validOversampling(factor int) bool {
+	return factor == 1 || factor == 2 || factor == 4 || factor == 8
+}
+
 // recalc recomputes the derived coefficients from the current parameters.
 func (f *Filter) recalc() {
-	g := 2 * f.thermalV * (1 - math.Exp(-2*math.Pi*f.cutoff/f.sampleRate))
+	f.vtInv = 1 / f.thermalV
+	f.coeff = f.stageGain(f.sampleRate)
+
+	amp := math.Pow(10, f.resonance/20) // dB_to_Amp(resonance)
+	f.scaleFactor = f.gain * amp * amp
+
+	if f.oversampling > 1 {
+		osRate := f.sampleRate * float64(f.oversampling)
+		f.coeffOS = f.stageGain(osRate)
+
+		// Anti-alias cutoff just below the base Nyquist, designed at OS rate.
+		aaHz := antiAliasCutoffScale * f.sampleRate
+		coeffs := design.ButterworthLP(aaHz, antiAliasOrder, osRate)
+		f.upAA = biquad.NewChain(coeffs)
+		f.downAA = biquad.NewChain(coeffs)
+	} else {
+		f.coeffOS = 0
+		f.upAA = nil
+		f.downAA = nil
+	}
+}
+
+// stageGain returns the per-stage update coefficient at the given rate.
+func (f *Filter) stageGain(rate float64) float64 {
+	g := 2 * f.thermalV * (1 - math.Exp(-2*math.Pi*f.cutoff/rate))
 	if f.variant == ImprovedClassic {
 		g *= 2 * f.thermalV
 	}
 
-	f.coeff = g
-	f.vtInv = 1 / f.thermalV
-
-	amp := math.Pow(10, f.resonance/20) // dB_to_Amp(resonance)
-	f.scaleFactor = f.gain * amp * amp
+	return g
 }
 
 // ProcessSample filters one input sample and returns the output.
 func (f *Filter) ProcessSample(x float64) float64 {
+	if f.oversampling > 1 {
+		return f.processOversampled(x)
+	}
+
+	return f.ladderStep(x, f.coeff, f.s[3])
+}
+
+// ladderStep runs one ladder iteration at the given stage coefficient, using
+// feedback as the resonance feedback signal, and returns the scaled output.
+func (f *Filter) ladderStep(x, coeff, feedback float64) float64 {
 	tanhFn := math.Tanh
 	if f.fastTanh {
 		tanhFn = fastTanh
 	}
 
-	in := x - f.resonance*f.s[3]
+	in := x - f.resonance*feedback
 
-	f.s[0] += f.coeff * (tanhFn(0.5*in*f.vtInv) - f.t[0])
+	f.s[0] += coeff * (tanhFn(0.5*in*f.vtInv) - f.t[0])
 	f.t[0] = tanhFn(0.5 * f.s[0] * f.vtInv)
 
-	f.s[1] += f.coeff * (f.t[0] - f.t[1])
+	f.s[1] += coeff * (f.t[0] - f.t[1])
 	f.t[1] = tanhFn(0.5 * f.s[1] * f.vtInv)
 
-	f.s[2] += f.coeff * (f.t[1] - f.t[2])
+	f.s[2] += coeff * (f.t[1] - f.t[2])
 	f.t[2] = tanhFn(0.5 * f.s[2] * f.vtInv)
 
-	f.s[3] += f.coeff * (f.t[2] - tanhFn(0.5*f.s[3]*f.vtInv))
+	f.s[3] += coeff * (f.t[2] - tanhFn(0.5*f.s[3]*f.vtInv))
 
 	return f.scaleFactor * f.s[3]
+}
+
+// processOversampled runs the high-quality path: the input is zero-stuffed to
+// the oversampled rate, interpolation/decimation anti-alias filtered, and the
+// ladder is run per oversampled tick with Huovilainen half-sample feedback
+// compensation (the feedback averages the current and previous fourth-stage
+// state).
+func (f *Filter) processOversampled(x float64) float64 {
+	os := float64(f.oversampling)
+
+	var out float64
+
+	for i := range f.oversampling {
+		in := 0.0
+		if i == 0 {
+			in = x * os
+		}
+
+		in = f.upAA.ProcessSample(in)
+
+		fb := 0.5 * (f.s[3] + f.prevS3)
+		f.prevS3 = f.s[3]
+
+		y := f.downAA.ProcessSample(f.ladderStep(in, f.coeffOS, fb))
+
+		if i == f.oversampling-1 {
+			out = y
+		}
+	}
+
+	return out
 }
 
 // ProcessInPlace filters a block of samples in place.
@@ -182,6 +278,15 @@ func (f *Filter) ProcessInPlace(buf []float64) {
 func (f *Filter) Reset() {
 	f.s = [4]float64{}
 	f.t = [3]float64{}
+	f.prevS3 = 0
+
+	if f.upAA != nil {
+		f.upAA.Reset()
+	}
+
+	if f.downAA != nil {
+		f.downAA.Reset()
+	}
 }
 
 // SetCutoff updates the cutoff frequency (Hz) and recomputes coefficients.
@@ -218,6 +323,20 @@ func (f *Filter) SetResonanceNormalized(r float64) error {
 	return f.SetResonance(r * resonanceSelfOscillation)
 }
 
+// SetOversampling updates the oversampling factor (1, 2, 4, or 8) and rebuilds
+// the anti-alias filters. The internal state is reset.
+func (f *Filter) SetOversampling(factor int) error {
+	if !validOversampling(factor) {
+		return fmt.Errorf("moog: oversampling factor must be one of {1, 2, 4, 8}, got %d", factor)
+	}
+
+	f.oversampling = factor
+	f.recalc()
+	f.Reset()
+
+	return nil
+}
+
 // SetSampleRate updates the sample rate (Hz) and recomputes coefficients.
 // The current cutoff must remain below the new Nyquist frequency.
 func (f *Filter) SetSampleRate(sr float64) error {
@@ -249,6 +368,10 @@ func (f *Filter) ThermalVoltage() float64 { return f.thermalV }
 
 // Variant returns the ladder topology in use.
 func (f *Filter) Variant() Variant { return f.variant }
+
+// Oversampling returns the oversampling factor (1 when the high-quality path is
+// disabled).
+func (f *Filter) Oversampling() int { return f.oversampling }
 
 func isFinite(v float64) bool {
 	return !math.IsNaN(v) && !math.IsInf(v, 0)

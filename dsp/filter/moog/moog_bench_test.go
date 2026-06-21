@@ -58,3 +58,21 @@ func BenchmarkProcessInPlace(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkProcessOversampled(b *testing.B) {
+	for _, os := range []int{2, 4, 8} {
+		b.Run(fmt.Sprintf("os=%d/N=1024", os), func(b *testing.B) {
+			f, _ := New(1000, 48000, WithOversampling(os), WithResonance(2))
+
+			buf := benchSignal(1024)
+
+			b.SetBytes(int64(1024 * 8))
+			b.ReportAllocs()
+			b.ResetTimer()
+
+			for b.Loop() {
+				f.ProcessInPlace(buf)
+			}
+		})
+	}
+}

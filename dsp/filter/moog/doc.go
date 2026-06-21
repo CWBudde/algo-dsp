@@ -22,6 +22,14 @@
 // of the tanh nonlinearity in the feedback-bound processing path at a small
 // accuracy cost.
 //
+// # High-quality (oversampled) path
+//
+// [WithOversampling] (factor 2, 4, or 8) runs the ladder at an integer multiple
+// of the sample rate with 4th-order Butterworth anti-alias filtering and
+// Huovilainen half-sample feedback compensation. This markedly reduces aliasing
+// produced by the saturating stages at high drive and resonance, at a
+// proportional CPU cost. The default factor of 1 keeps the single-rate path.
+//
 // # Parameters
 //
 // The core exposes the legacy parameters directly: cutoff (Hz), a raw
