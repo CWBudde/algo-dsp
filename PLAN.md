@@ -184,9 +184,9 @@ Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progres
 Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
 Phase 26: Nonlinear Moog Ladder Filters               [3 weeks]  ✅ Complete
 Phase 27: Goertzel Tone Analysis                      [2 weeks]  ✅ Complete
-Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  📋 Planned
-Phase 29: Dither and Noise Shaping                    [3 weeks]  📋 Planned
-Phase 30: Polyphase Hilbert / Analytic Signal         [2 weeks]  📋 Planned
+Phase 28: Loudness Metering (EBU R128 / BS.1770)      [3 weeks]  ✅ Complete
+Phase 29: Dither and Noise Shaping                    [3 weeks]  ✅ Complete
+Phase 30: Polyphase Hilbert / Analytic Signal         [2 weeks]  ✅ Complete
 Phase 31: Interpolation Kernel Expansion               [2 weeks]  📋 Planned
 ```
 
@@ -682,94 +682,134 @@ Exit criteria:
 - [x] Multi-bin Goertzel API available and benchmarked.
 - [x] `go test -race ./dsp/spectrum` passes with Goertzel additions.
 
-### Phase 28: Loudness Metering (EBU R128 / BS.1770) (Planned)
+### Phase 28: Loudness Metering (EBU R128 / BS.1770) (Complete)
 
 Goal:
 
 - Add standards-aligned loudness metering (momentary, short-term, integrated, loudness range, true peak track) with streaming APIs and parity checks against `legacy/Source/DSP/DAV_DspR128.pas`.
 
+Implementation status (snapshot):
+
+- `measure/loudness` package: a `Meter` with K-weighting prefilter chain, 400 ms momentary and
+  3 s short-term windows, integrated loudness with absolute/relative gating, multi-channel
+  (mono/stereo) support via `WithChannels`, true-peak tracking, and streaming APIs (`Reset`,
+  `StartIntegration`, `StopIntegration`, `ProcessSample`, `ProcessBlock`, `Momentary`,
+  `ShortTerm`, `Integrated`, `Peaks`).
+- R128/BS.1770 conformance tests (`r128_test.go`), runnable examples, and benchmarks pass
+  with `-race`. Depends only on `dsp/core`, `dsp/filter/biquad`, `dsp/filter/design`.
+- Recovered onto `main` from the orphaned release lineage (tag `v0.5.1`).
+- Deferred: allocation-free callback/event-hook API for periodic updates (left unchecked
+  below); explicit loudness-range (LRA) metric is not yet exposed.
+
 Tasks:
 
-- [ ] R128 core implementation
-  - [ ] Implement K-weighting prefilter chain (high-shelf + high-pass/RLB stage) per sample rate.
-  - [ ] Implement 400 ms momentary and 3 s short-term integration windows with overlap updates.
-  - [ ] Implement integrated loudness gating workflow (absolute gate and relative gate).
-  - [ ] Implement mono and stereo processors with shared core.
-- [ ] API and metrics surface
-  - [ ] Expose streaming meter state with `Reset`, `StartIntegration`, `StopIntegration`, and block/sample update APIs.
-  - [ ] Expose metrics: `LUFS-M`, `LUFS-S`, integrated LUFS, peak/hold, sample counters.
+- [x] R128 core implementation
+  - [x] Implement K-weighting prefilter chain (high-shelf + high-pass/RLB stage) per sample rate.
+  - [x] Implement 400 ms momentary and 3 s short-term integration windows with overlap updates.
+  - [x] Implement integrated loudness gating workflow (absolute gate and relative gate).
+  - [x] Implement mono and stereo processors with shared core.
+- [x] API and metrics surface
+  - [x] Expose streaming meter state with `Reset`, `StartIntegration`, `StopIntegration`, and block/sample update APIs.
+  - [x] Expose metrics: `LUFS-M`, `LUFS-S`, integrated LUFS, peak/hold, sample counters.
   - [ ] Add optional callbacks/event hooks for periodic loudness/peak updates without allocations.
-- [ ] Validation and conformance
-  - [ ] Add parity-oriented tests vs `DAV_DspR128.pas` behavior envelope.
-  - [ ] Add conformance tests against known R128/BS.1770 vectors and gating edge cases.
-  - [ ] Add sample-rate matrix tests and long-run numerical-stability tests.
-  - [ ] Add benchmarks for streaming/batch paths and allocation checks.
+- [x] Validation and conformance
+  - [x] Add parity-oriented tests vs `DAV_DspR128.pas` behavior envelope.
+  - [x] Add conformance tests against known R128/BS.1770 vectors and gating edge cases.
+  - [x] Add sample-rate matrix tests and long-run numerical-stability tests.
+  - [x] Add benchmarks for streaming/batch paths and allocation checks.
 
 Exit criteria:
 
-- [ ] R128 meter outputs for momentary/short/integrated are validated against references within tolerance.
-- [ ] Mono and stereo APIs documented with runnable examples.
-- [ ] `go test -race ./measure/...` passes with loudness additions.
+- [x] R128 meter outputs for momentary/short/integrated are validated against references within tolerance.
+- [x] Mono and stereo APIs documented with runnable examples.
+- [x] `go test -race ./measure/...` passes with loudness additions.
 
-### Phase 29: Dither and Noise Shaping (Planned)
+### Phase 29: Dither and Noise Shaping (Complete)
 
 Goal:
 
 - Add quantization support with configurable dither PDFs and FIR/IIR noise-shaping paths, including predefined shaper sets and design tooling inspired by `legacy/Source/DSP/DAV_DspDitherNoiseShaper.pas` and `legacy/Source/DSP/DAV_DspNoiseShapingFilterDesigner.pas`.
 
+Implementation status (snapshot):
+
+- Self-contained `dsp/dither` package: `DitherType` enum and PDFs (none/rectangular/
+  triangular/gaussian/fast-gaussian) with deterministic RNG injection (`dither.go`,
+  `options.go`), a `Quantizer` with int/float output modes and optional limiting
+  (`quantizer.go`), a `NoiseShaper` interface with FIR error-feedback (`shaper_fir.go`) and
+  IIR low-shelf (`shaper_iir.go`) implementations, and legacy coefficient presets
+  (`presets.go`).
+- Design tooling in `dsp/dither/design`: ATH and critical-bandwidth models (`ath.go`) plus a
+  stochastic ATH-weighted coefficient optimizer with cancellation/guardrails (`designer.go`).
+- Tests, runnable examples, and benchmarks pass with `-race`; the package depends only on
+  `dsp/filter/biquad` and `dsp/filter/design` (both already present).
+- Ported onto `main` from the orphaned release lineage (see Appendix H history note).
+
 Tasks:
 
-- [ ] Dither core
-  - [ ] Implement bit-depth quantizer core with int/float output modes and optional output limiting.
-  - [ ] Implement dither modes: none, rectangular/equal, triangular, gaussian, fast-gaussian.
-  - [ ] Implement deterministic RNG injection for reproducible testing.
-- [ ] Noise-shaping processors
-  - [ ] Implement FIR error-feedback noise shaper with configurable coefficients and history ring buffer.
-  - [ ] Port predefined coefficient families/presets from legacy (E/F/IE/ME/SBM/sharp variants).
-  - [ ] Implement sample-rate-aware “sharp” preset selection logic.
-  - [ ] Implement optional IIR shelf-based shaping variant for lightweight mode.
-- [ ] Noise-shaping filter design tooling
-  - [ ] Add a filter-designer utility package for psychoacoustically weighted noise-shaper coefficient search (ATH/critical-band weighting based objective).
-  - [ ] Provide deterministic search mode and exportable coefficient outputs for embedding in runtime presets.
-  - [ ] Add guardrails on order/loop-count/runtime and cancellation support for long searches.
-- [ ] Validation and quality
-  - [ ] Add null/error-spectrum tests validating expected in-band noise reduction behavior.
-  - [ ] Add parity checks against legacy presets for representative sample rates.
-  - [ ] Add benchmarks for per-sample quantization path and preset designer runtime.
+- [x] Dither core
+  - [x] Implement bit-depth quantizer core with int/float output modes and optional output limiting.
+  - [x] Implement dither modes: none, rectangular/equal, triangular, gaussian, fast-gaussian.
+  - [x] Implement deterministic RNG injection for reproducible testing.
+- [x] Noise-shaping processors
+  - [x] Implement FIR error-feedback noise shaper with configurable coefficients and history ring buffer.
+  - [x] Port predefined coefficient families/presets from legacy (E/F/IE/ME/SBM/sharp variants).
+  - [x] Implement sample-rate-aware “sharp” preset selection logic.
+  - [x] Implement optional IIR shelf-based shaping variant for lightweight mode.
+- [x] Noise-shaping filter design tooling
+  - [x] Add a filter-designer utility package for psychoacoustically weighted noise-shaper coefficient search (ATH/critical-band weighting based objective).
+  - [x] Provide deterministic search mode and exportable coefficient outputs for embedding in runtime presets.
+  - [x] Add guardrails on order/loop-count/runtime and cancellation support for long searches.
+- [x] Validation and quality
+  - [x] Add null/error-spectrum tests validating expected in-band noise reduction behavior.
+  - [x] Add parity checks against legacy presets for representative sample rates.
+  - [x] Add benchmarks for per-sample quantization path and preset designer runtime.
 
 Exit criteria:
 
-- [ ] Dither + FIR noise-shaper runtime paths are stable and documented.
-- [ ] Preset and designed shapers are validated by spectral tests.
-- [ ] `go test -race ./dsp/...` passes for new quantization/noise-shaping packages.
+- [x] Dither + FIR noise-shaper runtime paths are stable and documented.
+- [x] Preset and designed shapers are validated by spectral tests.
+- [x] `go test -race ./dsp/...` passes for new quantization/noise-shaping packages.
 
-### Phase 30: Polyphase Hilbert / Analytic Signal (Planned)
+### Phase 30: Polyphase Hilbert / Analytic Signal (Complete)
 
 Goal:
 
 - Add a production-quality polyphase half-pi Hilbert transformer for analytic signal and envelope extraction workflows, based on `legacy/Source/DSP/DAV_DspPolyphaseHilbert.pas` (HIIR-style allpass/polyphase approach).
 
+Implementation status (snapshot):
+
+- Self-contained `dsp/filter/hilbert` package with 64-bit (`hilbert64.go`) and 32-bit
+  (`hilbert32.go`) two-path polyphase/allpass processors producing quadrature (A/B) outputs
+  with reusable state, an analytic-envelope helper, a coefficient designer (`designer.go`),
+  and presets (`preset.go`).
+- Phase-quadrature, amplitude-matching, and image-rejection tests, runnable examples, and
+  benchmarks pass with `-race`.
+- Recovered onto `main` from tags `v0.5.0`/`v0.5.1` (commit `e3a6267`); paired with the
+  `Chain.Gain`/`SetGain` accessors added to `dsp/filter/biquad/chain.go`. The bundled
+  frequency-shifter effect and webdemo wiring from that commit were deferred to a later
+  effects-porting pass (see Appendix H history note).
+
 Tasks:
 
-- [ ] Polyphase Hilbert core
-  - [ ] Implement 32-bit and 64-bit processor variants with reusable state.
-  - [ ] Implement two-path polyphase/allpass structure producing quadrature outputs (A/B) with half-sample alignment handling.
-  - [ ] Implement coefficient-count-specialized fast paths for small orders and generic fallback path.
-- [ ] API and processing modes
-  - [ ] Expose `ProcessSample`, `ProcessBlock`, `Reset/ClearBuffers`, and coefficient-configuration APIs.
-  - [ ] Provide envelope helper derived from analytic signal magnitude.
-  - [ ] Define coefficient source/validation contracts and numeric safety checks.
-- [ ] Validation and characterization
-  - [ ] Add phase-quadrature tests (near 90° target across passband).
-  - [ ] Add amplitude-matching and image-rejection tests for analytic signal generation.
-  - [ ] Add parity-oriented checks against legacy outputs for selected coefficient sets.
-  - [ ] Add benchmarks and allocation checks for block/sample APIs.
+- [x] Polyphase Hilbert core
+  - [x] Implement 32-bit and 64-bit processor variants with reusable state.
+  - [x] Implement two-path polyphase/allpass structure producing quadrature outputs (A/B) with half-sample alignment handling.
+  - [x] Implement coefficient-count-specialized fast paths for small orders and generic fallback path.
+- [x] API and processing modes
+  - [x] Expose `ProcessSample`, `ProcessBlock`, `Reset/ClearBuffers`, and coefficient-configuration APIs.
+  - [x] Provide envelope helper derived from analytic signal magnitude.
+  - [x] Define coefficient source/validation contracts and numeric safety checks.
+- [x] Validation and characterization
+  - [x] Add phase-quadrature tests (near 90° target across passband).
+  - [x] Add amplitude-matching and image-rejection tests for analytic signal generation.
+  - [x] Add parity-oriented checks against legacy outputs for selected coefficient sets.
+  - [x] Add benchmarks and allocation checks for block/sample APIs.
 
 Exit criteria:
 
-- [ ] Hilbert processor achieves documented quadrature and image-rejection targets.
-- [ ] Streaming and block APIs pass race/tests with no unexpected allocations.
-- [ ] Runnable examples for quadrature and envelope extraction are included.
+- [x] Hilbert processor achieves documented quadrature and image-rejection targets.
+- [x] Streaming and block APIs pass race/tests with no unexpected allocations.
+- [x] Runnable examples for quadrature and envelope extraction are included.
 
 ### Phase 31: Interpolation Kernel Expansion (Planned)
 
@@ -932,6 +972,40 @@ Quarter-end success criteria:
 | 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis |
 | 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress |
 | 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete |
+| 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below. |
+| 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades). |
+
+---
+
+### Repository history note: disjoint lineages
+
+As of 2026-06-21, this repository contains **two unrelated Git histories with no common
+ancestor** (the root `initial commit` differs: `main` roots at `7639b95`, the release line at
+`b3d2887`, both stamped `2026-02-06 15:23:50`). At some point `main` was re-initialised,
+orphaning the original development line.
+
+- **`main`** (root `7639b95`) originally carried only the recent Moog / Goertzel work and
+  lacked the v0.2–v0.5 release content.
+- **Release lineage** (tags `v0.2.0`–`v0.5.1`, root `b3d2887`) and the `claude/*` branches
+  contained the dither, Hilbert, loudness, `effectchain`, and the full v0.2–v0.5 effect set,
+  but none of `main`'s recent Moog/Goertzel work.
+
+**Decision:** `main` is the source of truth; release-line work is forward-ported feature by
+feature (file-grab / cherry-pick), **not** merged — a cross-history `git merge` is
+inappropriate here.
+
+**Recovered onto `main`** (this reconciliation pass): Phase 28 (loudness), Phase 29 (dither),
+Phase 30 (Hilbert); the stranded effects (granular, spectral-freeze, vocoder, rotary speaker,
+frequency shifter, convolution reverb) + `dsp/conv` partitioned convolution; the release-line
+Moog (a functional superset — regained `VariantZDF`/Newton; main's reduced reimplementation was
+replaced, no callers broke); and the `dsp/effectchain` subsystem (which required upgrading
+`effects.Delay` and `effects.Distortion` to their release-line superset versions).
+
+**Outstanding backlog:** Goertzel exists on both lineages (independent reimplementations — `main`
+re-did Phase 27); reconcile if a single canonical version is wanted. Re-audit any remaining drift
+with `git diff --stat main v0.5.1 -- dsp/ measure/ stats/`. Consider archiving the orphan
+`claude/*` branches and re-cutting release tags from `main` once reconciliation is verified
+complete.
 
 ---
 
