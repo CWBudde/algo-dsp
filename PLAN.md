@@ -177,8 +177,8 @@ Phase 17: Effects — High-Priority Spatial             [1 week]   ✅ Complete
 Phase 18: Effects — Medium-Priority Waveshaping/Lo-fi [2 weeks]  ✅ Complete
 Phase 19: Effects — Medium-Priority Modulation        [2 weeks]  ✅ Complete
 Phase 20: Effects — Medium-Priority Dynamics          [2 weeks]  ✅ Complete
-Phase 21: Effects — Spatial and Convolution Reverb    [2 weeks]  📋 Planned
-Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  📋 Planned
+Phase 21: Effects — Spatial and Convolution Reverb    [2 weeks]  🔄 In Progress
+Phase 22: Effects — Specialized / Lower-Priority      [4 weeks]  🔄 In Progress
 Phase 23: High-Order Shelving Filters                  [2 weeks]  🔄 In Progress
 Phase 24: Optimization and SIMD Paths                 [3 weeks]  🔄 In Progress
 Phase 25: API Stabilization and v1.0                  [2 weeks]  🔄 In Progress
@@ -462,27 +462,44 @@ Tasks:
   - [x] Implement delay + detector + gain.
   - [x] Add tests + example.
 
-### Phase 21: Effects — Spatial and Convolution Reverb (Planned)
+### Phase 21: Effects — Spatial and Convolution Reverb (In Progress)
+
+Implementation status (snapshot):
+
+- Convolution reverb (`dsp/effects/reverb/convolution.go`) wraps the partitioned convolution
+  kernel (`dsp/conv/partitioned.go`, FFT-backed, tested). Recovered onto `main` from the
+  orphaned release lineage along with the rest of the effects (see Appendix H).
+- Still open: dedicated reverb-level tests/example for the convolution wrapper, and the Haas
+  delay.
 
 Tasks:
 
 - [ ] Convolution reverb
-  - [ ] Implement partitioned convolution wrapper specialized for reverb usage.
+  - [x] Implement partitioned convolution wrapper specialized for reverb usage.
   - [ ] Add tests + example.
 - [ ] Haas delay
   - [ ] Implement short stereo delay + constraints.
   - [ ] Add tests + example.
 
-### Phase 22: Effects — Specialized / Lower-Priority (Planned)
+### Phase 22: Effects — Specialized / Lower-Priority (In Progress)
+
+Implementation status (snapshot):
+
+- Recovered onto `main` from the orphaned release lineage (see Appendix H): spectral freeze
+  (`dsp/effects/spectral_freeze.go`, with tests + example), granular
+  (`dsp/effects/granular.go`, with tests + example), and vocoder (`dsp/effects/vocoder.go`,
+  with tests; runnable example still pending).
+- Still open: dynamic EQ, stereo panner, pitch correction (YIN), noise reduction, and the
+  vocoder example.
 
 Tasks:
 
-- [ ] Spectral freeze
-  - [ ] Implement STFT magnitude hold + phase strategy.
-  - [ ] Add tests + example.
-- [ ] Granular
-  - [ ] Implement grain scheduling + overlap-add.
-  - [ ] Add tests + example.
+- [x] Spectral freeze
+  - [x] Implement STFT magnitude hold + phase strategy.
+  - [x] Add tests + example.
+- [x] Granular
+  - [x] Implement grain scheduling + overlap-add.
+  - [x] Add tests + example.
 - [ ] Dynamic EQ
   - [ ] Implement band filter + detector + gain mapping.
   - [ ] Add tests + example.
@@ -490,7 +507,7 @@ Tasks:
   - [ ] Implement equal-power pan law.
   - [ ] Add tests + example.
 - [ ] Vocoder
-  - [ ] Implement analysis bank + envelopes + carrier shaping.
+  - [x] Implement analysis bank + envelopes + carrier shaping.
   - [ ] Add tests + example.
 - [ ] Pitch correction
   - [ ] Implement YIN helper + integrate with spectral shifter.
@@ -599,18 +616,20 @@ Goal:
 
 Implementation status (snapshot):
 
-- Legacy-faithful core in `dsp/filter/moog` (`moog.go`, `fasttanh.go`): the four Pascal
-  variants (Simple/Improved × full-`tanh`/fast-`tanh`), constructor+options, setters,
-  `ProcessSample`/`ProcessInPlace`/`Reset`, validation, and a musical normalized-resonance
-  wrapper.
-- High-quality path (`WithOversampling`, 2/4/8×): ladder runs at the oversampled rate with
-  4th-order Butterworth anti-alias filtering and Huovilainen half-sample feedback compensation
-  (`processOversampled`). This is the chosen "or-equivalent" higher-accuracy discretization;
-  a literal zero-delay-feedback/Newton solver was not needed to beat the baseline. A test
-  measures ~25 dB alias rejection on the folded 5th harmonic (`highquality_test.go`).
-- Tests (`moog_test.go`, `legacy_parity_test.go`, `highquality_test.go`), examples
-  (`example_test.go`), and benchmarks (`moog_bench_test.go`) pass with race; coverage 97.7%;
-  hot paths 0 allocs/op; numbers recorded in `BENCHMARKS.md`.
+- `dsp/filter/moog` now uses the more complete release-lineage implementation, adopted onto
+  `main` during the reconciliation pass (see Appendix H). `New(sampleRate, ...Option)` exposes
+  six variants via `WithVariant` — `VariantClassic`, `VariantClassicLightweight`,
+  `VariantImprovedClassic`, `VariantImprovedClassicLightweight`, `VariantHuovilainen`,
+  `VariantZDF` — plus the full option/setter surface (`WithCutoffHz`, `WithDrive`,
+  `WithInputGain`, `WithOutputGain`, `WithThermalVoltage`, `WithOversampling`,
+  `WithNormalizeOutput`, `WithNewtonIterations`, and matching setters).
+- `VariantZDF` adds the zero-delay-feedback topology with Newton-Raphson iteration (Zavalishin
+  TPT / D'Angelo–Välimäki) for the highest cutoff accuracy and most faithful self-oscillation —
+  the path the earlier main-only reimplementation lacked. Oversampling (`WithOversampling`,
+  2/4/8×) with anti-alias filtering and Huovilainen half-sample feedback compensation remains
+  available for the other variants.
+- Tests (`moog_test.go`), examples (`example_test.go`), and benchmarks (`moog_bench_test.go`)
+  pass with `-race`.
 
 Tasks:
 
@@ -974,6 +993,7 @@ Quarter-end success criteria:
 | 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete                                                                                                                                                                                       |
 | 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below.                                                                                                                                                                   |
 | 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades). |
+| 0.10    | 2026-06-21 | Claude  | Status refresh after the recovery: Phase 21 (convolution reverb done, Haas pending) and Phase 22 (spectral-freeze/granular/vocoder done; dynamic-EQ/panner/pitch-correction/noise-reduction pending) moved Planned → In Progress with their done items checked; refreshed the Phase 26 Moog snapshot to describe the adopted six-variant release-line filter (incl. `VariantZDF`); swapped the web demo to the `dsp/effectchain`-driven architecture + IR library (PR #14). |
 
 ---
 
@@ -1008,9 +1028,20 @@ API (options/configurable `DB` floor, `Complex`, `NormalizedMagnitude`, allocati
 base, plus the release line's faster register-hoisted `ProcessBlock` and its one-shot
 `AnalyzeBlock` helper.
 
-**Outstanding backlog:** Re-audit any remaining drift with
-`git diff --stat main v0.5.1 -- dsp/ measure/ stats/`. Consider archiving the orphan `claude/*`
-branches and re-cutting release tags from `main` once reconciliation is verified complete.
+**Web demo (PR #14):** the demo was swapped from its webdemo-local effect chain to the
+`dsp/effectchain`-driven architecture (adapter + configure) and gained the IR library
+(`irlib.go` + embedded data) so the recovered convolution reverb is usable. This is app-layer
+(`internal/webdemo` + `web/`), not library code, and needs browser validation in review.
+
+**Status:** a full file-level audit (`v0.5.1` vs `main`) shows **no DSP library source remains
+stranded** — every `dsp/`, `measure/`, and `stats/` file is on `main`. The only release-line
+files not on `main` are app-layer (the webdemo glue handled by PR #14) and tooling. The orphan
+`claude/*` branches carry no unique library work (older flat-layout duplicates, preserved in
+tags `v0.2.0`–`v0.5.1`) and can be archived.
+
+**Net-new (not recovery):** the still-open Phase 21/22 items — Haas delay, dynamic EQ, stereo
+panner, pitch correction (YIN), noise reduction — were never implemented on either lineage and
+remain genuine future work.
 
 ---
 
