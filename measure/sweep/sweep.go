@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/cmplx"
 
 	algofft "github.com/cwbudde/algo-fft"
 )
@@ -91,14 +90,22 @@ func (s *LogSweep) Generate() ([]float64, error) {
 
 // InverseFilter creates the inverse filter for deconvolution.
 //
-// For a log sweep, the inverse filter is the time-reversed sweep with
-// amplitude compensation that decreases at 6 dB/octave (to compensate
-// for the sweep's increasing energy per frequency band):
+// For a log sweep, the inverse filter is the time-reversed sweep with an
+// amplitude envelope proportional to the instantaneous frequency
+// (Farina's method):
 //
-//	h_inv(t) = x(T-t) * (f1/f(T-t))
+//	h_inv(t) = x(T-t) * (f(T-t)/f2)
 //
-// This ensures that convolution of the sweep with its inverse yields
-// an impulse (Dirac delta).
+// A log sweep spends equal time per octave, so its power spectral density
+// falls at -3 dB/octave and |X(f)| is proportional to 1/sqrt(f). The
+// convolution x * h_inv has magnitude |X(f)| * |X(f)| * env(f); a spectrally
+// flat result therefore needs env proportional to f, i.e. the low-frequency
+// (late) portion of the reversed sweep is attenuated by 6 dB/octave.
+// (Using env proportional to 1/f — attenuating the high-frequency end —
+// tilts the deconvolved spectrum by -12 dB/octave instead.)
+//
+// The filter is scaled so that convolving the sweep with it yields an
+// impulse of unit amplitude at sample len(inv)-1.
 func (s *LogSweep) InverseFilter() ([]float64, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -115,11 +122,9 @@ func (s *LogSweep) InverseFilter() ([]float64, error) {
 	ratio := s.EndFreq / s.StartFreq
 	lnRatio := math.Log(ratio)
 
-	// The amplitude envelope for the inverse filter compensates for
-	// the log sweep's increasing instantaneous frequency.
-	// At time t, the instantaneous frequency is f1*exp(t*ln(f2/f1)/T).
-	// The inverse filter at position i corresponds to sweep time T - t_inv.
 	inv := make([]float64, n)
+	normFactor := 0.0
+
 	for i := range inv {
 		// Reverse index into the original sweep
 		j := n - 1 - i
@@ -130,17 +135,17 @@ func (s *LogSweep) InverseFilter() ([]float64, error) {
 		// Instantaneous frequency at time t
 		fInst := s.StartFreq * math.Exp(t/T*lnRatio)
 
-		// Amplitude compensation: normalize by instantaneous frequency
-		// (6 dB/octave rolloff to flatten the energy spectrum)
-		amp := s.StartFreq / fInst
+		// Amplitude compensation proportional to instantaneous frequency,
+		// normalized so the envelope peaks at 1 at the high-frequency end.
+		amp := fInst / s.EndFreq
 
 		inv[i] = sweep[j] * amp
+
+		// The identity-system convolution peak at lag n-1 is exactly
+		// sum(sweep[j]^2 * amp[j]); accumulate it for exact unity scaling.
+		normFactor += sweep[j] * sweep[j] * amp
 	}
 
-	// Normalize so that the convolution peak is unity
-	// The normalization factor is the integral of the squared inverse
-	// which for a log sweep evaluates to T*f1/ln(f2/f1)
-	normFactor := T * s.StartFreq / lnRatio * s.SampleRate
 	if normFactor > 0 {
 		scale := 1.0 / normFactor
 		for i := range inv {
@@ -153,9 +158,10 @@ func (s *LogSweep) InverseFilter() ([]float64, error) {
 
 // Deconvolve recovers the impulse response from a recorded sweep response.
 //
-// Given a system response to the log sweep, this performs FFT-based
-// deconvolution by dividing the response spectrum by the sweep spectrum
-// (with regularization). The result is the system's impulse response.
+// The recorded response is convolved (via FFT) with the inverse filter.
+// For a causal system the linear impulse response starts at sample
+// len(inverse)-1 of the returned slice, with harmonic distortion IRs at
+// predictable offsets before it (see ExtractHarmonicIRs).
 func (s *LogSweep) Deconvolve(response []float64) ([]float64, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -382,8 +388,18 @@ func (s *LinearSweep) Generate() ([]float64, error) {
 	return out, nil
 }
 
-// InverseFilter creates an inverse filter for the linear sweep using
-// spectral division with regularization.
+// InverseFilter creates the inverse (matched) filter for the linear sweep.
+//
+// A linear chirp has a flat power spectral density within its band, so its
+// matched filter — the time-reversed sweep — already yields a spectrally
+// flat deconvolution; no amplitude envelope is required. The filter is
+// scaled by the sweep energy so that convolving the sweep with it yields an
+// impulse of unit amplitude at sample len(inv)-1.
+//
+// (An earlier implementation computed a regularized spectral inverse over a
+// zero-padded FFT and then truncated the result to the sweep length, which
+// discarded the non-causal half of the filter energy — self-deconvolution
+// peaked at the wrong index with amplitude far below unity.)
 func (s *LinearSweep) InverseFilter() ([]float64, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -395,49 +411,28 @@ func (s *LinearSweep) InverseFilter() ([]float64, error) {
 	}
 
 	n := len(sweep)
-	fftSize := nextPowerOf2(2 * n)
 
-	plan, err := algofft.NewPlan64(fftSize)
-	if err != nil {
-		return nil, fmt.Errorf("sweep: failed to create FFT plan: %w", err)
+	energy := 0.0
+	for _, v := range sweep {
+		energy += v * v
 	}
 
-	// FFT the sweep
-	sweepPadded := make([]complex128, fftSize)
-	for i, v := range sweep {
-		sweepPadded[i] = complex(v, 0)
+	if energy <= 0 {
+		return nil, ErrEmptyResponse
 	}
 
-	sweepFreq := make([]complex128, fftSize)
-	if err := plan.Forward(sweepFreq, sweepPadded); err != nil {
-		return nil, fmt.Errorf("sweep: forward FFT failed: %w", err)
+	inv := make([]float64, n)
+	for i := range inv {
+		inv[i] = sweep[n-1-i] / energy
 	}
 
-	// Compute regularized inverse: conj(H) / (|H|^2 + epsilon)
-	const epsilon = 1e-6
-
-	invFreq := make([]complex128, fftSize)
-	for i := range invFreq {
-		hConj := cmplx.Conj(sweepFreq[i])
-		hMagSq := real(sweepFreq[i])*real(sweepFreq[i]) + imag(sweepFreq[i])*imag(sweepFreq[i])
-		invFreq[i] = hConj / complex(hMagSq+epsilon, 0)
-	}
-
-	// Inverse FFT
-	invTime := make([]complex128, fftSize)
-	if err := plan.Inverse(invTime, invFreq); err != nil {
-		return nil, fmt.Errorf("sweep: inverse FFT failed: %w", err)
-	}
-
-	result := make([]float64, n)
-	for i := range result {
-		result[i] = real(invTime[i])
-	}
-
-	return result, nil
+	return inv, nil
 }
 
 // Deconvolve recovers the impulse response from a recorded linear sweep response.
+//
+// For a causal system the impulse response starts at sample
+// len(inverse)-1 of the returned slice.
 func (s *LinearSweep) Deconvolve(response []float64) ([]float64, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err

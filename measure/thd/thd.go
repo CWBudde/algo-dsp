@@ -27,19 +27,36 @@ type Config struct {
 }
 
 // Result holds THD measurement results.
+//
+// All ratios are amplitude ratios computed in the power domain per the
+// IEEE root-sum-square (RSS) definitions: a metric that aggregates several
+// spectral components is sqrt(sum of component powers) / fundamental
+// amplitude. Two harmonics of 1%% each therefore yield THD = 1.414%%,
+// not 2%%.
 type Result struct {
-	FundamentalFreq  float64
+	FundamentalFreq float64
+	// FundamentalLevel is the RSS amplitude of the fundamental, including
+	// the configured capture window around its bin.
 	FundamentalLevel float64
-	THD              float64
-	THDN             float64
-	THD_dB           float64
-	THDN_dB          float64
-	OddHD            float64
-	EvenHD           float64
-	Noise            float64
-	RubNBuzz         float64
-	Harmonics        []float64
-	SINAD            float64
+	// THD is sqrt(sum of harmonic powers) / fundamental amplitude (THD_R).
+	THD float64
+	// THDN is sqrt(total in-range power minus fundamental power) /
+	// fundamental amplitude.
+	THDN    float64
+	THD_dB  float64
+	THDN_dB float64
+	// OddHD and EvenHD are RSS amplitude ratios over odd/even harmonics.
+	OddHD  float64
+	EvenHD float64
+	// Noise is the RSS amplitude ratio of in-range energy that is neither
+	// the fundamental nor a captured harmonic.
+	Noise float64
+	// RubNBuzz is the RSS amplitude ratio over harmonics k >= RubNBuzzStart.
+	RubNBuzz float64
+	// Harmonics holds per-harmonic amplitude ratios |H_k|/|H_1|.
+	Harmonics []float64
+	// SINAD is -THDN_dB: 10*log10(fundamental power / (noise+distortion power)).
+	SINAD float64
 }
 
 // Calculator performs THD analysis on frequency-domain data.
@@ -117,17 +134,24 @@ func (c *Calculator) AnalyzeSignal(signal []float64) Result {
 		winType = window.TypeHann
 	}
 
-	coeffs := window.Generate(winType, len(signal))
+	// Analyze at most fftSize samples: windowing is applied to the segment
+	// that actually enters the FFT.
+	segment := signal
+	if len(segment) > fftSize {
+		segment = segment[:fftSize]
+	}
+
+	coeffs := window.Generate(winType, len(segment))
 
 	inData := make([]complex128, fftSize)
 
-	for i := range signal {
+	for i := range segment {
 		w := 1.0
-		if len(coeffs) == len(signal) {
+		if len(coeffs) == len(segment) {
 			w = coeffs[i]
 		}
 
-		inData[i] = complex(signal[i]*w, 0)
+		inData[i] = complex(segment[i]*w, 0)
 	}
 
 	plan, err := algofft.NewPlan64(fftSize)
@@ -195,17 +219,22 @@ func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result {
 		captureBins = fundamentalBin / 2
 	}
 
-	fundamentalLevel := getBinValue(magSquared, fundamentalBin, captureBins)
-	if fundamentalLevel <= 0 {
+	// All aggregation happens in the power domain (sums of squared
+	// magnitudes); amplitude ratios are formed at the end via square roots.
+	// Summing linear magnitudes instead would inflate wideband terms such
+	// as the noise floor by roughly sqrt(bin count) — tens of dB at
+	// realistic FFT sizes.
+	fundamentalPower := getBinPower(magSquared, fundamentalBin, captureBins)
+	if fundamentalPower <= 0 {
 		return Result{
 			FundamentalFreq: float64(fundamentalBin) * binHz,
 		}
 	}
 
-	thdAbs := 0.0
-	oddAbs := 0.0
-	evenAbs := 0.0
-	rubAbs := 0.0
+	thdPower := 0.0
+	oddPower := 0.0
+	evenPower := 0.0
+	rubPower := 0.0
 	harmonics := make([]float64, 0, 8)
 
 	harmonicCount := 0
@@ -223,47 +252,50 @@ func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result {
 			continue
 		}
 
-		value := getBinValue(magSquared, bin, captureBins)
+		power := getBinPower(magSquared, bin, captureBins)
 
-		thdAbs += value
+		thdPower += power
 		if k%2 == 0 {
-			evenAbs += value
+			evenPower += power
 		} else {
-			oddAbs += value
+			oddPower += power
 		}
 
 		if k >= cfg.RubNBuzzStart {
-			rubAbs += value
+			rubPower += power
 		}
 
-		if value > 0 {
-			harmonics = append(harmonics, value/fundamentalLevel)
+		if power > 0 {
+			harmonics = append(harmonics, math.Sqrt(power/fundamentalPower))
 		}
 
 		harmonicCount++
 	}
 
-	totalAbs := 0.0
+	totalPower := 0.0
+
 	for i := lowerBin; i <= upperBin; i++ {
-		totalAbs += sqrtPositive(magSquared[i])
+		if magSquared[i] > 0 {
+			totalPower += magSquared[i]
+		}
 	}
 
-	thdnAbs := totalAbs - fundamentalLevel
-	if thdnAbs < 0 {
-		thdnAbs = 0
+	thdnPower := totalPower - fundamentalPower
+	if thdnPower < 0 {
+		thdnPower = 0
 	}
 
-	noiseAbs := thdnAbs - thdAbs
-	if noiseAbs < 0 {
-		noiseAbs = 0
+	noisePower := thdnPower - thdPower
+	if noisePower < 0 {
+		noisePower = 0
 	}
 
-	thd := thdAbs / fundamentalLevel
-	thdn := thdnAbs / fundamentalLevel
-	odd := oddAbs / fundamentalLevel
-	even := evenAbs / fundamentalLevel
-	noise := noiseAbs / fundamentalLevel
-	rub := rubAbs / fundamentalLevel
+	thd := math.Sqrt(thdPower / fundamentalPower)
+	thdn := math.Sqrt(thdnPower / fundamentalPower)
+	odd := math.Sqrt(oddPower / fundamentalPower)
+	even := math.Sqrt(evenPower / fundamentalPower)
+	noise := math.Sqrt(noisePower / fundamentalPower)
+	rub := math.Sqrt(rubPower / fundamentalPower)
 
 	sinad := math.Inf(1)
 	if thdn > 0 {
@@ -272,7 +304,7 @@ func (c *Calculator) CalculateFromMagnitude(magSquared []float64) Result {
 
 	return Result{
 		FundamentalFreq:  float64(fundamentalBin) * binHz,
-		FundamentalLevel: fundamentalLevel,
+		FundamentalLevel: math.Sqrt(fundamentalPower),
 		THD:              thd,
 		THDN:             thdn,
 		THD_dB:           ratioToDB(thd),
@@ -383,13 +415,15 @@ func normalizeConfig(cfg Config) Config {
 	return cfg
 }
 
-func getBinValue(magSquared []float64, bin, captureBins int) float64 {
+// getBinPower returns the total power (sum of squared magnitudes) in the
+// capture window centered on bin.
+func getBinPower(magSquared []float64, bin, captureBins int) float64 {
 	if bin < 0 || bin >= len(magSquared) {
 		return 0
 	}
 
 	if captureBins <= 0 {
-		return sqrtPositive(magSquared[bin])
+		return positive(magSquared[bin])
 	}
 
 	loBin := bin - captureBins
@@ -404,18 +438,18 @@ func getBinValue(magSquared []float64, bin, captureBins int) float64 {
 
 	sum := 0.0
 	for i := loBin; i <= hiBin; i++ {
-		sum += sqrtPositive(magSquared[i])
+		sum += positive(magSquared[i])
 	}
 
 	return sum
 }
 
-func sqrtPositive(v float64) float64 {
+func positive(v float64) float64 {
 	if v <= 0 {
 		return 0
 	}
 
-	return math.Sqrt(v)
+	return v
 }
 
 func ratioToDB(v float64) float64 {
