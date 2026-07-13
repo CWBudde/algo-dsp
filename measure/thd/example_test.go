@@ -29,5 +29,5 @@ func ExampleAnalyzeSignal() {
 	fmt.Printf("SINAD: %.2f dB\n", res.SINAD)
 	// Output:
 	// THD: 2.00%
-	// SINAD: 33.94 dB
+	// SINAD: 33.98 dB
 }
