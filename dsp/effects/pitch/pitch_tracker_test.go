@@ -217,6 +217,56 @@ func TestPitchTrackerMedianRejectsOutlier(t *testing.T) {
 	}
 }
 
+func TestPitchTrackerMedianSeedsWarmupWindow(t *testing.T) {
+	// A half-filled window would average its two samples, so a single octave
+	// error right after startup would move the reported pitch to 330 Hz. The
+	// first estimate seeds the whole window instead.
+	tr := newTestTracker(t)
+
+	tr.pushHistory(220)
+	tr.pushHistory(440)
+
+	if got := tr.medianFrequency(); got != 220 {
+		t.Errorf("medianFrequency() = %g after one outlier, want 220", got)
+	}
+
+	// Two more of the same value do carry the window across, so a genuine pitch
+	// change is not suppressed indefinitely.
+	tr.pushHistory(440)
+	tr.pushHistory(440)
+
+	if got := tr.medianFrequency(); got != 440 {
+		t.Errorf("medianFrequency() = %g after three new values, want 440", got)
+	}
+}
+
+func TestPitchTrackerResetAdoptsDetectorFrameSize(t *testing.T) {
+	// Detector() invites callers to reconfigure the detector and reset
+	// afterwards, so Reset has to re-lay the tracker's buffers and hop.
+	tr := newTestTracker(t)
+
+	frameSize := 2 * tr.Detector().FrameSize()
+	if err := tr.Detector().SetFrameSize(frameSize); err != nil {
+		t.Fatalf("SetFrameSize: %v", err)
+	}
+
+	tr.Reset()
+
+	if got := tr.Latency(); got != frameSize {
+		t.Errorf("Latency() = %d, want %d", got, frameSize)
+	}
+
+	if got, want := tr.Hop(), frameSize/trackerHopDivisor; got != want {
+		t.Errorf("Hop() = %d, want %d", got, want)
+	}
+
+	tr.Write(yinSine(440, yinTestSampleRate, 0.5, 0, 4*frameSize))
+
+	if est := tr.Estimate(); !est.Voiced || math.Abs(centsError(est.FrequencyHz, 440)) > 1 {
+		t.Errorf("after the frame size grew: %+v, want a voiced ~440 Hz estimate", est)
+	}
+}
+
 func TestPitchTrackerTracksGlide(t *testing.T) {
 	// A linear glide from 200 Hz to 400 Hz over one second.
 	const (

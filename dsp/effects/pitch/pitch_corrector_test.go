@@ -279,15 +279,26 @@ func TestPitchCorrectorHoldsOnUnvoiced(t *testing.T) {
 	c := newTestCorrector(t, WithCorrectionSpeedMs(0))
 	c.Process(correctorInput(452))
 
-	held := c.AppliedSemitones()
-	if held == 0 {
+	if c.AppliedSemitones() == 0 {
 		t.Fatalf("no correction was applied to the voiced tone")
 	}
 
-	// A run of noise is unvoiced; the held target must survive it. It has to
-	// span more than one block so that at least one block is corrected while
-	// the tracker sees nothing but noise.
+	// The first run of noise also flushes the queued tail of the tone, so the
+	// block spanning the transition is still partly voiced. The held value is
+	// taken afterwards, once the corrector sees nothing but noise.
 	c.Process(testutil.DeterministicNoise(11, 0.4, 4*c.BlockSize()))
+
+	held := c.AppliedSemitones()
+	if held == 0 {
+		t.Fatalf("the correction was abandoned instead of held")
+	}
+
+	if c.Voiced() {
+		t.Errorf("noise block reported voiced")
+	}
+
+	// A second run of unvoiced material must not move the held target at all.
+	c.Process(testutil.DeterministicNoise(12, 0.4, 4*c.BlockSize()))
 
 	if c.Voiced() {
 		t.Errorf("noise block reported voiced")

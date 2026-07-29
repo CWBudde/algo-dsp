@@ -375,7 +375,9 @@ func (t *PitchTracker) pushHistory(hz float64) {
 }
 
 // medianFrequency returns the median of the buffered voiced frequencies using
-// an insertion sort over a fixed array, so it never allocates.
+// an insertion sort over a fixed array, so it never allocates. The window is
+// always empty or medianTaps long, and the accepted tap counts are all odd, so
+// there is never an even-length window to average.
 func (t *PitchTracker) medianFrequency() float64 {
 	n := t.historyLen
 	if n == 0 {
@@ -396,11 +398,5 @@ func (t *PitchTracker) medianFrequency() float64 {
 		t.scratch[j+1] = v
 	}
 
-	if n%2 == 1 {
-		return t.scratch[n/2]
-	}
-
-	// Unreachable with the accepted tap counts (1, 3 and 5) because
-	// pushHistory seeds the whole window, so n is always 0 or medianTaps.
-	return 0.5 * (t.scratch[n/2-1] + t.scratch[n/2])
+	return t.scratch[n/2]
 }
