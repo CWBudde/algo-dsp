@@ -197,7 +197,7 @@ Phase 30: Interpolation Kernels (core)                     [2 weeks]  ✅ Comple
 # Remaining (execution order)
 Phase 31: Dynamics — Static Characteristic-Curve Parity    [0.5 week] ✅ Complete
 Phase 32: Elliptic Shelving Designer                       [1 week]   ✅ Complete
-Phase 33: Vocoder Finalization                             [0.5 week] 🔄 In Progress
+Phase 33: Vocoder Finalization                             [0.5 week] ✅ Complete
 Phase 34: Stereo Panner                                    [0.5 week] ✅ Complete
 Phase 35: Dynamic EQ                                       [1 week]   ✅ Complete
 Phase 36: Pitch Correction (YIN)                           [1 week]   ✅ Complete
@@ -540,17 +540,28 @@ Exit criteria:
 > Note: `Chebyshev2*Shelf` coefficients and cutoff semantics changed as a result. See
 > CHANGELOG.md; boost/cut is no longer exactly reciprocal, matching the Butterworth family.
 
-### Phase 33: Vocoder Finalization (In Progress)
+### Phase 33: Vocoder Finalization (Complete)
 
-`dsp/effects/vocoder.go` already implements the analysis/synthesis vocoder
-(`NewVocoder(sampleRate, bandLayout, opts...)`, `ProcessBlock(analysis, synth)`,
-`BandLayoutThirdOctave`/`BandLayoutBark`, attack/release/Q/level options) with `vocoder_test.go`.
+`dsp/effects/vocoder.go` implements the analysis/synthesis vocoder
+(`NewVocoder(sampleRate, opts...)`, `ProcessSample`/`ProcessBlock(modulator, carrier, output)`,
+`WithBandLayout` selecting `BandLayoutThirdOctave`/`BandLayoutBark`, attack/release/Q/level
+options, and optional per-band multirate analysis via `WithDownsampling`) with `vocoder_test.go`.
 
-- [ ] Add the missing runnable example (`vocoder_example_test.go`) and round out coverage.
+- [x] Added the missing runnable examples (`vocoder_example_test.go`): defaults, `ProcessBlock`
+      envelope transfer, the Bark layout with a synthesis-Q override, and multirate downsampling.
+- [x] Rounded out coverage — every exported option, getter and setter on the vocoder is now at
+      100%: the `SynthesisQ` getter, `WithVocoderSynthLevel` validation, nil-option and
+      option-error paths in `NewVocoder`, the "no usable bands" error for both layouts, and
+      `SetDownsampling`'s disable path (state cleared, `DownsampleFactors() == nil`, full-rate
+      processing still finite) plus its Bark recompute branch.
+
+> The residual uncovered statements in `vocoder.go` are defensive branches unreachable through the
+> public API (option validation forbids non-positive attack/release, `WithBandLayout` rejects
+> unknown layouts, and band selection filters `f < 0.9*nyquist` before `cpgBandpass` sees it).
 
 Exit criteria:
 
-- [ ] Example builds; `go test -race ./dsp/effects` passes.
+- [x] Examples build and their `// Output:` blocks match; `go test -race ./dsp/effects` passes.
 
 ### Phase 34: Stereo Panner (Complete)
 
@@ -850,6 +861,7 @@ Quarter-end success criteria:
 | 0.14    | 2026-07-29 | Claude  | Completed Phase 34: added `StereoPanner` (`dsp/effects/spatial/stereo_panner.go`) with three selectable pan laws (equal-power/compromise/linear), mono-pan and attenuate-only stereo-balance modes, and an optional auto-pan LFO; tests, 4 runnable examples and benchmarks included. Effect-chain/web-demo wiring deliberately left out of scope.                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 0.15    | 2026-07-29 | Claude  | Completed Phase 36: added the YIN pitch detector (`YINDetector`), the streaming `PitchTracker` with median/hold smoothing, the auto-tune `PitchCorrector`, and the `Scale`/note-conversion helpers — all in `dsp/effects/pitch`; the two existing shifters now share the new semitone conversions. Recorded the decision not to use `modulation.FrequencyShifter` for correction (it breaks harmonicity). Effect-chain/web-demo wiring and an FFT difference function deliberately left out of scope.                                                                                                                                                                                                                                                                       |
 | 0.15    | 2026-07-29 | Claude  | Completed Phase 32: extracted the Orfanidis parametric-EQ prototypes into `internal/orfanidis` (shared with `dsp/filter/design/band`), added `Elliptic{Low,High}Shelf` for orders >= 1, and rebuilt `Chebyshev2{Low,High}Shelf` as a genuine equiripple Type II design — the previous version delegated to a Butterworth shelf. All four shelving families now share the `\|H(f_c)\|² = (G²+1)/2` cutoff convention. Dead `chebyshev2Sections` (empirical damping constants) and `invertSections` removed; examples and benchmarks added. Breaking coefficient change for Chebyshev II, see CHANGELOG.md.                                                                                                                                                                   |
+| 0.16    | 2026-07-29 | Claude  | Completed Phase 33: added `dsp/effects/vocoder_example_test.go` (defaults, `ProcessBlock` envelope transfer, Bark layout with a synthesis-Q override, multirate downsampling) — the vocoder was the last effect in `dsp/effects` without runnable examples — and closed the reachable coverage gaps so every exported vocoder option/getter/setter is at 100%. Corrected the phase's stale `NewVocoder(sampleRate, bandLayout, opts...)` signature to the real `NewVocoder(sampleRate, opts...)` + `WithBandLayout`, and recorded the `WithDownsampling` multirate feature the phase text had omitted. No API change.                                                                                                                                                       |
 
 ---
 
