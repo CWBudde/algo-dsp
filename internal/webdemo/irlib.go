@@ -77,14 +77,19 @@ func decodeF16(h uint16) float32 {
 		if frac == 0 {
 			bits = sign
 		} else {
-			// Subnormal: normalize it.
+			// Subnormal: shift the fraction left until the implicit bit is
+			// set, then emit it as a normal float32.
+			//
+			// A binary16 subnormal is frac*2^-24. After e shifts m has bit 10
+			// set, so m = 2^10*(1+f) and the value is (1+f)*2^(-14-e), giving
+			// a biased float32 exponent of 127-14-e.
 			e, m := 0, frac
 			for m&0x400 == 0 {
 				m <<= 1
 				e++
 			}
 
-			bits = sign | uint32(127-14-e+1)<<23 | (m&0x3FF)<<13
+			bits = sign | uint32(127-14-e)<<23 | (m&0x3FF)<<13
 		}
 	case 31:
 		// Inf or NaN.
