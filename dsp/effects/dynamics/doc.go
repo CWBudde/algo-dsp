@@ -5,6 +5,9 @@
 //   - Expander: Downward expander with soft-knee and range control.
 //   - MultibandCompressor: Multiband compressor using Linkwitz-Riley crossovers
 //     with adjustable order and per-band soft-knee compression.
+//   - DynamicEQ: Series chain of parametric bands whose gain is driven by a
+//     per-band detector, supporting downward, upward and upward-below dynamics
+//     with band-filtered or external sidechain detection.
 //   - DeEsser: Split-band sibilance detector and reducer.
 //   - Gate: Soft-knee noise gate with hold support.
 //   - Limiter: Peak limiter built on a high-ratio compressor.

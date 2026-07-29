@@ -11,13 +11,14 @@ both single-sample (`Process`) and buffer-based (`ProcessInPlace`) processing.
 
 ### Dynamics
 
-| Effect               | File                   | Description                                                                                                                                           |
-| -------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Compressor**       | `compressor.go`        | Soft-knee feed-forward compressor with log2-domain gain calculation. Configurable threshold, ratio, knee width, attack/release, and auto-makeup gain. |
-| **Gate**             | `gate.go`              | Soft-knee noise gate with hold time to prevent chattering. Configurable threshold, expansion ratio, knee width, attack/hold/release, and range.       |
-| **Limiter**          | `limiter.go`           | Peak limiter (compressor preset with 100:1 ratio, 0.1 ms attack, hard knee).                                                                          |
-| **LookaheadLimiter** | `lookahead_limiter.go` | Limiter with delayed program path and optional sidechain detector input for true lookahead peak control.                                              |
-| **TransientShaper**  | `transient_shaper.go`  | Attack/release envelope-split transient shaper with independent attack and sustain emphasis/attenuation controls.                                     |
+| Effect               | File                   | Description                                                                                                                                                                                       |
+| -------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Compressor**       | `compressor.go`        | Soft-knee feed-forward compressor with log2-domain gain calculation. Configurable threshold, ratio, knee width, attack/release, and auto-makeup gain.                                             |
+| **Gate**             | `gate.go`              | Soft-knee noise gate with hold time to prevent chattering. Configurable threshold, expansion ratio, knee width, attack/hold/release, and range.                                                   |
+| **Limiter**          | `limiter.go`           | Peak limiter (compressor preset with 100:1 ratio, 0.1 ms attack, hard knee).                                                                                                                      |
+| **LookaheadLimiter** | `lookahead_limiter.go` | Limiter with delayed program path and optional sidechain detector input for true lookahead peak control.                                                                                          |
+| **TransientShaper**  | `transient_shaper.go`  | Attack/release envelope-split transient shaper with independent attack and sustain emphasis/attenuation controls.                                                                                 |
+| **DynamicEQ**        | `dynamic_eq.go`        | Parametric EQ bands whose gain follows a per-band detector. Peaking/shelving bands, downward/upward/upward-below dynamics, band-filtered or external sidechain, control-rate coefficient updates. |
 
 ### Time-Based
 
@@ -62,9 +63,10 @@ Both pitch shifters implement the `PitchProcessor` interface
 
 ### Spatial
 
-| Effect            | File                        | Description                                                                                                                                              |
-| ----------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **StereoWidener** | `spatial/stereo_widener.go` | Mid/side stereo image widener. Configurable width (0=mono to 4=extra-wide), optional bass mono crossover to keep low frequencies centered when widening. |
+| Effect            | File                        | Description                                                                                                                                                               |
+| ----------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **StereoWidener** | `spatial/stereo_widener.go` | Mid/side stereo image widener. Configurable width (0=mono to 4=extra-wide), optional bass mono crossover to keep low frequencies centered when widening.                  |
+| **StereoPanner**  | `spatial/stereo_panner.go`  | Pan law placement of a mono source plus attenuate-only stereo balance. Selectable equal-power (-3 dB), compromise (-4.5 dB) or linear (-6 dB) law, optional auto-pan LFO. |
 
 ---
 
@@ -105,8 +107,6 @@ Effects for specific use cases or those requiring more complex algorithms.
 | **Granular Delay**   | Granular    | Delay with grain-based playback for texture and time-stretching.                         | Grain scheduler, window/envelope per grain              |
 | **Pitch Correction** | Pitch       | Auto-tune style chromatic or scale-constrained pitch correction.                         | Pitch detection (e.g. YIN/pYIN) + pitch shifter         |
 | **Noise Reduction**  | Restoration | Spectral subtraction or Wiener-filter-based noise reduction with noise profile learning. | STFT, noise estimation, spectral gating                 |
-| **Dynamic EQ**       | Dynamics    | Parametric EQ bands with gain driven by signal level (sidechain-aware).                  | Biquad design + envelope follower per band              |
-| **Stereo Panner**    | Spatial     | Constant-power or linear panning with LFO-driven auto-pan.                               | Trig or table-based pan law, LFO                        |
 | **Haas Delay**       | Spatial     | Short inter-channel delay (1-30 ms) for precedence-effect stereo widening.               | Per-channel delay line                                  |
 
 ---

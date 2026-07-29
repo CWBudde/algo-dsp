@@ -103,7 +103,7 @@ This library is algorithm-centric and transport-agnostic:
 - **No** file format codecs (WAV, AIFF, FLAC)
 - **No** application logging or configuration frameworks
 
-Related repositories: [`algo-fft`](https://github.com/cwbudde/algo-fft) (FFT backend), [`wav`](https://github.com/cwbudde/wav) (WAV support), [`mfw`](https://github.com/cwbudde/mfw) (application)
+Related repositories: [`algo-fft`](https://github.com/cwbudde/algo-fft) (FFT backend), [`algo-mixedphase`](https://github.com/cwbudde/algo-mixedphase) (mixed-phase FIR design, builds on this library), [`wav`](https://github.com/cwbudde/wav) (WAV support), [`mfw`](https://github.com/cwbudde/mfw) (application)
 
 ## Project Docs
 
