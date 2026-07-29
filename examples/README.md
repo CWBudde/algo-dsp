@@ -8,5 +8,6 @@ Planned examples:
 
 Available examples:
 
-- `mixedphase`: compare iterative factorisation and direct phase interpolation
+- `mixedphase`: compare iterative factorisation, direct phase interpolation, and
+  complex minimax design
   under equal FIR length and delay budgets.

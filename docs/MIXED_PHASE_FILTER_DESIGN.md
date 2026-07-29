@@ -93,6 +93,20 @@ phase/group-delay curve exists. They solve a somewhat different problem:
 Budde's method derives a compact phase distribution from a latency budget
 without requiring the entire phase curve as input.
 
+`DesignComplexLeastSquares` implements the first useful version of this route in
+pure Go: the weighted normal equations are Toeplitz on a uniform DFT grid, so
+both the autocorrelation and the cross-correlation reduce to a single inverse
+transform each, and a dense Cholesky factorisation solves the system. Lawson
+reweighting then drives the sequence towards the complex Chebyshev solution
+without a conic solver. Two properties are worth knowing before using it:
+
+- With uniform weights the solution is identical to `DesignPhaseInterpolation`,
+  because truncating the inverse transform already minimises the unweighted
+  mean-square complex error. The weight is the entire point.
+- The objective measures absolute complex deviation, so an unweighted minimax
+  design concentrates on the passband and lets stopband depth slip. Weight
+  inversely to the target magnitude when attenuation matters.
+
 ### Phase free, delay constrained: direct non-convex optimisation
 
 Wu, Gao, and Teo minimise group delay while constraining magnitude response,

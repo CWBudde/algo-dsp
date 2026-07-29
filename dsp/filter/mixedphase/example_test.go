@@ -35,6 +35,42 @@ func ExampleMinimumPhaseWith() {
 	// 2
 }
 
+func ExampleDesignComplexLeastSquares() {
+	prototype := []float64{
+		0.01, 0.04, 0.12, 0.20, 0.26, 0.20, 0.12, 0.04, 0.01,
+	}
+
+	// Weight the lower half of the spectrum ten times as heavily, then trade
+	// mean-square error for peak error with a few Lawson passes.
+	weight := make([]float64, 129)
+	for i := range weight {
+		weight[i] = 1
+		if i < len(weight)/2 {
+			weight[i] = 10
+		}
+	}
+
+	result, err := mixedphase.DesignComplexLeastSquares(
+		prototype,
+		mixedphase.ComplexLeastSquaresConfig{
+			Length:            9,
+			Mix:               0.5,
+			FFTSize:           256,
+			Weight:            weight,
+			MinimaxIterations: 8,
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(len(result.Taps))
+	fmt.Println(result.ComplexError.Peak < result.ComplexError.RMS*3)
+	// Output:
+	// 9
+	// true
+}
+
 func ExampleDesignIterative() {
 	// A symmetric FIR prototype; in practice this can come from any linear
 	// phase design method.
