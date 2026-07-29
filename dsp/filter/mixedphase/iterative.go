@@ -49,6 +49,10 @@ func DesignIterative(prototype []float64, cfg IterativeConfig) (Result, error) {
 		)
 	}
 
+	if !cfg.Method.valid() {
+		return Result{}, fmt.Errorf("%w: %d", ErrInvalidMethod, int(cfg.Method))
+	}
+
 	maxDelay := (length - 1) / 2
 	if cfg.Delay < 0 || cfg.Delay > maxDelay {
 		return Result{}, fmt.Errorf(
@@ -274,7 +278,12 @@ func designMinimumPart(
 	epsilon float64,
 	cfg IterativeConfig,
 ) ([]float64, error) {
-	spectrum, err := minimumPhaseSpectrum(w, targetMagnitude, epsilon)
+	spectrum, err := minimumPhaseSpectrum(
+		w,
+		targetMagnitude,
+		epsilon,
+		cfg.Method,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -31,6 +31,10 @@ func DesignPhaseInterpolation(
 		return Result{}, fmt.Errorf("%w: got %g", ErrInvalidEpsilon, cfg.Epsilon)
 	}
 
+	if !cfg.Method.valid() {
+		return Result{}, fmt.Errorf("%w: %d", ErrInvalidMethod, int(cfg.Method))
+	}
+
 	length := cfg.Length
 	if length == 0 {
 		length = len(prototype)
@@ -58,7 +62,12 @@ func DesignPhaseInterpolation(
 	targetMagnitude := magnitude(targetSpectrum)
 	epsilon := defaultEpsilon(targetMagnitude, cfg.Epsilon)
 
-	minimumSpectrum, err := minimumPhaseSpectrum(w, targetMagnitude, epsilon)
+	minimumSpectrum, err := minimumPhaseSpectrum(
+		w,
+		targetMagnitude,
+		epsilon,
+		cfg.Method,
+	)
 	if err != nil {
 		return Result{}, err
 	}

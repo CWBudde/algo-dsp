@@ -76,20 +76,61 @@ func magnitude(spectrum []complex128) []float64 {
 	return out
 }
 
+// minimumPhaseSpectrum reconstructs the causal minimum-phase spectrum that
+// belongs to targetMagnitude using the requested method.
 func minimumPhaseSpectrum(
 	w *fftWorkspace,
 	targetMagnitude []float64,
 	epsilon float64,
+	method MinimumPhaseMethod,
 ) ([]complex128, error) {
-	logMagnitude := make([]complex128, w.size)
-	for i := range logMagnitude {
-		value := epsilon
-		if i < len(targetMagnitude) && targetMagnitude[i] > value {
-			value = targetMagnitude[i]
-		}
-
-		logMagnitude[i] = complex(math.Log(value), 0)
+	switch method {
+	case MethodCepstrum:
+		return cepstrumMinimumPhaseSpectrum(w, targetMagnitude, epsilon)
+	case MethodHilbert:
+		return hilbertMinimumPhaseSpectrum(w, targetMagnitude, epsilon)
+	default:
+		return nil, fmt.Errorf("%w: %d", ErrInvalidMethod, int(method))
 	}
+}
+
+// flooredMagnitude resamples targetMagnitude onto the workspace grid and
+// applies the magnitude floor that keeps the logarithm finite.
+func flooredMagnitude(
+	size int,
+	targetMagnitude []float64,
+	epsilon float64,
+) []float64 {
+	out := make([]float64, size)
+	for i := range out {
+		out[i] = epsilon
+		if i < len(targetMagnitude) && targetMagnitude[i] > epsilon {
+			out[i] = targetMagnitude[i]
+		}
+	}
+
+	return out
+}
+
+func logMagnitudeSpectrum(floored []float64) []complex128 {
+	out := make([]complex128, len(floored))
+	for i, value := range floored {
+		out[i] = complex(math.Log(value), 0)
+	}
+
+	return out
+}
+
+// cepstrumMinimumPhaseSpectrum folds the real cepstrum onto its causal half and
+// exponentiates the resulting complex log spectrum.
+func cepstrumMinimumPhaseSpectrum(
+	w *fftWorkspace,
+	targetMagnitude []float64,
+	epsilon float64,
+) ([]complex128, error) {
+	logMagnitude := logMagnitudeSpectrum(
+		flooredMagnitude(w.size, targetMagnitude, epsilon),
+	)
 
 	cepstrum, err := w.inverseReal(logMagnitude)
 	if err != nil {
@@ -121,6 +162,74 @@ func minimumPhaseSpectrum(
 	}
 
 	return out, nil
+}
+
+// hilbertMinimumPhaseSpectrum obtains the minimum phase from the discrete
+// Hilbert transform of the log magnitude and pairs it with the floored target
+// magnitude.
+//
+// Unlike the cepstral route the magnitude never passes through an exponential,
+// so it is reproduced exactly on the design grid.
+func hilbertMinimumPhaseSpectrum(
+	w *fftWorkspace,
+	targetMagnitude []float64,
+	epsilon float64,
+) ([]complex128, error) {
+	floored := flooredMagnitude(w.size, targetMagnitude, epsilon)
+
+	phase, err := discreteHilbertPhase(w, logMagnitudeSpectrum(floored))
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]complex128, w.size)
+	for i := range out {
+		out[i] = cmplx.Rect(floored[i], phase[i])
+	}
+
+	return out, nil
+}
+
+// discreteHilbertPhase evaluates the minimum phase belonging to the given log
+// magnitude.
+//
+// For a minimum-phase spectrum log magnitude and phase form a Hilbert pair. The
+// transform is applied as a sign multiplication in the quefrency domain, which
+// is the discrete equivalent of convolving the log magnitude with the
+// cot(omega/2) kernel while avoiding that kernel's singularity. The DC and
+// Nyquist quefrencies are excluded because they carry no quadrature component.
+func discreteHilbertPhase(
+	w *fftWorkspace,
+	logMagnitude []complex128,
+) ([]float64, error) {
+	quefrency, err := w.inverseReal(logMagnitude)
+	if err != nil {
+		return nil, err
+	}
+
+	half := w.size / 2
+	positiveLimit := (w.size + 1) / 2
+	signed := make([]complex128, w.size)
+
+	for i := 1; i < positiveLimit; i++ {
+		signed[i] = complex(quefrency[i], 0)
+	}
+
+	for i := half + 1; i < w.size; i++ {
+		signed[i] = complex(-quefrency[i], 0)
+	}
+
+	transformed, err := w.forwardComplex(signed)
+	if err != nil {
+		return nil, err
+	}
+
+	phase := make([]float64, w.size)
+	for i, value := range transformed {
+		phase[i] = imag(value)
+	}
+
+	return phase, nil
 }
 
 func regularisedMagnitudeDivision(

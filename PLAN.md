@@ -620,7 +620,7 @@ budgets, and delay constraints across methods.
       documentation, and a runnable CSV example.
 - [ ] Validate both baselines against independent MATLAB/NumPy reference vectors, including the
       paper's 1 kHz low-pass example.
-- [ ] Add discrete-Hilbert-transform minimum-phase reconstruction alongside the real-cepstrum
+- [x] Add discrete-Hilbert-transform minimum-phase reconstruction alongside the real-cepstrum
       implementation; compare spectral-factorisation error, numerical sensitivity, and runtime.
 - [ ] Add prescribed complex-response design with weighted least squares, followed by an
       IRLS/minimax path for peak-error control.

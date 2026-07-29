@@ -21,7 +21,66 @@ var (
 	ErrInvalidWindowAlpha = errors.New(
 		"mixedphase: window alpha must not be negative",
 	)
+	// ErrInvalidMethod is returned when an unknown reconstruction method is
+	// requested.
+	ErrInvalidMethod = errors.New(
+		"mixedphase: unknown minimum-phase reconstruction method",
+	)
 )
+
+// MinimumPhaseMethod selects how a magnitude response is factored into a
+// causal minimum-phase spectrum.
+//
+// Both methods evaluate the same Hilbert relation between log magnitude and
+// phase on the same dense grid and therefore agree to within rounding on
+// well-conditioned targets. They differ in how the result is assembled, which
+// matters once the target spans a large dynamic range.
+type MinimumPhaseMethod int
+
+const (
+	// MethodCepstrum folds the real cepstrum onto the causal half and
+	// exponentiates the resulting complex log spectrum. Magnitude and phase
+	// are both produced by the exponential, so the reconstructed magnitude
+	// only approximates the target. This is the zero value.
+	MethodCepstrum MinimumPhaseMethod = iota
+
+	// MethodHilbert evaluates the discrete Hilbert transform of the log
+	// magnitude to obtain the phase alone and pairs it with the (floored)
+	// target magnitude. The magnitude is therefore reproduced exactly on the
+	// design grid and never passes through an exponential.
+	MethodHilbert
+)
+
+// String implements [fmt.Stringer].
+func (m MinimumPhaseMethod) String() string {
+	switch m {
+	case MethodCepstrum:
+		return "cepstrum"
+	case MethodHilbert:
+		return "hilbert"
+	default:
+		return "unknown"
+	}
+}
+
+func (m MinimumPhaseMethod) valid() bool {
+	return m == MethodCepstrum || m == MethodHilbert
+}
+
+// MinimumPhaseConfig configures [MinimumPhaseWith].
+type MinimumPhaseConfig struct {
+	// FFTSize controls the dense design grid. Zero selects a power of two at
+	// least eight times the prototype length.
+	FFTSize int
+
+	// Epsilon is the magnitude floor applied before taking logarithms. Zero
+	// selects a scale-relative default. Negative values are rejected.
+	Epsilon float64
+
+	// Method selects the reconstruction algorithm. The zero value is
+	// [MethodCepstrum].
+	Method MinimumPhaseMethod
+}
 
 // IterativeConfig configures the DAGA 2012 alternating factorisation.
 type IterativeConfig struct {
@@ -58,6 +117,10 @@ type IterativeConfig struct {
 	// rejected.
 	WindowAlpha float64
 
+	// Method selects the minimum-phase reconstruction used for the
+	// minimum-phase factor. The zero value is [MethodCepstrum].
+	Method MinimumPhaseMethod
+
 	// ToleranceDB stops the iteration once the change in RMS magnitude error
 	// falls below this value. Zero uses 1e-7 dB. A negative value disables
 	// early stopping.
@@ -80,6 +143,10 @@ type PhaseInterpolationConfig struct {
 	// Epsilon is the magnitude floor used by minimum-phase reconstruction.
 	// Zero selects a scale-relative default. Negative values are rejected.
 	Epsilon float64
+
+	// Method selects the minimum-phase reconstruction whose phase is
+	// interpolated. The zero value is [MethodCepstrum].
+	Method MinimumPhaseMethod
 }
 
 // Result contains a designed FIR and method-specific intermediate data.
