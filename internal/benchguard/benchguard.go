@@ -87,6 +87,13 @@ func Parse(r io.Reader) (*Run, error) {
 			name = pkg + "." + name
 		}
 
+		// With -count=N the same benchmark appears N times. Keep the minimum:
+		// interference can only ever make a benchmark look slower, so the fastest
+		// observation is the least contaminated estimate of the true cost.
+		if prev, ok := run.Measurements[name]; ok {
+			m = minMeasurement(prev, m)
+		}
+
 		run.Measurements[name] = m
 	}
 
@@ -99,6 +106,17 @@ func Parse(r io.Reader) (*Run, error) {
 	}
 
 	return run, nil
+}
+
+// minMeasurement combines repeated observations of one benchmark, keeping the
+// lowest value on each axis. Allocation counts are deterministic and so are
+// normally identical across repeats; taking the minimum is simply consistent.
+func minMeasurement(a, b Measurement) Measurement {
+	return Measurement{
+		NsPerOp:     min(a.NsPerOp, b.NsPerOp),
+		BytesPerOp:  min(a.BytesPerOp, b.BytesPerOp),
+		AllocsPerOp: min(a.AllocsPerOp, b.AllocsPerOp),
+	}
 }
 
 // metaLine recognizes the `key: value` header lines go test emits before results.
@@ -194,12 +212,31 @@ type Tolerances struct {
 	Ns float64
 	// Bytes is the fractional B/op increase tolerated.
 	Bytes float64
+	// EnforceTiming makes ns/op regressions count toward the verdict. It is off
+	// by default: see DefaultTolerances for why. Even when on, timing is only
+	// enforced if the baseline was recorded on the current machine.
+	EnforceTiming bool
 }
 
-// DefaultTolerances are tuned for shared CI runners, where wall-clock noise of
-// 10-20% between runs of the same commit is routine.
+// DefaultTolerances are calibrated against measured noise rather than guessed,
+// and the calibration is why EnforceTiming defaults to false.
+//
+// Repeating the `just bench-ci` set on an idle laptop with no code change at all
+// moved the sub-microsecond spectrum benchmarks by up to 43% at -count=1. Raising
+// the count did not rescue it: a -count=3 run against a -count=5 baseline on the
+// very same machine still reported five benchmarks past a 50% bound, because a
+// sustained benchmark sweep heats the CPU and later entries measure a throttled
+// core. No threshold that tolerates that is tight enough to catch a real
+// regression, so timing is reported but does not gate by default.
+//
+// Allocation counts, by contrast, are deterministic and identical across machines
+// and thermal states. They are the signal the guard actually enforces: bytes get
+// 10% headroom for allocator rounding, and allocs/op none at all.
+//
+// Ns is still used to label entries as slower or improved in the report, and
+// callers running on controlled hardware can set EnforceTiming to make it gate.
 func DefaultTolerances() Tolerances {
-	return Tolerances{Ns: 0.25, Bytes: 0.10}
+	return Tolerances{Ns: 0.50, Bytes: 0.10, EnforceTiming: false}
 }
 
 // Entry is the comparison of one benchmark between baseline and current run.
@@ -212,12 +249,12 @@ type Entry struct {
 	HasBase    bool
 	HasCurrent bool
 	// NsRatio is Current.NsPerOp / Base.NsPerOp, or 0 when either side is missing.
-	NsRatio        float64
-	SlowerThanTol  bool
-	MoreBytes      bool
-	MoreAllocs     bool
-	FewerAllocs    bool
-	FasterThanTol  bool
+	NsRatio       float64
+	SlowerThanTol bool
+	MoreBytes     bool
+	MoreAllocs    bool
+	FewerAllocs   bool
+	FasterThanTol bool
 }
 
 // Regressed reports whether this entry regressed in any enforced dimension.
@@ -229,9 +266,12 @@ func (e Entry) Regressed(timingEnforced bool) bool {
 // Report is the result of comparing a run against a baseline.
 type Report struct {
 	Entries []Entry
-	// TimingEnforced is false when the baseline was recorded on different
-	// hardware, in which case ns/op differences are shown but never counted as
-	// regressions. Allocation checks stay enforced: they are machine-independent.
+	// SameMachine reports whether the baseline's goos/goarch/cpu match the
+	// current run. Timing comparisons are meaningless when it is false.
+	SameMachine bool
+	// TimingEnforced is true only when the caller opted into timing enforcement
+	// and the baseline is from this machine. Otherwise ns/op differences are
+	// shown but never counted as regressions; allocation checks always apply.
 	TimingEnforced bool
 	BaseEnv        string
 	CurrentEnv     string
@@ -255,13 +295,16 @@ func (r *Report) Regressions() []Entry {
 // only when the baseline was recorded on the same GOOS/GOARCH/CPU, because ns/op
 // numbers do not transfer between machines.
 func Compare(base *Baseline, current *Run, tol Tolerances) *Report {
+	sameMachine := base.GOOS == current.GOOS &&
+		base.GOARCH == current.GOARCH &&
+		base.CPU == current.CPU
+
 	report := &Report{
-		TimingEnforced: base.GOOS == current.GOOS &&
-			base.GOARCH == current.GOARCH &&
-			base.CPU == current.CPU,
-		BaseEnv:    envString(base.GOOS, base.GOARCH, base.CPU),
-		CurrentEnv: envString(current.GOOS, current.GOARCH, current.CPU),
-		Tolerances: tol,
+		SameMachine:    sameMachine,
+		TimingEnforced: tol.EnforceTiming && sameMachine,
+		BaseEnv:        envString(base.GOOS, base.GOARCH, base.CPU),
+		CurrentEnv:     envString(current.GOOS, current.GOARCH, current.CPU),
+		Tolerances:     tol,
 	}
 
 	names := make(map[string]struct{}, len(base.Benchmarks)+len(current.Measurements))

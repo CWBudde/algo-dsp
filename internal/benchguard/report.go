@@ -20,10 +20,13 @@ func (r *Report) Render(w io.Writer) error {
 
 	tw := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
 
-	fmt.Fprintln(tw, "BENCHMARK\tBASE ns/op\tNEW ns/op\tDELTA\tB/op\tallocs/op\tSTATUS")
+	// Writes go to a strings.Builder via tabwriter and cannot fail; Flush reports
+	// any real error below.
+	_, _ = fmt.Fprintln(tw, "BENCHMARK\tBASE ns/op\tNEW ns/op\tDELTA\tB/op\tallocs/op\tSTATUS")
 
 	for _, e := range r.Entries {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(
+			tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			e.Name,
 			formatNs(e.Base.NsPerOp, e.HasBase),
 			formatNs(e.Current.NsPerOp, e.HasCurrent),
@@ -55,8 +58,14 @@ func (r *Report) renderSummary(w io.Writer) error {
 		r.Tolerances.Ns*100, r.Tolerances.Bytes*100)
 
 	if !r.TimingEnforced {
-		b.WriteString("note:             baseline was recorded on different hardware; " +
-			"ns/op differences are informational only, allocation checks still apply\n")
+		reason := "not enforced by default (benchmark timing is too noisy to gate on; " +
+			"pass -enforce-timing on controlled hardware)"
+		if !r.SameMachine {
+			reason = "not enforced: baseline was recorded on different hardware"
+		}
+
+		fmt.Fprintf(&b, "ns/op:            %s\n", reason)
+		b.WriteString("                  allocation checks still apply\n")
 	}
 
 	regressions := r.Regressions()
@@ -137,8 +146,8 @@ func status(e Entry, timingEnforced bool) string {
 	case e.Regressed(timingEnforced):
 		return "REGRESSED"
 	case e.SlowerThanTol:
-		// Slower, but the baseline came from other hardware, so it is not a
-		// failure signal on its own.
+		// Past the ns/op bound, but timing is not gating this comparison, so it
+		// is a hint to investigate rather than a failure.
 		return "slower (advisory)"
 	case e.FewerAllocs || e.FasterThanTol:
 		return "improved"

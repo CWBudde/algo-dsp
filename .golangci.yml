@@ -4,6 +4,12 @@ run:
   timeout: 5m
 
 linters:
+  # node_modules is frontend tooling for the web demo; some npm packages ship
+  # stray .go files that are not ours to lint.
+  exclusions:
+    paths:
+      - node_modules
+
   enable:
     - govet
     - staticcheck

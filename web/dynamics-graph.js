@@ -3,21 +3,45 @@
     constructor(canvas, options = {}) {
       this.canvas = canvas;
       this.ctx = canvas.getContext("2d");
-      this.type = options.type || "compressor"; // "compressor" or "limiter"
       this.getCurve = options.getCurve || null;
       this.minDB = -60;
       this.maxDB = 12;
       this.range = this.maxDB - this.minDB;
       this.pad = 20;
 
+      // CSS pixel size, fixed by the width/height attributes in the markup.
+      this.cssWidth = canvas.width;
+      this.cssHeight = canvas.height;
+      canvas.style.width = `${this.cssWidth}px`;
+      canvas.style.height = `${this.cssHeight}px`;
+      this._dpr = 0;
+
       this.draw();
     }
 
+    /**
+     * Match the backing store to the device pixel ratio.
+     *
+     * Without this the canvas renders at 1x and is upscaled by the compositor,
+     * which is visibly soft on any HiDPI display -- and these plots are mostly
+     * thin lines and 9px labels, where it shows most.
+     */
+    _applyDPR() {
+      const dpr = window.devicePixelRatio || 1;
+      if (dpr === this._dpr) return;
+
+      this._dpr = dpr;
+      this.canvas.width = Math.round(this.cssWidth * dpr);
+      this.canvas.height = Math.round(this.cssHeight * dpr);
+    }
+
     draw() {
-      const canvas = this.canvas;
+      this._applyDPR();
+
       const ctx = this.ctx;
-      const w = canvas.width;
-      const h = canvas.height;
+      const w = this.cssWidth;
+      const h = this.cssHeight;
+      ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
       const pad = this.pad;
       const minDB = this.minDB;
       const maxDB = this.maxDB;
@@ -29,7 +53,8 @@
       const root = document.documentElement;
       const style = getComputedStyle(root);
       const gridColor = style.getPropertyValue("--line").trim() || "#d9ccb6";
-      const accentColor = style.getPropertyValue("--accent").trim() || "#c24d2c";
+      const accentColor =
+        style.getPropertyValue("--accent").trim() || "#c24d2c";
       const textColor = style.getPropertyValue("--ink").trim() || "#1d1b18";
 
       // Grid

@@ -47,6 +47,12 @@ dsp/**/*.pdf
 **/algo_dsp_demo.wasm
 **/wasm_exec.js
 
+# Web demo frontend tooling
+/node_modules/
+web/test/test-results/
+web/test/playwright-report/
+.playwright-mcp/
+
 # AI agents
 .claude/
 .serena/

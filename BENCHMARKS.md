@@ -13,6 +13,80 @@ This document tracks baseline benchmark results for release readiness.
 go test -run=^$ -bench=. -benchmem ./...
 ```
 
+## Regression Guard
+
+`benchmarks/baseline.json` holds machine-readable numbers for a 20-benchmark hot-path
+subset, and `cmd/benchguard` compares a fresh run against it.
+
+```bash
+just bench-guard                        # compare against the baseline
+just bench-guard 3 -fail                # exit non-zero on a regression
+just bench-guard 5 "-enforce-timing"    # also gate on ns/op (quiet machines only)
+just bench-baseline                     # re-record the baseline on this machine
+```
+
+The benchmark set itself is defined once, in the `bench-ci` justfile recipe, and both
+CI and local runs drive it from there.
+
+### What gates, and what does not
+
+| Metric      | Tolerance | Gates by default |
+| ----------- | --------- | ---------------- |
+| `allocs/op` | exact     | yes              |
+| `B/op`      | +10%      | yes              |
+| `ns/op`     | +50%      | no — reported    |
+
+**Allocation counts are the signal this guard exists to protect.** They are
+deterministic for a given input size and identical across machines, core counts, and
+thermal states, so a `0 -> 1` on a zero-alloc hot path is always a real defect. `B/op`
+gets 10% of headroom for allocator size-class rounding.
+
+**Timing is reported but does not gate**, and that default is a measured conclusion
+rather than caution:
+
+- Three repeat runs of the subset on an idle laptop at `-count=1`, with no code change
+  at all, moved the sub-microsecond spectrum benchmarks by up to **43%**.
+- Raising the repeat count did not rescue it. A `-count=3` run against a `-count=5`
+  baseline on the _same machine_ still put five benchmarks past a 50% bound: a
+  sustained benchmark sweep heats the CPU, so later entries measure a throttled core.
+- Under real desktop load (a browser plus a parallel build) individual entries moved by
+  **7x**. In that same run the guard reported _no regressions_, because every
+  allocation column held steady — which is exactly the behaviour being aimed for.
+
+No ns/op threshold is simultaneously loose enough to survive that and tight enough to
+catch a genuine regression. So `benchguard` prints the delta and marks anything past
+the bound `slower (advisory)`, leaving the judgement to a human. On quiet, thermally
+stable hardware, `-enforce-timing` promotes it to a gating check; even then it is
+suppressed when the baseline's `goos`/`goarch`/`cpu` do not match the current machine.
+
+To reduce noise where it can, `benchguard` keeps the **minimum** across `-count=N`
+observations, since interference only ever makes a benchmark look slower.
+
+Two smaller caveats:
+
+- `just bench-baseline` records at `-count=5` while `just bench-guard` compares at
+  `-count=3`. A minimum over more samples is slightly lower, so comparisons carry a
+  small bias toward "slower".
+- CI runs the guard as a non-blocking job, and its baseline comes from developer
+  hardware, so only the allocation columns carry a reliable signal there.
+
+> **The checked-in baseline's `ns/op` figures are provisional.** They were captured on a
+> workstation under heavy load (load average ~32), and at least
+> `dsp/filter/fir.BenchmarkProcessSample/taps=128` is recorded roughly 6x slow as a
+> result. Re-record with `just bench-baseline` on a quiet machine. The `B/op` and
+> `allocs/op` columns are unaffected by load and are already correct.
+
+### Updating the baseline
+
+Re-record when a change legitimately moves the numbers, and say so in the PR:
+
+1. Run `just bench-baseline` on an idle machine.
+2. Commit `benchmarks/baseline.json` together with the change that moved it.
+3. Update the prose baselines below if the change is large enough to matter.
+
+Because the file records `goVersion`, `goos`, `goarch` and `cpu`, a baseline recorded
+on different hardware is self-describing rather than silently misleading.
+
 ## Selected Baselines
 
 These are representative checkpoints from the full benchmark run.

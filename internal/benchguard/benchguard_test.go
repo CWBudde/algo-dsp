@@ -77,6 +77,22 @@ func TestParseSubtestNameWithTrailingNumber(t *testing.T) {
 	}
 }
 
+// With -count=N a benchmark is reported N times; the guard must collapse the
+// repeats to the fastest observation rather than keeping whichever came last.
+func TestParseRepeatedRunsKeepsMinimum(t *testing.T) {
+	run := mustParse(t, "pkg: x\n"+
+		"BenchmarkA-8\t100\t     50.0 ns/op\t     128 B/op\t       2 allocs/op\n"+
+		"BenchmarkA-8\t100\t     20.0 ns/op\t      64 B/op\t       1 allocs/op\n"+
+		"BenchmarkA-8\t100\t     90.0 ns/op\t     256 B/op\t       3 allocs/op\n")
+
+	got := run.Measurements["x.BenchmarkA"]
+
+	want := Measurement{NsPerOp: 20, BytesPerOp: 64, AllocsPerOp: 1}
+	if got != want {
+		t.Errorf("repeated runs = %+v, want %+v", got, want)
+	}
+}
+
 func keys(run *Run) []string {
 	out := make([]string, 0, len(run.Measurements))
 	for name := range run.Measurements {
@@ -113,10 +129,13 @@ func TestCompare(t *testing.T) {
 		"a.BenchmarkAdded":  {NsPerOp: 10},
 	})
 
-	report := Compare(base, current, DefaultTolerances())
+	// Explicit tolerances so the table below does not silently depend on the
+	// calibrated defaults, and timing enforcement opted into so the ns/op cases
+	// below actually gate.
+	report := Compare(base, current, Tolerances{Ns: 0.25, Bytes: 0.10, EnforceTiming: true})
 
 	if !report.TimingEnforced {
-		t.Fatal("TimingEnforced = false for identical environments")
+		t.Fatal("TimingEnforced = false for identical environments with EnforceTiming set")
 	}
 
 	byName := make(map[string]Entry, len(report.Entries))
@@ -186,7 +205,15 @@ func TestCompareDifferentMachineIgnoresTiming(t *testing.T) {
 		"a.BenchmarkAllocs": {NsPerOp: 100, AllocsPerOp: 3},
 	})
 
-	report := Compare(base, current, DefaultTolerances())
+	// EnforceTiming is on, so only the machine mismatch can disable timing.
+	tol := DefaultTolerances()
+	tol.EnforceTiming = true
+
+	report := Compare(base, current, tol)
+
+	if report.SameMachine {
+		t.Fatal("SameMachine = true across different CPUs")
+	}
 
 	if report.TimingEnforced {
 		t.Fatal("TimingEnforced = true across different CPUs")
@@ -199,6 +226,49 @@ func TestCompareDifferentMachineIgnoresTiming(t *testing.T) {
 
 	if regressions[0].Name != "a.BenchmarkAllocs" {
 		t.Errorf("regression = %s, want a.BenchmarkAllocs", regressions[0].Name)
+	}
+}
+
+// The calibrated default is that timing never gates, even on the machine the
+// baseline came from: a sustained sweep throttles the CPU enough to push real
+// benchmarks past any bound loose enough to be useful. Allocations still gate.
+func TestCompareDefaultDoesNotEnforceTiming(t *testing.T) {
+	const cpu = "same-cpu"
+
+	base := baselineFrom(cpu, map[string]Measurement{
+		"a.BenchmarkSlow":   {NsPerOp: 100},
+		"a.BenchmarkAllocs": {NsPerOp: 100, AllocsPerOp: 0},
+	})
+
+	current := runFrom(cpu, map[string]Measurement{
+		"a.BenchmarkSlow":   {NsPerOp: 500},
+		"a.BenchmarkAllocs": {NsPerOp: 100, AllocsPerOp: 1},
+	})
+
+	report := Compare(base, current, DefaultTolerances())
+
+	if !report.SameMachine {
+		t.Fatal("SameMachine = false for identical environments")
+	}
+
+	if report.TimingEnforced {
+		t.Fatal("TimingEnforced = true under DefaultTolerances")
+	}
+
+	regressions := report.Regressions()
+	if len(regressions) != 1 || regressions[0].Name != "a.BenchmarkAllocs" {
+		t.Fatalf("Regressions() = %v, want only a.BenchmarkAllocs", regressions)
+	}
+
+	// The 5x slowdown must still be visible, just not fatal.
+	var buf strings.Builder
+
+	if err := report.Render(&buf); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "slower (advisory)") {
+		t.Errorf("a 5x slowdown should be reported as advisory:\n%s", buf.String())
 	}
 }
 
@@ -218,9 +288,9 @@ func TestCompareZeroBaselineNs(t *testing.T) {
 
 func TestExceeds(t *testing.T) {
 	tests := []struct {
-		name              string
+		name               string
 		base, current, tol float64
-		want              bool
+		want               bool
 	}{
 		{"within tolerance", 100, 120, 0.25, false},
 		{"beyond tolerance", 100, 130, 0.25, true},

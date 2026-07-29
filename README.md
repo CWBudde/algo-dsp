@@ -78,13 +78,19 @@ func main() {
 Requirements: Go 1.25+, `just` (optional)
 
 ```bash
-just test       # Run all tests
-just test-race  # Run tests with race detector
-just lint       # Run golangci-lint
-just fmt        # Format code
-just bench      # Run benchmarks
-just ci         # Run all CI checks
+just test        # Run all tests
+just test-race   # Run tests with race detector
+just lint        # Run golangci-lint
+just fmt         # Format code
+just bench       # Run benchmarks
+just bench-guard # Check hot paths against benchmarks/baseline.json
+just ci          # Run all CI checks
 ```
+
+Hot-path benchmarks are guarded against regressions: `just bench-guard` diffs a fresh run
+against the checked-in baseline, treating allocation counts as exact and timing as
+advisory. See [BENCHMARKS.md](BENCHMARKS.md) for the thresholds and how to re-record a
+baseline.
 
 Or without `just`:
 

@@ -1,0 +1,110 @@
+{
+  "generated": "2026-07-29",
+  "goVersion": "go1.26.1",
+  "goos": "linux",
+  "goarch": "amd64",
+  "cpu": "12th Gen Intel(R) Core(TM) i7-1255U",
+  "command": "just bench-baseline 5",
+  "benchmarks": {
+    "dsp/conv.BenchmarkConvolve/signal=4096_kernel=32": {
+      "nsPerOp": 177884,
+      "bytesPerOp": 41067,
+      "allocsPerOp": 1
+    },
+    "dsp/conv.BenchmarkOverlapAddReuse/signal=4096_kernel=64": {
+      "nsPerOp": 175970,
+      "bytesPerOp": 40960,
+      "allocsPerOp": 1
+    },
+    "dsp/filter/biquad.BenchmarkProcessBlock/N=1024": {
+      "nsPerOp": 6955,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/filter/biquad.BenchmarkProcessBlockScalar/N=1024": {
+      "nsPerOp": 56579,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/filter/biquad.BenchmarkProcessBlockTo/N=1024": {
+      "nsPerOp": 56529,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/filter/biquad.BenchmarkProcessSample": {
+      "nsPerOp": 6.522,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/filter/fir.BenchmarkProcessBlock/taps=128": {
+      "nsPerOp": 334344,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/filter/fir.BenchmarkProcessSample/taps=128": {
+      "nsPerOp": 1194,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/spectrum.BenchmarkMagnitude/16K": {
+      "nsPerOp": 172160,
+      "bytesPerOp": 137296,
+      "allocsPerOp": 1
+    },
+    "dsp/spectrum.BenchmarkMagnitude/4K": {
+      "nsPerOp": 42619,
+      "bytesPerOp": 33147,
+      "allocsPerOp": 1
+    },
+    "dsp/spectrum.BenchmarkMagnitudeFromParts/16K": {
+      "nsPerOp": 62142,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/spectrum.BenchmarkMagnitudeFromParts/4K": {
+      "nsPerOp": 11345,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/spectrum.BenchmarkPower/16K": {
+      "nsPerOp": 126620,
+      "bytesPerOp": 137488,
+      "allocsPerOp": 1
+    },
+    "dsp/spectrum.BenchmarkPower/4K": {
+      "nsPerOp": 29459,
+      "bytesPerOp": 33174,
+      "allocsPerOp": 1
+    },
+    "dsp/spectrum.BenchmarkPowerFromParts/16K": {
+      "nsPerOp": 8595,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/spectrum.BenchmarkPowerFromParts/4K": {
+      "nsPerOp": 2137,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "dsp/window.BenchmarkApply/hann/1024": {
+      "nsPerOp": 29483,
+      "bytesPerOp": 8256,
+      "allocsPerOp": 2
+    },
+    "dsp/window.BenchmarkGenerate/hann/1024": {
+      "nsPerOp": 28233,
+      "bytesPerOp": 8256,
+      "allocsPerOp": 2
+    },
+    "stats/frequency.BenchmarkCalculate/fft=4096": {
+      "nsPerOp": 61928,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    },
+    "stats/time.BenchmarkCalculate/4096": {
+      "nsPerOp": 45428,
+      "bytesPerOp": 0,
+      "allocsPerOp": 0
+    }
+  }
+}

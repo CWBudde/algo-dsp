@@ -43,6 +43,8 @@ func run() error {
 			"fractional ns/op increase tolerated before a benchmark counts as slower")
 		memTol = flag.Float64("mem-tolerance", benchguard.DefaultTolerances().Bytes,
 			"fractional B/op increase tolerated; allocs/op is always compared exactly")
+		enforceTiming = flag.Bool("enforce-timing", false,
+			"count ns/op regressions toward the verdict; only meaningful on quiet, thermally stable hardware")
 		fail = flag.Bool("fail", false, "exit non-zero when regressions are found")
 	)
 
@@ -62,7 +64,11 @@ func run() error {
 		return err
 	}
 
-	report := benchguard.Compare(base, current, benchguard.Tolerances{Ns: *nsTol, Bytes: *memTol})
+	report := benchguard.Compare(base, current, benchguard.Tolerances{
+		Ns:            *nsTol,
+		Bytes:         *memTol,
+		EnforceTiming: *enforceTiming,
+	})
 
 	if err := report.Render(os.Stdout); err != nil {
 		return err
@@ -80,7 +86,7 @@ func readBaseline(path string) (*benchguard.Baseline, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open baseline (run with -update to create it): %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	base, err := benchguard.ReadBaseline(f)
 	if err != nil {
@@ -111,7 +117,7 @@ func writeBaseline(path, command string, current *benchguard.Run) error {
 	}
 
 	if err := benchguard.WriteBaseline(f, base); err != nil {
-		f.Close()
+		_ = f.Close()
 
 		return err
 	}
