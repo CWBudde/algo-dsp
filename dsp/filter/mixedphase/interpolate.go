@@ -2,10 +2,6 @@ package mixedphase
 
 import (
 	"fmt"
-	"math"
-	"math/cmplx"
-
-	"github.com/cwbudde/algo-dsp/dsp/spectrum"
 )
 
 // DesignPhaseInterpolation interpolates between the unwrapped minimum-phase
@@ -72,34 +68,13 @@ func DesignPhaseInterpolation(
 		return Result{}, err
 	}
 
-	half := fftSize / 2
-
-	minimumPhase := make([]float64, half+1)
-	for i := range minimumPhase {
-		minimumPhase[i] = cmplx.Phase(minimumSpectrum[i])
-	}
-
-	minimumPhase = spectrum.UnwrapPhase(minimumPhase)
-
-	delay := float64(length-1) / 2
-	desired := make([]complex128, fftSize)
-
-	for i := 0; i <= half; i++ {
-		omega := 2 * math.Pi * float64(i) / float64(fftSize)
-		linearPhase := -omega * delay
-		phase := (1-cfg.Mix)*minimumPhase[i] + cfg.Mix*linearPhase
-		value := cmplx.Rect(targetMagnitude[i], phase)
-
-		switch {
-		case i == 0:
-			desired[i] = complex(real(value), 0)
-		case i == half && fftSize%2 == 0:
-			desired[i] = complex(real(value), 0)
-		default:
-			desired[i] = value
-			desired[fftSize-i] = cmplx.Conj(value)
-		}
-	}
+	desired := prescribedResponse(
+		w,
+		targetMagnitude,
+		minimumSpectrum,
+		cfg.Mix,
+		float64(length-1)/2,
+	)
 
 	impulse, err := w.inverseReal(desired)
 	if err != nil {

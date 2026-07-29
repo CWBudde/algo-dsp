@@ -26,6 +26,14 @@ var (
 	ErrInvalidMethod = errors.New(
 		"mixedphase: unknown minimum-phase reconstruction method",
 	)
+	// ErrInvalidWeight is returned when a frequency weight vector has the wrong
+	// length, contains a negative or non-finite entry, or is identically zero.
+	ErrInvalidWeight = errors.New("mixedphase: invalid frequency weight")
+	// ErrSingularSystem is returned when the weighted normal equations cannot be
+	// factored even after regularisation.
+	ErrSingularSystem = errors.New(
+		"mixedphase: weighted normal equations are singular",
+	)
 )
 
 // MinimumPhaseMethod selects how a magnitude response is factored into a
@@ -149,6 +157,58 @@ type PhaseInterpolationConfig struct {
 	Method MinimumPhaseMethod
 }
 
+// ComplexLeastSquaresConfig configures [DesignComplexLeastSquares].
+type ComplexLeastSquaresConfig struct {
+	// Length is the number of output taps. Zero uses the prototype length.
+	Length int
+
+	// Mix interpolates the prescribed phase: zero is minimum phase and one is
+	// linear phase with delay (Length-1)/2. It shares its meaning with
+	// [PhaseInterpolationConfig] so both designs approximate the same target.
+	Mix float64
+
+	// FFTSize controls the dense design grid. Zero selects a power of two at
+	// least eight times the output length.
+	FFTSize int
+
+	// Epsilon is the magnitude floor used by minimum-phase reconstruction.
+	// Zero selects a scale-relative default. Negative values are rejected.
+	Epsilon float64
+
+	// Method selects the minimum-phase reconstruction whose phase is
+	// interpolated. The zero value is [MethodCepstrum].
+	Method MinimumPhaseMethod
+
+	// Weight holds one non-negative weight per bin on [0, Nyquist], so its
+	// length must be FFTSize/2+1. Nil selects uniform weighting, for which the
+	// least-squares solution coincides with [DesignPhaseInterpolation].
+	Weight []float64
+
+	// MinimaxIterations is the number of Lawson reweighting passes applied
+	// after the initial weighted least-squares solve. Zero performs none and
+	// returns the pure least-squares design; positive values trade mean-square
+	// error for a lower peak error.
+	MinimaxIterations int
+
+	// MinimaxTolerance stops the reweighting once the relative change of the
+	// peak complex error falls below this value. Zero uses 1e-4. A negative
+	// value disables early stopping.
+	MinimaxTolerance float64
+}
+
+// ComplexErrorMetrics reports the approximation error against a prescribed
+// complex response, relative to the peak magnitude of that response.
+//
+// Unlike [Metrics] these numbers include the phase error, which is what the
+// least-squares and minimax objectives actually minimise.
+type ComplexErrorMetrics struct {
+	// RMS is the unweighted root-mean-square complex error over [0, Nyquist].
+	RMS float64
+
+	// Peak is the largest complex error over [0, Nyquist].
+	Peak float64
+}
+
 // Result contains a designed FIR and method-specific intermediate data.
 type Result struct {
 	// Taps is the final causal FIR.
@@ -159,11 +219,18 @@ type Result struct {
 	MinimumPhasePart []float64
 	LinearPhasePart  []float64
 
-	// Iterations is the number of alternating correction passes performed.
+	// Iterations is the number of alternating correction passes performed by
+	// [DesignIterative], or of reweighting passes performed by
+	// [DesignComplexLeastSquares].
 	Iterations int
 
 	// Metrics compares Taps with the prototype magnitude response.
 	Metrics Metrics
+
+	// ComplexError compares Taps with the prescribed complex response. It is
+	// only populated by [DesignComplexLeastSquares]; the other designs do not
+	// prescribe a phase over the whole grid.
+	ComplexError ComplexErrorMetrics
 }
 
 // Metrics describes spectral error and the time distribution of an FIR.
