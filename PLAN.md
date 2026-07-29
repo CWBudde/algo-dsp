@@ -198,8 +198,8 @@ Phase 30: Interpolation Kernels (core)                     [2 weeks]  ✅ Comple
 Phase 31: Dynamics — Static Characteristic-Curve Parity    [0.5 week] ✅ Complete
 Phase 32: Elliptic Shelving Designer                       [1 week]   📋 Planned
 Phase 33: Vocoder Finalization                             [0.5 week] 🔄 In Progress
-Phase 34: Stereo Panner                                    [0.5 week] 📋 Planned
-Phase 35: Dynamic EQ                                       [1 week]   📋 Planned
+Phase 34: Stereo Panner                                    [0.5 week] ✅ Complete
+Phase 35: Dynamic EQ                                       [1 week]   ✅ Complete
 Phase 36: Pitch Correction (YIN)                           [1 week]   📋 Planned
 Phase 37: Noise Reduction                                  [1 week]   📋 Planned
 Phase 38: Interpolation Kernel Expansion                   [1 week]   📋 Planned
@@ -403,7 +403,7 @@ and NaN/Inf validation).
 
 - Butterworth (`butterworth.go`), Chebyshev I (`chebyshev1.go`), and Chebyshev II (`chebyshev2.go`,
   Orfanidis framework) designers + tests (endpoint anchors, monotonicity, grid sweeps, DC/Nyquist
-  + stopband ripple). The earlier Chebyshev II shape bug is fixed.
+  - stopband ripple). The earlier Chebyshev II shape bug is fixed.
 
 > Open follow-up: elliptic shelving is split out as **Phase 32**.
 
@@ -498,13 +498,13 @@ Validated the steady-state transfer behavior of the Phase 16 dynamics suite agai
 `legacy_parity_test.go` only covered streaming simulation, not static curves.
 
 - [x] Added a static curve builder (`dsp/effects/dynamics/curve.go`): `StaticCurve(p, min, max,
-  step)` returning `[]CurvePoint{InputDB, OutputDB, GainReductionDB}` over a `StaticCurveProcessor`
-  interface satisfied by Compressor/Expander/Gate via their `CalculateOutputLevel` (gain-computer
-  path), plus `MultibandCompressor.BandStaticCurve` for per-band curves. No streaming/detector state
-  is touched (verified by a non-mutation test).
+step)` returning `[]CurvePoint{InputDB, OutputDB, GainReductionDB}` over a `StaticCurveProcessor`
+      interface satisfied by Compressor/Expander/Gate via their `CalculateOutputLevel` (gain-computer
+      path), plus `MultibandCompressor.BandStaticCurve` for per-band curves. No streaming/detector state
+      is touched (verified by a non-mutation test).
 - [x] Validated `in → out` and gain-reduction curves across threshold/ratio/knee sweeps: compressor
-  and expander match the legacy hard-knee transfer law exactly (1e-9), soft-knee rejoins the legacy
-  asymptote outside the knee and stays monotonic/non-amplifying within it.
+      and expander match the legacy hard-knee transfer law exactly (1e-9), soft-knee rejoins the legacy
+      asymptote outside the knee and stays monotonic/non-amplifying within it.
 
 Exit criteria:
 
@@ -516,7 +516,7 @@ Add the missing elliptic topology to `dsp/filter/design/shelving/`, matching the
 `XxxLow/HighShelf(sampleRate, freqHz, gainDB, order)` → `[]biquad.Coefficients` signature.
 
 - [ ] Implement `EllipticLowShelf`/`EllipticHighShelf`, reusing `internal/ellipticmath`
-  (`EllipDeg`/`ASNE`/`CDE`) and the pole/zero placement in `band/elliptic.go` as a template.
+      (`EllipDeg`/`ASNE`/`CDE`) and the pole/zero placement in `band/elliptic.go` as a template.
 - [ ] Add a stopband-ripple parameter consistent with the band elliptic designer.
 - [ ] Stability + response tests (endpoint anchors, monotonic transition, ripple conformance).
 
@@ -536,30 +536,66 @@ Exit criteria:
 
 - [ ] Example builds; `go test -race ./dsp/effects` passes.
 
-### Phase 34: Stereo Panner (Planned)
+### Phase 34: Stereo Panner (Complete)
 
-- [ ] Equal-power (constant-power) pan law in `dsp/effects/spatial`, following the existing
-  spatial-effect API (constructor + options, `ProcessStereo`/in-place, `Reset`).
-- [ ] Tests (power preservation across the pan sweep; hard-left/right/center) + runnable example.
+`StereoPanner` (`dsp/effects/spatial/stereo_panner.go`) follows the `HaasDelay` API shape
+(constructor + options, shared `validate*` helpers, `ProcessStereo`/in-place/interleaved,
+`Reset`, getters + `Set*`).
 
-### Phase 35: Dynamic EQ (Planned)
+- [x] Selectable pan law: `PanLawEqualPower` (−3 dB centre, `gL²+gR²=1`, default),
+      `PanLawCompromise` (−4.5 dB, geometric mean) and `PanLawLinear` (−6 dB, `gL+gR=1`).
+- [x] Two modes: mono-pan (`ProcessMono`, `ProcessMonoToStereo`, `ProcessMonoToInterleaved`)
+      applying the raw law gains, and attenuate-only stereo balance (`ProcessStereo` and friends)
+      where the centre is unity pass-through and off-centre only ever fades the far channel.
+- [x] Optional auto-pan LFO (`WithAutoPanRate`/`WithAutoPanDepth`) using the inline sine
+      accumulator pattern of `dsp/effects/modulation/tremolo.go`; disabled by default so the
+      static path uses cached, trig-free gains.
+- [x] Tests (power/amplitude invariants across the sweep, centre levels, hard-left/right,
+      monotonicity, balance never boosts, auto-pan sweep/depth/determinism) + 4 runnable
+      examples + benchmarks.
 
-- [ ] Per-band filter + detector + gain mapping, composing the Phase 16 dynamics core with biquad
-  bands (threshold-driven boost/cut per band).
-- [ ] Tests (static band gain vs detector level; multi-band interaction) + runnable example.
+> Not wired into `dsp/effectchain` or the web demo; that stays with the effect-chain work.
+
+Exit criteria:
+
+- [x] Equal-power sweep holds `gL²+gR²=1` to 1e-12; `go test -race ./dsp/effects/spatial`
+      passes; static path is 0 allocs/op.
+
+### Phase 35: Dynamic EQ (Complete)
+
+- [x] Per-band filter + detector + gain mapping in `dsp/effects/dynamics/dynamic_eq.go`: peaking and
+      shelving bands run in series on the full-band signal, each pairing a `biquad.Section` with its own
+      `dynamicsCore` detector and soft-knee gain computer.
+- [x] Four band modes — static offset, downward (cut above threshold), upward (boost above
+      threshold) and upward-below (boost below threshold). Upward is the negated downward curve and
+      upward-below evaluates the same computer at the threshold-mirrored level, so knee and ratio behave
+      identically across all modes.
+- [x] Per-band detection from a unity-gain bandpass of the sidechain (default) or wideband, with an
+      external sidechain through `ProcessSampleSidechain`/`ProcessInPlaceSidechain`.
+- [x] Control-rate coefficient redesign through the canonical `dsp/filter/design` designers
+      (`SetUpdateInterval`, default 32 samples), overwriting coefficients in place so filter state
+      survives; zero-allocation hot path.
+- [x] `BandStaticCurve` reuses the Phase 31 `StaticCurveProcessor` plumbing.
+- [x] Tests (static band gain vs detector level, mode directions, range clamp, band selectivity,
+      multi-band interaction, determinism/reset, update-interval fidelity, zero-alloc) + benchmarks +
+      runnable examples.
+
+Exit criteria:
+
+- [x] `go test -race ./dsp/effects/dynamics` passes; `BenchmarkDynamicEQ*` report 0 allocs/op.
 
 ### Phase 36: Pitch Correction (YIN) (Planned)
 
 - [ ] YIN fundamental-frequency detector (difference function + CMND + parabolic interpolation);
-  no detector exists today — `dsp/effects/pitch` only does pitch shifting.
+      no detector exists today — `dsp/effects/pitch` only does pitch shifting.
 - [ ] Integrate detection with the existing pitch shifter / `frequency_shifter` to snap pitch to a
-  target/scale.
+      target/scale.
 - [ ] Tests (detection accuracy on synthetic tones; octave-error robustness) + runnable example.
 
 ### Phase 37: Noise Reduction (Planned)
 
 - [ ] Noise-profile capture + spectral subtraction / Wiener filtering over an STFT (reuse the
-  spectral-freeze STFT scaffolding).
+      spectral-freeze STFT scaffolding).
 - [ ] Tests (SNR improvement on profiled noise; musical-noise sanity) + runnable example.
 
 ### Phase 38: Interpolation Kernel Expansion (Planned)
@@ -568,16 +604,16 @@ Extend `dsp/interp` toward `legacy/Source/DSP/DAV_DspInterpolation.pas`, keeping
 allocation-free behavior.
 
 - [ ] Add the remaining Hermite family (`Hermite1..3`) and B-spline kernels (4-point/3rd-order,
-  6-point/5th-order) with documented formulas and stable edge semantics.
+      6-point/5th-order) with documented formulas and stable edge semantics.
 - [ ] Parity tests vs legacy formulas + reference vectors; smoothness/continuity tests across a
-  fractional sweep.
+      fractional sweep.
 
 ### Phase 39: Interpolation Integration & Validation (Planned)
 
 - [ ] Optional complex/interleaved interpolation helpers for spectral/complex pipelines
-  (cf. `DAV_DspSpectrumInterpolation.pas`).
+      (cf. `DAV_DspSpectrumInterpolation.pas`).
 - [ ] Unify interpolation-mode selection across `dsp/delay`, `dsp/resample`, and effects call
-  sites; expose low-level hot-path helpers where measured.
+      sites; expose low-level hot-path helpers where measured.
 - [ ] Kernel quality-vs-CPU benchmarks; boundary tests (short buffers, wrap/clamp policies).
 
 Exit criteria:
@@ -613,7 +649,7 @@ Optional; uses the already-present `algo-vecmath v0.1.0` dependency.
 - [ ] Full benchmark pass; confirm no major regressions vs baselines.
 - [ ] Full local CI (`just ci`) including race (`go test -race ./...`).
 - [ ] Finalize `CHANGELOG.md` and the placeholder `MIGRATION.md`; create the missing
-  `API_REVIEW.md` and complete its checklist for `v1.0.0`.
+      `API_REVIEW.md` and complete its checklist for `v1.0.0`.
 
 ### Phase 43: Tag and Publish v1.0 (Planned)
 
@@ -749,21 +785,22 @@ Quarter-end success criteria:
 
 ## Appendix H: Revision History
 
-| Version | Date       | Author  | Changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------- | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.1     | 2026-02-06 | Codex   | Initial comprehensive plan                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| 0.2     | 2026-02-06 | Claude  | Expanded early phases + migration notes                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| 0.3     | 2026-02-08 | Claude  | Added shelving filter design phase + known Chebyshev II bug                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases                                                                                                                                                                                                                                                                                                                                                                                                               |
-| 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis                                                                                                                                                                                                                                                                                                                                                     |
-| 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress                                                                                                                                                                                                                                                                                                                                            |
-| 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete                                                                                                                                                                                                                                                                                                       |
-| 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below.                                                                                                                                                                                                                                                                                   |
-| 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades).                                                                                                                 |
-| 0.10    | 2026-06-21 | Claude  | Status refresh after the recovery: Phase 21 (convolution reverb done, Haas pending) and Phase 22 (spectral-freeze/granular/vocoder done; dynamic-EQ/panner/pitch-correction/noise-reduction pending) moved Planned → In Progress with their done items checked; refreshed the Phase 26 Moog snapshot to describe the adopted six-variant release-line filter (incl. `VariantZDF`); swapped the web demo to the `dsp/effectchain`-driven architecture + IR library (PR #14). |
-| 0.11    | 2026-06-21 | Claude  | Completed Phase 21: implemented the `HaasDelay` precedence effect (`dsp/effects/spatial`, reusing `monoDelay`) with tests/example/benchmarks, and added the missing convolution-reverb tests/example; snapshot now credits the full reverb suite (Convolution + FDN + Freeverb) plus Haas. Phase Complete.                                                                                                                                                                  |
-| 0.12    | 2026-06-21 | Claude  | Condensed all completed phases (15, 17–21, 26–30) to compact summaries; split the oversized undone phases into focused sub-phases — Phase 22 → 22.1–22.5 (vocoder finalize, panner, dynamic EQ, YIN pitch correction, noise reduction), Phase 24 → 24.1/24.2 (regression guard / SIMD modal track), Phase 25 → 25.1/25.2 (readiness / release), Phase 31 → 31.1/31.2 (kernels / integration); slimmed Phases 16 & 23 to done-summary + remaining item; refreshed Phase Overview to match. |
+| Version | Date       | Author  | Changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------- | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.1     | 2026-02-06 | Codex   | Initial comprehensive plan                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 0.2     | 2026-02-06 | Claude  | Expanded early phases + migration notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 0.3     | 2026-02-08 | Claude  | Added shelving filter design phase + known Chebyshev II bug                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades).                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 0.10    | 2026-06-21 | Claude  | Status refresh after the recovery: Phase 21 (convolution reverb done, Haas pending) and Phase 22 (spectral-freeze/granular/vocoder done; dynamic-EQ/panner/pitch-correction/noise-reduction pending) moved Planned → In Progress with their done items checked; refreshed the Phase 26 Moog snapshot to describe the adopted six-variant release-line filter (incl. `VariantZDF`); swapped the web demo to the `dsp/effectchain`-driven architecture + IR library (PR #14).                                                                                                                                                                                                                                                                                                 |
+| 0.11    | 2026-06-21 | Claude  | Completed Phase 21: implemented the `HaasDelay` precedence effect (`dsp/effects/spatial`, reusing `monoDelay`) with tests/example/benchmarks, and added the missing convolution-reverb tests/example; snapshot now credits the full reverb suite (Convolution + FDN + Freeverb) plus Haas. Phase Complete.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 0.12    | 2026-06-21 | Claude  | Condensed all completed phases (15, 17–21, 26–30) to compact summaries; split the oversized undone phases into focused sub-phases — Phase 22 → 22.1–22.5 (vocoder finalize, panner, dynamic EQ, YIN pitch correction, noise reduction), Phase 24 → 24.1/24.2 (regression guard / SIMD modal track), Phase 25 → 25.1/25.2 (readiness / release), Phase 31 → 31.1/31.2 (kernels / integration); slimmed Phases 16 & 23 to done-summary + remaining item; refreshed Phase Overview to match.                                                                                                                                                                                                                                                                                   |
 | 0.13    | 2026-06-21 | Claude  | Reordered into completed-then-remaining and re-applied **strict integer numbering** (no `x.y` sub-phases). Completed phases come first (old 26–31 shifted to 25–30); partial phases 16/22/23/24 are now scoped to shipped work, with their open follow-ups split into standalone phases. Remaining roadmap is Phases 31–43 in execution order, ending with v1.0 (P42–P43). Open phases refined with concrete file paths / API hooks from a codebase audit (interpolation core found already complete → P30; dynamics static-curve path via `GainForLevel`/`CalculateOutputLevel`; elliptic reuse of `internal/ellipticmath`; `algo-vecmath` already a dependency; `API_REVIEW.md` still missing). **Note:** revision entries 0.1–0.12 reference the pre-0.13 phase numbers. |
+| 0.14    | 2026-07-29 | Claude  | Completed Phase 34: added `StereoPanner` (`dsp/effects/spatial/stereo_panner.go`) with three selectable pan laws (equal-power/compromise/linear), mono-pan and attenuate-only stereo-balance modes, and an optional auto-pan LFO; tests, 4 runnable examples and benchmarks included. Effect-chain/web-demo wiring deliberately left out of scope.                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 ---
 

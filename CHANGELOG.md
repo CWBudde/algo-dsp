@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- `dynamics.DynamicEQ` (Phase 35): a series chain of parametric EQ bands whose gain is driven by a per-band detector. Peaking and shelving shapes, static/downward/upward/upward-below modes, band-filtered or external sidechain detection, control-rate coefficient updates (`SetUpdateInterval`), per-band metering, and `BandStaticCurve`.
 - New public package `dsp/interp` with reusable cubic Hermite interpolation (`Hermite4`) and a configurable `LagrangeInterpolator`.
 - New public package `dsp/delay` with reusable circular delay-line primitives, including integer and fractional-delay reads.
 - Added `core.FlushDenormals` for denormal-safe hot loops.
@@ -20,6 +21,7 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- `design.Peak` no longer allocates when called without `PeakOption`s, making runtime coefficient redesign allocation-free.
 - Benchmark code in `measure/ir` and `measure/sweep` now handles returned errors to satisfy release lint gates.
 - Public implementation comments were cleaned to remove open work-item markers in Phase 25-facing code.
 

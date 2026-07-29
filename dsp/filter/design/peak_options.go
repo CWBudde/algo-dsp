@@ -47,6 +47,13 @@ func WithBandEdgeGain(g float64) PeakOption {
 }
 
 func applyPeakOpts(opts []PeakOption) peakConfig {
+	// Taking the address of a local config forces it onto the heap, so the
+	// common no-option call stays allocation-free for real-time coefficient
+	// updates (see dynamics.DynamicEQ, which redesigns bands at control rate).
+	if len(opts) == 0 {
+		return peakConfig{}
+	}
+
 	var cfg peakConfig
 	for _, o := range opts {
 		o(&cfg)
