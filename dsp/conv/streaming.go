@@ -87,7 +87,7 @@ func newFFTEngine[C algofft.Complex](n int) (*fftEngine[C], error) {
 		return engine, nil
 	}
 	// FastPlan unavailable (e.g. no codelet for this size), fall back to Plan.
-	plan, err := algofft.NewPlanT[C](n)
+	plan, err := algofft.NewPlan[C](n)
 	if err != nil {
 		return nil, err
 	}
