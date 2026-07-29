@@ -402,8 +402,8 @@ signature `XxxLow/HighShelf(sampleRate, freqHz, gainDB float64, order int) ([]bi
 and NaN/Inf validation).
 
 - Butterworth (`butterworth.go`), Chebyshev I (`chebyshev1.go`), and Chebyshev II (`chebyshev2.go`,
-  Orfanidis framework) designers + tests (endpoint anchors, monotonicity, grid sweeps, DC/Nyquist
-  - stopband ripple). The earlier Chebyshev II shape bug is fixed.
+  Orfanidis framework) designers + tests (endpoint anchors, monotonicity, grid sweeps,
+  DC/Nyquist ± stopband ripple). The earlier Chebyshev II shape bug is fixed.
 
 > Open follow-up: elliptic shelving is split out as **Phase 32**.
 

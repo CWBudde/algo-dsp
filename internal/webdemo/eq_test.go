@@ -207,3 +207,22 @@ func TestEquirippleShelfRipple_Bounds(t *testing.T) {
 		t.Error("chebyshev2 should admit a stopband at 0.04 dB gain")
 	}
 }
+
+// TestRBJFallbackQ_IgnoresRippleShapes checks that a shape value carrying a dB
+// ripple bound is not handed to the RBJ fallback as a Q, which would turn a
+// 12 dB ripple into a Q of 12 and produce a wildly resonant filter.
+func TestRBJFallbackQ_IgnoresRippleShapes(t *testing.T) {
+	// Ripple mode: the shape value is a dB bound and carries no Q information.
+	if got := rbjFallbackQ(eqKindLowShelf, eqFamilyElliptic, 1000, 12); got != rbjDefaultQ {
+		t.Errorf("elliptic shelf fallback Q = %v, want %v", got, rbjDefaultQ)
+	}
+
+	if got := rbjFallbackQ(eqKindHighpass, eqFamilyChebyshev1, 1000, 9); got != rbjDefaultQ {
+		t.Errorf("chebyshev1 highpass fallback Q = %v, want %v", got, rbjDefaultQ)
+	}
+
+	// Q mode: the RBJ families keep using the shape control as a Q.
+	if got := rbjFallbackQ(eqKindLowShelf, eqFamilyRBJ, 1000, 2.5); got != 2.5 {
+		t.Errorf("rbj shelf fallback Q = %v, want 2.5", got)
+	}
+}

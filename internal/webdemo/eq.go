@@ -257,24 +257,43 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 		}
 	}
 
+	fq := rbjFallbackQ(kind, family, freq, q)
+
 	switch kind {
 	case eqKindHighpass:
-		return chainFromCoeffs([]biquad.Coefficients{design.Highpass(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Highpass(freq, fq, sampleRate)}, linGain)
 	case eqKindBandpass:
-		return chainFromCoeffs([]biquad.Coefficients{design.Bandpass(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Bandpass(freq, fq, sampleRate)}, linGain)
 	case eqKindNotch:
-		return chainFromCoeffs([]biquad.Coefficients{design.Notch(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Notch(freq, fq, sampleRate)}, linGain)
 	case eqKindAllpass:
-		return chainFromCoeffs([]biquad.Coefficients{design.Allpass(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Allpass(freq, fq, sampleRate)}, linGain)
 	case eqKindPeak:
-		return chainFromCoeffs([]biquad.Coefficients{design.Peak(freq, gainDB, rbjQFromShape(kind, family, freq, q), sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Peak(freq, gainDB, fq, sampleRate)}, linGain)
 	case eqKindHighShelf:
-		return chainFromCoeffs([]biquad.Coefficients{design.HighShelf(freq, gainDB, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.HighShelf(freq, gainDB, fq, sampleRate)}, linGain)
 	case eqKindLowShelf:
-		return chainFromCoeffs([]biquad.Coefficients{design.LowShelf(freq, gainDB, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.LowShelf(freq, gainDB, fq, sampleRate)}, linGain)
 	default:
-		return chainFromCoeffs([]biquad.Coefficients{design.Lowpass(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Lowpass(freq, fq, sampleRate)}, linGain)
 	}
+}
+
+// rbjDefaultQ is the Butterworth-flat Q the RBJ cookbook filters default to.
+const rbjDefaultQ = math.Sqrt2 / 2
+
+// rbjFallbackQ supplies the Q for the single-section RBJ fallback.
+//
+// When the node's shape control is in ripple mode its value is a dB ripple
+// bound, not a Q, so a high-order design that bails out must not hand that
+// number to an RBJ filter — a 12 dB ripple would silently become a Q of 12.
+// There is no meaningful Q to recover in that case, so use the RBJ default.
+func rbjFallbackQ(kind, family string, freq, shape float64) float64 {
+	if eqShapeMode(kind, family) == eqShapeModeRipple {
+		return rbjDefaultQ
+	}
+
+	return rbjQFromShape(kind, family, freq, shape)
 }
 
 func chainFromCoeffs(coeffs []biquad.Coefficients, gain float64) *biquad.Chain {
