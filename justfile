@@ -44,11 +44,24 @@ test-coverage:
 bench:
     go test -run=^$ -bench=. -benchmem ./...
 
-# Run CI benchmark subset (fast, machine-readable) covering hottest paths
+# Run CI benchmark subset (fast, machine-readable) covering hottest paths.
+# Output goes to stdout unadorned so it can be piped into `just bench-guard`.
 bench-ci:
-    go test -run='^$' -bench='BenchmarkProcessSample$|BenchmarkProcessBlock/N=1024$' -benchmem -count=1 ./dsp/filter/biquad/
-    go test -run='^$' -bench='Benchmark(Magnitude|Power)/(4K|16K)$' -benchmem -count=1 ./dsp/spectrum/
-    go test -run='^$' -bench='BenchmarkCalculate/4096$' -benchmem -count=1 ./stats/time/ ./stats/frequency/
+    @go test -run='^$' -bench='BenchmarkProcessSample$|BenchmarkProcessBlock/N=1024$' -benchmem -count=1 ./dsp/filter/biquad/
+    @go test -run='^$' -bench='Benchmark(ProcessSample|ProcessBlock)$/^taps=128$' -benchmem -count=1 ./dsp/filter/fir/
+    @go test -run='^$' -bench='Benchmark(Generate|Apply)$/^hann$/^1024$' -benchmem -count=1 ./dsp/window/
+    @go test -run='^$' -bench='BenchmarkConvolve$/^signal=4096_kernel=32$|BenchmarkOverlapAddReuse$/^signal=4096_kernel=64$' -benchmem -count=1 ./dsp/conv/
+    @go test -run='^$' -bench='Benchmark(Magnitude|Power)/(4K|16K)$' -benchmem -count=1 ./dsp/spectrum/
+    @go test -run='^$' -bench='BenchmarkCalculate/4096$' -benchmem -count=1 ./stats/time/ ./stats/frequency/
+
+# Compare the CI benchmark subset against benchmarks/baseline.json.
+# Advisory by default; pass `--fail` to exit non-zero on a regression.
+bench-guard *ARGS:
+    @set -o pipefail; just bench-ci | go run ./cmd/benchguard {{ ARGS }}
+
+# Record the current machine's CI benchmark subset as the new baseline
+bench-baseline:
+    @set -o pipefail; just bench-ci | go run ./cmd/benchguard -update
 
 # Run all checks (formatting, linting, tests, tidiness)
 ci: check-formatted test lint check-tidy
