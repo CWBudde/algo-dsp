@@ -88,6 +88,7 @@ func (pc PitchClass) String() string {
 	names := [pitchClassCount]string{
 		"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
 	}
+
 	if !pc.valid() {
 		return fmt.Sprintf("PitchClass(%d)", uint8(pc))
 	}

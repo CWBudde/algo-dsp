@@ -83,7 +83,7 @@ func (p *PitchShifter) SampleRate() float64 { return p.sampleRate }
 func (p *PitchShifter) PitchRatio() float64 { return p.pitchRatio }
 
 // PitchSemitones returns the current pitch shift in semitones.
-func (p *PitchShifter) PitchSemitones() float64 { return 12.0 * math.Log2(p.pitchRatio) }
+func (p *PitchShifter) PitchSemitones() float64 { return RatioToSemitones(p.pitchRatio) }
 
 // Sequence returns sequence length in milliseconds.
 func (p *PitchShifter) Sequence() float64 { return p.sequenceMs }
@@ -131,7 +131,7 @@ func (p *PitchShifter) SetPitchSemitones(semitones float64) error {
 		return fmt.Errorf("pitch shifter semitones must be finite: %f", semitones)
 	}
 
-	ratio := math.Pow(2, semitones/12.0)
+	ratio := SemitonesToRatio(semitones)
 	if err := p.SetPitchRatio(ratio); err != nil {
 		return fmt.Errorf("pitch shifter semitones out of range: %w", err)
 	}

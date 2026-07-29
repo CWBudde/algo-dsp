@@ -225,6 +225,7 @@ func TestPitchTrackerTracksGlide(t *testing.T) {
 	signal := make([]float64, n)
 
 	phase := 0.0
+
 	for i := range signal {
 		hz := startHz + (endHz-startHz)*float64(i)/float64(n-1)
 		signal[i] = 0.5 * math.Sin(phase)

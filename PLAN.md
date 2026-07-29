@@ -200,7 +200,7 @@ Phase 32: Elliptic Shelving Designer                       [1 week]   ✅ Comple
 Phase 33: Vocoder Finalization                             [0.5 week] 🔄 In Progress
 Phase 34: Stereo Panner                                    [0.5 week] ✅ Complete
 Phase 35: Dynamic EQ                                       [1 week]   ✅ Complete
-Phase 36: Pitch Correction (YIN)                           [1 week]   📋 Planned
+Phase 36: Pitch Correction (YIN)                           [1 week]   ✅ Complete
 Phase 37: Noise Reduction                                  [1 week]   📋 Planned
 Phase 38: Interpolation Kernel Expansion                   [1 week]   📋 Planned
 Phase 39: Interpolation Integration & Validation           [1 week]   📋 Planned
@@ -600,13 +600,44 @@ Exit criteria:
 
 - [x] `go test -race ./dsp/effects/dynamics` passes; `BenchmarkDynamicEQ*` report 0 allocs/op.
 
-### Phase 36: Pitch Correction (YIN) (Planned)
+### Phase 36: Pitch Correction (YIN) (Complete)
 
-- [ ] YIN fundamental-frequency detector (difference function + CMND + parabolic interpolation);
-      no detector exists today — `dsp/effects/pitch` only does pitch shifting.
-- [ ] Integrate detection with the existing pitch shifter / `frequency_shifter` to snap pitch to a
-      target/scale.
-- [ ] Tests (detection accuracy on synthetic tones; octave-error robustness) + runnable example.
+- [x] `YINDetector` (`dsp/effects/pitch/yin_detector.go`): squared difference function, cumulative
+      mean normalized difference (`d'(0) := 1`), absolute threshold followed down to its local
+      minimum, and parabolic interpolation. Frame-at-a-time, zero-allocation, with a frame RMS
+      silence gate and a `PitchEstimate` that reports 0 Hz when unvoiced so a failed estimate can
+      never be mistaken for a real one.
+- [x] `PitchTracker` (`dsp/effects/pitch/pitch_tracker.go`): ring buffer + hop scheduling around the
+      detector, plus a fixed-array median filter and an unvoiced hold. The median filter is the
+      octave-error defence — a single stray frame cannot move the reported pitch.
+- [x] `PitchCorrector` (`dsp/effects/pitch/pitch_corrector.go`): composes the tracker with any
+      `PitchProcessor` (default `SpectralPitchShifter`). Scale or fixed-target modes, correction
+      amount interpolated in the semitone domain, a clamped maximum correction, a confidence gate,
+      an unvoiced hold, and a retune glide (`WithCorrectionSpeedMs`). Blocks are processed with a
+      short lookahead and crossfaded at the seams. It deliberately does **not** implement
+      `PitchProcessor`, since its ratio is derived rather than set.
+- [x] Note/scale helpers (`dsp/effects/pitch/note.go`): `Scale` (comparable, bitmask-backed) with
+      chromatic/major/natural-minor/harmonic-minor/pentatonic/blues/whole-tone constructors and
+      `SnapMIDI` (ties resolve down), plus `FrequencyToMIDI`, `MIDIToFrequency`,
+      `SemitonesToRatio`, `RatioToSemitones` and `CentsBetween`. The two shifters now use these
+      instead of four inlined copies of the semitone formulas.
+- [x] Tests (sine accuracy within 1 cent across a 55–1318 Hz grid at 44.1/48 kHz; sawtooth, square
+      and missing-fundamental octave-error robustness; threshold-vs-octave trade-off; noise
+      robustness at 20/10/3 dB SNR; unvoiced/silence; determinism; zero-alloc) + benchmarks + 6
+      runnable examples.
+
+> The `frequency_shifter` mentioned in the original scope is **not** used: `modulation.FrequencyShifter`
+> is a Bode SSB shifter that translates every partial by a constant number of hertz, destroying
+> harmonicity. Correction needs a ratio, not an offset. Documented in `dsp/effects/pitch/doc.go`.
+
+> Not wired into `dsp/effectchain` or the web demo, matching the Phase 34/35 scoping. An
+> FFT-accelerated difference function and pYIN are noted in `EFFECTS.md` as future refinements.
+
+Exit criteria:
+
+- [x] `go test -race ./dsp/effects/pitch` passes; `BenchmarkYINDetectorDetect` and
+      `BenchmarkPitchTrackerWrite` report 0 allocs/op; detection is within 1 cent on the synthetic
+      sine grid with no octave errors on harmonic-rich material.
 
 ### Phase 37: Noise Reduction (Planned)
 
@@ -817,6 +848,7 @@ Quarter-end success criteria:
 | 0.12    | 2026-06-21 | Claude  | Condensed all completed phases (15, 17–21, 26–30) to compact summaries; split the oversized undone phases into focused sub-phases — Phase 22 → 22.1–22.5 (vocoder finalize, panner, dynamic EQ, YIN pitch correction, noise reduction), Phase 24 → 24.1/24.2 (regression guard / SIMD modal track), Phase 25 → 25.1/25.2 (readiness / release), Phase 31 → 31.1/31.2 (kernels / integration); slimmed Phases 16 & 23 to done-summary + remaining item; refreshed Phase Overview to match.                                                                                                                                                                                                                                                                                   |
 | 0.13    | 2026-06-21 | Claude  | Reordered into completed-then-remaining and re-applied **strict integer numbering** (no `x.y` sub-phases). Completed phases come first (old 26–31 shifted to 25–30); partial phases 16/22/23/24 are now scoped to shipped work, with their open follow-ups split into standalone phases. Remaining roadmap is Phases 31–43 in execution order, ending with v1.0 (P42–P43). Open phases refined with concrete file paths / API hooks from a codebase audit (interpolation core found already complete → P30; dynamics static-curve path via `GainForLevel`/`CalculateOutputLevel`; elliptic reuse of `internal/ellipticmath`; `algo-vecmath` already a dependency; `API_REVIEW.md` still missing). **Note:** revision entries 0.1–0.12 reference the pre-0.13 phase numbers. |
 | 0.14    | 2026-07-29 | Claude  | Completed Phase 34: added `StereoPanner` (`dsp/effects/spatial/stereo_panner.go`) with three selectable pan laws (equal-power/compromise/linear), mono-pan and attenuate-only stereo-balance modes, and an optional auto-pan LFO; tests, 4 runnable examples and benchmarks included. Effect-chain/web-demo wiring deliberately left out of scope.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 0.15    | 2026-07-29 | Claude  | Completed Phase 36: added the YIN pitch detector (`YINDetector`), the streaming `PitchTracker` with median/hold smoothing, the auto-tune `PitchCorrector`, and the `Scale`/note-conversion helpers — all in `dsp/effects/pitch`; the two existing shifters now share the new semitone conversions. Recorded the decision not to use `modulation.FrequencyShifter` for correction (it breaks harmonicity). Effect-chain/web-demo wiring and an FFT difference function deliberately left out of scope. |
 | 0.15    | 2026-07-29 | Claude  | Completed Phase 32: extracted the Orfanidis parametric-EQ prototypes into `internal/orfanidis` (shared with `dsp/filter/design/band`), added `Elliptic{Low,High}Shelf` for orders >= 1, and rebuilt `Chebyshev2{Low,High}Shelf` as a genuine equiripple Type II design — the previous version delegated to a Butterworth shelf. All four shelving families now share the `\|H(f_c)\|² = (G²+1)/2` cutoff convention. Dead `chebyshev2Sections` (empirical damping constants) and `invertSections` removed; examples and benchmarks added. Breaking coefficient change for Chebyshev II, see CHANGELOG.md.                                                                                                                                                                   |
 
 ---
