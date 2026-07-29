@@ -185,9 +185,17 @@ func (e *Engine) SetEffects(p EffectsParams) error {
 		return err
 	}
 
-	err = e.chain.LoadGraph(p.ChainGraphJSON)
-	if err != nil {
-		return err
+	// SetEffects is called for every parameter change, including ones that do
+	// not touch the graph at all (compressor, limiter, analyser). Re-parsing and
+	// re-compiling an unchanged graph on each of those is pure waste on the
+	// thread that also renders audio.
+	if p.ChainGraphJSON != e.loadedGraphJSON {
+		err = e.chain.LoadGraph(p.ChainGraphJSON)
+		if err != nil {
+			return err
+		}
+
+		e.loadedGraphJSON = p.ChainGraphJSON
 	}
 
 	if prevChorusEnabled && !p.ChorusEnabled {

@@ -1,0 +1,76 @@
+name: Web Demo
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  wasm-build:
+    name: WASM Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # web/wasm/main.go is behind `//go:build js && wasm`, so `go build ./...`,
+      # `go test ./...` and golangci-lint never compile it on a linux/amd64
+      # runner. Without this job a break in the entry point reaches main and is
+      # only discovered by the Pages deploy, after merge.
+      - name: Vet (js/wasm)
+        run: GOOS=js GOARCH=wasm go vet ./web/wasm
+
+      - name: Build (js/wasm)
+        run: ./web/build-wasm.sh
+
+      - name: Report artifact size
+        run: |
+          raw=$(stat -c%s web/algo_dsp_demo.wasm)
+          gz=$(gzip -c web/algo_dsp_demo.wasm | wc -c)
+          printf 'wasm: %s bytes raw, %s bytes gzipped\n' "$raw" "$gz" >> "$GITHUB_STEP_SUMMARY"
+
+  smoke:
+    name: Browser Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint and format check (js/html/css)
+        run: npm run check
+
+      - name: Build WASM assets
+        run: ./web/build-wasm.sh
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test
+        run: npm test
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: web/test/playwright-report/
+          retention-days: 7

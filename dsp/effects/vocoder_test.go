@@ -23,6 +23,8 @@ func TestNewVocoderValidation(t *testing.T) {
 		{"NaN sample rate", math.NaN(), nil},
 		{"Inf sample rate", math.Inf(1), nil},
 		{"invalid layout", 48000, []VocoderOption{WithBandLayout(BandLayout(99))}},
+		{"no usable third-octave bands", 1, nil},
+		{"no usable Bark bands", 100, []VocoderOption{WithBandLayout(BandLayoutBark)}},
 		{"negative attack", 48000, []VocoderOption{WithVocoderAttack(-1)}},
 		{"NaN attack", 48000, []VocoderOption{WithVocoderAttack(math.NaN())}},
 		{"negative release", 48000, []VocoderOption{WithVocoderRelease(-1)}},
@@ -30,6 +32,9 @@ func TestNewVocoderValidation(t *testing.T) {
 		{"negative input level", 48000, []VocoderOption{WithVocoderInputLevel(-1)}},
 		{"input level too high", 48000, []VocoderOption{WithVocoderInputLevel(11)}},
 		{"negative synth level", 48000, []VocoderOption{WithVocoderSynthLevel(-1)}},
+		{"synth level too high", 48000, []VocoderOption{WithVocoderSynthLevel(11)}},
+		{"NaN synth level", 48000, []VocoderOption{WithVocoderSynthLevel(math.NaN())}},
+		{"Inf synth level", 48000, []VocoderOption{WithVocoderSynthLevel(math.Inf(1))}},
 		{"negative vocoder level", 48000, []VocoderOption{WithVocoderLevel(-1)}},
 		{"synthesis Q too low", 48000, []VocoderOption{WithVocoderSynthesisQ(0.01)}},
 		{"synthesis Q too high", 48000, []VocoderOption{WithVocoderSynthesisQ(25)}},
@@ -94,6 +99,76 @@ func TestNewVocoderBandCountAtLowSampleRate(t *testing.T) {
 	// Bands: 16..3150 Hz = 24 bands.
 	if v.NumBands() < 20 || v.NumBands() > 26 {
 		t.Errorf("NumBands() at 8 kHz = %d, expected roughly 24", v.NumBands())
+	}
+}
+
+func TestNewVocoderLevelOptions(t *testing.T) {
+	v, err := NewVocoder(
+		48000,
+		WithVocoderInputLevel(0.25),
+		WithVocoderSynthLevel(0.4),
+		WithVocoderLevel(0.75),
+	)
+	if err != nil {
+		t.Fatalf("NewVocoder() error = %v", err)
+	}
+
+	if v.InputLevel() != 0.25 {
+		t.Errorf("InputLevel() = %g, want 0.25", v.InputLevel())
+	}
+
+	if v.SynthLevel() != 0.4 {
+		t.Errorf("SynthLevel() = %g, want 0.4", v.SynthLevel())
+	}
+
+	if v.VocoderLevel() != 0.75 {
+		t.Errorf("VocoderLevel() = %g, want 0.75", v.VocoderLevel())
+	}
+}
+
+func TestNewVocoderNilOptionIgnored(t *testing.T) {
+	v, err := NewVocoder(48000, nil, WithVocoderAttack(2), nil)
+	if err != nil {
+		t.Fatalf("NewVocoder() with nil options error = %v", err)
+	}
+
+	if v.NumBands() != 32 {
+		t.Errorf("NumBands() = %d, want 32", v.NumBands())
+	}
+
+	if v.Attack() != 2 {
+		t.Errorf("Attack() = %g, want 2", v.Attack())
+	}
+}
+
+func TestNewVocoderOptionErrorPropagates(t *testing.T) {
+	v, err := NewVocoder(48000, WithBandLayout(BandLayout(99)))
+	if err == nil {
+		t.Fatal("expected an error for an invalid band layout")
+	}
+
+	if v != nil {
+		t.Errorf("expected a nil vocoder alongside the error, got %+v", v)
+	}
+}
+
+func TestVocoderSynthesisQ(t *testing.T) {
+	v, err := NewVocoder(48000)
+	if err != nil {
+		t.Fatalf("NewVocoder() error = %v", err)
+	}
+
+	if v.SynthesisQ() != defaultVocoderSynthQ {
+		t.Errorf("SynthesisQ() = %g, want the default %g", v.SynthesisQ(), defaultVocoderSynthQ)
+	}
+
+	v, err = NewVocoder(48000, WithVocoderSynthesisQ(6))
+	if err != nil {
+		t.Fatalf("NewVocoder() error = %v", err)
+	}
+
+	if v.SynthesisQ() != 6 {
+		t.Errorf("SynthesisQ() = %g, want the override 6", v.SynthesisQ())
 	}
 }
 
@@ -632,10 +707,64 @@ func TestVocoderSetDownsampling(t *testing.T) {
 		t.Error("Downsampling() should be true after SetDownsampling(true)")
 	}
 
+	if v.DownsampleFactors() == nil {
+		t.Error("DownsampleFactors() should be non-nil while downsampling is enabled")
+	}
+
 	v.SetDownsampling(false)
 
 	if v.Downsampling() {
 		t.Error("Downsampling() should be false after SetDownsampling(false)")
+	}
+
+	// Disabling must clear the multirate state so the getter reports nothing.
+	if got := v.DownsampleFactors(); got != nil {
+		t.Errorf("DownsampleFactors() = %v after disabling, want nil", got)
+	}
+
+	// The full-rate path must still produce finite, non-silent output.
+	sum := 0.0
+
+	for i := range 4096 {
+		secs := float64(i) / 48000
+		mod := math.Sin(2 * math.Pi * 300 * secs)
+		car := math.Sin(2*math.Pi*110*secs) + math.Sin(2*math.Pi*220*secs)
+
+		out := v.ProcessSample(mod, car)
+		if math.IsNaN(out) || math.IsInf(out, 0) {
+			t.Fatalf("sample %d: non-finite output %g after disabling downsampling", i, out)
+		}
+
+		sum += out * out
+	}
+
+	if sum == 0 {
+		t.Error("full-rate path produced silence after disabling downsampling")
+	}
+}
+
+func TestVocoderSetDownsamplingBarkLayout(t *testing.T) {
+	// Enabling downsampling after construction must recompute the factors from
+	// the active layout, not just the third-octave one.
+	v, err := NewVocoder(48000, WithBandLayout(BandLayoutBark))
+	if err != nil {
+		t.Fatalf("NewVocoder() error = %v", err)
+	}
+
+	if v.DownsampleFactors() != nil {
+		t.Error("DownsampleFactors() should be nil before enabling downsampling")
+	}
+
+	v.SetDownsampling(true)
+
+	factors := v.DownsampleFactors()
+	if len(factors) != v.NumBands() {
+		t.Fatalf("DownsampleFactors() length = %d, want %d", len(factors), v.NumBands())
+	}
+
+	if factors[0] <= factors[len(factors)-1] {
+		t.Errorf("lowest Bark band factor (%d) should be > highest (%d)",
+			factors[0], factors[len(factors)-1])
 	}
 }
 

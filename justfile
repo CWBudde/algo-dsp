@@ -44,14 +44,28 @@ test-coverage:
 bench:
     go test -run=^$ -bench=. -benchmem ./...
 
-# Run CI benchmark subset (fast, machine-readable) covering hottest paths
-bench-ci:
-    go test -run='^$' -bench='BenchmarkProcessSample$|BenchmarkProcessBlock/N=1024$' -benchmem -count=1 ./dsp/filter/biquad/
-    go test -run='^$' -bench='Benchmark(Magnitude|Power)/(4K|16K)$' -benchmem -count=1 ./dsp/spectrum/
-    go test -run='^$' -bench='BenchmarkCalculate/4096$' -benchmem -count=1 ./stats/time/ ./stats/frequency/
+# Run CI benchmark subset (fast, machine-readable) covering hottest paths.
+# Output goes to stdout unadorned so it can be piped into `just bench-guard`.
+# Raise `count` to trade runtime for a tighter timing estimate.
+bench-ci count="1":
+    @go test -run='^$' -bench='BenchmarkProcessSample$|BenchmarkProcessBlock/N=1024$' -benchmem -count={{ count }} ./dsp/filter/biquad/
+    @go test -run='^$' -bench='Benchmark(ProcessSample|ProcessBlock)$/^taps=128$' -benchmem -count={{ count }} ./dsp/filter/fir/
+    @go test -run='^$' -bench='Benchmark(Generate|Apply)$/^hann$/^1024$' -benchmem -count={{ count }} ./dsp/window/
+    @go test -run='^$' -bench='BenchmarkConvolve$/^signal=4096_kernel=32$|BenchmarkOverlapAddReuse$/^signal=4096_kernel=64$' -benchmem -count={{ count }} ./dsp/conv/
+    @go test -run='^$' -bench='Benchmark(Magnitude|Power)(FromParts)?$/^(4K|16K)$' -benchmem -count={{ count }} ./dsp/spectrum/
+    @go test -run='^$' -bench='BenchmarkCalculate/4096$' -benchmem -count={{ count }} ./stats/time/ ./stats/frequency/
 
-# Run all checks (formatting, linting, tests, tidiness)
-ci: check-formatted test lint check-tidy
+# Compare the CI benchmark subset against benchmarks/baseline.json.
+# Advisory by default; pass `-fail` to exit non-zero on a regression.
+bench-guard count="3" *ARGS="":
+    @set -o pipefail; just bench-ci {{ count }} | go run ./cmd/benchguard {{ ARGS }}
+
+# Record the current machine's CI benchmark subset as the new baseline
+bench-baseline count="5":
+    @set -o pipefail; just bench-ci {{ count }} | go run ./cmd/benchguard -update -command 'just bench-baseline {{ count }}'
+
+# Run all checks (formatting, linting, tests, tidiness, web demo)
+ci: check-formatted test lint check-tidy web-check
 
 # Clean build artifacts
 clean:
@@ -65,6 +79,22 @@ web-wasm:
 web-demo port="8787": web-wasm
     @echo "Serving web demo at http://localhost:{{port}}"
     python3 -m http.server {{port}} -d web
+
+# Compile the WASM entry point. It is behind `//go:build js && wasm`, so the
+# ordinary build/test/lint targets never see it.
+web-vet:
+    GOOS=js GOARCH=wasm go vet ./web/wasm
+
+# Lint and format-check the frontend (JS/HTML/CSS).
+web-lint:
+    npm run check
+
+# Browser smoke test against the built demo.
+web-test: web-wasm
+    npm test
+
+# Everything the web demo needs to pass before merge.
+web-check: web-vet web-lint web-test
 
 fix:
     just lint-fix

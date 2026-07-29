@@ -21,3 +21,11 @@ jobs:
   format:
     name: Format Check
     uses: ./.github/workflows/test-format.yml
+
+  bench-guard:
+    name: Benchmark Guard
+    uses: ./.github/workflows/test-bench.yml
+
+  web:
+    name: Web Demo
+    uses: ./.github/workflows/test-web.yml

@@ -354,8 +354,21 @@
       fast: { label: "Fast", min: 0, max: 1, step: 1, unit: "", scale: 1 },
       drive: { label: "Drive", min: 0.1, max: 5, step: 0.1, unit: "x" },
       mix: { label: "Mix", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
-      stereoWidth: { label: "Width", min: 0, max: 1, step: 0.01, unit: "%", scale: 100 },
-      crossoverHz: { label: "Xover", min: 100, max: 8000, step: 10, unit: "Hz" },
+      stereoWidth: {
+        label: "Width",
+        min: 0,
+        max: 1,
+        step: 0.01,
+        unit: "%",
+        scale: 100,
+      },
+      crossoverHz: {
+        label: "Xover",
+        min: 100,
+        max: 8000,
+        step: 10,
+        unit: "Hz",
+      },
     },
     delay: {
       time: {
@@ -520,10 +533,28 @@
     return document.documentElement.dataset.resolvedTheme === "dark";
   }
 
+  // See the equivalent cache in eq-canvas.js: theme tokens are read many times
+  // per frame but only change when the theme does.
+  const cssVarCache = new Map();
+
+  new MutationObserver(() => cssVarCache.clear()).observe(
+    document.documentElement,
+    {
+      attributes: true,
+      attributeFilter: ["data-theme", "data-resolved-theme"],
+    },
+  );
+
   function cssVar(name) {
-    return getComputedStyle(document.documentElement)
+    const cached = cssVarCache.get(name);
+    if (cached !== undefined) return cached;
+
+    const value = getComputedStyle(document.documentElement)
       .getPropertyValue(name)
       .trim();
+    cssVarCache.set(name, value);
+
+    return value;
   }
 
   function nodeColor(node, alpha) {
@@ -829,13 +860,36 @@
 
     // ---- rendering ---------------------------------------------------------
 
+    /**
+     * Cached CSS size of the canvas.
+     *
+     * draw() used to call getBoundingClientRect() on every frame, forcing a
+     * layout each time -- and it did so because there was no resize handling
+     * at all, so re-measuring constantly was the only thing keeping the canvas
+     * correct. A ResizeObserver lets us measure only when the size changes.
+     */
+    _size() {
+      if (this._cachedSize === undefined) {
+        const rect = this.canvas.getBoundingClientRect();
+        this._cachedSize = { w: rect.width, h: rect.height };
+
+        if (!this._resizeObserver && typeof ResizeObserver !== "undefined") {
+          this._resizeObserver = new ResizeObserver(() => {
+            this._cachedSize = undefined;
+            this.draw();
+          });
+          this._resizeObserver.observe(this.canvas);
+        }
+      }
+
+      return this._cachedSize;
+    }
+
     draw() {
       const canvas = this.canvas;
       const ctx = this.ctx;
       const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
+      const { w, h } = this._size();
 
       if (
         canvas.width !== Math.round(w * dpr) ||
@@ -1255,7 +1309,7 @@
         const n = this.nodes[i];
         if (!n.pinnedParams || n.pinnedParams.length === 0) continue;
         for (let j = 0; j < n.pinnedParams.length; j++) {
-          const { tx, ty, tw } = this._sliderTrackRect(n, j);
+          const { tx, tw } = this._sliderTrackRect(n, j);
           // generous hit area: full row height
           const rowY = n.y + LABEL_H + SLIDER_PAD + j * SLIDER_H;
           if (

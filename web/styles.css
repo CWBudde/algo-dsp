@@ -96,6 +96,83 @@ body {
 
 .hero p {
   margin-top: 0.25rem;
+  max-width: 62ch;
+}
+
+.hero-links,
+.site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+a {
+  color: var(--accent-2);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+/* One focus rule for every interactive element, rather than the single
+   .theme-toggle rule that used to be the app's only one. */
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+canvas:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Load/runtime failures. Hidden until app.js has something to say. */
+.app-notice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent-2);
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 0.95rem;
+}
+
+.app-notice[hidden] {
+  display: none;
+}
+
+.app-notice--error {
+  border-left-color: var(--accent);
+}
+
+.app-notice-detail {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.85rem;
+  opacity: 0.85;
+  overflow-wrap: anywhere;
+}
+
+.site-footer {
+  margin: 2.5rem 0 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.site-footer p {
+  margin: 0.35rem 0;
+  max-width: 72ch;
+}
+
+.site-footer-note {
+  opacity: 0.75;
 }
 
 .theme-toggle {

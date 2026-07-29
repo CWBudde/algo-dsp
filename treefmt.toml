@@ -55,7 +55,11 @@ options = ["-s", "-w"]
 includes = ["*.sh"]
 priority = 1
 
-# Markdown, YAML, JSON formatter
+# Markdown, YAML, JSON, and web-demo frontend formatter.
+#
+# The .js/.html/.css entries matter: without them the ~7,500 lines of frontend
+# in web/ are formatted by nothing in CI, and the files had already drifted
+# apart (some prettier-clean, some hand-aligned, some over 120 columns).
 [formatter.prettier]
 command = "prettier"
 options = ["-w"]
@@ -64,8 +68,16 @@ includes = [
     "*.yaml",
     "*.yml",
     "*.json",
+    "*.js",
+    "*.html",
+    "*.css",
 ]
 excludes = [
     # Exclude potentially sensitive or auto-generated files
     "**/*.sops.*",
+
+    # Vendored verbatim from GOROOT by web/build-wasm.sh; never edit in place.
+    "web/wasm_exec.js",
+
+    "node_modules/**",
 ]

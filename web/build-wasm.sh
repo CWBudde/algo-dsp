@@ -18,7 +18,15 @@ if [[ -z $GO_WASM_EXEC ]]; then
 fi
 
 cp "$GO_WASM_EXEC" "$WEB_DIR/wasm_exec.js"
-GOOS=js GOARCH=wasm go build -o "$WEB_DIR/algo_dsp_demo.wasm" "$ROOT_DIR/web/wasm"
+
+# -s -w strip the symbol table and DWARF debug info; -trimpath keeps local
+# filesystem paths out of the binary. Together they take a meaningful bite out
+# of a payload every visitor downloads.
+GOOS=js GOARCH=wasm go build \
+	-trimpath \
+	-ldflags="-s -w" \
+	-o "$WEB_DIR/algo_dsp_demo.wasm" \
+	"$ROOT_DIR/web/wasm"
 
 echo "Built $WEB_DIR/algo_dsp_demo.wasm"
 echo "Copied $WEB_DIR/wasm_exec.js"

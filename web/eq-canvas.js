@@ -8,11 +8,56 @@
   const SPECTRUM_TOP_DBFS = SPECTRUM_RANGE_DB - SPECTRUM_OFFSET_DB;
   const SPECTRUM_FLOOR_DBFS = -SPECTRUM_OFFSET_DB;
   const NODE_TYPE_OPTIONS = {
-    hp: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
-    low: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
-    mid: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
-    high: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
-    lp: ["highpass", "lowpass", "bandpass", "notch", "allpass", "peak", "lowshelf", "highshelf"],
+    hp: [
+      "highpass",
+      "lowpass",
+      "bandpass",
+      "notch",
+      "allpass",
+      "peak",
+      "lowshelf",
+      "highshelf",
+    ],
+    low: [
+      "highpass",
+      "lowpass",
+      "bandpass",
+      "notch",
+      "allpass",
+      "peak",
+      "lowshelf",
+      "highshelf",
+    ],
+    mid: [
+      "highpass",
+      "lowpass",
+      "bandpass",
+      "notch",
+      "allpass",
+      "peak",
+      "lowshelf",
+      "highshelf",
+    ],
+    high: [
+      "highpass",
+      "lowpass",
+      "bandpass",
+      "notch",
+      "allpass",
+      "peak",
+      "lowshelf",
+      "highshelf",
+    ],
+    lp: [
+      "highpass",
+      "lowpass",
+      "bandpass",
+      "notch",
+      "allpass",
+      "peak",
+      "lowshelf",
+      "highshelf",
+    ],
   };
   const TYPE_LABELS = {
     highpass: "Highpass",
@@ -24,7 +69,14 @@
     highshelf: "High Shelf",
     lowshelf: "Low Shelf",
   };
-  const FAMILY_OPTIONS = ["rbj", "butterworth", "bessel", "chebyshev1", "chebyshev2", "elliptic"];
+  const FAMILY_OPTIONS = [
+    "rbj",
+    "butterworth",
+    "bessel",
+    "chebyshev1",
+    "chebyshev2",
+    "elliptic",
+  ];
   const FAMILY_LABELS = {
     rbj: "RBJ",
     butterworth: "Butterworth",
@@ -47,8 +99,29 @@
     return Math.min(max, Math.max(min, v));
   }
 
+  // Theme tokens are read ~12 times per frame by draw(), at 24 fps. Each read
+  // is a getComputedStyle + getPropertyValue, i.e. a style resolution on the
+  // root element. They only change when the theme changes, so cache them and
+  // let a MutationObserver invalidate.
+  const cssVarCache = new Map();
+
+  new MutationObserver(() => cssVarCache.clear()).observe(
+    document.documentElement,
+    {
+      attributes: true,
+      attributeFilter: ["data-theme", "data-resolved-theme"],
+    },
+  );
+
   function cssVar(name, fallback) {
-    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const cached = cssVarCache.get(name);
+    if (cached !== undefined) return cached || fallback;
+
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
+    cssVarCache.set(name, value);
+
     return value || fallback;
   }
 
@@ -120,12 +193,12 @@
     const alpha = sinw0 / (2 * q);
     const twoSqrtAAlpha = 2 * Math.sqrt(a) * alpha;
     return {
-      b0: a * ((a + 1) - (a - 1) * cosw0 + twoSqrtAAlpha),
-      b1: 2 * a * ((a - 1) - (a + 1) * cosw0),
-      b2: a * ((a + 1) - (a - 1) * cosw0 - twoSqrtAAlpha),
-      a0: (a + 1) + (a - 1) * cosw0 + twoSqrtAAlpha,
-      a1: -2 * ((a - 1) + (a + 1) * cosw0),
-      a2: (a + 1) + (a - 1) * cosw0 - twoSqrtAAlpha,
+      b0: a * (a + 1 - (a - 1) * cosw0 + twoSqrtAAlpha),
+      b1: 2 * a * (a - 1 - (a + 1) * cosw0),
+      b2: a * (a + 1 - (a - 1) * cosw0 - twoSqrtAAlpha),
+      a0: a + 1 + (a - 1) * cosw0 + twoSqrtAAlpha,
+      a1: -2 * (a - 1 + (a + 1) * cosw0),
+      a2: a + 1 + (a - 1) * cosw0 - twoSqrtAAlpha,
     };
   }
 
@@ -137,12 +210,12 @@
     const alpha = sinw0 / (2 * q);
     const twoSqrtAAlpha = 2 * Math.sqrt(a) * alpha;
     return {
-      b0: a * ((a + 1) + (a - 1) * cosw0 + twoSqrtAAlpha),
-      b1: -2 * a * ((a - 1) + (a + 1) * cosw0),
-      b2: a * ((a + 1) + (a - 1) * cosw0 - twoSqrtAAlpha),
-      a0: (a + 1) - (a - 1) * cosw0 + twoSqrtAAlpha,
-      a1: 2 * ((a - 1) - (a + 1) * cosw0),
-      a2: (a + 1) - (a - 1) * cosw0 - twoSqrtAAlpha,
+      b0: a * (a + 1 + (a - 1) * cosw0 + twoSqrtAAlpha),
+      b1: -2 * a * (a - 1 + (a + 1) * cosw0),
+      b2: a * (a + 1 + (a - 1) * cosw0 - twoSqrtAAlpha),
+      a0: a + 1 - (a - 1) * cosw0 + twoSqrtAAlpha,
+      a1: 2 * (a - 1 - (a + 1) * cosw0),
+      a2: a + 1 - (a - 1) * cosw0 - twoSqrtAAlpha,
     };
   }
 
@@ -268,20 +341,74 @@
       this.params.highGain = clamp(this.params.highGain, GAIN_MIN, GAIN_MAX);
       this.params.lpGain = clamp(this.params.lpGain, GAIN_MIN, GAIN_MAX);
       this.params.hpType = this.normalizeTypeForKey("hp", this.params.hpType);
-      this.params.lowType = this.normalizeTypeForKey("low", this.params.lowType);
-      this.params.midType = this.normalizeTypeForKey("mid", this.params.midType);
-      this.params.highType = this.normalizeTypeForKey("high", this.params.highType);
+      this.params.lowType = this.normalizeTypeForKey(
+        "low",
+        this.params.lowType,
+      );
+      this.params.midType = this.normalizeTypeForKey(
+        "mid",
+        this.params.midType,
+      );
+      this.params.highType = this.normalizeTypeForKey(
+        "high",
+        this.params.highType,
+      );
       this.params.lpType = this.normalizeTypeForKey("lp", this.params.lpType);
-      this.params.hpFamily = this.normalizeFamilyForKeyType("hp", this.params.hpType, this.params.hpFamily);
-      this.params.lowFamily = this.normalizeFamilyForKeyType("low", this.params.lowType, this.params.lowFamily);
-      this.params.midFamily = this.normalizeFamilyForKeyType("mid", this.params.midType, this.params.midFamily);
-      this.params.highFamily = this.normalizeFamilyForKeyType("high", this.params.highType, this.params.highFamily);
-      this.params.lpFamily = this.normalizeFamilyForKeyType("lp", this.params.lpType, this.params.lpFamily);
-      this.params.hpOrder = this.normalizeOrderForKeyTypeFamily("hp", this.params.hpType, this.params.hpFamily, this.params.hpOrder);
-      this.params.lowOrder = this.normalizeOrderForKeyTypeFamily("low", this.params.lowType, this.params.lowFamily, this.params.lowOrder);
-      this.params.midOrder = this.normalizeOrderForKeyTypeFamily("mid", this.params.midType, this.params.midFamily, this.params.midOrder);
-      this.params.highOrder = this.normalizeOrderForKeyTypeFamily("high", this.params.highType, this.params.highFamily, this.params.highOrder);
-      this.params.lpOrder = this.normalizeOrderForKeyTypeFamily("lp", this.params.lpType, this.params.lpFamily, this.params.lpOrder);
+      this.params.hpFamily = this.normalizeFamilyForKeyType(
+        "hp",
+        this.params.hpType,
+        this.params.hpFamily,
+      );
+      this.params.lowFamily = this.normalizeFamilyForKeyType(
+        "low",
+        this.params.lowType,
+        this.params.lowFamily,
+      );
+      this.params.midFamily = this.normalizeFamilyForKeyType(
+        "mid",
+        this.params.midType,
+        this.params.midFamily,
+      );
+      this.params.highFamily = this.normalizeFamilyForKeyType(
+        "high",
+        this.params.highType,
+        this.params.highFamily,
+      );
+      this.params.lpFamily = this.normalizeFamilyForKeyType(
+        "lp",
+        this.params.lpType,
+        this.params.lpFamily,
+      );
+      this.params.hpOrder = this.normalizeOrderForKeyTypeFamily(
+        "hp",
+        this.params.hpType,
+        this.params.hpFamily,
+        this.params.hpOrder,
+      );
+      this.params.lowOrder = this.normalizeOrderForKeyTypeFamily(
+        "low",
+        this.params.lowType,
+        this.params.lowFamily,
+        this.params.lowOrder,
+      );
+      this.params.midOrder = this.normalizeOrderForKeyTypeFamily(
+        "mid",
+        this.params.midType,
+        this.params.midFamily,
+        this.params.midOrder,
+      );
+      this.params.highOrder = this.normalizeOrderForKeyTypeFamily(
+        "high",
+        this.params.highType,
+        this.params.highFamily,
+        this.params.highOrder,
+      );
+      this.params.lpOrder = this.normalizeOrderForKeyTypeFamily(
+        "lp",
+        this.params.lpType,
+        this.params.lpFamily,
+        this.params.lpOrder,
+      );
       this.params.hpQ = this.clampShapeForKey("hp", this.params.hpQ);
       this.params.lowQ = this.clampShapeForKey("low", this.params.lowQ);
       this.params.midQ = this.clampShapeForKey("mid", this.params.midQ);
@@ -337,8 +464,19 @@
     supportsFamilyForType(type, family) {
       if (family === "rbj") return true;
       if (family === "bessel") return type === "highpass" || type === "lowpass";
-      if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2" || family === "elliptic") {
-        return type === "highpass" || type === "lowpass" || type === "peak" || type === "lowshelf" || type === "highshelf";
+      if (
+        family === "butterworth" ||
+        family === "chebyshev1" ||
+        family === "chebyshev2" ||
+        family === "elliptic"
+      ) {
+        return (
+          type === "highpass" ||
+          type === "lowpass" ||
+          type === "peak" ||
+          type === "lowshelf" ||
+          type === "highshelf"
+        );
       }
       return false;
     }
@@ -346,8 +484,19 @@
     supportsOrderForTypeFamily(type, family) {
       if (family === "rbj") return false;
       if (family === "bessel") return type === "highpass" || type === "lowpass";
-      if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2" || family === "elliptic") {
-        return type === "highpass" || type === "lowpass" || type === "peak" || type === "lowshelf" || type === "highshelf";
+      if (
+        family === "butterworth" ||
+        family === "chebyshev1" ||
+        family === "chebyshev2" ||
+        family === "elliptic"
+      ) {
+        return (
+          type === "highpass" ||
+          type === "lowpass" ||
+          type === "peak" ||
+          type === "lowshelf" ||
+          type === "highshelf"
+        );
       }
       return false;
     }
@@ -378,13 +527,22 @@
     familyForKey(key) {
       const familyField = this.familyFieldForKey(key);
       if (!familyField) return "rbj";
-      return this.normalizeFamilyForKeyType(key, this.typeForKey(key), this.params[familyField]);
+      return this.normalizeFamilyForKeyType(
+        key,
+        this.typeForKey(key),
+        this.params[familyField],
+      );
     }
 
     orderForKey(key) {
       const orderField = this.orderFieldForKey(key);
       if (!orderField) return 1;
-      return this.normalizeOrderForKeyTypeFamily(key, this.typeForKey(key), this.familyForKey(key), this.params[orderField]);
+      return this.normalizeOrderForKeyTypeFamily(
+        key,
+        this.typeForKey(key),
+        this.familyForKey(key),
+        this.params[orderField],
+      );
     }
 
     familyLabel(family) {
@@ -396,7 +554,8 @@
     }
 
     typeUsesGainInCoeffs(family, type) {
-      if (type === "peak" || type === "lowshelf" || type === "highshelf") return true;
+      if (type === "peak" || type === "lowshelf" || type === "highshelf")
+        return true;
       return type === "bandpass" && family !== "rbj";
     }
 
@@ -410,8 +569,10 @@
       if (type === "bandpass") return bandpassCoeffs(freq, q, sampleRate);
       if (type === "notch") return notchCoeffs(freq, q, sampleRate);
       if (type === "allpass") return allpassCoeffs(freq, q, sampleRate);
-      if (type === "highshelf") return highShelfCoeffs(freq, gainDB, q, sampleRate);
-      if (type === "lowshelf") return lowShelfCoeffs(freq, gainDB, q, sampleRate);
+      if (type === "highshelf")
+        return highShelfCoeffs(freq, gainDB, q, sampleRate);
+      if (type === "lowshelf")
+        return lowShelfCoeffs(freq, gainDB, q, sampleRate);
       return peakingCoeffs(freq, gainDB, q, sampleRate);
     }
 
@@ -459,7 +620,11 @@
       const typeHasEmbeddedGain = this.typeUsesGainInCoeffs(family, type);
       if (key === "hp") {
         const hpQ = this.qForFilterCoeffs(type, family, p.hpFreq, p.hpQ);
-        const hpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.hpFreq, 0, hpQ, sampleRate));
+        const hpMag = biquadMagnitudeAt(
+          freq,
+          sampleRate,
+          this.filterCoeffs(type, p.hpFreq, 0, hpQ, sampleRate),
+        );
         return hpMag * Math.pow(10, p.hpGain / 20);
       }
       if (key === "low") {
@@ -467,30 +632,58 @@
         const lowMag = biquadMagnitudeAt(
           freq,
           sampleRate,
-          this.filterCoeffs(type, p.lowFreq, typeHasEmbeddedGain ? p.lowGain : 0, lowQ, sampleRate),
+          this.filterCoeffs(
+            type,
+            p.lowFreq,
+            typeHasEmbeddedGain ? p.lowGain : 0,
+            lowQ,
+            sampleRate,
+          ),
         );
-        return lowMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.lowGain / 20));
+        return (
+          lowMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.lowGain / 20))
+        );
       }
       if (key === "mid") {
         const midQ = this.qForFilterCoeffs(type, family, p.midFreq, p.midQ);
         const midMag = biquadMagnitudeAt(
           freq,
           sampleRate,
-          this.filterCoeffs(type, p.midFreq, typeHasEmbeddedGain ? p.midGain : 0, midQ, sampleRate),
+          this.filterCoeffs(
+            type,
+            p.midFreq,
+            typeHasEmbeddedGain ? p.midGain : 0,
+            midQ,
+            sampleRate,
+          ),
         );
-        return midMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.midGain / 20));
+        return (
+          midMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.midGain / 20))
+        );
       }
       if (key === "high") {
         const highQ = this.qForFilterCoeffs(type, family, p.highFreq, p.highQ);
         const highMag = biquadMagnitudeAt(
           freq,
           sampleRate,
-          this.filterCoeffs(type, p.highFreq, typeHasEmbeddedGain ? p.highGain : 0, highQ, sampleRate),
+          this.filterCoeffs(
+            type,
+            p.highFreq,
+            typeHasEmbeddedGain ? p.highGain : 0,
+            highQ,
+            sampleRate,
+          ),
         );
-        return highMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.highGain / 20));
+        return (
+          highMag * (typeHasEmbeddedGain ? 1 : Math.pow(10, p.highGain / 20))
+        );
       }
       const lpQ = this.qForFilterCoeffs(type, family, p.lpFreq, p.lpQ);
-      const lpMag = biquadMagnitudeAt(freq, sampleRate, this.filterCoeffs(type, p.lpFreq, 0, lpQ, sampleRate));
+      const lpMag = biquadMagnitudeAt(
+        freq,
+        sampleRate,
+        this.filterCoeffs(type, p.lpFreq, 0, lpQ, sampleRate),
+      );
       return lpMag * Math.pow(10, p.lpGain / 20);
     }
 
@@ -508,27 +701,45 @@
     computeResponseDB(freqs) {
       if (this.getResponseDB) {
         const response = this.getResponseDB(Float32Array.from(freqs));
-        if (response && typeof response.length === "number" && response.length === freqs.length) {
+        if (
+          response &&
+          typeof response.length === "number" &&
+          response.length === freqs.length
+        ) {
           return response;
         }
       }
-      return freqs.map((freq) => 20 * Math.log10(Math.max(1e-6, this.eqMagnitude(freq))));
+      return freqs.map(
+        (freq) => 20 * Math.log10(Math.max(1e-6, this.eqMagnitude(freq))),
+      );
     }
 
     computeSingleFilterDB(key, freqs) {
       if (this.getNodeResponseDB) {
         const response = this.getNodeResponseDB(key, Float32Array.from(freqs));
-        if (response && typeof response.length === "number" && response.length === freqs.length) {
+        if (
+          response &&
+          typeof response.length === "number" &&
+          response.length === freqs.length
+        ) {
           return response;
         }
       }
-      return freqs.map((freq) => 20 * Math.log10(Math.max(1e-6, this.filterMagnitude(key, freq))));
+      return freqs.map(
+        (freq) =>
+          20 * Math.log10(Math.max(1e-6, this.filterMagnitude(key, freq))),
+      );
     }
 
     computeSpectrumDB(freqs) {
       if (!this.getSpectrumDB) return null;
       const spectrum = this.getSpectrumDB(Float32Array.from(freqs));
-      if (!spectrum || typeof spectrum.length !== "number" || spectrum.length !== freqs.length) return null;
+      if (
+        !spectrum ||
+        typeof spectrum.length !== "number" ||
+        spectrum.length !== freqs.length
+      )
+        return null;
       return spectrum;
     }
 
@@ -546,7 +757,8 @@
       this.draw();
     }
 
-    drawGrid(ctx, b, w, h) {
+    // The grid derives its extent from the bounds box `b`.
+    drawGrid(ctx, b) {
       const gridMinor = cssVar("--canvas-grid-minor", "#ece1d2");
       const gridMajor = cssVar("--canvas-grid-major", "#d4c6b2");
       const axis = cssVar("--canvas-axis", "#9b8f7a");
@@ -567,14 +779,17 @@
         ctx.stroke();
       };
       const logSpan = Math.log10(FREQ_MAX) - Math.log10(FREQ_MIN);
-      const xAt = (f) => b.left + ((Math.log10(f) - Math.log10(FREQ_MIN)) / logSpan) * (b.right - b.left);
+      const xAt = (f) =>
+        b.left +
+        ((Math.log10(f) - Math.log10(FREQ_MIN)) / logSpan) * (b.right - b.left);
 
       const majors = [100, 1000, 10000];
       const minors = [];
       [100, 1000, 10000].forEach((base) => {
         for (let m = 2; m <= 9; m += 1) {
           const f = base * m;
-          if (f >= FREQ_MIN && f <= FREQ_MAX && !majors.includes(f)) minors.push(f);
+          if (f >= FREQ_MIN && f <= FREQ_MAX && !majors.includes(f))
+            minors.push(f);
         }
       });
 
@@ -586,7 +801,9 @@
       majors.forEach((f) => drawV(xAt(f), b.top, b.bottom));
 
       [-18, -12, -6, 0, 6, 12, 18].forEach((g) => {
-        const y = b.bottom - ((g - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
+        const y =
+          b.bottom -
+          ((g - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
         ctx.strokeStyle = g === 0 ? gridMajor : gridMinor;
         drawH(b.left, b.right, y);
       });
@@ -606,7 +823,9 @@
 
       ctx.textAlign = "right";
       [-18, -12, -6, 0, 6, 12, 18].forEach((g) => {
-        const y = b.bottom - ((g - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
+        const y =
+          b.bottom -
+          ((g - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
         const label = g > 0 ? `+${g}` : `${g}`;
         ctx.fillText(label, b.left - 6, y + 4);
       });
@@ -650,7 +869,10 @@
         const t = i / (n - 1);
         const db = responseDB[i];
         const x = b.left + t * (b.right - b.left);
-        const y = b.bottom - ((clamp(db, GAIN_MIN, GAIN_MAX) - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) * (b.bottom - b.top);
+        const y =
+          b.bottom -
+          ((clamp(db, GAIN_MIN, GAIN_MAX) - GAIN_MIN) / (GAIN_MAX - GAIN_MIN)) *
+            (b.bottom - b.top);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -669,10 +891,16 @@
       ctx.beginPath();
       for (let i = 0; i < n; i += 1) {
         const t = i / (n - 1);
-        const dbFS = clamp(spectrumDB[i], SPECTRUM_FLOOR_DBFS, SPECTRUM_TOP_DBFS);
+        const dbFS = clamp(
+          spectrumDB[i],
+          SPECTRUM_FLOOR_DBFS,
+          SPECTRUM_TOP_DBFS,
+        );
         const spectrumDBScaled = dbFS + SPECTRUM_OFFSET_DB;
         const x = b.left + t * (b.right - b.left);
-        const y = b.bottom - (spectrumDBScaled / SPECTRUM_RANGE_DB) * (b.bottom - b.top);
+        const y =
+          b.bottom -
+          (spectrumDBScaled / SPECTRUM_RANGE_DB) * (b.bottom - b.top);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -683,21 +911,111 @@
     nodeDescriptors() {
       const p = this.params;
       return [
-        { key: "hp", label: this.labelForKey("hp"), x: this.freqToX(p.hpFreq), y: this.gainToY(p.hpGain), color: cssVar("--canvas-node-hp", "#8a4f1f") },
-        { key: "low", label: this.labelForKey("low"), x: this.freqToX(p.lowFreq), y: this.gainToY(p.lowGain), color: cssVar("--canvas-node-low", "#c24d2c") },
-        { key: "mid", label: this.labelForKey("mid"), x: this.freqToX(p.midFreq), y: this.gainToY(p.midGain), color: cssVar("--canvas-node-mid", "#225d7d") },
-        { key: "high", label: this.labelForKey("high"), x: this.freqToX(p.highFreq), y: this.gainToY(p.highGain), color: cssVar("--canvas-node-high", "#3b7d44") },
-        { key: "lp", label: this.labelForKey("lp"), x: this.freqToX(p.lpFreq), y: this.gainToY(p.lpGain), color: cssVar("--canvas-node-lp", "#6a4aa5") },
+        {
+          key: "hp",
+          label: this.labelForKey("hp"),
+          x: this.freqToX(p.hpFreq),
+          y: this.gainToY(p.hpGain),
+          color: cssVar("--canvas-node-hp", "#8a4f1f"),
+        },
+        {
+          key: "low",
+          label: this.labelForKey("low"),
+          x: this.freqToX(p.lowFreq),
+          y: this.gainToY(p.lowGain),
+          color: cssVar("--canvas-node-low", "#c24d2c"),
+        },
+        {
+          key: "mid",
+          label: this.labelForKey("mid"),
+          x: this.freqToX(p.midFreq),
+          y: this.gainToY(p.midGain),
+          color: cssVar("--canvas-node-mid", "#225d7d"),
+        },
+        {
+          key: "high",
+          label: this.labelForKey("high"),
+          x: this.freqToX(p.highFreq),
+          y: this.gainToY(p.highGain),
+          color: cssVar("--canvas-node-high", "#3b7d44"),
+        },
+        {
+          key: "lp",
+          label: this.labelForKey("lp"),
+          x: this.freqToX(p.lpFreq),
+          y: this.gainToY(p.lpGain),
+          color: cssVar("--canvas-node-lp", "#6a4aa5"),
+        },
       ];
     }
 
     hoverInfoForKey(key) {
       const p = this.params;
-      if (key === "hp") return { key, label: this.labelForKey("hp"), type: this.typeForKey("hp"), family: this.familyForKey("hp"), order: this.orderForKey("hp"), freq: p.hpFreq, gain: p.hpGain, q: p.hpQ, shape: p.hpQ, shapeMode: this.shapeModeForKey("hp") };
-      if (key === "low") return { key, label: this.labelForKey("low"), type: this.typeForKey("low"), family: this.familyForKey("low"), order: this.orderForKey("low"), freq: p.lowFreq, gain: p.lowGain, q: p.lowQ, shape: p.lowQ, shapeMode: this.shapeModeForKey("low") };
-      if (key === "mid") return { key, label: this.labelForKey("mid"), type: this.typeForKey("mid"), family: this.familyForKey("mid"), order: this.orderForKey("mid"), freq: p.midFreq, gain: p.midGain, q: p.midQ, shape: p.midQ, shapeMode: this.shapeModeForKey("mid") };
-      if (key === "high") return { key, label: this.labelForKey("high"), type: this.typeForKey("high"), family: this.familyForKey("high"), order: this.orderForKey("high"), freq: p.highFreq, gain: p.highGain, q: p.highQ, shape: p.highQ, shapeMode: this.shapeModeForKey("high") };
-      if (key === "lp") return { key, label: this.labelForKey("lp"), type: this.typeForKey("lp"), family: this.familyForKey("lp"), order: this.orderForKey("lp"), freq: p.lpFreq, gain: p.lpGain, q: p.lpQ, shape: p.lpQ, shapeMode: this.shapeModeForKey("lp") };
+      if (key === "hp")
+        return {
+          key,
+          label: this.labelForKey("hp"),
+          type: this.typeForKey("hp"),
+          family: this.familyForKey("hp"),
+          order: this.orderForKey("hp"),
+          freq: p.hpFreq,
+          gain: p.hpGain,
+          q: p.hpQ,
+          shape: p.hpQ,
+          shapeMode: this.shapeModeForKey("hp"),
+        };
+      if (key === "low")
+        return {
+          key,
+          label: this.labelForKey("low"),
+          type: this.typeForKey("low"),
+          family: this.familyForKey("low"),
+          order: this.orderForKey("low"),
+          freq: p.lowFreq,
+          gain: p.lowGain,
+          q: p.lowQ,
+          shape: p.lowQ,
+          shapeMode: this.shapeModeForKey("low"),
+        };
+      if (key === "mid")
+        return {
+          key,
+          label: this.labelForKey("mid"),
+          type: this.typeForKey("mid"),
+          family: this.familyForKey("mid"),
+          order: this.orderForKey("mid"),
+          freq: p.midFreq,
+          gain: p.midGain,
+          q: p.midQ,
+          shape: p.midQ,
+          shapeMode: this.shapeModeForKey("mid"),
+        };
+      if (key === "high")
+        return {
+          key,
+          label: this.labelForKey("high"),
+          type: this.typeForKey("high"),
+          family: this.familyForKey("high"),
+          order: this.orderForKey("high"),
+          freq: p.highFreq,
+          gain: p.highGain,
+          q: p.highQ,
+          shape: p.highQ,
+          shapeMode: this.shapeModeForKey("high"),
+        };
+      if (key === "lp")
+        return {
+          key,
+          label: this.labelForKey("lp"),
+          type: this.typeForKey("lp"),
+          family: this.familyForKey("lp"),
+          order: this.orderForKey("lp"),
+          freq: p.lpFreq,
+          gain: p.lpGain,
+          q: p.lpQ,
+          shape: p.lpQ,
+          shapeMode: this.shapeModeForKey("lp"),
+        };
       return null;
     }
 
@@ -721,14 +1039,25 @@
 
     shapeModeForTypeFamily(type, family) {
       if (type === "peak" && family !== "rbj") return "bandwidth";
-      if ((family === "chebyshev1" || family === "chebyshev2" || family === "elliptic") && (type === "highpass" || type === "lowpass" || type === "highshelf" || type === "lowshelf")) {
+      if (
+        (family === "chebyshev1" ||
+          family === "chebyshev2" ||
+          family === "elliptic") &&
+        (type === "highpass" ||
+          type === "lowpass" ||
+          type === "highshelf" ||
+          type === "lowshelf")
+      ) {
         return "ripple";
       }
       return "q";
     }
 
     shapeModeForKey(key) {
-      return this.shapeModeForTypeFamily(this.typeForKey(key), this.familyForKey(key));
+      return this.shapeModeForTypeFamily(
+        this.typeForKey(key),
+        this.familyForKey(key),
+      );
     }
 
     shapeRangeForKey(key) {
@@ -737,14 +1066,20 @@
       if (mode === "ripple") {
         return {
           min: SHAPE_RIPPLE_MIN,
-          max: family === "chebyshev2" ? SHAPE_RIPPLE_MAX_CHEBY2 : SHAPE_RIPPLE_MAX_CHEBY1,
+          max:
+            family === "chebyshev2"
+              ? SHAPE_RIPPLE_MAX_CHEBY2
+              : SHAPE_RIPPLE_MAX_CHEBY1,
         };
       }
       if (mode === "bandwidth") {
         const sampleRate = this.getSampleRate();
         const nyquist = sampleRate * 0.5;
         const freq = this.freqForKey(key);
-        const max = Math.max(SHAPE_BANDWIDTH_MIN, 2 * Math.min(Math.max(freq, 1), Math.max(nyquist - freq, 1)));
+        const max = Math.max(
+          SHAPE_BANDWIDTH_MIN,
+          2 * Math.min(Math.max(freq, 1), Math.max(nyquist - freq, 1)),
+        );
         return { min: SHAPE_BANDWIDTH_MIN, max };
       }
       return { min: SHAPE_Q_MIN, max: SHAPE_Q_MAX };
@@ -812,7 +1147,11 @@
           if (!field) return;
           this.params[field] = type;
           if (familyField) {
-            this.params[familyField] = this.normalizeFamilyForKeyType(key, type, this.params[familyField]);
+            this.params[familyField] = this.normalizeFamilyForKeyType(
+              key,
+              type,
+              this.params[familyField],
+            );
           }
           this.constrainOrder();
           this.hideContextMenu();
@@ -919,13 +1258,17 @@
       ctx.fillStyle = cssVar("--canvas-bg", "#fff");
       ctx.fillRect(0, 0, w, h);
 
-      this.drawGrid(ctx, b, w, h);
+      this.drawGrid(ctx, b);
 
       const samples = Math.max(200, Math.floor(w));
       const freqs = new Array(samples);
       for (let i = 0; i < samples; i += 1) {
         const t = i / (samples - 1);
-        freqs[i] = Math.pow(10, Math.log10(FREQ_MIN) + t * (Math.log10(FREQ_MAX) - Math.log10(FREQ_MIN)));
+        freqs[i] = Math.pow(
+          10,
+          Math.log10(FREQ_MIN) +
+            t * (Math.log10(FREQ_MAX) - Math.log10(FREQ_MIN)),
+        );
       }
 
       const focusKey = this.activeNode || this.hoverNode;
@@ -938,17 +1281,31 @@
           high: cssVar("--canvas-focus-high", "59,125,68"),
           lp: cssVar("--canvas-focus-lp", "106,74,165"),
         }[focusKey];
-        const color = this.activeNode ? `rgba(${focusColor}, 0.72)` : `rgba(${focusColor}, 0.28)`;
+        const color = this.activeNode
+          ? `rgba(${focusColor}, 0.72)`
+          : `rgba(${focusColor}, 0.28)`;
         this.drawCurve(ctx, b, singleDB, color, this.activeNode ? 2.5 : 2);
       }
 
       const spectrumDB = this.computeSpectrumDB(freqs);
       if (spectrumDB) {
-        this.drawSpectrumCurve(ctx, b, spectrumDB, cssVar("--canvas-spectrum", "rgba(194,77,44,0.62)"), 1.25);
+        this.drawSpectrumCurve(
+          ctx,
+          b,
+          spectrumDB,
+          cssVar("--canvas-spectrum", "rgba(194,77,44,0.62)"),
+          1.25,
+        );
       }
 
       const responseDB = this.computeResponseDB(freqs);
-      this.drawCurve(ctx, b, responseDB, cssVar("--canvas-response", "#225d7d"), 2.4);
+      this.drawCurve(
+        ctx,
+        b,
+        responseDB,
+        cssVar("--canvas-response", "#225d7d"),
+        2.4,
+      );
 
       this.nodes = this.nodeDescriptors();
       this.nodes.forEach((n) => {
@@ -1095,10 +1452,18 @@
           const range = this.shapeRangeForKey(key);
           if (mode === "ripple") {
             const delta = ev.deltaY < 0 ? 0.1 : -0.1;
-            this.params[field] = clamp(this.params[field] + delta, range.min, range.max);
+            this.params[field] = clamp(
+              this.params[field] + delta,
+              range.min,
+              range.max,
+            );
           } else {
             const factor = ev.deltaY < 0 ? 1.08 : 1 / 1.08;
-            this.params[field] = clamp(this.params[field] * factor, range.min, range.max);
+            this.params[field] = clamp(
+              this.params[field] * factor,
+              range.min,
+              range.max,
+            );
           }
           this.onHover(this.hoverInfoForKey(key));
           this.onChange({ ...this.params });

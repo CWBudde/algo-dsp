@@ -98,7 +98,7 @@ func (s *SpectralPitchShifter) SampleRate() float64 { return s.sampleRate }
 func (s *SpectralPitchShifter) PitchRatio() float64 { return s.pitchRatio }
 
 // PitchSemitones returns the requested pitch shift in semitones.
-func (s *SpectralPitchShifter) PitchSemitones() float64 { return 12.0 * math.Log2(s.pitchRatio) }
+func (s *SpectralPitchShifter) PitchSemitones() float64 { return RatioToSemitones(s.pitchRatio) }
 
 // EffectivePitchRatio returns the internally realized pitch ratio.
 // For the bin-shifting path this equals the requested ratio exactly.
@@ -164,7 +164,7 @@ func (s *SpectralPitchShifter) SetPitchSemitones(semitones float64) error {
 		return fmt.Errorf("spectral pitch shifter semitones must be finite: %f", semitones)
 	}
 
-	ratio := math.Pow(2, semitones/12.0)
+	ratio := SemitonesToRatio(semitones)
 	if err := s.SetPitchRatio(ratio); err != nil {
 		return fmt.Errorf("spectral pitch shifter semitones out of range: %w", err)
 	}

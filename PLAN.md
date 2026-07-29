@@ -197,10 +197,10 @@ Phase 30: Interpolation Kernels (core)                     [2 weeks]  ✅ Comple
 # Remaining (execution order)
 Phase 31: Dynamics — Static Characteristic-Curve Parity    [0.5 week] ✅ Complete
 Phase 32: Elliptic Shelving Designer                       [1 week]   ✅ Complete
-Phase 33: Vocoder Finalization                             [0.5 week] 🔄 In Progress
+Phase 33: Vocoder Finalization                             [0.5 week] ✅ Complete
 Phase 34: Stereo Panner                                    [0.5 week] ✅ Complete
 Phase 35: Dynamic EQ                                       [1 week]   ✅ Complete
-Phase 36: Pitch Correction (YIN)                           [1 week]   📋 Planned
+Phase 36: Pitch Correction (YIN)                           [1 week]   ✅ Complete
 Phase 37: Noise Reduction                                  [1 week]   📋 Planned
 Phase 38: Interpolation Kernel Expansion                   [1 week]   📋 Planned
 Phase 39: Interpolation Integration & Validation           [1 week]   📋 Planned
@@ -540,17 +540,28 @@ Exit criteria:
 > Note: `Chebyshev2*Shelf` coefficients and cutoff semantics changed as a result. See
 > CHANGELOG.md; boost/cut is no longer exactly reciprocal, matching the Butterworth family.
 
-### Phase 33: Vocoder Finalization (In Progress)
+### Phase 33: Vocoder Finalization (Complete)
 
-`dsp/effects/vocoder.go` already implements the analysis/synthesis vocoder
-(`NewVocoder(sampleRate, bandLayout, opts...)`, `ProcessBlock(analysis, synth)`,
-`BandLayoutThirdOctave`/`BandLayoutBark`, attack/release/Q/level options) with `vocoder_test.go`.
+`dsp/effects/vocoder.go` implements the analysis/synthesis vocoder
+(`NewVocoder(sampleRate, opts...)`, `ProcessSample`/`ProcessBlock(modulator, carrier, output)`,
+`WithBandLayout` selecting `BandLayoutThirdOctave`/`BandLayoutBark`, attack/release/Q/level
+options, and optional per-band multirate analysis via `WithDownsampling`) with `vocoder_test.go`.
 
-- [ ] Add the missing runnable example (`vocoder_example_test.go`) and round out coverage.
+- [x] Added the missing runnable examples (`vocoder_example_test.go`): defaults, `ProcessBlock`
+      envelope transfer, the Bark layout with a synthesis-Q override, and multirate downsampling.
+- [x] Rounded out coverage — every exported option, getter and setter on the vocoder is now at
+      100%: the `SynthesisQ` getter, `WithVocoderSynthLevel` validation, nil-option and
+      option-error paths in `NewVocoder`, the "no usable bands" error for both layouts, and
+      `SetDownsampling`'s disable path (state cleared, `DownsampleFactors() == nil`, full-rate
+      processing still finite) plus its Bark recompute branch.
+
+> The residual uncovered statements in `vocoder.go` are defensive branches unreachable through the
+> public API (option validation forbids non-positive attack/release, `WithBandLayout` rejects
+> unknown layouts, and band selection filters `f < 0.9*nyquist` before `cpgBandpass` sees it).
 
 Exit criteria:
 
-- [ ] Example builds; `go test -race ./dsp/effects` passes.
+- [x] Examples build and their `// Output:` blocks match; `go test -race ./dsp/effects` passes.
 
 ### Phase 34: Stereo Panner (Complete)
 
@@ -570,7 +581,8 @@ Exit criteria:
       monotonicity, balance never boosts, auto-pan sweep/depth/determinism) + 4 runnable
       examples + benchmarks.
 
-> Not wired into `dsp/effectchain` or the web demo; that stays with the effect-chain work.
+> Not yet wired into `dsp/effectchain` or the web demo. Tracked as demo coverage work in
+> Phase 41b, not as a permanent exclusion.
 
 Exit criteria:
 
@@ -600,13 +612,45 @@ Exit criteria:
 
 - [x] `go test -race ./dsp/effects/dynamics` passes; `BenchmarkDynamicEQ*` report 0 allocs/op.
 
-### Phase 36: Pitch Correction (YIN) (Planned)
+### Phase 36: Pitch Correction (YIN) (Complete)
 
-- [ ] YIN fundamental-frequency detector (difference function + CMND + parabolic interpolation);
-      no detector exists today — `dsp/effects/pitch` only does pitch shifting.
-- [ ] Integrate detection with the existing pitch shifter / `frequency_shifter` to snap pitch to a
-      target/scale.
-- [ ] Tests (detection accuracy on synthetic tones; octave-error robustness) + runnable example.
+- [x] `YINDetector` (`dsp/effects/pitch/yin_detector.go`): squared difference function, cumulative
+      mean normalized difference (`d'(0) := 1`), absolute threshold followed down to its local
+      minimum, and parabolic interpolation. Frame-at-a-time, zero-allocation, with a frame RMS
+      silence gate and a `PitchEstimate` that reports 0 Hz when unvoiced so a failed estimate can
+      never be mistaken for a real one.
+- [x] `PitchTracker` (`dsp/effects/pitch/pitch_tracker.go`): ring buffer + hop scheduling around the
+      detector, plus a fixed-array median filter and an unvoiced hold. The median filter is the
+      octave-error defence — a single stray frame cannot move the reported pitch.
+- [x] `PitchCorrector` (`dsp/effects/pitch/pitch_corrector.go`): composes the tracker with any
+      `PitchProcessor` (default `SpectralPitchShifter`). Scale or fixed-target modes, correction
+      amount interpolated in the semitone domain, a clamped maximum correction, a confidence gate,
+      an unvoiced hold, and a retune glide (`WithCorrectionSpeedMs`). Blocks are processed with a
+      short lookahead and crossfaded at the seams. It deliberately does **not** implement
+      `PitchProcessor`, since its ratio is derived rather than set.
+- [x] Note/scale helpers (`dsp/effects/pitch/note.go`): `Scale` (comparable, bitmask-backed) with
+      chromatic/major/natural-minor/harmonic-minor/pentatonic/blues/whole-tone constructors and
+      `SnapMIDI` (ties resolve down), plus `FrequencyToMIDI`, `MIDIToFrequency`,
+      `SemitonesToRatio`, `RatioToSemitones` and `CentsBetween`. The two shifters now use these
+      instead of four inlined copies of the semitone formulas.
+- [x] Tests (sine accuracy within 1 cent across a 55–1318 Hz grid at 44.1/48 kHz; sawtooth, square
+      and missing-fundamental octave-error robustness; threshold-vs-octave trade-off; noise
+      robustness at 20/10/3 dB SNR; unvoiced/silence; determinism; zero-alloc) + benchmarks + 6
+      runnable examples.
+
+> The `frequency_shifter` mentioned in the original scope is **not** used: `modulation.FrequencyShifter`
+> is a Bode SSB shifter that translates every partial by a constant number of hertz, destroying
+> harmonicity. Correction needs a ratio, not an offset. Documented in `dsp/effects/pitch/doc.go`.
+
+> Not yet wired into `dsp/effectchain` or the web demo, matching the Phase 34/35 scoping. Tracked
+> as demo coverage work in Phase 41b, not as a permanent exclusion. An FFT-accelerated difference
+> function and pYIN are noted in `EFFECTS.md` as future refinements.
+
+Exit criteria:
+
+- [x] `go test -race ./dsp/effects/pitch` passes; `BenchmarkYINDetectorDetect` and
+      `BenchmarkPitchTrackerWrite` report 0 allocs/op; detection is within 1 cent on the synthetic
+      sine grid with no octave errors on harmonic-rich material.
 
 ### Phase 37: Noise Reduction (Planned)
 
@@ -641,15 +685,46 @@ Exit criteria:
 
 Builds on the Phase 24 harness (`just bench-ci`, `BENCHMARKS.md`).
 
-- [ ] Define regression thresholds (`ns/op`, `allocs/op`) + a baseline-update workflow.
-- [ ] Wire the guard into CI as advisory output.
+- [x] Define regression thresholds (`ns/op`, `allocs/op`) + a baseline-update workflow.
+      `cmd/benchguard` (logic in `internal/benchguard`) parses `go test -bench` output and
+      compares it against the checked-in `benchmarks/baseline.json`: `allocs/op` exact and
+      `B/op` +10% gate; `ns/op` +50% is reported but does **not** gate unless
+      `-enforce-timing` is passed and the baseline is from the current machine. The
+      justfile gained `bench-guard` and `bench-baseline`, and `bench-ci` grew from 3 to 6
+      packages (20 benchmarks, ~35 s at `-count=1`) with a `count` parameter.
+- [x] Wire the guard into CI as advisory output (`.github/workflows/test-bench.yml`,
+      `continue-on-error`, comparison table written to the job summary and the raw output
+      uploaded as an artifact). It drives `just bench-ci` so the benchmark set cannot
+      drift between CI and local runs.
 - [ ] Re-run full benchmarks on ≥2 machines; refresh `BENCHMARKS.md`.
+      **Blocked on hardware**: only `linux/amd64` (i7-1255U) was available, so the
+      baseline and the `BENCHMARKS.md` prose numbers come from that one machine. The
+      format is already multi-machine-ready — a baseline records `goVersion`/`goos`/
+      `goarch`/`cpu`, and a mismatch downgrades timing to advisory automatically.
+
+> Treating timing as non-gating is a measured conclusion, not caution. With no code
+> change at all: three repeat runs on an idle machine at `-count=1` moved the
+> sub-microsecond spectrum benchmarks by up to 43%; a `-count=3` run against a
+> `-count=5` baseline on the _same_ machine still put five benchmarks past a 50% bound
+> (a sustained sweep throttles the CPU); and under real desktop load individual entries
+> moved 7x. In that last run the guard correctly reported **no regressions**, because
+> every allocation column held steady. No `ns/op` threshold is both loose enough to
+> survive that and tight enough to be useful, so allocations — deterministic and
+> machine-independent — are what gate. `benchguard` also keeps the minimum across
+> `-count=N` repeats to suppress what noise it can.
+>
+> Consequence for the baseline: its `ns/op` figures were captured on a loaded machine
+> and are provisional (see the note in `BENCHMARKS.md`); its `B/op` / `allocs/op`
+> columns are load-independent and correct.
 
 Exit criteria:
 
-- [ ] Hot paths show no major allocations/op regressions.
-- [ ] `go test ./...` and `go test -tags purego ./...` pass.
-- [ ] `BENCHMARKS.md` baselines updated (date + Go version + machine).
+- [x] Hot paths show no major allocations/op regressions (`just bench-guard` is clean
+      against the recorded baseline).
+- [x] `go test ./...` and `go test -tags purego ./...` pass.
+- [ ] `BENCHMARKS.md` baselines updated (date + Go version + machine). Guard thresholds,
+      the update workflow and the measured noise floor are documented; the ≥2-machine
+      refresh of the prose numbers is still outstanding.
 
 ### Phase 41: SIMD Modal Oscillator Bank (Planned)
 
@@ -659,6 +734,79 @@ Optional; uses the already-present `algo-vecmath v0.1.0` dependency.
 - [ ] Block APIs for damped complex rotators (primary `float32`).
 - [ ] Parity tests vs the scalar reference + modal-workload microbenchmarks.
 - [ ] Document the denormal strategy (cf. `core.FlushDenormals`).
+
+### Phase 41b: Web Demo — Purpose, Hardening, Coverage (In Progress)
+
+The web demo (`web/` + `internal/webdemo/`) has absorbed ~42% of the repo's commits without ever
+having a phase, an owner, or exit criteria. This phase gives it one.
+
+**Purpose statement.** The web demo is the **showcase and integration test for the public API**.
+Every package under `dsp/`, `measure/`, and `stats/` either appears in the demo or is explicitly
+listed here as out of scope, with a reason. It is app-layer code and stays out of the library, but
+it is no longer optional: if a phase adds a user-visible capability, wiring it into the demo is part
+of that phase's work, not a separate favour.
+
+**Baseline coverage at the start of this phase — 13 of ~31 packages.** Exercised: `dsp/effectchain`,
+`dsp/effects` (+ `dynamics`, `modulation`, `pitch`, `reverb`, `spatial`), `dsp/filter/biquad`,
+`dsp/filter/design` (+ `band`, `shelving`), `dsp/window`. Not exercised: `dsp/conv`, `dsp/dither`,
+`dsp/filter/bank`, `dsp/filter/fir`, `dsp/filter/hilbert`, `dsp/filter/weighting`, `dsp/resample`,
+`dsp/signal`, `dsp/spectrum`, and **all of `measure/*` and `stats/*`**.
+
+- [x] Stage 0: this entry; retire the blanket "not wired into the web demo" de-scoping notes.
+- [x] Stage 1: link the library from the demo (repo, pkg.go.dev, roadmap, license); rewrite the
+      stale `web/README.md`; `recover()` at the JS boundary; validate persisted settings against
+      their declared types; a visible error/status region plus `<noscript>` and a guarded init
+      sequence; debounce the per-pointermove save; skip redundant graph reloads in `SetEffects`;
+      drop the duplicate `web/irs.irlib`; add `-ldflags="-s -w" -trimpath` to the WASM build.
+- [x] Stage 2: PR-time `GOOS=js GOARCH=wasm` vet+build (`.github/workflows/test-web.yml`),
+      prettier/ESLint over `*.js,*.html,*.css` via `treefmt` and `package.json`, and an 11-case
+      Playwright smoke suite (`web/test/demo.spec.js`). `just web-check` runs all of it and is
+      wired into `just ci`.
+- [x] Stage 3 (partial): single `js.CopyBytesToJS` per audio block against persistent buffers;
+      theme tokens cached instead of re-read from the CSSOM ~12x per frame; the analyser redraw
+      loop now runs only while audio is playing and the tab is visible (was 24 fps forever);
+      `ResizeObserver` instead of a forced layout per chain-canvas frame; device-pixel-ratio
+      handling for the dynamics and Chebyshev plots; the step highlight now mirrors the Go
+      engine's clock instead of running a second `setInterval` clock that drifted.
+- [ ] Stage 3 (blocked): `AudioWorklet` instead of `ScriptProcessorNode`.
+
+> **Why the `AudioWorklet` migration is blocked, not merely pending.** Both routes are closed on
+> the current deployment:
+>
+> 1. _Go runtime inside `AudioWorkletGlobalScope`._ `wasm_exec.js` requires `crypto`,
+>    `performance`, `TextEncoder`/`TextDecoder`, and `setTimeout` — the last backs
+>    `runtime.scheduleTimeoutEvent`, which is how the Go scheduler runs timers.
+>    `AudioWorkletGlobalScope` provides none of them.
+> 2. _Worker + `SharedArrayBuffer` ring buffer with a thin worklet._ `SharedArrayBuffer` requires
+>    cross-origin isolation, i.e. COOP/COEP response headers. GitHub Pages cannot set custom
+>    headers, and the deployed site sends neither (verified).
+>
+> The viable path is a `coi-serviceworker`-style service worker that synthesises COOP/COEP,
+> then route 2. That is a deployment change with its own failure modes and should be decided
+> deliberately rather than folded into a hardening pass. Until then the demo keeps
+> `ScriptProcessorNode`; the main-thread pressure that made it audible (a synchronous
+> `localStorage` write and a full graph rebuild per pointermove, plus a permanent 24 fps redraw
+> loop) has been removed.
+
+Deferred to a later phase (direction agreed, not in scope here): collapsing the four parallel
+effect-parameter tables by generating the JS side from the Go structs; ES modules; promoting
+`internal/webdemo/eq.go` into `dsp/filter/design` and `spectrum.go` into `dsp/spectrum`; deleting
+the duplicated `effects_chain_configure.go` and the legacy serial chain; surfacing `measure/*` and
+`stats/*`.
+
+Exit criteria:
+
+- [x] A corrupted `algo-dsp-settings` entry in `localStorage` cannot prevent the demo from starting.
+- [x] A failed WASM load produces a visible message rather than an inert UI.
+- [x] `web/wasm` is compiled by PR CI; `.js`/`.html`/`.css` are format-checked by `just ci`.
+- [x] The analyser redraw loop is idle when no audio is playing.
+- [ ] No audio dropouts while dragging a canvas slider (DevTools Performance trace) — the known
+      causes are fixed, but this has not been confirmed on a real trace.
+- [ ] Stereo output. Deferred: the engine is mono end to end (`Render([]float32)`, and
+      `dsp/effectchain` processes a mono block), and the widener/rotary nodes deliberately fold
+      down to mono. Widening the output channel count alone would change nothing audible; real
+      stereo means threading it through `dsp/effectchain`, which is library work and needs its
+      own phase.
 
 ### Phase 42: Release Readiness (v1.0) (Planned)
 
@@ -801,23 +949,26 @@ Quarter-end success criteria:
 
 ## Appendix H: Revision History
 
-| Version | Date       | Author  | Changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------- | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.1     | 2026-02-06 | Codex   | Initial comprehensive plan                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| 0.2     | 2026-02-06 | Claude  | Expanded early phases + migration notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| 0.3     | 2026-02-08 | Claude  | Added shelving filter design phase + known Chebyshev II bug                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades).                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| 0.10    | 2026-06-21 | Claude  | Status refresh after the recovery: Phase 21 (convolution reverb done, Haas pending) and Phase 22 (spectral-freeze/granular/vocoder done; dynamic-EQ/panner/pitch-correction/noise-reduction pending) moved Planned → In Progress with their done items checked; refreshed the Phase 26 Moog snapshot to describe the adopted six-variant release-line filter (incl. `VariantZDF`); swapped the web demo to the `dsp/effectchain`-driven architecture + IR library (PR #14).                                                                                                                                                                                                                                                                                                 |
-| 0.11    | 2026-06-21 | Claude  | Completed Phase 21: implemented the `HaasDelay` precedence effect (`dsp/effects/spatial`, reusing `monoDelay`) with tests/example/benchmarks, and added the missing convolution-reverb tests/example; snapshot now credits the full reverb suite (Convolution + FDN + Freeverb) plus Haas. Phase Complete.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| 0.12    | 2026-06-21 | Claude  | Condensed all completed phases (15, 17–21, 26–30) to compact summaries; split the oversized undone phases into focused sub-phases — Phase 22 → 22.1–22.5 (vocoder finalize, panner, dynamic EQ, YIN pitch correction, noise reduction), Phase 24 → 24.1/24.2 (regression guard / SIMD modal track), Phase 25 → 25.1/25.2 (readiness / release), Phase 31 → 31.1/31.2 (kernels / integration); slimmed Phases 16 & 23 to done-summary + remaining item; refreshed Phase Overview to match.                                                                                                                                                                                                                                                                                   |
-| 0.13    | 2026-06-21 | Claude  | Reordered into completed-then-remaining and re-applied **strict integer numbering** (no `x.y` sub-phases). Completed phases come first (old 26–31 shifted to 25–30); partial phases 16/22/23/24 are now scoped to shipped work, with their open follow-ups split into standalone phases. Remaining roadmap is Phases 31–43 in execution order, ending with v1.0 (P42–P43). Open phases refined with concrete file paths / API hooks from a codebase audit (interpolation core found already complete → P30; dynamics static-curve path via `GainForLevel`/`CalculateOutputLevel`; elliptic reuse of `internal/ellipticmath`; `algo-vecmath` already a dependency; `API_REVIEW.md` still missing). **Note:** revision entries 0.1–0.12 reference the pre-0.13 phase numbers. |
-| 0.14    | 2026-07-29 | Claude  | Completed Phase 34: added `StereoPanner` (`dsp/effects/spatial/stereo_panner.go`) with three selectable pan laws (equal-power/compromise/linear), mono-pan and attenuate-only stereo-balance modes, and an optional auto-pan LFO; tests, 4 runnable examples and benchmarks included. Effect-chain/web-demo wiring deliberately left out of scope.                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| 0.15    | 2026-07-29 | Claude  | Completed Phase 32: extracted the Orfanidis parametric-EQ prototypes into `internal/orfanidis` (shared with `dsp/filter/design/band`), added `Elliptic{Low,High}Shelf` for orders >= 1, and rebuilt `Chebyshev2{Low,High}Shelf` as a genuine equiripple Type II design — the previous version delegated to a Butterworth shelf. All four shelving families now share the `\|H(f_c)\|² = (G²+1)/2` cutoff convention. Dead `chebyshev2Sections` (empirical damping constants) and `invertSections` removed; examples and benchmarks added. Breaking coefficient change for Chebyshev II, see CHANGELOG.md.                                                                                                                                                                   |
+| Version | Date       | Author  | Changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------- | ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.1     | 2026-02-06 | Codex   | Initial comprehensive plan                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 0.2     | 2026-02-06 | Claude  | Expanded early phases + migration notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 0.3     | 2026-02-08 | Claude  | Added shelving filter design phase + known Chebyshev II bug                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 0.4     | 2026-02-20 | Copilot | Restored detailed plan + added checkable tasks for all phases                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 0.5     | 2026-06-21 | Claude  | Status refresh (Phases 15/18 complete, 16/23 progress, Chebyshev II fixed); implemented Phase 27 Goertzel tone analysis                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 0.6     | 2026-06-21 | Claude  | Implemented Phase 26 legacy-faithful Moog ladder core (`dsp/filter/moog`); paper-or-better track deferred, phase now In Progress                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 0.7     | 2026-06-21 | Claude  | Completed Phase 26: added oversampled high-quality Moog path (anti-aliasing + half-sample feedback compensation) and nonlinear characterization tests; phase Complete                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 0.8     | 2026-06-21 | Claude  | Ported Phase 29 (dither/noise shaping) and recovered Phase 30 (polyphase Hilbert) onto `main` from the orphaned release lineage; both phases Complete. See history-divergence note below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 0.9     | 2026-06-21 | Claude  | Recovered Phase 28 (EBU R128 loudness) onto `main`; recovered the stranded effects (granular, spectral-freeze, vocoder, rotary speaker, frequency shifter, convolution reverb) + partitioned convolution; adopted the release-line Moog (regaining VariantZDF/Newton); recovered the `dsp/effectchain` subsystem (with Delay/Distortion superset upgrades).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 0.10    | 2026-06-21 | Claude  | Status refresh after the recovery: Phase 21 (convolution reverb done, Haas pending) and Phase 22 (spectral-freeze/granular/vocoder done; dynamic-EQ/panner/pitch-correction/noise-reduction pending) moved Planned → In Progress with their done items checked; refreshed the Phase 26 Moog snapshot to describe the adopted six-variant release-line filter (incl. `VariantZDF`); swapped the web demo to the `dsp/effectchain`-driven architecture + IR library (PR #14).                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 0.11    | 2026-06-21 | Claude  | Completed Phase 21: implemented the `HaasDelay` precedence effect (`dsp/effects/spatial`, reusing `monoDelay`) with tests/example/benchmarks, and added the missing convolution-reverb tests/example; snapshot now credits the full reverb suite (Convolution + FDN + Freeverb) plus Haas. Phase Complete.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 0.12    | 2026-06-21 | Claude  | Condensed all completed phases (15, 17–21, 26–30) to compact summaries; split the oversized undone phases into focused sub-phases — Phase 22 → 22.1–22.5 (vocoder finalize, panner, dynamic EQ, YIN pitch correction, noise reduction), Phase 24 → 24.1/24.2 (regression guard / SIMD modal track), Phase 25 → 25.1/25.2 (readiness / release), Phase 31 → 31.1/31.2 (kernels / integration); slimmed Phases 16 & 23 to done-summary + remaining item; refreshed Phase Overview to match.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 0.13    | 2026-06-21 | Claude  | Reordered into completed-then-remaining and re-applied **strict integer numbering** (no `x.y` sub-phases). Completed phases come first (old 26–31 shifted to 25–30); partial phases 16/22/23/24 are now scoped to shipped work, with their open follow-ups split into standalone phases. Remaining roadmap is Phases 31–43 in execution order, ending with v1.0 (P42–P43). Open phases refined with concrete file paths / API hooks from a codebase audit (interpolation core found already complete → P30; dynamics static-curve path via `GainForLevel`/`CalculateOutputLevel`; elliptic reuse of `internal/ellipticmath`; `algo-vecmath` already a dependency; `API_REVIEW.md` still missing). **Note:** revision entries 0.1–0.12 reference the pre-0.13 phase numbers.                                                                                                                                            |
+| 0.14    | 2026-07-29 | Claude  | Completed Phase 34: added `StereoPanner` (`dsp/effects/spatial/stereo_panner.go`) with three selectable pan laws (equal-power/compromise/linear), mono-pan and attenuate-only stereo-balance modes, and an optional auto-pan LFO; tests, 4 runnable examples and benchmarks included. Effect-chain/web-demo wiring deliberately left out of scope.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 0.15    | 2026-07-29 | Claude  | Completed Phase 32: extracted the Orfanidis parametric-EQ prototypes into `internal/orfanidis` (shared with `dsp/filter/design/band`), added `Elliptic{Low,High}Shelf` for orders >= 1, and rebuilt `Chebyshev2{Low,High}Shelf` as a genuine equiripple Type II design — the previous version delegated to a Butterworth shelf. All four shelving families now share the `\|H(f_c)\|² = (G²+1)/2` cutoff convention. Dead `chebyshev2Sections` (empirical damping constants) and `invertSections` removed; examples and benchmarks added. Breaking coefficient change for Chebyshev II, see CHANGELOG.md.                                                                                                                                                                                                                                                                                                              |
+| 0.16    | 2026-07-29 | Claude  | Completed Phase 36: added the YIN pitch detector (`YINDetector`), the streaming `PitchTracker` with median/hold smoothing, the auto-tune `PitchCorrector`, and the `Scale`/note-conversion helpers — all in `dsp/effects/pitch`; the two existing shifters now share the new semitone conversions. Recorded the decision not to use `modulation.FrequencyShifter` for correction (it breaks harmonicity). Effect-chain/web-demo wiring and an FFT difference function deliberately left out of scope.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 0.17    | 2026-07-29 | Claude  | Completed Phase 33: added `dsp/effects/vocoder_example_test.go` (defaults, `ProcessBlock` envelope transfer, Bark layout with a synthesis-Q override, multirate downsampling) — the vocoder was the last effect in `dsp/effects` without runnable examples — and closed the reachable coverage gaps so every exported vocoder option/getter/setter is at 100%. Corrected the phase's stale `NewVocoder(sampleRate, bandLayout, opts...)` signature to the real `NewVocoder(sampleRate, opts...)` + `WithBandLayout`, and recorded the `WithDownsampling` multirate feature the phase text had omitted. No API change.                                                                                                                                                                                                                                                                                                  |
+| 0.18    | 2026-07-29 | Claude  | Phase 40 partially completed: added `internal/benchguard` + `cmd/benchguard`, a benchmark regression guard that diffs `go test -bench` output against the checked-in `benchmarks/baseline.json` (`allocs/op` exact and `B/op` +10% gate; `ns/op` +50% is reported but non-gating unless `-enforce-timing` is passed on quiet hardware). Broadened `just bench-ci` from 3 to 6 packages (20 benchmarks) with a `count` parameter, added `just bench-guard` / `just bench-baseline`, and wired an advisory `Benchmark Guard` CI job that drives the same justfile recipe. Timing was demoted to non-gating after measurement: repeat runs with no code change moved benchmarks 43% on an idle machine and up to 7x under load, while allocation columns held steady throughout. The remaining item — refreshing `BENCHMARKS.md` from >=2 machines — is blocked on hardware availability, so the phase stays In Progress. |
 
 ---
 

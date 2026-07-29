@@ -233,6 +233,10 @@ type Engine struct {
 
 	chain *effectchain.Chain
 
+	// loadedGraphJSON is the graph description currently compiled into chain,
+	// used to skip redundant reloads. See SetEffects.
+	loadedGraphJSON string
+
 	spectrum             SpectrumParams
 	spectrumWindow       []float64
 	spectrumWindowGain   float64

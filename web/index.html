@@ -51,6 +51,17 @@
     <script src="app.js" defer></script>
   </head>
   <body>
+    <noscript>
+      <p class="app-notice app-notice--error">
+        This demo needs JavaScript and WebAssembly. The DSP runs as a Go program
+        compiled to WebAssembly; there is no server-side fallback. The library
+        itself is at
+        <a href="https://github.com/cwbudde/algo-dsp"
+          >github.com/cwbudde/algo-dsp</a
+        >.
+      </p>
+    </noscript>
+
     <main class="app">
       <header class="hero">
         <div class="hero-top">
@@ -83,8 +94,36 @@
             <span class="theme-toggle-label">Theme</span>
           </button>
         </div>
-        <p>Step synthesizer (pure tones + decay) with realtime 5-node EQ.</p>
+        <p>
+          Everything you hear is computed by
+          <a href="https://github.com/cwbudde/algo-dsp">algo-dsp</a>, a Go DSP
+          library compiled to WebAssembly. Web Audio only carries the finished
+          samples to your speakers &mdash; no browser DSP nodes are involved.
+        </p>
+        <p class="hero-links">
+          <a href="https://github.com/cwbudde/algo-dsp">Source</a>
+          <a href="https://pkg.go.dev/github.com/cwbudde/algo-dsp">API docs</a>
+          <a href="https://github.com/cwbudde/algo-dsp/blob/main/PLAN.md"
+            >Roadmap</a
+          >
+          <a href="https://github.com/cwbudde/algo-dsp/blob/main/LICENSE"
+            >License</a
+          >
+        </p>
       </header>
+
+      <!--
+        Status region for load and runtime failures. Everything below depends on
+        the WASM module; without this the page renders fully interactive and
+        silently does nothing when the module fails to load.
+      -->
+      <div
+        id="app-status"
+        class="app-notice"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
 
       <section class="panel transport">
         <div class="row">
@@ -2910,6 +2949,34 @@
           </div>
         </div>
       </section>
+
+      <footer class="site-footer">
+        <p>
+          <strong>algo-dsp</strong> &mdash; a reusable, production-quality DSP
+          algorithm library in Go. This page is its demo, not its documentation.
+        </p>
+        <p class="site-footer-links">
+          <a href="https://github.com/cwbudde/algo-dsp">GitHub</a>
+          <a href="https://pkg.go.dev/github.com/cwbudde/algo-dsp"
+            >pkg.go.dev</a
+          >
+          <a href="https://github.com/cwbudde/algo-dsp/blob/main/EFFECTS.md"
+            >Effects reference</a
+          >
+          <a href="https://github.com/cwbudde/algo-dsp/blob/main/BENCHMARKS.md"
+            >Benchmarks</a
+          >
+          <a href="https://github.com/cwbudde/algo-dsp/issues"
+            >Report an issue</a
+          >
+        </p>
+        <p class="site-footer-note">
+          The sequencer, EQ, effect graph, dynamics and analyser all run in
+          <code>internal/webdemo</code> on top of <code>dsp/effectchain</code>,
+          <code>dsp/effects</code>, <code>dsp/filter/design</code> and
+          <code>dsp/window</code>.
+        </p>
+      </footer>
     </main>
   </body>
 </html>

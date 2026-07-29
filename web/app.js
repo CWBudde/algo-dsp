@@ -62,9 +62,9 @@ const state = {
   audioCtx: null,
   outputNode: null,
   isRunning: false,
-  currentStep: 0,
-  nextNoteTime: 0,
-  scheduler: null,
+  // Mirrors the Go engine's step position; see followStepPosition.
+  currentStep: -1,
+  stepFollowHandle: null,
   steps: [],
   eqUI: null,
   compUI: null,
@@ -218,6 +218,7 @@ const state = {
 };
 
 const el = {
+  appStatus: document.getElementById("app-status"),
   runToggle: document.getElementById("run-toggle"),
   waveform: document.getElementById("waveform"),
   tempo: document.getElementById("tempo"),
@@ -1618,7 +1619,7 @@ function commitSelectedNodeParamsFromUI() {
   return state.chain?.updateNodeParams(node.id, params) || false;
 }
 
-function saveSettings() {
+function saveSettingsNow() {
   try {
     const settings = {
       effectsParams: state.effectsParams,
@@ -1631,6 +1632,34 @@ function saveSettings() {
     // Ignore storage failures.
   }
 }
+
+let saveSettingsTimer = 0;
+
+/**
+ * Persist settings, coalescing bursts of calls.
+ *
+ * This is called from every parameter change, including each pointermove while
+ * a canvas slider is dragged. Saving eagerly meant a full JSON.stringify of the
+ * whole effect graph plus a *synchronous* localStorage write inside the ~21 ms
+ * budget of the audio callback, which shares the main thread -- a reliable
+ * source of dropouts that looked like DSP glitches.
+ */
+function saveSettings() {
+  if (saveSettingsTimer) clearTimeout(saveSettingsTimer);
+  saveSettingsTimer = setTimeout(() => {
+    saveSettingsTimer = 0;
+    saveSettingsNow();
+  }, 400);
+}
+
+// A pending save must not be lost if the tab goes away before it fires.
+window.addEventListener("pagehide", () => {
+  if (saveSettingsTimer) {
+    clearTimeout(saveSettingsTimer);
+    saveSettingsTimer = 0;
+    saveSettingsNow();
+  }
+});
 
 function migrateLegacyChainState(chainState) {
   if (!chainState || !Array.isArray(chainState.nodes)) return chainState;
@@ -1656,6 +1685,46 @@ function migrateLegacyChainState(chainState) {
   return { ...chainState, nodes };
 }
 
+/**
+ * Copy `source` onto `target`, keeping only keys that `target` already declares
+ * and whose value has the same type as the existing default.
+ *
+ * The Go side reads these with syscall/js accessors, which *panic* on a type
+ * mismatch and take the whole WASM instance down with them. Because the panic
+ * happens on values restored from localStorage, a reload replays it -- one bad
+ * entry would otherwise brick the demo for that browser profile permanently.
+ * Filtering here keeps a corrupt or hand-edited entry to "that one value falls
+ * back to its default".
+ *
+ * @param {Record<string, unknown>} target parameter bag holding valid defaults
+ * @param {unknown} source untrusted parsed JSON
+ * @returns {number} count of rejected keys, for diagnostics
+ */
+function assignValidated(target, source) {
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    return 0;
+  }
+
+  let rejected = 0;
+  for (const [key, value] of Object.entries(source)) {
+    if (!Object.hasOwn(target, key)) {
+      rejected += 1;
+      continue;
+    }
+    const expected = typeof target[key];
+    if (typeof value !== expected) {
+      rejected += 1;
+      continue;
+    }
+    if (expected === "number" && !Number.isFinite(value)) {
+      rejected += 1;
+      continue;
+    }
+    target[key] = value;
+  }
+  return rejected;
+}
+
 function loadSettings() {
   let stored = null;
   try {
@@ -1669,11 +1738,20 @@ function loadSettings() {
   try {
     settings = JSON.parse(stored);
   } catch (e) {
+    console.warn("Discarding unparseable saved settings.", e);
+    clearSavedSettings();
     return;
   }
 
+  if (!settings || typeof settings !== "object") {
+    clearSavedSettings();
+    return;
+  }
+
+  let rejected = 0;
+
   if (settings.effectsParams) {
-    Object.assign(state.effectsParams, settings.effectsParams);
+    rejected += assignValidated(state.effectsParams, settings.effectsParams);
     if (el.chorusMix) el.chorusMix.value = state.effectsParams.chorusMix;
     if (el.chorusDepth) el.chorusDepth.value = state.effectsParams.chorusDepth;
     if (el.chorusSpeed)
@@ -1718,10 +1796,13 @@ function loadSettings() {
     if (el.tremoloSmoothing)
       el.tremoloSmoothing.value = state.effectsParams.tremoloSmoothingMs;
     if (el.tremoloMix) el.tremoloMix.value = state.effectsParams.tremoloMix;
-    if (el.rotarySpeed) el.rotarySpeed.value = state.effectsParams.rotarySpeedFast ? 1 : 0;
+    if (el.rotarySpeed)
+      el.rotarySpeed.value = state.effectsParams.rotarySpeedFast ? 1 : 0;
     if (el.rotaryDrive) el.rotaryDrive.value = state.effectsParams.rotaryDrive;
-    if (el.rotaryWidth) el.rotaryWidth.value = state.effectsParams.rotaryStereoWidth;
-    if (el.rotaryCrossover) el.rotaryCrossover.value = state.effectsParams.rotaryCrossoverHz;
+    if (el.rotaryWidth)
+      el.rotaryWidth.value = state.effectsParams.rotaryStereoWidth;
+    if (el.rotaryCrossover)
+      el.rotaryCrossover.value = state.effectsParams.rotaryCrossoverHz;
     if (el.rotaryMix) el.rotaryMix.value = state.effectsParams.rotaryMix;
     if (el.delayTime) el.delayTime.value = state.effectsParams.delayTime;
     if (el.delayFeedback)
@@ -1790,7 +1871,7 @@ function loadSettings() {
   }
 
   if (settings.compParams) {
-    Object.assign(state.compParams, settings.compParams);
+    rejected += assignValidated(state.compParams, settings.compParams);
     if (el.compEnabled) el.compEnabled.checked = !!state.compParams.enabled;
     if (el.compThresh) el.compThresh.value = state.compParams.thresholdDB;
     if (el.compRatio) el.compRatio.value = state.compParams.ratio;
@@ -1803,11 +1884,26 @@ function loadSettings() {
   }
 
   if (settings.limParams) {
-    Object.assign(state.limParams, settings.limParams);
+    rejected += assignValidated(state.limParams, settings.limParams);
     if (el.limEnabled) el.limEnabled.checked = !!state.limParams.enabled;
     if (el.limThresh) el.limThresh.value = state.limParams.threshold;
     if (el.limRelease) el.limRelease.value = state.limParams.release;
     updateLimiterText();
+  }
+
+  if (rejected > 0) {
+    console.warn(
+      `Ignored ${rejected} saved setting(s) that no longer match the expected shape.`,
+    );
+  }
+}
+
+/** Drop persisted settings so the next load starts from defaults. */
+function clearSavedSettings() {
+  try {
+    localStorage.removeItem(SETTINGS_STORAGE_KEY);
+  } catch (e) {
+    // Nothing useful to do if storage is unavailable.
   }
 }
 
@@ -1904,6 +2000,14 @@ function applyTheme(theme, mql) {
   const root = document.documentElement;
   root.dataset.theme = selected;
   root.dataset.resolvedTheme = resolved;
+
+  // The canvases cache their theme tokens and are not necessarily animating,
+  // so they need an explicit repaint once the new theme is in place.
+  requestEQDraw();
+  state.chain?.draw();
+  state.compUI?.draw();
+  state.limUI?.draw();
+  if (state.distChebGraph) drawDistChebGraph();
 }
 
 function initTheme() {
@@ -1973,6 +2077,70 @@ function buildStepUI() {
     enabled.addEventListener("change", syncStepsToDSP);
     noteSelect.addEventListener("change", syncStepsToDSP);
   }
+}
+
+/**
+ * Show a message in the page-level status region.
+ *
+ * Everything on this page depends on the WASM module. Without a visible
+ * notice, a failed load renders a complete, fully clickable UI that silently
+ * produces no sound and explains nothing.
+ *
+ * @param {string} message user-facing summary
+ * @param {{detail?: string, isError?: boolean}} [options]
+ */
+function showNotice(message, options = {}) {
+  const { detail = "", isError = false } = options;
+  if (!el.appStatus) {
+    // The status element is the only place we can report this; fall back to
+    // the console rather than losing the message entirely.
+    console[isError ? "error" : "info"](message, detail);
+    return;
+  }
+
+  el.appStatus.textContent = message;
+  if (detail) {
+    const pre = document.createElement("span");
+    pre.className = "app-notice-detail";
+    pre.textContent = detail;
+    el.appStatus.appendChild(pre);
+  }
+  el.appStatus.classList.toggle("app-notice--error", isError);
+  el.appStatus.hidden = false;
+}
+
+function hideNotice() {
+  if (el.appStatus) el.appStatus.hidden = true;
+}
+
+/**
+ * Report a fatal startup failure, with a hint for the most common causes.
+ *
+ * @param {unknown} err
+ */
+function reportStartupFailure(err) {
+  const detail = err instanceof Error ? err.message : String(err);
+  console.error(err);
+
+  let message =
+    "The DSP engine failed to load, so this demo cannot make sound.";
+  if (typeof WebAssembly === "undefined") {
+    message =
+      "This browser does not support WebAssembly, which this demo requires.";
+  } else if (/wasm_exec\.js missing/.test(detail)) {
+    message =
+      "Build the WebAssembly assets first: run ./web/build-wasm.sh (or just web-demo).";
+  } else if (/magic word|not a wasm|CompileError/i.test(detail)) {
+    // The server answered with something that is not a WASM module -- almost
+    // always a 404 page, i.e. the assets were never built or are misplaced.
+    message =
+      "algo_dsp_demo.wasm is missing or was not served as WebAssembly. Run ./web/build-wasm.sh (or just web-demo) to build it.";
+  } else if (/fetch|network|404/i.test(detail)) {
+    message =
+      "algo_dsp_demo.wasm could not be downloaded. Serve this page over HTTP rather than opening the file directly.";
+  }
+
+  showNotice(message, { detail, isError: true });
 }
 
 async function ensureDSP(sampleRate) {
@@ -2082,27 +2250,30 @@ function updateEQText() {
   el.eqReadout.textContent = `${h.label} [${family}${orderPart}]: ${Math.round(h.freq)} Hz, ${h.gain.toFixed(1)} dB, ${shapeLabel}`;
 }
 
-function stepDurationSeconds(stepIndex) {
-  const base = 60 / Number(el.tempo.value) / 4;
-  const ratio = shuffleRatio(Number(el.shuffle.value));
-  if (ratio <= 0) return base;
-  return stepIndex % 2 === 0 ? base * (1 + ratio) : base * (1 - ratio);
-}
+// The shuffle timing curve lived here too, duplicating shuffleRatio() in
+// internal/webdemo/sequencer.go. Now that the Go engine is the only clock, the
+// JS copy is gone rather than left to drift out of sync with it.
 
-function shuffleRatio(shuffleValue) {
-  const shuffle = Math.max(0, Math.min(1, shuffleValue));
-  // Map 0..1 control to 0..1/3 timing ratio with a gentle curve.
-  return (1 / 3) * Math.pow(shuffle, 1.6);
-}
+/**
+ * Follow the Go engine's step position and highlight it.
+ *
+ * The engine owns note timing; this only mirrors it. Previously a separate
+ * `setInterval` re-derived the step position in JS from tempo and shuffle and
+ * accumulated it in floating point, so the highlight was a second, independent
+ * clock that drifted away from the audio over time.
+ */
+function followStepPosition() {
+  if (!state.isRunning) return;
 
-function schedule() {
-  const lookahead = 0.1;
-  while (state.nextNoteTime < state.audioCtx.currentTime + lookahead) {
-    const stepIndex = state.currentStep;
-    highlightStep(stepIndex);
-    state.nextNoteTime += stepDurationSeconds(stepIndex);
-    state.currentStep = (stepIndex + 1) % STEP_COUNT;
+  if (state.dsp.ready && state.dsp.api) {
+    const step = state.dsp.api.currentStep();
+    if (step !== state.currentStep) {
+      state.currentStep = step;
+      highlightStep(step);
+    }
   }
+
+  state.stepFollowHandle = requestAnimationFrame(followStepPosition);
 }
 
 function highlightStep(index) {
@@ -2512,7 +2683,8 @@ function updateEffectsText() {
   el.tremoloSmoothingValue.textContent = `${Number(el.tremoloSmoothing.value).toFixed(1)} ms`;
   el.tremoloMixValue.textContent = `${Math.round(Number(el.tremoloMix.value) * 100)}%`;
   if (el.rotarySpeed)
-    el.rotarySpeedValue.textContent = Number(el.rotarySpeed.value) >= 0.5 ? "Fast" : "Slow";
+    el.rotarySpeedValue.textContent =
+      Number(el.rotarySpeed.value) >= 0.5 ? "Fast" : "Slow";
   if (el.rotaryDrive)
     el.rotaryDriveValue.textContent = `${Number(el.rotaryDrive.value).toFixed(1)}x`;
   if (el.rotaryWidth)
@@ -2662,27 +2834,31 @@ function startSequencer() {
   if (state.isRunning) return;
 
   state.isRunning = true;
-  state.currentStep = 0;
-  state.nextNoteTime = state.audioCtx.currentTime + 0.05;
-  state.scheduler = setInterval(schedule, 25);
+  state.currentStep = -1;
   if (state.dsp.ready && state.dsp.api) state.dsp.api.setRunning(true);
+  state.stepFollowHandle = requestAnimationFrame(followStepPosition);
   const sr = el.runToggle.querySelector(".sr-only");
   if (sr) sr.textContent = "Stop";
   el.runToggle.setAttribute("aria-label", "Stop");
   el.runToggle.classList.add("active");
+  syncEQDrawLoop();
 }
 
 function stopSequencer() {
   if (!state.isRunning) return;
-  clearInterval(state.scheduler);
-  state.scheduler = null;
+  if (state.stepFollowHandle !== null) {
+    cancelAnimationFrame(state.stepFollowHandle);
+    state.stepFollowHandle = null;
+  }
   state.isRunning = false;
   if (state.dsp.ready && state.dsp.api) state.dsp.api.setRunning(false);
   const sr = el.runToggle.querySelector(".sr-only");
   if (sr) sr.textContent = "Play";
   el.runToggle.setAttribute("aria-label", "Play");
   el.runToggle.classList.remove("active");
+  state.currentStep = -1;
   highlightStep(-1);
+  syncEQDrawLoop();
 }
 
 function initEQCanvas() {
@@ -2713,11 +2889,39 @@ function initEQCanvas() {
   });
 }
 
+/**
+ * Request a single EQ canvas repaint, coalesced into the next frame.
+ *
+ * Use this for one-off changes (a parameter moved, the theme flipped) instead
+ * of relying on the continuous loop, which only runs while audio does.
+ */
+function requestEQDraw() {
+  if (state.eqDrawPending || !state.eqUI) return;
+  state.eqDrawPending = true;
+  requestAnimationFrame(() => {
+    state.eqDrawPending = false;
+    state.eqUI?.draw();
+  });
+}
+
+/**
+ * Continuously repaint the EQ canvas so the spectrum analyser animates.
+ *
+ * Only the analyser overlay needs a steady frame rate, and only while audio is
+ * being produced. Previously this loop was started at page load and never
+ * stopped: it redrew 24 times a second forever -- before audio had ever been
+ * started, and in a hidden tab -- with each frame allocating several ~800-entry
+ * arrays and crossing into Go for the response and spectrum curves.
+ */
 function startEQDrawLoop() {
   if (state.eqDrawLoopHandle !== null) return;
   const targetFrameMS = 1000 / 24;
 
   const tick = (now) => {
+    if (!shouldAnimateEQ()) {
+      state.eqDrawLoopHandle = null;
+      return;
+    }
     if (state.eqUI && now - state.eqLastDrawTimeMS >= targetFrameMS) {
       state.eqUI.draw();
       state.eqLastDrawTimeMS = now;
@@ -2727,6 +2931,30 @@ function startEQDrawLoop() {
 
   state.eqDrawLoopHandle = requestAnimationFrame(tick);
 }
+
+function stopEQDrawLoop() {
+  if (state.eqDrawLoopHandle !== null) {
+    cancelAnimationFrame(state.eqDrawLoopHandle);
+    state.eqDrawLoopHandle = null;
+  }
+}
+
+/** The analyser only has something new to show while audio is running. */
+function shouldAnimateEQ() {
+  return state.isRunning && document.visibilityState === "visible";
+}
+
+/** Start or stop the animation loop to match the current conditions. */
+function syncEQDrawLoop() {
+  if (shouldAnimateEQ()) {
+    startEQDrawLoop();
+  } else {
+    stopEQDrawLoop();
+    requestEQDraw();
+  }
+}
+
+document.addEventListener("visibilitychange", syncEQDrawLoop);
 
 function initDynamicsGraphs() {
   state.compUI = new window.DynamicsGraph(el.compGraph, {
@@ -3406,21 +3634,43 @@ function updatePinButtonStates(node) {
   });
 }
 
-buildStepUI();
-initDynamicsGraphs();
-if (el.distChebCanvas && window.DistChebGraph) {
-  state.distChebGraph = new window.DistChebGraph(el.distChebCanvas);
+// A throw anywhere in this sequence used to leave the page rendered but inert
+// -- every later init step, including bindEvents(), would simply never run, so
+// nothing was clickable and nothing said why.
+try {
+  buildStepUI();
+  initDynamicsGraphs();
+  if (el.distChebCanvas && window.DistChebGraph) {
+    state.distChebGraph = new window.DistChebGraph(el.distChebCanvas);
+  }
+  initEQCanvas();
+  // The animation loop starts with playback; paint one static frame now.
+  requestEQDraw();
+  initTheme();
+  initEffectChain();
+  initPinButtons();
+  bindEvents();
+} catch (err) {
+  console.error(err);
+  showNotice(
+    "The interface failed to initialise; some controls may not work.",
+    {
+      detail: err instanceof Error ? err.message : String(err),
+      isError: true,
+    },
+  );
 }
-initEQCanvas();
-startEQDrawLoop();
-initTheme();
-initEffectChain();
-initPinButtons();
-bindEvents();
-ensureDSP(48000)
-  .then(() => {
-    state.eqUI?.draw();
-    state.compUI?.draw();
-    state.limUI?.draw();
-  })
-  .catch((err) => console.error(err));
+
+if (typeof WebAssembly === "undefined") {
+  reportStartupFailure(new Error("WebAssembly is not available"));
+} else {
+  showNotice("Loading the DSP engine…");
+  ensureDSP(48000)
+    .then(() => {
+      hideNotice();
+      state.eqUI?.draw();
+      state.compUI?.draw();
+      state.limUI?.draw();
+    })
+    .catch(reportStartupFailure);
+}
