@@ -17,8 +17,6 @@ type poleParams struct {
 // sosParams holds the independent numerator and denominator analog prototype
 // parameters for a single second-order section. For Butterworth and Chebyshev I,
 // the numerator is derived from the denominator by scaling (σ→P·σ, R²→P²·R²).
-// For Chebyshev II, numerator and denominator are computed independently via the
-// Orfanidis A/B/g parameters.
 type sosParams struct {
 	den poleParams // denominator: σ_den, R²_den
 	num poleParams // numerator: σ_num, R²_num
@@ -160,129 +158,6 @@ func lowShelfSections(K, P float64, pairs []poleParams, realSigma float64) []biq
 	}
 
 	return sections
-}
-
-// chebyshev2Sections assembles the low-shelf biquad cascade for a Chebyshev
-// Type II design using the Orfanidis framework. Unlike Butterworth and
-// Chebyshev I (where numerator parameters are a simple gain-scaling of the
-// denominator), Chebyshev II has independent numerator and denominator
-// pole/zero placement determined by the A and B ellipse parameters.
-//
-// The Orfanidis parameters for Chebyshev II are (cf. chebyshev2BandRad in band/):
-//
-//	eu = (e + sqrt(1 + e²))^(1/M),   A = (eu − 1/eu) / 2
-//	ew = (G0·e + Gb·sqrt(1 + e²))^(1/M), B = (ew − g²/ew) / 2
-//
-// where e = sqrt((G² − Gb²)/(Gb² − G0²)), g = G^(1/M), G0 = 1 (0 dB reference),
-// G = 10^(gainDB/20), and Gb = 10^((gainDB-stopbandDB)/20).
-//
-// Per section m = 1..L, θ_m = (2m−1)/(2M)·π:
-//
-//	den: σ = A·sin(θ_m),  R² = A² + cos²(θ_m)
-//	num: σ = B·sin(θ_m),  R² = B² + g²·cos²(θ_m)
-func chebyshev2Sections(K float64, gainDB, stopbandDB float64, order int) ([]biquad.Coefficients, error) {
-	if order < 1 || K <= 0 {
-		return nil, ErrInvalidParams
-	}
-
-	G0 := 1.0
-	G := db2Lin(gainDB)
-	Gb := db2Lin(gainDB - stopbandDB)
-	g := math.Pow(G, 1.0/float64(order))
-
-	num := G*G - Gb*Gb
-	den := Gb*Gb - G0*G0
-
-	ratio := num / den
-	if !isFinite(ratio) || ratio <= 0 {
-		return nil, ErrInvalidParams
-	}
-
-	e := math.Sqrt(ratio)
-	eu := math.Pow(e+math.Sqrt(1+e*e), 1.0/float64(order))
-	ew := math.Pow(G0*e+Gb*math.Sqrt(1.0+e*e), 1.0/float64(order))
-	A := (eu - 1.0/eu) * 0.5
-
-	B := (ew - g*g/ew) * 0.5
-	if !isFinite(A) || !isFinite(B) {
-		return nil, ErrInvalidParams
-	}
-
-	L := order / 2
-	hasFirstOrder := order%2 == 1
-
-	n := L
-	if hasFirstOrder {
-		n++
-	}
-
-	sections := make([]biquad.Coefficients, 0, n)
-
-	// Empirical damping for the Orfanidis Chebyshev II shelving realization.
-	// Boost and cut need different damping to keep the low-shelf region
-	// monotonic while preserving boost/cut inversion behavior.
-	denSigmaScale := 3.65
-	numSigmaScale := 16.499
-
-	if gainDB < 0 {
-		denSigmaScale = 0.2
-		numSigmaScale = 0.2
-	}
-
-	for m := 1; m <= L; m++ {
-		theta := float64(2*m-1) / float64(2*order) * math.Pi
-		si := math.Sin(theta)
-		ci := math.Cos(theta)
-
-		sp := sosParams{
-			den: poleParams{sigma: denSigmaScale * A * si, r2: A*A + ci*ci},
-			num: poleParams{sigma: numSigmaScale * B * si, r2: B*B + g*g*ci*ci},
-		}
-
-		section := bilinearSOS(K, sp)
-		if !coeffsAreFinite(section) {
-			return nil, ErrInvalidParams
-		}
-
-		sections = append(sections, section)
-	}
-
-	if hasFirstOrder {
-		// For odd order, the unpaired real branch requires an additional Gb
-		// factor on the numerator real zero to keep the DC shelf anchor at
-		// gainDB-stopbandDB while Nyquist remains unity.
-		section := bilinearFOS(K, fosParams{denSigma: A, numSigma: Gb * B})
-		if !coeffsAreFinite(section) {
-			return nil, ErrInvalidParams
-		}
-
-		sections = append(sections, section)
-	}
-
-	// Normalize at Nyquist (stopband anchor), matching DSPFilters behavior.
-	nyqGain := 1.0
-	for _, s := range sections {
-		nyqGain *= (s.B0 - s.B1 + s.B2) / (1.0 - s.A1 + s.A2)
-	}
-
-	if !isFinite(nyqGain) || nyqGain == 0 || len(sections) == 0 {
-		return nil, ErrInvalidParams
-	}
-
-	corr := 1.0 / nyqGain
-	if !isFinite(corr) {
-		return nil, ErrInvalidParams
-	}
-
-	sections[0].B0 *= corr
-	sections[0].B1 *= corr
-
-	sections[0].B2 *= corr
-	if !coeffsAreFinite(sections[0]) {
-		return nil, ErrInvalidParams
-	}
-
-	return sections, nil
 }
 
 // ln10over20 is the precomputed constant ln(10)/20.
