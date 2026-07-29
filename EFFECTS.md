@@ -41,12 +41,12 @@ both single-sample (`Process`) and buffer-based (`ProcessInPlace`) processing.
 
 ### Pitch
 
-| Effect                   | File                      | Description                                                                                                                |
-| ------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **PitchShifter**         | `pitch_shifter.go`        | Time-domain WSOLA-style pitch shifter. Ratio range 0.25-4.0 with configurable sequence length, overlap, and search window. |
-| **SpectralPitchShifter** | `pitch_shift_spectral.go` | Frequency-domain phase-vocoder pitch shifter. STFT time-stretch + resample with configurable frame size and hop.           |
-| **YINDetector**          | `yin_detector.go`         | YIN fundamental frequency estimation for one frame: difference function, cumulative mean normalization, parabolic interpolation. Zero-alloc. |
-| **PitchTracker**         | `pitch_tracker.go`        | Streaming wrapper around the detector: ring buffer, hop scheduling, median smoothing and an unvoiced hold. Zero-alloc.     |
+| Effect                   | File                      | Description                                                                                                                                   |
+| ------------------------ | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PitchShifter**         | `pitch_shifter.go`        | Time-domain WSOLA-style pitch shifter. Ratio range 0.25-4.0 with configurable sequence length, overlap, and search window.                    |
+| **SpectralPitchShifter** | `pitch_shift_spectral.go` | Frequency-domain phase-vocoder pitch shifter. STFT time-stretch + resample with configurable frame size and hop.                              |
+| **YINDetector**          | `yin_detector.go`         | YIN fundamental frequency estimation for one frame: difference function, cumulative mean normalization, parabolic interpolation. Zero-alloc.  |
+| **PitchTracker**         | `pitch_tracker.go`        | Streaming wrapper around the detector: ring buffer, hop scheduling, median smoothing and an unvoiced hold. Zero-alloc.                        |
 | **PitchCorrector**       | `pitch_corrector.go`      | Auto-tune style correction: tracker plus shifter, snapping to a scale or a fixed target with amount, clamp, confidence gate and retune glide. |
 
 Both pitch shifters implement the `PitchProcessor` interface
@@ -112,13 +112,13 @@ additional DSP building blocks.
 
 Effects for specific use cases or those requiring more complex algorithms.
 
-| Effect               | Category    | Description                                                                              | Notes                                                   |
-| -------------------- | ----------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **Vocoder**          | Spectral    | Analysis/synthesis vocoder using filter bank envelope following.                         | Filter bank (already implemented), envelope followers   |
-| **Spectral Freeze**  | Spectral    | Captures and sustains a single STFT frame indefinitely.                                  | STFT infrastructure (reuse from spectral pitch shifter) |
-| **Granular Delay**   | Granular    | Delay with grain-based playback for texture and time-stretching.                         | Grain scheduler, window/envelope per grain              |
-| **Noise Reduction**  | Restoration | Spectral subtraction or Wiener-filter-based noise reduction with noise profile learning. | STFT, noise estimation, spectral gating                 |
-| **Haas Delay**       | Spatial     | Short inter-channel delay (1-30 ms) for precedence-effect stereo widening.               | Per-channel delay line                                  |
+| Effect              | Category    | Description                                                                              | Notes                                                   |
+| ------------------- | ----------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Vocoder**         | Spectral    | Analysis/synthesis vocoder using filter bank envelope following.                         | Filter bank (already implemented), envelope followers   |
+| **Spectral Freeze** | Spectral    | Captures and sustains a single STFT frame indefinitely.                                  | STFT infrastructure (reuse from spectral pitch shifter) |
+| **Granular Delay**  | Granular    | Delay with grain-based playback for texture and time-stretching.                         | Grain scheduler, window/envelope per grain              |
+| **Noise Reduction** | Restoration | Spectral subtraction or Wiener-filter-based noise reduction with noise profile learning. | STFT, noise estimation, spectral gating                 |
+| **Haas Delay**      | Spatial     | Short inter-channel delay (1-30 ms) for precedence-effect stereo widening.               | Per-channel delay line                                  |
 
 ---
 

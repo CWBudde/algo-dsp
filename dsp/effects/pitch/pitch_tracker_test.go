@@ -63,10 +63,14 @@ func TestNewPitchTrackerValidation(t *testing.T) {
 		{"median taps too many", yinTestSampleRate, []PitchTrackerOption{WithTrackerMedianFilter(7)}},
 		{"negative hold", yinTestSampleRate, []PitchTrackerOption{WithTrackerHoldFrames(-1)}},
 		{"nil detector", yinTestSampleRate, []PitchTrackerOption{WithTrackerDetector(nil)}},
-		{"detector rate mismatch", yinTestSampleRate,
-			[]PitchTrackerOption{WithTrackerDetector(mismatched)}},
-		{"bad detector option", yinTestSampleRate,
-			[]PitchTrackerOption{WithTrackerDetectorOptions(WithYINThreshold(2))}},
+		{
+			"detector rate mismatch", yinTestSampleRate,
+			[]PitchTrackerOption{WithTrackerDetector(mismatched)},
+		},
+		{
+			"bad detector option", yinTestSampleRate,
+			[]PitchTrackerOption{WithTrackerDetectorOptions(WithYINThreshold(2))},
+		},
 		{"nil option", yinTestSampleRate, []PitchTrackerOption{nil}},
 	}
 

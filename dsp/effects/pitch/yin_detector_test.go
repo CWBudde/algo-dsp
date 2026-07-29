@@ -181,11 +181,15 @@ func TestNewYINDetectorValidation(t *testing.T) {
 		{"frame size zero", yinTestSampleRate, []YINDetectorOption{WithYINFrameSize(0)}},
 		{"frame size negative", yinTestSampleRate, []YINDetectorOption{WithYINFrameSize(-1)}},
 		{"frame size too short", yinTestSampleRate, []YINDetectorOption{WithYINFrameSize(64)}},
-		{"silence threshold NaN", yinTestSampleRate,
-			[]YINDetectorOption{WithYINSilenceThresholdDB(math.NaN())}},
+		{
+			"silence threshold NaN", yinTestSampleRate,
+			[]YINDetectorOption{WithYINSilenceThresholdDB(math.NaN())},
+		},
 		{"nil option", yinTestSampleRate, []YINDetectorOption{nil}},
-		{"range too narrow for lags", yinTestSampleRate,
-			[]YINDetectorOption{WithYINFrequencyRange(11000, 11500)}},
+		{
+			"range too narrow for lags", yinTestSampleRate,
+			[]YINDetectorOption{WithYINFrequencyRange(11000, 11500)},
+		},
 	}
 
 	for _, tt := range tests {
