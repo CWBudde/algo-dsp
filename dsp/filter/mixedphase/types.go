@@ -34,6 +34,11 @@ var (
 	ErrSingularSystem = errors.New(
 		"mixedphase: weighted normal equations are singular",
 	)
+	// ErrInvalidTolerance is returned when a negative magnitude tolerance is
+	// given.
+	ErrInvalidTolerance = errors.New(
+		"mixedphase: magnitude tolerance must not be negative",
+	)
 )
 
 // MinimumPhaseMethod selects how a magnitude response is factored into a
@@ -196,6 +201,77 @@ type ComplexLeastSquaresConfig struct {
 	MinimaxTolerance float64
 }
 
+// LowGroupDelayConfig configures [DesignLowGroupDelay].
+//
+// The design minimises passband group delay subject to a magnitude constraint,
+// so the tolerance is the primary control: a tighter band buys accuracy at the
+// price of delay, a looser one the other way round.
+type LowGroupDelayConfig struct {
+	// Length is the number of output taps. Zero uses the prototype length.
+	Length int
+
+	// FFTSize controls the dense design grid. Zero selects a power of two at
+	// least eight times the output length. The optimiser cost grows with the
+	// product of grid size and Length, so a large grid is expensive here.
+	FFTSize int
+
+	// Epsilon is the magnitude floor used by the minimum-phase starting
+	// point. Zero selects a scale-relative default. Negative values are
+	// rejected.
+	Epsilon float64
+
+	// Method selects the minimum-phase reconstruction used for the default
+	// starting point. The zero value is [MethodCepstrum].
+	Method MinimumPhaseMethod
+
+	// ToleranceDB is the permitted magnitude deviation from the prototype, in
+	// dB. Zero uses 1 dB. Negative values are rejected. The permitted band
+	// never narrows below a small fraction of the target peak, so bins where
+	// the target is numerically zero stay feasible.
+	ToleranceDB float64
+
+	// DelayWeight holds one non-negative weight per bin on [0, Nyquist], so
+	// its length must be FFTSize/2+1. It selects the band whose group delay is
+	// minimised. Nil uses the squared target magnitude, which concentrates the
+	// objective on the passband.
+	DelayWeight []float64
+
+	// InitialTaps is the starting point of the optimisation and must have
+	// Length entries. Nil uses the truncated minimum-phase design. The problem
+	// is non-convex, so this choice can change the result.
+	InitialTaps []float64
+
+	// Iterations is the maximum number of quasi-Newton iterations per penalty
+	// stage. Zero uses 200. A negative value returns the starting point
+	// unchanged, which is useful for comparisons.
+	Iterations int
+
+	// PenaltyStages is the number of times the constraint penalty is raised,
+	// each stage multiplying it by ten. Zero uses six stages.
+	PenaltyStages int
+
+	// InitialPenalty scales the constraint term in the first stage. Zero uses
+	// one. Negative values are rejected.
+	InitialPenalty float64
+}
+
+// GroupDelayMetrics summarises the group delay of a design and how well it
+// respects its magnitude constraint.
+type GroupDelayMetrics struct {
+	// Mean is the weight-averaged group delay in samples.
+	Mean float64
+
+	// Peak is the largest group delay, in samples, over the bins that carry at
+	// least one percent of the largest delay weight.
+	Peak float64
+
+	// ConstraintViolation is the largest magnitude deviation that exceeds the
+	// permitted band, expressed as a multiple of that band. Zero means the
+	// design is feasible; 0.5 means the worst bin overshoots its tolerance by
+	// half of it.
+	ConstraintViolation float64
+}
+
 // ComplexErrorMetrics reports the approximation error against a prescribed
 // complex response, relative to the peak magnitude of that response.
 //
@@ -220,8 +296,9 @@ type Result struct {
 	LinearPhasePart  []float64
 
 	// Iterations is the number of alternating correction passes performed by
-	// [DesignIterative], or of reweighting passes performed by
-	// [DesignComplexLeastSquares].
+	// [DesignIterative], of reweighting passes performed by
+	// [DesignComplexLeastSquares], or of accepted quasi-Newton steps performed
+	// by [DesignLowGroupDelay].
 	Iterations int
 
 	// Metrics compares Taps with the prototype magnitude response.
@@ -231,6 +308,11 @@ type Result struct {
 	// only populated by [DesignComplexLeastSquares]; the other designs do not
 	// prescribe a phase over the whole grid.
 	ComplexError ComplexErrorMetrics
+
+	// GroupDelay summarises the optimised group delay and the feasibility of
+	// the magnitude constraint. It is only populated by
+	// [DesignLowGroupDelay].
+	GroupDelay GroupDelayMetrics
 }
 
 // Metrics describes spectral error and the time distribution of an FIR.

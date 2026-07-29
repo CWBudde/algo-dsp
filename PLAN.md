@@ -622,7 +622,7 @@ budgets, and delay constraints across methods.
       implementation; compare spectral-factorisation error, numerical sensitivity, and runtime.
 - [x] Add prescribed complex-response design with weighted least squares, followed by an
       IRLS/minimax path for peak-error control.
-- [ ] Reproduce a direct magnitude-constrained, low-group-delay optimisation based on
+- [x] Reproduce a direct magnitude-constrained, low-group-delay optimisation based on
       Wu–Gao–Teo and document optimiser convergence and initialisation sensitivity.
 - [ ] For applicable graphic-EQ targets, add an optional hybrid IIR/FIR method as a
       structure-specific comparison rather than part of the general mixed-phase API.

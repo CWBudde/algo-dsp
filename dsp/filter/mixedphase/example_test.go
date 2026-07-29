@@ -71,6 +71,34 @@ func ExampleDesignComplexLeastSquares() {
 	// true
 }
 
+func ExampleDesignLowGroupDelay() {
+	prototype := []float64{
+		0.01, 0.04, 0.12, 0.20, 0.26, 0.20, 0.12, 0.04, 0.01,
+	}
+
+	// Let the magnitude move by up to 2 dB and spend that freedom on delay.
+	result, err := mixedphase.DesignLowGroupDelay(
+		prototype,
+		mixedphase.LowGroupDelayConfig{
+			FFTSize:     128,
+			ToleranceDB: 2,
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(len(result.Taps))
+
+	// The linear-phase prototype delays the passband by four samples.
+	fmt.Println(result.GroupDelay.Mean < 4)
+	fmt.Println(result.GroupDelay.ConstraintViolation < 1e-3)
+	// Output:
+	// 9
+	// true
+	// true
+}
+
 func ExampleDesignIterative() {
 	// A symmetric FIR prototype; in practice this can come from any linear
 	// phase design method.

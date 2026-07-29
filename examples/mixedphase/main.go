@@ -17,7 +17,8 @@ func main() {
 	fmt.Println(
 		"method,delay,relative_magnitude_error,rms_error_db," +
 			"peak_index,energy_centroid,pre_peak_energy," +
-			"complex_rms_error,complex_peak_error",
+			"complex_rms_error,complex_peak_error," +
+			"peak_group_delay,constraint_violation",
 	)
 
 	for _, delay := range []int{0, 8, 16, 32, 64} {
@@ -66,22 +67,51 @@ func main() {
 
 		printResult("complex-minimax", delay, minimax)
 	}
+
+	// The low-group-delay design chooses its own delay instead of being told
+	// one, so it is driven by its magnitude tolerance and reported at the delay
+	// it settles on.
+	for _, toleranceDB := range []float64{0.5, 2, 6} {
+		lowDelay, err := mixedphase.DesignLowGroupDelay(
+			prototype,
+			mixedphase.LowGroupDelayConfig{
+				Length:      length,
+				FFTSize:     512,
+				ToleranceDB: toleranceDB,
+				Iterations:  80,
+			},
+		)
+		if err != nil {
+			panic(err)
+		}
+
+		printResult(
+			fmt.Sprintf("low-group-delay-%gdB", toleranceDB),
+			int(math.Round(lowDelay.GroupDelay.Mean)),
+			lowDelay,
+		)
+	}
 }
 
 func printResult(method string, delay int, result mixedphase.Result) {
 	metrics := result.Metrics
 
-	// The complex-error columns stay empty for the designs that do not
-	// prescribe a phase over the whole grid, so a zero is never mistaken for a
-	// measurement.
+	// Columns stay empty for the designs that do not report them, so a zero is
+	// never mistaken for a measurement.
 	complexRMS, complexPeak := "", ""
 	if result.ComplexError.Peak > 0 {
 		complexRMS = fmt.Sprintf("%.9g", result.ComplexError.RMS)
 		complexPeak = fmt.Sprintf("%.9g", result.ComplexError.Peak)
 	}
 
+	peakDelay, violation := "", ""
+	if result.GroupDelay.Peak != 0 {
+		peakDelay = fmt.Sprintf("%.6f", result.GroupDelay.Peak)
+		violation = fmt.Sprintf("%.3e", result.GroupDelay.ConstraintViolation)
+	}
+
 	fmt.Printf(
-		"%s,%d,%.9g,%.6f,%d,%.6f,%.9g,%s,%s\n",
+		"%s,%d,%.9g,%.6f,%d,%.6f,%.9g,%s,%s,%s,%s\n",
 		method,
 		delay,
 		metrics.RelativeMagnitudeError,
@@ -91,6 +121,8 @@ func printResult(method string, delay int, result mixedphase.Result) {
 		metrics.PrePeakEnergyRatio,
 		complexRMS,
 		complexPeak,
+		peakDelay,
+		violation,
 	)
 }
 

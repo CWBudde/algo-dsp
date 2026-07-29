@@ -51,7 +51,10 @@ The first implementation is in `dsp/filter/mixedphase`:
 
 - `MinimumPhase`: real-cepstrum minimum-phase reconstruction;
 - `DesignIterative`: the alternating two-factor method;
-- `DesignPhaseInterpolation`: a deliberately simple direct baseline; and
+- `DesignPhaseInterpolation`: a deliberately simple direct baseline;
+- `DesignComplexLeastSquares`: weighted complex approximation with an optional
+  Lawson minimax path;
+- `DesignLowGroupDelay`: direct magnitude-constrained delay optimisation; and
 - `Analyze`: common frequency- and time-domain metrics.
 
 `examples/mixedphase` emits a CSV comparison over several delay budgets.
@@ -117,9 +120,36 @@ followed by minimum-phase spectral factorisation
 ([Signal Processing 2013][wu-2013]).
 
 This is the closest published alternative to the design goal in the DAGA
-paper. It should be the second comparison implementation after the DHT
-minimum-phase primitive. It needs a reliable constrained optimiser and is more
-complex than the current alternating FFT method.
+paper. It needs a reliable constrained optimiser and is more complex than the
+current alternating FFT method.
+
+`DesignLowGroupDelay` implements this formulation: it minimises the
+magnitude-weighted passband group delay subject to a per-bin magnitude
+tolerance, using a penalty ladder around a limited-memory BFGS minimiser with
+an analytic gradient. The gradient is checked against finite differences in the
+test suite, because every claim below rests on it.
+
+Three measured properties, all on the 65-tap low-pass of the example harness:
+
+- It beats a truncated minimum-phase design, but not by much. Mean passband
+  group delay falls from 12.70 to 12.62 samples within a 1 dB tolerance and to
+  12.08 within 6 dB; peak passband delay falls from 23.58 to 22.72 and 21.18.
+  Minimum phase is already nearly delay-optimal for a fixed magnitude, so the
+  available gain is essentially the room the tolerance grants.
+- Initialisation decides the outcome. From the linear-phase prototype the same
+  1 dB design settles at a mean delay near 31.5 samples instead of 12.6, and
+  that point is a true local minimum — it improves on its own start and cannot
+  be pushed further. Escaping would require moving a zero across the unit
+  circle, which no descent direction does.
+- Convergence is slow rather than sharp. At 6 dB the mean delay is 12.35 after
+  50 iterations per penalty stage, 12.08 after 200 and 10.79 after 800, while
+  the relative magnitude error grows from 1.2e-2 to 2.5e-2 to 1.4e-1. The
+  iteration budget acts as a second delay-versus-accuracy control, so any
+  reported number must name the budget that produced it.
+
+The design is also markedly more expensive than the transform-based methods:
+each objective evaluation is O(bins × taps) and there are hundreds per penalty
+stage.
 
 ### Structure-specific low-latency filters
 
