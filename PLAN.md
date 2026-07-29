@@ -206,8 +206,9 @@ Phase 38: Interpolation Kernel Expansion                   [1 week]   📋 Plann
 Phase 39: Interpolation Integration & Validation           [1 week]   📋 Planned
 Phase 40: Benchmark Regression Guard                       [1 week]   🔄 In Progress
 Phase 41: SIMD Modal Oscillator Bank                       [2 weeks]  📋 Planned
-Phase 42: Release Readiness (v1.0)                         [1 week]   📋 Planned
-Phase 43: Tag and Publish v1.0                             [0.5 week] 📋 Planned
+Phase 42: Mixed-Phase FIR Design & Alternatives            [3 weeks]  🔄 In Progress
+Phase 43: Release Readiness (v1.0)                         [1 week]   📋 Planned
+Phase 44: Tag and Publish v1.0                             [0.5 week] 📋 Planned
 ```
 
 ---
@@ -416,7 +417,7 @@ and NaN/Inf validation).
   paths) integrated and benchmarked (2.6–4.1× generic→SIMD; see `BENCHMARKS.md`).
 
 > Open follow-ups: benchmark regression guard **Phase 40**; SIMD modal oscillator bank **Phase 41**.
-> The v1.0 release work is **Phases 42–43**.
+> The v1.0 release work is **Phases 43–44**.
 
 ### Phase 25: Nonlinear Moog Ladder Filters (Complete)
 
@@ -608,14 +609,46 @@ Optional; uses the already-present `algo-vecmath v0.1.0` dependency.
 - [ ] Parity tests vs the scalar reference + modal-workload microbenchmarks.
 - [ ] Document the denormal strategy (cf. `core.FlushDenormals`).
 
-### Phase 42: Release Readiness (v1.0) (Planned)
+### Phase 42: Mixed-Phase FIR Design & Alternatives (In Progress)
+
+Build a reproducible comparison around the fixed-support alternating factorisation from
+Christian-W. Budde's DAGA 2012 paper. Keep identical target samples, frequency weights, tap
+budgets, and delay constraints across methods.
+
+- [x] Add the paper-inspired alternating minimum-phase/linear-phase factor design in
+  `dsp/filter/mixedphase`, plus a direct phase-interpolation baseline, analysis metrics, tests,
+  documentation, and a runnable CSV example.
+- [ ] Validate both baselines against independent MATLAB/NumPy reference vectors, including the
+  paper's 1 kHz low-pass example.
+- [ ] Add discrete-Hilbert-transform minimum-phase reconstruction alongside the real-cepstrum
+  implementation; compare spectral-factorisation error, numerical sensitivity, and runtime.
+- [ ] Add prescribed complex-response design with weighted least squares, followed by an
+  IRLS/minimax path for peak-error control.
+- [ ] Reproduce a direct magnitude-constrained, low-group-delay optimisation based on
+  Wu–Gao–Teo and document optimiser convergence and initialisation sensitivity.
+- [ ] For applicable graphic-EQ targets, add an optional hybrid IIR/FIR method as a
+  structure-specific comparison rather than part of the general mixed-phase API.
+- [ ] Build a common benchmark/reference suite covering low-pass, parametric-EQ, crossover,
+  deep-notch, and measured room-correction targets. Record magnitude error, group delay,
+  pre-ringing/energy metrics, coefficient range, iterations, and runtime.
+- [ ] Add a WebAssembly “Mixed Phase Lab” to the existing web demo with method and delay controls,
+  impulse/magnitude/group-delay plots, and A/B transient playback.
+
+Exit criteria:
+
+- [ ] Alternative methods share one comparison harness and publish reproducible quality/runtime
+  results under fixed tap and delay budgets.
+- [ ] `go test -race ./dsp/filter/mixedphase` and the WebAssembly build pass; docs state which
+  formulations prescribe phase and which optimise it.
+
+### Phase 43: Release Readiness (v1.0) (Planned)
 
 - [ ] Full benchmark pass; confirm no major regressions vs baselines.
 - [ ] Full local CI (`just ci`) including race (`go test -race ./...`).
 - [ ] Finalize `CHANGELOG.md` and the placeholder `MIGRATION.md`; create the missing
   `API_REVIEW.md` and complete its checklist for `v1.0.0`.
 
-### Phase 43: Tag and Publish v1.0 (Planned)
+### Phase 44: Tag and Publish v1.0 (Planned)
 
 - [ ] Tag and publish `v1.0.0` (tag + release notes), advancing from the current `v0.5.1`.
 - [ ] Verify module-proxy indexing (`go get` via `GOPROXY`).
@@ -764,6 +797,7 @@ Quarter-end success criteria:
 | 0.11    | 2026-06-21 | Claude  | Completed Phase 21: implemented the `HaasDelay` precedence effect (`dsp/effects/spatial`, reusing `monoDelay`) with tests/example/benchmarks, and added the missing convolution-reverb tests/example; snapshot now credits the full reverb suite (Convolution + FDN + Freeverb) plus Haas. Phase Complete.                                                                                                                                                                  |
 | 0.12    | 2026-06-21 | Claude  | Condensed all completed phases (15, 17–21, 26–30) to compact summaries; split the oversized undone phases into focused sub-phases — Phase 22 → 22.1–22.5 (vocoder finalize, panner, dynamic EQ, YIN pitch correction, noise reduction), Phase 24 → 24.1/24.2 (regression guard / SIMD modal track), Phase 25 → 25.1/25.2 (readiness / release), Phase 31 → 31.1/31.2 (kernels / integration); slimmed Phases 16 & 23 to done-summary + remaining item; refreshed Phase Overview to match. |
 | 0.13    | 2026-06-21 | Claude  | Reordered into completed-then-remaining and re-applied **strict integer numbering** (no `x.y` sub-phases). Completed phases come first (old 26–31 shifted to 25–30); partial phases 16/22/23/24 are now scoped to shipped work, with their open follow-ups split into standalone phases. Remaining roadmap is Phases 31–43 in execution order, ending with v1.0 (P42–P43). Open phases refined with concrete file paths / API hooks from a codebase audit (interpolation core found already complete → P30; dynamics static-curve path via `GainForLevel`/`CalculateOutputLevel`; elliptic reuse of `internal/ellipticmath`; `algo-vecmath` already a dependency; `API_REVIEW.md` still missing). **Note:** revision entries 0.1–0.12 reference the pre-0.13 phase numbers. |
+| 0.14    | 2026-07-29 | Codex   | Added Phase 42 for the DAGA 2012 mixed-phase FIR implementation and comparison track: DHT minimum-phase reconstruction, weighted complex least squares, IRLS/minimax, direct low-group-delay optimisation, optional hybrid IIR/FIR designs, a common benchmark corpus, and a WebAssembly lab. Shifted v1.0 readiness/publication to Phases 43–44. |
 
 ---
 
