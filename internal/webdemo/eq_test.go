@@ -1,6 +1,7 @@
 package webdemo
 
 import (
+	"fmt"
 	"math"
 	"math/cmplx"
 	"testing"
@@ -138,4 +139,71 @@ func chainMagnitudeDB(chain *biquad.Chain, freqHz, sampleRate float64) float64 {
 	}
 
 	return 20 * math.Log10(cmplx.Abs(h))
+}
+
+// TestBuildEQChain_EquirippleShelvesSurviveSmallGains covers the case reported
+// in review: the shape control is clamped independently of gain, so dragging a
+// freshly selected equiripple shelf through small gains used to make the
+// designer reject the ripple and silently substitute a one-section RBJ shelf
+// while the UI still reported the chosen family and order.
+func TestBuildEQChain_EquirippleShelvesSurviveSmallGains(t *testing.T) {
+	const (
+		sampleRate = 48000.0
+		order      = 6
+		// The node's default shape, which the ripple control reuses verbatim.
+		ripple = 0.707
+	)
+
+	families := []string{eqFamilyChebyshev2, eqFamilyElliptic}
+	kinds := []string{eqKindLowShelf, eqKindHighShelf}
+
+	// Sweep the whole gain slider in 0.1 dB steps, skipping only the exact 0 dB
+	// setting, which legitimately designs a single passthrough section.
+	for _, family := range families {
+		for _, kind := range kinds {
+			for step := -240; step <= 240; step++ {
+				if step == 0 {
+					continue
+				}
+
+				gainDB := float64(step) / 10
+
+				name := fmt.Sprintf("%s/%s/%+.1fdB", family, kind, gainDB)
+				t.Run(name, func(t *testing.T) {
+					chain := buildEQChain(family, kind, order, 1000, gainDB, ripple, sampleRate)
+					if got := chain.NumSections(); got != (order+1)/2 {
+						t.Fatalf("sections = %d, want %d (fell back to RBJ)", got, (order+1)/2)
+					}
+				})
+			}
+		}
+	}
+}
+
+// TestEquirippleShelfRipple_Bounds pins the bound itself.
+func TestEquirippleShelfRipple_Bounds(t *testing.T) {
+	// A ripple that already fits the gain is passed through unchanged.
+	if got, ok := equirippleShelfRipple(eqFamilyElliptic, 12, 0.5); !ok || got != 0.5 {
+		t.Errorf("ripple = %v, ok = %v; want 0.5, true", got, ok)
+	}
+
+	// A ripple wider than the gain is pulled inside the admissible range.
+	got, ok := equirippleShelfRipple(eqFamilyElliptic, 0.5, 12)
+	if !ok {
+		t.Fatal("0.5 dB gain should still admit a stopband")
+	}
+
+	if got >= 0.5-0.05 {
+		t.Errorf("ripple = %v, want < %v", got, 0.5-0.05)
+	}
+
+	// Below the fixed shelf-side ripple the elliptic design is impossible.
+	if _, ok := equirippleShelfRipple(eqFamilyElliptic, 0.04, 0.5); ok {
+		t.Error("0.04 dB gain should not admit a stopband")
+	}
+
+	// Chebyshev II has no shelf-side reservation, so it needs only a nonzero gain.
+	if _, ok := equirippleShelfRipple(eqFamilyChebyshev2, 0.04, 0.5); !ok {
+		t.Error("chebyshev2 should admit a stopband at 0.04 dB gain")
+	}
 }

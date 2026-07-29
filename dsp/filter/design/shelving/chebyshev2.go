@@ -12,8 +12,10 @@ import (
 // freqHz is the cutoff frequency in Hz, defined as in the Butterworth and
 // Chebyshev I designers by |H(freqHz)|² = (G² + 1)/2, i.e. roughly 3 dB below
 // the shelf gain. gainDB is the shelf gain in dB (positive for boost, negative
-// for cut). stopbandDB is the ripple bound in the flat 0 dB region and must be
-// > 0 and < |gainDB| (typical values 0.1–1.0 dB). order must be >= 1.
+// for cut). stopbandDB is the ripple bound in the flat 0 dB region (typical
+// values 0.1–1.0 dB); it must be > 0 and < |gainDB|, and in practice should
+// stay below the cutoff level |10·log10((G² + 1)/2)| so that freqHz still lands
+// on a monotonic part of the transition. order must be >= 1.
 //
 // Type II is equiripple in the flat region and monotonic across the shelf, so
 // the response reaches gainDB at DC and then oscillates within stopbandDB of

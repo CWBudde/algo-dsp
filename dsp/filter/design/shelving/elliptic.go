@@ -17,9 +17,10 @@ const shelfRippleDB = 0.05
 // freqHz is the cutoff frequency in Hz, defined as in the Butterworth and
 // Chebyshev I designers by |H(freqHz)|² = (G² + 1)/2, i.e. roughly 3 dB below
 // the shelf gain. gainDB is the shelf gain in dB (positive for boost, negative
-// for cut). stopbandDB is the ripple bound in the flat 0 dB region and must be
-// > 0 and small enough to leave room below the shelf (typical 0.1–1.0 dB).
-// order must be >= 1.
+// for cut). stopbandDB is the ripple bound in the flat 0 dB region (typical
+// 0.1–1.0 dB); it must be > 0 and must stay below the cutoff level itself,
+// |10·log10((G² + 1)/2)|, since a ripple band reaching past the cutoff leaves
+// no monotonic transition to anchor freqHz to. order must be >= 1.
 //
 // The design is equiripple on both sides of the transition, giving the steepest
 // transition of the four shelving families at the cost of ripple in both bands.

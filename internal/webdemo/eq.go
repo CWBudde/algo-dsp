@@ -13,6 +13,43 @@ import (
 
 const eqEllipticStopbandDB = 40.0
 
+// eqShelfSideRippleDB mirrors the fixed shelf-side ripple the elliptic shelving
+// designers reserve below the nominal gain, and eqShelfRippleHeadroom keeps the
+// bounded ripple strictly inside the designers' admissible range.
+const (
+	eqShelfSideRippleDB   = 0.05
+	eqShelfRippleHeadroom = 0.9
+)
+
+// equirippleShelfRipple bounds the node's ripple control against the shelf gain.
+//
+// The Chebyshev II and elliptic shelving designers place the cutoff at
+// |H(freqHz)|² = (G² + 1)/2, so the reference-side ripple must stay below that
+// level — otherwise the cutoff falls inside the ripple band and the design is
+// rejected. The elliptic family additionally reserves eqShelfSideRippleDB below
+// the nominal gain. The node's shape control is clamped to a fixed dB range
+// independently of gain, so without this bound the designer rejects common
+// small-gain settings and buildEQChain silently falls back to a one-section RBJ
+// shelf while still reporting the selected family and order.
+//
+// The second result is false only when the gain is too small to host any
+// stopband at all, where the shelf is inaudible and the fallback is harmless.
+func equirippleShelfRipple(family string, gainDB, ripple float64) (float64, bool) {
+	// The cutoff level in dB, always strictly between 0 dB and gainDB.
+	g := math.Pow(10, gainDB/20)
+	limit := math.Abs(10 * math.Log10((g*g+1)*0.5))
+
+	if family == eqFamilyElliptic {
+		limit = math.Min(limit, math.Abs(gainDB)-eqShelfSideRippleDB)
+	}
+
+	if limit <= 0 {
+		return 0, false
+	}
+
+	return math.Min(ripple, limit*eqShelfRippleHeadroom), true
+}
+
 // SetEQ updates EQ parameters and rebuilds the filters.
 func (e *Engine) SetEQ(eq EQParams) error {
 	eq.HPFreq = clamp(eq.HPFreq, 20, e.sampleRate*0.49)
@@ -166,14 +203,18 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case eqKindHighShelf:
-			coeffs, err := shelving.Chebyshev2HighShelf(sampleRate, freq, gainDB, ripple, order)
-			if err == nil {
-				return chainFromCoeffs(coeffs, linGain)
+			if stopband, ok := equirippleShelfRipple(family, gainDB, ripple); ok {
+				coeffs, err := shelving.Chebyshev2HighShelf(sampleRate, freq, gainDB, stopband, order)
+				if err == nil {
+					return chainFromCoeffs(coeffs, linGain)
+				}
 			}
 		case eqKindLowShelf:
-			coeffs, err := shelving.Chebyshev2LowShelf(sampleRate, freq, gainDB, ripple, order)
-			if err == nil {
-				return chainFromCoeffs(coeffs, linGain)
+			if stopband, ok := equirippleShelfRipple(family, gainDB, ripple); ok {
+				coeffs, err := shelving.Chebyshev2LowShelf(sampleRate, freq, gainDB, stopband, order)
+				if err == nil {
+					return chainFromCoeffs(coeffs, linGain)
+				}
 			}
 		}
 	case eqFamilyBessel:
@@ -200,14 +241,18 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			// The shelving designers take the reference-side ripple bound, which
 			// the node's shape control supplies; the fixed eqEllipticStopbandDB
 			// used by the high/lowpass designers would exceed any usable gain.
-			coeffs, err := shelving.EllipticHighShelf(sampleRate, freq, gainDB, ripple, order)
-			if err == nil {
-				return chainFromCoeffs(coeffs, linGain)
+			if stopband, ok := equirippleShelfRipple(family, gainDB, ripple); ok {
+				coeffs, err := shelving.EllipticHighShelf(sampleRate, freq, gainDB, stopband, order)
+				if err == nil {
+					return chainFromCoeffs(coeffs, linGain)
+				}
 			}
 		case eqKindLowShelf:
-			coeffs, err := shelving.EllipticLowShelf(sampleRate, freq, gainDB, ripple, order)
-			if err == nil {
-				return chainFromCoeffs(coeffs, linGain)
+			if stopband, ok := equirippleShelfRipple(family, gainDB, ripple); ok {
+				coeffs, err := shelving.EllipticLowShelf(sampleRate, freq, gainDB, stopband, order)
+				if err == nil {
+					return chainFromCoeffs(coeffs, linGain)
+				}
 			}
 		}
 	}
