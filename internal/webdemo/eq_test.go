@@ -1,7 +1,11 @@
 package webdemo
 
 import (
+	"math"
+	"math/cmplx"
 	"testing"
+
+	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
 
 func newTestEngine(t *testing.T) *Engine {
@@ -79,4 +83,59 @@ func TestSetEQ_ResetsStateOnSectionCountChange(t *testing.T) {
 			t.Errorf("HP section %d state not zero after order change: %v", i, s)
 		}
 	}
+}
+
+// TestBuildEQChain_EllipticShelvesAreWired checks that the elliptic family
+// routes shelf nodes to the high-order shelving designers rather than silently
+// falling back to the single-section RBJ shelf.
+func TestBuildEQChain_EllipticShelvesAreWired(t *testing.T) {
+	const (
+		sampleRate = 48000.0
+		gainDB     = 12.0
+		stopbandDB = 0.5
+		order      = 6
+	)
+
+	tests := []struct {
+		kind   string
+		freq   float64
+		probe  float64 // frequency inside the shelf region
+		wantDB float64
+	}{
+		{eqKindLowShelf, 1000, 20, gainDB},
+		{eqKindHighShelf, 5000, 23000, gainDB},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.kind, func(t *testing.T) {
+			if !supportsEQFamily(tt.kind, eqFamilyElliptic) {
+				t.Fatal("elliptic family should support shelving nodes")
+			}
+
+			if got := eqShapeMode(tt.kind, eqFamilyElliptic); got != eqShapeModeRipple {
+				t.Errorf("shape mode = %q, want %q", got, eqShapeModeRipple)
+			}
+
+			chain := buildEQChain(eqFamilyElliptic, tt.kind, order, tt.freq, gainDB, stopbandDB, sampleRate)
+
+			// The RBJ fallback would yield a single section.
+			if got := chain.NumSections(); got != (order+1)/2 {
+				t.Fatalf("sections = %d, want %d (fell back to RBJ?)", got, (order+1)/2)
+			}
+
+			// Within the 0.05 dB shelf-side ripple of the nominal gain.
+			if got := chainMagnitudeDB(chain, tt.probe, sampleRate); math.Abs(got-tt.wantDB) > 0.05 {
+				t.Errorf("|H(%.0f Hz)| = %.4f dB, want %.2f dB", tt.probe, got, tt.wantDB)
+			}
+		})
+	}
+}
+
+func chainMagnitudeDB(chain *biquad.Chain, freqHz, sampleRate float64) float64 {
+	h := complex(chain.Gain(), 0)
+	for i := range chain.NumSections() {
+		h *= chain.Section(i).Response(freqHz, sampleRate)
+	}
+
+	return 20 * math.Log10(cmplx.Abs(h))
 }

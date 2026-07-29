@@ -196,6 +196,19 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
+		case eqKindHighShelf:
+			// The shelving designers take the reference-side ripple bound, which
+			// the node's shape control supplies; the fixed eqEllipticStopbandDB
+			// used by the high/lowpass designers would exceed any usable gain.
+			coeffs, err := shelving.EllipticHighShelf(sampleRate, freq, gainDB, ripple, order)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
+		case eqKindLowShelf:
+			coeffs, err := shelving.EllipticLowShelf(sampleRate, freq, gainDB, ripple, order)
+			if err == nil {
+				return chainFromCoeffs(coeffs, linGain)
+			}
 		}
 	}
 
@@ -253,12 +266,8 @@ func eqShapeMode(kind, family string) string {
 		return eqShapeModeBandwidth
 	}
 
-	if (family == eqFamilyChebyshev1 || family == eqFamilyChebyshev2) &&
+	if (family == eqFamilyChebyshev1 || family == eqFamilyChebyshev2 || family == eqFamilyElliptic) &&
 		(kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindHighShelf || kind == eqKindLowShelf) {
-		return eqShapeModeRipple
-	}
-
-	if family == eqFamilyElliptic && (kind == eqKindHighpass || kind == eqKindLowpass) {
 		return eqShapeModeRipple
 	}
 
@@ -322,10 +331,8 @@ func supportsEQFamily(kind, family string) bool {
 		return true
 	case eqFamilyBessel:
 		return kind == eqKindHighpass || kind == eqKindLowpass
-	case eqFamilyButterworth, eqFamilyChebyshev1, eqFamilyChebyshev2:
+	case eqFamilyButterworth, eqFamilyChebyshev1, eqFamilyChebyshev2, eqFamilyElliptic:
 		return kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindPeak || kind == eqKindLowShelf || kind == eqKindHighShelf
-	case eqFamilyElliptic:
-		return kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindPeak
 	default:
 		return false
 	}
@@ -348,11 +355,8 @@ func supportsEQOrder(kind, family string) bool {
 		return kind == eqKindHighpass || kind == eqKindLowpass
 	}
 
-	if family == eqFamilyElliptic {
-		return kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindPeak
-	}
-
-	if family == eqFamilyButterworth || family == eqFamilyChebyshev1 || family == eqFamilyChebyshev2 {
+	if family == eqFamilyButterworth || family == eqFamilyChebyshev1 ||
+		family == eqFamilyChebyshev2 || family == eqFamilyElliptic {
 		return kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindPeak || kind == eqKindLowShelf || kind == eqKindHighShelf
 	}
 

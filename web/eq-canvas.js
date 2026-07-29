@@ -337,8 +337,7 @@
     supportsFamilyForType(type, family) {
       if (family === "rbj") return true;
       if (family === "bessel") return type === "highpass" || type === "lowpass";
-      if (family === "elliptic") return type === "highpass" || type === "lowpass" || type === "peak";
-      if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2") {
+      if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2" || family === "elliptic") {
         return type === "highpass" || type === "lowpass" || type === "peak" || type === "lowshelf" || type === "highshelf";
       }
       return false;
@@ -347,8 +346,7 @@
     supportsOrderForTypeFamily(type, family) {
       if (family === "rbj") return false;
       if (family === "bessel") return type === "highpass" || type === "lowpass";
-      if (family === "elliptic") return type === "highpass" || type === "lowpass" || type === "peak";
-      if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2") {
+      if (family === "butterworth" || family === "chebyshev1" || family === "chebyshev2" || family === "elliptic") {
         return type === "highpass" || type === "lowpass" || type === "peak" || type === "lowshelf" || type === "highshelf";
       }
       return false;
@@ -723,10 +721,9 @@
 
     shapeModeForTypeFamily(type, family) {
       if (type === "peak" && family !== "rbj") return "bandwidth";
-      if ((family === "chebyshev1" || family === "chebyshev2") && (type === "highpass" || type === "lowpass" || type === "highshelf" || type === "lowshelf")) {
+      if ((family === "chebyshev1" || family === "chebyshev2" || family === "elliptic") && (type === "highpass" || type === "lowpass" || type === "highshelf" || type === "lowshelf")) {
         return "ripple";
       }
-      if (family === "elliptic" && (type === "highpass" || type === "lowpass")) return "ripple";
       return "q";
     }
 

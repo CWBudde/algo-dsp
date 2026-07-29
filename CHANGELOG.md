@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file.
 
 - `shelving.EllipticLowShelf` / `shelving.EllipticHighShelf` (Phase 32): high-order elliptic (Cauer) shelving designers, equiripple on both sides of the transition, for `order >= 1` including odd orders. The reference-side ripple is the `stopbandDB` argument; the shelf-side ripple is fixed at 0.05 dB, matching `band.EllipticBand`.
 - Runnable examples and benchmarks for `dsp/filter/design/shelving`, which previously had neither.
+- Web demo: the elliptic family is now selectable for the low- and high-shelf EQ node types, wired to the new shelving designers. The node's shape control acts as the reference-side ripple bound, as it already does for Chebyshev shelves.
 - `dynamics.DynamicEQ` (Phase 35): a series chain of parametric EQ bands whose gain is driven by a per-band detector. Peaking and shelving shapes, static/downward/upward/upward-below modes, band-filtered or external sidechain detection, control-rate coefficient updates (`SetUpdateInterval`), per-band metering, and `BandStaticCurve`.
 - New public package `dsp/interp` with reusable cubic Hermite interpolation (`Hermite4`) and a configurable `LagrangeInterpolator`.
 - New public package `dsp/delay` with reusable circular delay-line primitives, including integer and fractional-delay reads.
