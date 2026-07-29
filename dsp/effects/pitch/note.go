@@ -33,15 +33,17 @@ func SemitonesToRatio(semitones float64) float64 {
 }
 
 // RatioToSemitones converts a frequency ratio to a shift in semitones. The
-// ratio must be positive; other values yield NaN.
+// ratio must be positive: a negative ratio yields NaN and a ratio of zero
+// yields negative infinity.
 func RatioToSemitones(ratio float64) float64 {
 	return semitonesPerOctave * math.Log2(ratio)
 }
 
 // FrequencyToMIDI converts a frequency in Hz to a fractional MIDI note number,
 // where referenceHz is the frequency of A4 (MIDI note 69). Pass
-// [DefaultReferenceHz] for standard concert pitch. Non-positive arguments
-// yield NaN.
+// [DefaultReferenceHz] for standard concert pitch. Both arguments must be
+// positive: a negative frequency yields NaN and a frequency of zero yields
+// negative infinity.
 func FrequencyToMIDI(hz, referenceHz float64) float64 {
 	return a4MIDINote + semitonesPerOctave*math.Log2(hz/referenceHz)
 }
@@ -54,7 +56,8 @@ func MIDIToFrequency(midi, referenceHz float64) float64 {
 }
 
 // CentsBetween returns the interval from fromHz to toHz in cents, positive
-// when toHz is the higher frequency. Non-positive arguments yield NaN.
+// when toHz is the higher frequency. Both arguments must be positive: a
+// negative frequency yields NaN, and a zero toHz or fromHz yields an infinity.
 func CentsBetween(fromHz, toHz float64) float64 {
 	return centsPerSemitone * semitonesPerOctave * math.Log2(toHz/fromHz)
 }
@@ -107,7 +110,8 @@ func pitchClassOfMIDI(note int) PitchClass {
 //
 // Scale is a comparable value type and is safe to copy. Its zero value is not
 // a usable scale: [Scale.IsZero] reports true, [Scale.Contains] always reports
-// false and [Scale.SnapMIDI] passes its input through unchanged.
+// false and [Scale.SnapMIDI] merely rounds to the nearest semitone instead of
+// snapping to a degree.
 type Scale struct {
 	root PitchClass
 	// mask is a bitset over scale degrees: bit i is set when root+i semitones

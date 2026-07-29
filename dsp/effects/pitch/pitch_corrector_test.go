@@ -194,10 +194,54 @@ func TestPitchCorrectorAmountZeroIsIdentity(t *testing.T) {
 	}
 
 	// With nothing to correct the shifter is bypassed and every seam crossfades
-	// a segment against itself, so the result must be bit-exact.
-	for i := range in {
-		if out[i] != in[i] {
-			t.Fatalf("sample %d = %v, want %v (bypass must be bit-exact)", i, out[i], in[i])
+	// a segment against itself, so the result must be bit-exact — delayed by
+	// the corrector's block plus crossfade lookahead.
+	delay := c.BlockSize() + c.CrossfadeLen()
+
+	for i := range delay {
+		if out[i] != 0 {
+			t.Fatalf("sample %d = %v, want silence during the latency", i, out[i])
+		}
+	}
+
+	for i := range len(in) - delay {
+		if out[delay+i] != in[i] {
+			t.Fatalf("sample %d = %v, want %v (bypass must be bit-exact)",
+				delay+i, out[delay+i], in[i])
+		}
+	}
+}
+
+func TestPitchCorrectorCallSizeIndependence(t *testing.T) {
+	// The block timing must not depend on how much the caller passes per call:
+	// a 256-sample callback and one whole-buffer call must agree sample for
+	// sample, not merely in pitch.
+	in := correctorInput(452)
+
+	whole := newTestCorrector(t)
+	want := whole.Process(in)
+
+	for _, chunk := range []int{1, 256, 4096} {
+		c := newTestCorrector(t)
+
+		got := make([]float64, 0, len(in))
+		for start := 0; start < len(in); start += chunk {
+			got = append(got, c.Process(in[start:min(start+chunk, len(in))])...)
+		}
+
+		if len(got) != len(want) {
+			t.Fatalf("chunk %d: got %d samples, want %d", chunk, len(got), len(want))
+		}
+
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("chunk %d, sample %d: %v, want %v", chunk, i, got[i], want[i])
+			}
+		}
+
+		if got := c.AppliedSemitones(); math.Abs(got-whole.AppliedSemitones()) > 1e-12 {
+			t.Errorf("chunk %d: AppliedSemitones() = %.12f, want %.12f",
+				chunk, got, whole.AppliedSemitones())
 		}
 	}
 }
@@ -240,8 +284,10 @@ func TestPitchCorrectorHoldsOnUnvoiced(t *testing.T) {
 		t.Fatalf("no correction was applied to the voiced tone")
 	}
 
-	// A block of noise is unvoiced; the held target must survive it.
-	c.Process(testutil.DeterministicNoise(11, 0.4, c.BlockSize()))
+	// A run of noise is unvoiced; the held target must survive it. It has to
+	// span more than one block so that at least one block is corrected while
+	// the tracker sees nothing but noise.
+	c.Process(testutil.DeterministicNoise(11, 0.4, 4*c.BlockSize()))
 
 	if c.Voiced() {
 		t.Errorf("noise block reported voiced")

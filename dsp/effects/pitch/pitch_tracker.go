@@ -237,6 +237,15 @@ func (t *PitchTracker) SetSampleRate(sampleRate float64) error {
 
 	t.sampleRate = sampleRate
 
+	t.Reset()
+
+	return nil
+}
+
+// syncToDetector matches the ring buffer, the analysis frame and an automatic
+// hop to the detector's current frame size, which the caller may have changed
+// through [PitchTracker.Detector]. It allocates only when the size differs.
+func (t *PitchTracker) syncToDetector() {
 	frameSize := t.detector.FrameSize()
 	if len(t.ring) != frameSize {
 		t.ring = make([]float64, frameSize)
@@ -248,14 +257,13 @@ func (t *PitchTracker) SetSampleRate(sampleRate float64) error {
 	}
 
 	t.hop = min(t.hop, frameSize)
-
-	t.Reset()
-
-	return nil
 }
 
-// Reset clears all buffered history and the current estimate.
+// Reset clears all buffered history and the current estimate, and adopts the
+// detector's current frame size.
 func (t *PitchTracker) Reset() {
+	t.syncToDetector()
+
 	for i := range t.ring {
 		t.ring[i] = 0
 	}
@@ -346,11 +354,18 @@ func (t *PitchTracker) smooth(est PitchEstimate) {
 	t.current = est
 }
 
-// pushHistory appends a voiced frequency to the fixed-size history ring.
+// pushHistory appends a voiced frequency to the fixed-size history ring. The
+// first estimate after a reset or an unvoiced gap seeds the whole window, so
+// the median always runs over a full, odd-length set of taps: a partially
+// filled window would average its two initial samples and let a single stray
+// frame move the reported pitch precisely while the history warms up.
 func (t *PitchTracker) pushHistory(hz float64) {
-	if t.historyLen < t.medianTaps {
-		t.history[t.historyLen] = hz
-		t.historyLen++
+	if t.historyLen == 0 {
+		for i := range t.medianTaps {
+			t.history[i] = hz
+		}
+
+		t.historyLen = t.medianTaps
 
 		return
 	}
@@ -385,5 +400,7 @@ func (t *PitchTracker) medianFrequency() float64 {
 		return t.scratch[n/2]
 	}
 
+	// Unreachable with the accepted tap counts (1, 3 and 5) because
+	// pushHistory seeds the whole window, so n is always 0 or medianTaps.
 	return 0.5 * (t.scratch[n/2-1] + t.scratch[n/2])
 }

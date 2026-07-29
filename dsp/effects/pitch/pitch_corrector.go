@@ -282,9 +282,16 @@ func validateCorrectionReferenceHz(hz float64) error {
 // a musical target, and a [PitchProcessor] applies the resulting shift.
 //
 // The signal is processed in blocks of [PitchCorrector.BlockSize] samples, one
-// pitch ratio per block. Because the available shifters resynthesise each call
-// from scratch, consecutive blocks have no phase relationship and their
-// boundaries are audible if the ratio changes abruptly. Two things keep this
+// pitch ratio per block. Input is queued internally, so the block timing is
+// independent of how much a caller passes per call: 256-sample callbacks and
+// one whole-file call produce the same output. The price is a delay of one
+// block plus the seam crossfade — the leading samples of the output are
+// silence, and [PitchCorrector.Latency] reports that delay together with the
+// tracker's analysis latency.
+//
+// Because the available shifters resynthesise each call from scratch,
+// consecutive blocks have no phase relationship and their boundaries are
+// audible if the ratio changes abruptly. Two things keep this
 // under control: a short crossfade at every seam, and the retune glide set by
 // [WithCorrectionSpeedMs], which is the more important of the two because it
 // keeps neighbouring blocks at nearly identical ratios. A speed of zero
@@ -324,6 +331,13 @@ type PitchCorrector struct {
 
 	overhang    []float64
 	overhangLen int
+
+	// inQueue holds input samples that have not yet formed a complete block
+	// plus its lookahead; outQueue holds corrected samples waiting to be
+	// returned. Together they decouple the block timing from the size of the
+	// caller's buffers.
+	inQueue  []float64
+	outQueue []float64
 
 	targetSemitones  float64
 	appliedSemitones float64
@@ -382,6 +396,7 @@ func NewPitchCorrector(sampleRate float64, opts ...PitchCorrectorOption) (*Pitch
 	}
 
 	c.rebuild()
+	c.Reset()
 
 	return c, nil
 }
@@ -527,7 +542,7 @@ func (c *PitchCorrector) Voiced() bool { return c.voiced }
 // analysis, plus the block the ratio is computed for, plus the seam crossfade
 // lookahead.
 func (c *PitchCorrector) Latency() int {
-	return c.tracker.Latency() + c.blockSize + c.crossfadeLen
+	return c.tracker.Latency() + c.delay()
 }
 
 // SetCorrectionAmount updates the fraction of the detected error corrected.
@@ -633,11 +648,21 @@ func (c *PitchCorrector) SetSampleRate(sampleRate float64) error {
 	return nil
 }
 
-// Reset clears the tracker, the shifter and the seam state, returning the
-// corrector to its freshly constructed condition.
+// Reset clears the tracker, the shifter, the sample queues and the seam state,
+// returning the corrector to its freshly constructed condition.
 func (c *PitchCorrector) Reset() {
 	c.tracker.Reset()
 	c.shifter.Reset()
+
+	// Priming the output queue with one delay's worth of silence is what makes
+	// the delay constant: the queue can then never underrun, so no call has to
+	// invent samples and shift the stream against itself.
+	c.inQueue = c.inQueue[:0]
+	c.outQueue = c.outQueue[:0]
+
+	for range c.delay() {
+		c.outQueue = append(c.outQueue, 0)
+	}
 
 	c.overhangLen = 0
 	c.targetSemitones = 0
@@ -671,33 +696,52 @@ func (c *PitchCorrector) ProcessInPlace(buf []float64) {
 	copy(buf, c.Process(buf))
 }
 
+// delay is the number of samples the corrected signal lags the input: one
+// block, because a block's ratio is only known once the block is complete,
+// plus the seam lookahead read past its end.
+func (c *PitchCorrector) delay() int { return c.blockSize + c.crossfadeLen }
+
 func (c *PitchCorrector) processInto(out, input []float64) {
-	for start := 0; start < len(input); start += c.blockSize {
-		end := min(start+c.blockSize, len(input))
+	c.inQueue = append(c.inQueue, input...)
 
-		c.tracker.Write(input[start:end])
-		c.updateShift()
+	for len(c.inQueue) >= c.delay() {
+		c.correctBlock()
 
-		// The block is processed together with a short lookahead, whose output
-		// becomes the crossfade partner for the next block's opening samples.
-		lookaheadEnd := min(end+c.crossfadeLen, len(input))
-		shifted := c.runShifter(input[start:lookaheadEnd])
+		// Consume the block but keep the lookahead: it is the next block's
+		// opening material and must be corrected again at the new ratio.
+		c.inQueue = append(c.inQueue[:0], c.inQueue[c.blockSize:]...)
+	}
 
-		blockLen := end - start
-		for i := range blockLen {
-			v := shifted[i]
-			if i < c.overhangLen {
-				// Written as a lerp rather than a weighted sum so that a seam
-				// between two identical segments is bit-exact, which is what
-				// makes a zero correction a true bypass.
-				v = c.overhang[i] + (v-c.overhang[i])*c.fadeIn[i]
-			}
+	// The queue was primed with one delay of silence and every block appends
+	// exactly as many samples as it consumes, so it always holds at least as
+	// many samples as the caller has fed in.
+	copy(out, c.outQueue)
+	c.outQueue = append(c.outQueue[:0], c.outQueue[len(out):]...)
+}
 
-			out[start+i] = v
+// correctBlock corrects the block at the head of the input queue and appends
+// its blockSize output samples to the output queue.
+func (c *PitchCorrector) correctBlock() {
+	c.tracker.Write(c.inQueue[:c.blockSize])
+	c.updateShift()
+
+	// The block is processed together with a short lookahead, whose output
+	// becomes the crossfade partner for the next block's opening samples.
+	shifted := c.runShifter(c.inQueue[:c.delay()])
+
+	for i := range c.blockSize {
+		v := shifted[i]
+		if i < c.overhangLen {
+			// Written as a lerp rather than a weighted sum so that a seam
+			// between two identical segments is bit-exact, which is what
+			// makes a zero correction a true bypass.
+			v = c.overhang[i] + (v-c.overhang[i])*c.fadeIn[i]
 		}
 
-		c.overhangLen = copy(c.overhang, shifted[blockLen:])
+		c.outQueue = append(c.outQueue, v)
 	}
+
+	c.overhangLen = copy(c.overhang, shifted[c.blockSize:])
 }
 
 // runShifter applies the current shift, bypassing the shifter entirely when
