@@ -162,6 +162,37 @@ This is attractive when the target is specifically a graphic equaliser. It is
 not a general arbitrary-response mixed-phase designer, so it belongs in a
 separate comparison track rather than in the core API.
 
+`dsp/filter/graphiceq` is that track. It generalises the paper's single
+shelving band: the lowest `IIRBands` bands become a cascade of low shelves, each
+placed at the geometric mean of two neighbouring centres and carrying their gain
+difference, and one linear-phase FIR realises the rest. Because octave centres
+double, every band moved into the cascade halves the FIR length the remaining
+response needs, so the latency halves with it.
+
+Measured on ten octave bands from 31.25 Hz at 48 kHz with the gains
+6, -3, 0, 4, -6, 2, 0, -2, 5, 0 dB:
+
+| IIR bands | taps | latency | RMS error | peak error |
+| --------- | ---- | ------- | --------- | ---------- |
+| 0         | 3073 | 1536    | 0.014 dB  | 0.580 dB   |
+| 1         | 1537 | 768     | 0.016 dB  | 0.603 dB   |
+| 2         | 769  | 384     | 0.024 dB  | 0.478 dB   |
+| 3         | 385  | 192     | 0.048 dB  | 0.774 dB   |
+| 4         | 193  | 96      | 0.068 dB  | 0.914 dB   |
+
+The first row is the all-FIR reference, so the paper's 50% latency reduction is
+reproduced at an unchanged peak error, and it keeps working for several further
+bands. Against an all-FIR design cut to the same tap count the hybrid is three
+to five times more accurate in RMS and two to five times in peak error
+throughout, which is what makes the split worth taking.
+
+Two limits are worth stating with it. The shelves step monotonically between
+neighbouring band gains, so a target alternating between +12 and -12 dB per
+octave breaks the method: the peak error is 3.6 dB for the all-FIR design and
+19.6 dB with two bands offloaded. And the shelf gains are taken directly from
+the requested gain differences without an interaction solve, which is adequate
+for the few bands measured here and would not be for a deeper split.
+
 ## What appears genuinely useful to implement
 
 Recommended order:

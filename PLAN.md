@@ -624,7 +624,7 @@ budgets, and delay constraints across methods.
       IRLS/minimax path for peak-error control.
 - [x] Reproduce a direct magnitude-constrained, low-group-delay optimisation based on
       Wu–Gao–Teo and document optimiser convergence and initialisation sensitivity.
-- [ ] For applicable graphic-EQ targets, add an optional hybrid IIR/FIR method as a
+- [x] For applicable graphic-EQ targets, add an optional hybrid IIR/FIR method as a
       structure-specific comparison rather than part of the general mixed-phase API.
 - [ ] Build a common benchmark/reference suite covering low-pass, parametric-EQ, crossover,
       deep-notch, and measured room-correction targets. Record magnitude error, group delay,
