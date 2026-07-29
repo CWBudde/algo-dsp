@@ -13,6 +13,43 @@ import (
 
 const eqEllipticStopbandDB = 40.0
 
+// eqShelfSideRippleDB mirrors the fixed shelf-side ripple the elliptic shelving
+// designers reserve below the nominal gain, and eqShelfRippleHeadroom keeps the
+// bounded ripple strictly inside the designers' admissible range.
+const (
+	eqShelfSideRippleDB   = 0.05
+	eqShelfRippleHeadroom = 0.9
+)
+
+// equirippleShelfRipple bounds the node's ripple control against the shelf gain.
+//
+// The Chebyshev II and elliptic shelving designers place the cutoff at
+// |H(freqHz)|² = (G² + 1)/2, so the reference-side ripple must stay below that
+// level — otherwise the cutoff falls inside the ripple band and the design is
+// rejected. The elliptic family additionally reserves eqShelfSideRippleDB below
+// the nominal gain. The node's shape control is clamped to a fixed dB range
+// independently of gain, so without this bound the designer rejects common
+// small-gain settings and buildEQChain silently falls back to a one-section RBJ
+// shelf while still reporting the selected family and order.
+//
+// The second result is false only when the gain is too small to host any
+// stopband at all, where the shelf is inaudible and the fallback is harmless.
+func equirippleShelfRipple(family string, gainDB, ripple float64) (float64, bool) {
+	// The cutoff level in dB, always strictly between 0 dB and gainDB.
+	g := math.Pow(10, gainDB/20)
+	limit := math.Abs(10 * math.Log10((g*g+1)*0.5))
+
+	if family == eqFamilyElliptic {
+		limit = math.Min(limit, math.Abs(gainDB)-eqShelfSideRippleDB)
+	}
+
+	if limit <= 0 {
+		return 0, false
+	}
+
+	return math.Min(ripple, limit*eqShelfRippleHeadroom), true
+}
+
 // SetEQ updates EQ parameters and rebuilds the filters.
 func (e *Engine) SetEQ(eq EQParams) error {
 	eq.HPFreq = clamp(eq.HPFreq, 20, e.sampleRate*0.49)
@@ -166,14 +203,18 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 				return chainFromCoeffs(coeffs, linGain)
 			}
 		case eqKindHighShelf:
-			coeffs, err := shelving.Chebyshev2HighShelf(sampleRate, freq, gainDB, ripple, order)
-			if err == nil {
-				return chainFromCoeffs(coeffs, linGain)
+			if stopband, ok := equirippleShelfRipple(family, gainDB, ripple); ok {
+				coeffs, err := shelving.Chebyshev2HighShelf(sampleRate, freq, gainDB, stopband, order)
+				if err == nil {
+					return chainFromCoeffs(coeffs, linGain)
+				}
 			}
 		case eqKindLowShelf:
-			coeffs, err := shelving.Chebyshev2LowShelf(sampleRate, freq, gainDB, ripple, order)
-			if err == nil {
-				return chainFromCoeffs(coeffs, linGain)
+			if stopband, ok := equirippleShelfRipple(family, gainDB, ripple); ok {
+				coeffs, err := shelving.Chebyshev2LowShelf(sampleRate, freq, gainDB, stopband, order)
+				if err == nil {
+					return chainFromCoeffs(coeffs, linGain)
+				}
 			}
 		}
 	case eqFamilyBessel:
@@ -196,27 +237,63 @@ func buildEQChain(family, kind string, order int, freq, gainDB, q, sampleRate fl
 			if err == nil {
 				return chainFromCoeffs(coeffs, linGain)
 			}
+		case eqKindHighShelf:
+			// The shelving designers take the reference-side ripple bound, which
+			// the node's shape control supplies; the fixed eqEllipticStopbandDB
+			// used by the high/lowpass designers would exceed any usable gain.
+			if stopband, ok := equirippleShelfRipple(family, gainDB, ripple); ok {
+				coeffs, err := shelving.EllipticHighShelf(sampleRate, freq, gainDB, stopband, order)
+				if err == nil {
+					return chainFromCoeffs(coeffs, linGain)
+				}
+			}
+		case eqKindLowShelf:
+			if stopband, ok := equirippleShelfRipple(family, gainDB, ripple); ok {
+				coeffs, err := shelving.EllipticLowShelf(sampleRate, freq, gainDB, stopband, order)
+				if err == nil {
+					return chainFromCoeffs(coeffs, linGain)
+				}
+			}
 		}
 	}
 
+	fq := rbjFallbackQ(kind, family, freq, q)
+
 	switch kind {
 	case eqKindHighpass:
-		return chainFromCoeffs([]biquad.Coefficients{design.Highpass(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Highpass(freq, fq, sampleRate)}, linGain)
 	case eqKindBandpass:
-		return chainFromCoeffs([]biquad.Coefficients{design.Bandpass(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Bandpass(freq, fq, sampleRate)}, linGain)
 	case eqKindNotch:
-		return chainFromCoeffs([]biquad.Coefficients{design.Notch(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Notch(freq, fq, sampleRate)}, linGain)
 	case eqKindAllpass:
-		return chainFromCoeffs([]biquad.Coefficients{design.Allpass(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Allpass(freq, fq, sampleRate)}, linGain)
 	case eqKindPeak:
-		return chainFromCoeffs([]biquad.Coefficients{design.Peak(freq, gainDB, rbjQFromShape(kind, family, freq, q), sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Peak(freq, gainDB, fq, sampleRate)}, linGain)
 	case eqKindHighShelf:
-		return chainFromCoeffs([]biquad.Coefficients{design.HighShelf(freq, gainDB, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.HighShelf(freq, gainDB, fq, sampleRate)}, linGain)
 	case eqKindLowShelf:
-		return chainFromCoeffs([]biquad.Coefficients{design.LowShelf(freq, gainDB, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.LowShelf(freq, gainDB, fq, sampleRate)}, linGain)
 	default:
-		return chainFromCoeffs([]biquad.Coefficients{design.Lowpass(freq, q, sampleRate)}, linGain)
+		return chainFromCoeffs([]biquad.Coefficients{design.Lowpass(freq, fq, sampleRate)}, linGain)
 	}
+}
+
+// rbjDefaultQ is the Butterworth-flat Q the RBJ cookbook filters default to.
+const rbjDefaultQ = math.Sqrt2 / 2
+
+// rbjFallbackQ supplies the Q for the single-section RBJ fallback.
+//
+// When the node's shape control is in ripple mode its value is a dB ripple
+// bound, not a Q, so a high-order design that bails out must not hand that
+// number to an RBJ filter — a 12 dB ripple would silently become a Q of 12.
+// There is no meaningful Q to recover in that case, so use the RBJ default.
+func rbjFallbackQ(kind, family string, freq, shape float64) float64 {
+	if eqShapeMode(kind, family) == eqShapeModeRipple {
+		return rbjDefaultQ
+	}
+
+	return rbjQFromShape(kind, family, freq, shape)
 }
 
 func chainFromCoeffs(coeffs []biquad.Coefficients, gain float64) *biquad.Chain {
@@ -253,12 +330,8 @@ func eqShapeMode(kind, family string) string {
 		return eqShapeModeBandwidth
 	}
 
-	if (family == eqFamilyChebyshev1 || family == eqFamilyChebyshev2) &&
+	if (family == eqFamilyChebyshev1 || family == eqFamilyChebyshev2 || family == eqFamilyElliptic) &&
 		(kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindHighShelf || kind == eqKindLowShelf) {
-		return eqShapeModeRipple
-	}
-
-	if family == eqFamilyElliptic && (kind == eqKindHighpass || kind == eqKindLowpass) {
 		return eqShapeModeRipple
 	}
 
@@ -322,10 +395,8 @@ func supportsEQFamily(kind, family string) bool {
 		return true
 	case eqFamilyBessel:
 		return kind == eqKindHighpass || kind == eqKindLowpass
-	case eqFamilyButterworth, eqFamilyChebyshev1, eqFamilyChebyshev2:
+	case eqFamilyButterworth, eqFamilyChebyshev1, eqFamilyChebyshev2, eqFamilyElliptic:
 		return kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindPeak || kind == eqKindLowShelf || kind == eqKindHighShelf
-	case eqFamilyElliptic:
-		return kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindPeak
 	default:
 		return false
 	}
@@ -348,11 +419,8 @@ func supportsEQOrder(kind, family string) bool {
 		return kind == eqKindHighpass || kind == eqKindLowpass
 	}
 
-	if family == eqFamilyElliptic {
-		return kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindPeak
-	}
-
-	if family == eqFamilyButterworth || family == eqFamilyChebyshev1 || family == eqFamilyChebyshev2 {
+	if family == eqFamilyButterworth || family == eqFamilyChebyshev1 ||
+		family == eqFamilyChebyshev2 || family == eqFamilyElliptic {
 		return kind == eqKindHighpass || kind == eqKindLowpass || kind == eqKindPeak || kind == eqKindLowShelf || kind == eqKindHighShelf
 	}
 

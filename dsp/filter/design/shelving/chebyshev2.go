@@ -4,57 +4,35 @@ import (
 	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
+	"github.com/cwbudde/algo-dsp/internal/orfanidis"
 )
 
 // Chebyshev2LowShelf designs an M-th order Chebyshev Type II low-shelving filter.
 //
-// freqHz is the cutoff frequency in Hz. gainDB is the shelf gain in dB
-// (positive for boost, negative for cut). stopbandDB (aka rippleDB) controls
-// the stopband (flat region) ripple depth relative to the shelf gain and must
-// be > 0 and < |gainDB| (typical values 0.1–1.0 dB).
-// order must be >= 1.
+// freqHz is the cutoff frequency in Hz, defined as in the Butterworth and
+// Chebyshev I designers by |H(freqHz)|² = (G² + 1)/2, i.e. roughly 3 dB below
+// the shelf gain. gainDB is the shelf gain in dB (positive for boost, negative
+// for cut). stopbandDB is the ripple bound in the flat 0 dB region (typical
+// values 0.1–1.0 dB); it must be > 0 and < |gainDB|, and in practice should
+// stay below the cutoff level |10·log10((G² + 1)/2)| so that freqHz still lands
+// on a monotonic part of the transition. order must be >= 1.
 //
-// Chebyshev II preserves the stopband-referenced shelf endpoint
-// gainDB-sign(gainDB)*stopbandDB while keeping a monotonic shelf region.
-// Cut filters are formed as the exact inverse of the corresponding boost
-// design to enforce boost/cut reciprocity.
+// Type II is equiripple in the flat region and monotonic across the shelf, so
+// the response reaches gainDB at DC and then oscillates within stopbandDB of
+// 0 dB above the transition. Compared with the Butterworth shelf this buys a
+// steeper transition at the cost of that ripple.
 func Chebyshev2LowShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order int) ([]biquad.Coefficients, error) {
-	if err := validateParams(sampleRate, freqHz, order); err != nil {
-		return nil, err
-	}
-
-	if stopbandDB <= 0 {
-		return nil, ErrInvalidParams
-	}
-
-	if gainDB == 0 {
-		return passthroughSections(), nil
-	}
-
-	if math.Abs(stopbandDB) >= math.Abs(gainDB) {
-		return nil, ErrInvalidParams
-	}
-
-	if gainDB > 0 {
-		return ButterworthLowShelf(sampleRate, freqHz, gainDB-stopbandDB, order)
-	}
-
-	boost, err := ButterworthLowShelf(sampleRate, freqHz, -gainDB-stopbandDB, order)
-	if err != nil {
-		return nil, err
-	}
-
-	return invertSections(boost)
+	return chebyshev2Shelf(sampleRate, freqHz, gainDB, stopbandDB, order, false)
 }
 
 // Chebyshev2HighShelf designs an M-th order Chebyshev Type II high-shelving filter.
 //
-// freqHz is the cutoff frequency in Hz. gainDB is the shelf gain in dB
-// (positive for boost, negative for cut). stopbandDB (aka rippleDB) controls
-// the stopband (flat region) ripple depth relative to the shelf gain and must
-// be > 0 and < |gainDB| (typical values 0.1–1.0 dB).
-// order must be >= 1.
+// Parameters follow Chebyshev2LowShelf; the shelf occupies the band above freqHz.
 func Chebyshev2HighShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order int) ([]biquad.Coefficients, error) {
+	return chebyshev2Shelf(sampleRate, freqHz, gainDB, stopbandDB, order, true)
+}
+
+func chebyshev2Shelf(sampleRate, freqHz, gainDB, stopbandDB float64, order int, high bool) ([]biquad.Coefficients, error) {
 	if err := validateParams(sampleRate, freqHz, order); err != nil {
 		return nil, err
 	}
@@ -67,18 +45,18 @@ func Chebyshev2HighShelf(sampleRate, freqHz, gainDB, stopbandDB float64, order i
 		return passthroughSections(), nil
 	}
 
-	if math.Abs(stopbandDB) >= math.Abs(gainDB) {
+	if stopbandDB >= math.Abs(gainDB) {
 		return nil, ErrInvalidParams
 	}
 
-	if gainDB > 0 {
-		return ButterworthHighShelf(sampleRate, freqHz, gainDB-stopbandDB, order)
+	G := db2Lin(gainDB)
+
+	spec := orfanidis.Spec{
+		Order: order,
+		G0:    1.0,
+		G:     G,
+		Gs:    db2Lin(math.Copysign(stopbandDB, gainDB)),
 	}
 
-	boost, err := ButterworthHighShelf(sampleRate, freqHz, -gainDB-stopbandDB, order)
-	if err != nil {
-		return nil, err
-	}
-
-	return invertSections(boost)
+	return buildShelf(spec, sampleRate, freqHz, G, high, orfanidis.Chebyshev2Prototype)
 }

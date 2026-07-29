@@ -196,7 +196,7 @@ Phase 30: Interpolation Kernels (core)                     [2 weeks]  ✅ Comple
 
 # Remaining (execution order)
 Phase 31: Dynamics — Static Characteristic-Curve Parity    [0.5 week] ✅ Complete
-Phase 32: Elliptic Shelving Designer                       [1 week]   📋 Planned
+Phase 32: Elliptic Shelving Designer                       [1 week]   ✅ Complete
 Phase 33: Vocoder Finalization                             [0.5 week] 🔄 In Progress
 Phase 34: Stereo Panner                                    [0.5 week] ✅ Complete
 Phase 35: Dynamic EQ                                       [1 week]   ✅ Complete
@@ -402,8 +402,8 @@ signature `XxxLow/HighShelf(sampleRate, freqHz, gainDB float64, order int) ([]bi
 and NaN/Inf validation).
 
 - Butterworth (`butterworth.go`), Chebyshev I (`chebyshev1.go`), and Chebyshev II (`chebyshev2.go`,
-  Orfanidis framework) designers + tests (endpoint anchors, monotonicity, grid sweeps, DC/Nyquist
-  - stopband ripple). The earlier Chebyshev II shape bug is fixed.
+  Orfanidis framework) designers + tests (endpoint anchors, monotonicity, grid sweeps,
+  DC/Nyquist ± stopband ripple). The earlier Chebyshev II shape bug is fixed.
 
 > Open follow-up: elliptic shelving is split out as **Phase 32**.
 
@@ -510,19 +510,35 @@ Exit criteria:
 
 - [x] Characteristic-curve parity tests pass; `go test -race ./dsp/effects/dynamics` passes; lint clean.
 
-### Phase 32: Elliptic Shelving Designer (Planned)
+### Phase 32: Elliptic Shelving Designer (Complete)
 
-Add the missing elliptic topology to `dsp/filter/design/shelving/`, matching the existing
-`XxxLow/HighShelf(sampleRate, freqHz, gainDB, order)` → `[]biquad.Coefficients` signature.
+Added the missing elliptic topology to `dsp/filter/design/shelving/` and, in the process,
+replaced the Chebyshev II designer, which was a Butterworth shelf in disguise.
 
-- [ ] Implement `EllipticLowShelf`/`EllipticHighShelf`, reusing `internal/ellipticmath`
-      (`EllipDeg`/`ASNE`/`CDE`) and the pole/zero placement in `band/elliptic.go` as a template.
-- [ ] Add a stopband-ripple parameter consistent with the band elliptic designer.
-- [ ] Stability + response tests (endpoint anchors, monotonic transition, ripple conformance).
+- [x] New `internal/orfanidis`: the Orfanidis (JAES 53(11), 2005) analog prototypes
+      (`EllipticPrototype`, `Chebyshev2Prototype`) plus `LowpassBLT`/`BandpassBLT` and an
+      `EdgeOmega` bisection that places the band edge at an arbitrary level. Extracted from
+      `band/elliptic.go`, which now consumes it; a parity test pins the extracted Chebyshev II
+      prototype to the shipped band closed form at 1e-12.
+- [x] `EllipticLowShelf`/`EllipticHighShelf(sampleRate, freqHz, gainDB, stopbandDB, order)` for
+      `order >= 1`, odd orders included. `stopbandDB` bounds the flat region; the shelf-side
+      ripple is fixed at 0.05 dB as in `band.EllipticBand`.
+- [x] All four families now share the cutoff convention `|H(f_c)|² = (G²+1)/2` of
+      Holters & Zölzer eq. (5), verified to 1e-6 dB across an order/gain/frequency grid.
+- [x] Equiripple conformance tests (envelope never exceeded once entered, exactly M-1
+      flat-band extrema), endpoint anchors, stability grids, examples and benchmarks — the
+      package had neither examples nor benchmarks before.
+- [x] Removed the dead `chebyshev2Sections` with its empirical damping constants
+      (3.65 / 16.499 / 0.2), which compensated for a frequency scaling lost in its σ/R²
+      reparametrization, plus the now-unused `invertSections`.
 
 Exit criteria:
 
-- [ ] Elliptic shelf shape validated; `go test -race ./dsp/filter/design/shelving` passes.
+- [x] Elliptic shelf shape validated; `go test -race ./dsp/filter/design/shelving` passes;
+      lint clean; shelving coverage 93.6%, `internal/orfanidis` 91.9%.
+
+> Note: `Chebyshev2*Shelf` coefficients and cutoff semantics changed as a result. See
+> CHANGELOG.md; boost/cut is no longer exactly reciprocal, matching the Butterworth family.
 
 ### Phase 33: Vocoder Finalization (In Progress)
 
@@ -801,6 +817,7 @@ Quarter-end success criteria:
 | 0.12    | 2026-06-21 | Claude  | Condensed all completed phases (15, 17–21, 26–30) to compact summaries; split the oversized undone phases into focused sub-phases — Phase 22 → 22.1–22.5 (vocoder finalize, panner, dynamic EQ, YIN pitch correction, noise reduction), Phase 24 → 24.1/24.2 (regression guard / SIMD modal track), Phase 25 → 25.1/25.2 (readiness / release), Phase 31 → 31.1/31.2 (kernels / integration); slimmed Phases 16 & 23 to done-summary + remaining item; refreshed Phase Overview to match.                                                                                                                                                                                                                                                                                   |
 | 0.13    | 2026-06-21 | Claude  | Reordered into completed-then-remaining and re-applied **strict integer numbering** (no `x.y` sub-phases). Completed phases come first (old 26–31 shifted to 25–30); partial phases 16/22/23/24 are now scoped to shipped work, with their open follow-ups split into standalone phases. Remaining roadmap is Phases 31–43 in execution order, ending with v1.0 (P42–P43). Open phases refined with concrete file paths / API hooks from a codebase audit (interpolation core found already complete → P30; dynamics static-curve path via `GainForLevel`/`CalculateOutputLevel`; elliptic reuse of `internal/ellipticmath`; `algo-vecmath` already a dependency; `API_REVIEW.md` still missing). **Note:** revision entries 0.1–0.12 reference the pre-0.13 phase numbers. |
 | 0.14    | 2026-07-29 | Claude  | Completed Phase 34: added `StereoPanner` (`dsp/effects/spatial/stereo_panner.go`) with three selectable pan laws (equal-power/compromise/linear), mono-pan and attenuate-only stereo-balance modes, and an optional auto-pan LFO; tests, 4 runnable examples and benchmarks included. Effect-chain/web-demo wiring deliberately left out of scope.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 0.15    | 2026-07-29 | Claude  | Completed Phase 32: extracted the Orfanidis parametric-EQ prototypes into `internal/orfanidis` (shared with `dsp/filter/design/band`), added `Elliptic{Low,High}Shelf` for orders >= 1, and rebuilt `Chebyshev2{Low,High}Shelf` as a genuine equiripple Type II design — the previous version delegated to a Butterworth shelf. All four shelving families now share the `\|H(f_c)\|² = (G²+1)/2` cutoff convention. Dead `chebyshev2Sections` (empirical damping constants) and `invertSections` removed; examples and benchmarks added. Breaking coefficient change for Chebyshev II, see CHANGELOG.md.                                                                                                                                                                   |
 
 ---
 
