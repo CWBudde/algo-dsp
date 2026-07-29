@@ -172,7 +172,7 @@ func TestDecodeF16(t *testing.T) {
 		{"negative two", 0xC000, -2},
 		{"half", 0x3800, 0.5},
 		{"largest normal", 0x7BFF, 65504},
-		{"smallest normal", 0x0400, 1.0 / 16384.0},       // 2^-14
+		{"smallest normal", 0x0400, 1.0 / 16384.0},         // 2^-14
 		{"largest subnormal", 0x03FF, 1023.0 / 16777216.0}, // 1023 * 2^-24
 		{"smallest subnormal", 0x0001, 1.0 / 16777216.0},   // 2^-24
 		{"negative subnormal", 0x8001, -1.0 / 16777216.0},
@@ -392,7 +392,7 @@ func TestReadIRLibRejectsMalformedHeaders(t *testing.T) {
 			},
 		},
 		{
-			name: "truncated header",
+			name:    "truncated header",
 			corrupt: func(b []byte) []byte { return b[:10] },
 		},
 		{

@@ -391,13 +391,20 @@ func TestEnvelopeShape(t *testing.T) {
 func TestEnvelopeDegenerateDecay(t *testing.T) {
 	t.Parallel()
 
-	got := envelope(100, 240, 100)
+	// The guard only applies past the attack; before that the attack ramp
+	// still runs, so age must be >= attack to reach it.
+	got := envelope(300, 240, 100)
 	if math.IsNaN(got) || math.IsInf(got, 0) {
 		t.Fatalf("degenerate decay gave a non-finite envelope: %v", got)
 	}
 
 	if got != 0.0001 {
 		t.Errorf("degenerate decay gave %v, want the 0.0001 end level", got)
+	}
+
+	// Within the attack the ramp is still finite and bounded.
+	if within := envelope(100, 240, 100); within < 0 || within > 0.22 {
+		t.Errorf("attack phase of a degenerate envelope gave %v, want within [0, 0.22]", within)
 	}
 }
 
