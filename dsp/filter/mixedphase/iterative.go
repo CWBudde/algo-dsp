@@ -37,6 +37,18 @@ func DesignIterative(prototype []float64, cfg IterativeConfig) (Result, error) {
 		return Result{}, ErrInvalidLength
 	}
 
+	if cfg.Epsilon < 0 {
+		return Result{}, fmt.Errorf("%w: got %g", ErrInvalidEpsilon, cfg.Epsilon)
+	}
+
+	if cfg.WindowAlpha < 0 {
+		return Result{}, fmt.Errorf(
+			"%w: got %g",
+			ErrInvalidWindowAlpha,
+			cfg.WindowAlpha,
+		)
+	}
+
 	maxDelay := (length - 1) / 2
 	if cfg.Delay < 0 || cfg.Delay > maxDelay {
 		return Result{}, fmt.Errorf(

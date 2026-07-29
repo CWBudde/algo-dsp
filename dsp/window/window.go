@@ -281,19 +281,18 @@ func ApplyCoefficientsInPlace(samples, coeffs []float64) error {
 }
 
 func evalWindow(t Type, x float64, cfg config) float64 {
+	// One-sided slopes reuse the corresponding half of the symmetric window, so
+	// the taper stays monotonic and joins the flat section continuously at the
+	// midpoint where every supported window reaches unity.
 	switch cfg.slope {
 	case SlopeLeft:
 		if x >= 0.5 {
 			return 1
 		}
-
-		x *= 2
 	case SlopeRight:
 		if x <= 0.5 {
 			return 1
 		}
-
-		x = 2*x - 1
 	}
 
 	if x < 0 {

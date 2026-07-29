@@ -98,6 +98,26 @@ func TestAdvancedOptions(t *testing.T) {
 		t.Fatalf("right slope expected flat left head, got %v", wRight[0])
 	}
 
+	for i := 1; i < len(wLeft); i++ {
+		if wLeft[i] < wLeft[i-1] {
+			t.Fatalf(
+				"left slope not monotonically rising at %d: %v -> %v",
+				i,
+				wLeft[i-1],
+				wLeft[i],
+			)
+		}
+
+		if wRight[i] > wRight[i-1] {
+			t.Fatalf(
+				"right slope not monotonically falling at %d: %v -> %v",
+				i,
+				wRight[i-1],
+				wRight[i],
+			)
+		}
+	}
+
 	if !almostEqual(wInv[0], 1, 1e-12) {
 		t.Fatalf("invert expected first coeff near 1, got %v", wInv[0])
 	}

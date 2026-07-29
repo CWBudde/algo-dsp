@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"math/cmplx"
+
+	"github.com/cwbudde/algo-dsp/dsp/spectrum"
 )
 
 // DesignPhaseInterpolation interpolates between the unwrapped minimum-phase
@@ -23,6 +25,10 @@ func DesignPhaseInterpolation(
 
 	if cfg.Mix < 0 || cfg.Mix > 1 {
 		return Result{}, ErrInvalidPhaseMix
+	}
+
+	if cfg.Epsilon < 0 {
+		return Result{}, fmt.Errorf("%w: got %g", ErrInvalidEpsilon, cfg.Epsilon)
 	}
 
 	length := cfg.Length
@@ -64,7 +70,7 @@ func DesignPhaseInterpolation(
 		minimumPhase[i] = cmplx.Phase(minimumSpectrum[i])
 	}
 
-	unwrapInPlace(minimumPhase)
+	minimumPhase = spectrum.UnwrapPhase(minimumPhase)
 
 	delay := float64(length-1) / 2
 	desired := make([]complex128, fftSize)
@@ -102,20 +108,4 @@ func DesignPhaseInterpolation(
 	}
 
 	return Result{Taps: taps, Metrics: metrics}, nil
-}
-
-func unwrapInPlace(phase []float64) {
-	offset := 0.0
-
-	for i := 1; i < len(phase); i++ {
-		difference := phase[i] - phase[i-1]
-		switch {
-		case difference > math.Pi:
-			offset -= 2 * math.Pi
-		case difference < -math.Pi:
-			offset += 2 * math.Pi
-		}
-
-		phase[i] += offset
-	}
 }

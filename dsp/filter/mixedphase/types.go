@@ -15,6 +15,12 @@ var (
 	ErrInvalidDelay = errors.New("mixedphase: invalid delay")
 	// ErrInvalidPhaseMix is returned when phase mix is outside [0, 1].
 	ErrInvalidPhaseMix = errors.New("mixedphase: phase mix must be in [0, 1]")
+	// ErrInvalidEpsilon is returned when a negative magnitude floor is given.
+	ErrInvalidEpsilon = errors.New("mixedphase: epsilon must not be negative")
+	// ErrInvalidWindowAlpha is returned when a negative window alpha is given.
+	ErrInvalidWindowAlpha = errors.New(
+		"mixedphase: window alpha must not be negative",
+	)
 )
 
 // IterativeConfig configures the DAGA 2012 alternating factorisation.
@@ -38,7 +44,8 @@ type IterativeConfig struct {
 	FFTSize int
 
 	// Epsilon is the magnitude floor used by logarithms and regularised
-	// spectral division. Zero selects a scale-relative default.
+	// spectral division. Zero selects a scale-relative default. Negative
+	// values are rejected.
 	Epsilon float64
 
 	// Window selects the truncation window for both factors. The
@@ -47,7 +54,8 @@ type IterativeConfig struct {
 	Window window.Type
 
 	// WindowAlpha supplies the alpha or beta parameter for parametric
-	// windows. Zero uses the window package default.
+	// windows. Zero uses the window package default. Negative values are
+	// rejected.
 	WindowAlpha float64
 
 	// ToleranceDB stops the iteration once the change in RMS magnitude error
@@ -70,7 +78,7 @@ type PhaseInterpolationConfig struct {
 	FFTSize int
 
 	// Epsilon is the magnitude floor used by minimum-phase reconstruction.
-	// Zero selects a scale-relative default.
+	// Zero selects a scale-relative default. Negative values are rejected.
 	Epsilon float64
 }
 
