@@ -30,10 +30,11 @@ func butterworthQ(order, index int) float64 {
 }
 
 // butterworthFirstOrderLP designs a first-order lowpass Butterworth section.
-// Used for odd-order filters.
+// Used for odd-order filters. Returns [biquad.Identity] for undesignable
+// parameters, so an odd-order cascade stays transparent instead of muting.
 func butterworthFirstOrderLP(freq, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	k := math.Tan(math.Pi * freq / sampleRate)
@@ -49,10 +50,11 @@ func butterworthFirstOrderLP(freq, sampleRate float64) biquad.Coefficients {
 }
 
 // butterworthFirstOrderHP designs a first-order highpass Butterworth section.
-// Used for odd-order filters.
+// Used for odd-order filters. Returns [biquad.Identity] for undesignable
+// parameters, so an odd-order cascade stays transparent instead of muting.
 func butterworthFirstOrderHP(freq, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	k := math.Tan(math.Pi * freq / sampleRate)

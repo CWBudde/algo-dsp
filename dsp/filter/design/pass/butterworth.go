@@ -9,6 +9,10 @@ import (
 // ButterworthLP designs a lowpass Butterworth cascade.
 //
 // For odd orders, the final section is first-order (B2=A2=0).
+//
+// It returns nil for order <= 0. For an order it can honour but parameters it
+// cannot design for, every section is [biquad.Identity], so the cascade is
+// transparent rather than silent.
 func ButterworthLP(freq float64, order int, sampleRate float64) []biquad.Coefficients {
 	if order <= 0 {
 		return nil
@@ -32,6 +36,10 @@ func ButterworthLP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 // ButterworthHP designs a highpass Butterworth cascade.
 //
 // For odd orders, the final section is first-order (B2=A2=0).
+//
+// It returns nil for order <= 0. For an order it can honour but parameters it
+// cannot design for, every section is [biquad.Identity], so the cascade is
+// transparent rather than silent.
 func ButterworthHP(freq float64, order int, sampleRate float64) []biquad.Coefficients {
 	if order <= 0 {
 		return nil
@@ -53,9 +61,12 @@ func ButterworthHP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 }
 
 // LowpassRBJ designs a lowpass biquad using the RBJ cookbook formula.
+//
+// For undesignable parameters (freq outside (0, Nyquist), invalid sample
+// rate) it returns [biquad.Identity], a pass-through section.
 func LowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	if q <= 0 {
@@ -75,7 +86,7 @@ func LowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	a2 := 1 - alpha
 
 	if a0 == 0 {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	return biquad.Coefficients{
@@ -88,9 +99,12 @@ func LowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 }
 
 // HighpassRBJ designs a highpass biquad using the RBJ cookbook formula.
+//
+// For undesignable parameters (freq outside (0, Nyquist), invalid sample
+// rate) it returns [biquad.Identity], a pass-through section.
 func HighpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	if q <= 0 {
@@ -110,7 +124,7 @@ func HighpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 	a2 := 1 - alpha
 
 	if a0 == 0 {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	return biquad.Coefficients{
