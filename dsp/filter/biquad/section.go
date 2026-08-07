@@ -20,6 +20,27 @@ type Coefficients struct {
 	A1, A2     float64 // feedback (denominator)
 }
 
+// Identity returns the pass-through (transparent) second-order section
+// B0 = 1, B1 = B2 = A1 = A2 = 0, whose transfer function is H(z) = 1.
+//
+// Filter designers return this when a filter cannot be designed for the
+// requested parameters, so that an undesignable filter is transparent rather
+// than silent. See the dsp/filter/design package documentation.
+func Identity() Coefficients {
+	return Coefficients{B0: 1}
+}
+
+// IsZero reports whether every coefficient is exactly zero.
+//
+// A zero section is a mute: its transfer function is H(z) = 0, so it outputs
+// silence for any input. It is never produced by the designers in
+// dsp/filter/design, which use [Identity] for undesignable filters; IsZero is
+// provided so callers can detect an accidentally zero-valued Coefficients
+// (for example a forgotten initialization) before installing it in a chain.
+func (c Coefficients) IsZero() bool {
+	return c == Coefficients{}
+}
+
 // Section is a single biquad filter with coefficients and internal state.
 // It implements Direct Form II Transposed processing.
 type Section struct {
@@ -139,6 +160,27 @@ func (s *Section) ProcessBlockTo(dst, src []float64) {
 func (s *Section) Reset() {
 	s.d0 = 0
 	s.d1 = 0
+}
+
+// denormalThreshold is the magnitude below which delay-line state is treated
+// as denormal noise and flushed to exact zero. It matches core.FlushDenormals.
+const denormalThreshold = 1e-30
+
+// FlushDenormals zeroes delay-line state whose magnitude has decayed below
+// ~1e-30. Go enables neither flush-to-zero nor denormals-are-zero, so the
+// residual tail of a decaying signal can leave denormal values in the state
+// and drag subsequent samples onto the slow denormal microcode path.
+//
+// It is allocation-free and branch-only, intended to be called once per block
+// from a real-time audio callback.
+func (s *Section) FlushDenormals() {
+	if s.d0 > -denormalThreshold && s.d0 < denormalThreshold {
+		s.d0 = 0
+	}
+
+	if s.d1 > -denormalThreshold && s.d1 < denormalThreshold {
+		s.d1 = 0
+	}
 }
 
 // State returns the current delay-line state [d0, d1].
