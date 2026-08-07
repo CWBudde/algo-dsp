@@ -527,6 +527,11 @@ func antiAliasDecimatorLowpass(sampleRate float64, factor int) biquad.Coefficien
 func cpgBandpass(freq, q, sampleRate float64) biquad.Coefficients {
 	w0 := 2 * math.Pi * freq / sampleRate
 	if w0 <= 0 || w0 >= math.Pi {
+		// A zero (muting) section is correct here, and is NOT the trap that
+		// dsp/filter/design avoids by returning biquad.Identity. These bands
+		// are summed, not cascaded: a band that cannot be designed must
+		// contribute nothing, whereas a pass-through section would leak the
+		// full-band input straight into the sum. Keep this returning zero.
 		return biquad.Coefficients{}
 	}
 

@@ -19,11 +19,19 @@
 //
 // They previously returned the zero Coefficients value. Because that has
 // B0 = 0, its transfer function is H(z) = 0: it output silence, and a single
-// out-of-range band muted an entire cascade. Silence is never the useful
-// answer for an undesignable filter, so the contract changed. Callers that
-// need to know whether a design succeeded should validate the parameters
-// themselves, or use the designers in design/band and design/shelving, which
-// return an explicit error.
+// out-of-range band muted an entire cascade. Callers that need to know whether
+// a design succeeded should validate the parameters themselves, or use the
+// designers in design/band and design/shelving, which return an explicit
+// error.
+//
+// This contract is chosen for filters used in series, which is what these
+// designers are for: a stage that cannot be designed should get out of the way.
+// It is deliberately the opposite of the right answer for a parallel filter
+// bank whose bands are summed — there, an undesignable band must contribute
+// nothing, and a pass-through section would leak the full-band input into the
+// sum. Code building summed banks (see dsp/effects.cpgBandpass) therefore
+// keeps returning a zero section on purpose; do not "fix" it to match this
+// package.
 //
 // The cascade designers returning []biquad.Coefficients keep their existing
 // contract: a nil slice means "no filter", which is unambiguous because an
