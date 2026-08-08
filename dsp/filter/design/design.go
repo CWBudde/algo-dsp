@@ -34,20 +34,29 @@ func BilinearTransform(sCoeffs [3]float64, sampleRate float64) [3]float64 {
 }
 
 // Lowpass designs a lowpass biquad at freq (Hz) with quality factor q.
+//
+// For undesignable parameters it returns [biquad.Identity]; see the package
+// documentation.
 func Lowpass(freq, q, sampleRate float64) biquad.Coefficients {
 	return pass.LowpassRBJ(freq, q, sampleRate)
 }
 
 // Highpass designs a highpass biquad at freq (Hz) with quality factor q.
+//
+// For undesignable parameters it returns [biquad.Identity]; see the package
+// documentation.
 func Highpass(freq, q, sampleRate float64) biquad.Coefficients {
 	return pass.HighpassRBJ(freq, q, sampleRate)
 }
 
 // Bandpass designs a constant-skirt-gain bandpass biquad.
+//
+// For undesignable parameters it returns [biquad.Identity]; see the package
+// documentation.
 func Bandpass(freq, q, sampleRate float64) biquad.Coefficients {
 	w0, ok := normalizedW0(freq, sampleRate)
 	if !ok {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	q = normalizedQ(q)
@@ -66,10 +75,13 @@ func Bandpass(freq, q, sampleRate float64) biquad.Coefficients {
 }
 
 // Notch designs a notch biquad centered at freq (Hz).
+//
+// For undesignable parameters it returns [biquad.Identity]; see the package
+// documentation.
 func Notch(freq, q, sampleRate float64) biquad.Coefficients {
 	w0, ok := normalizedW0(freq, sampleRate)
 	if !ok {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	q = normalizedQ(q)
@@ -88,10 +100,13 @@ func Notch(freq, q, sampleRate float64) biquad.Coefficients {
 }
 
 // Allpass designs an allpass biquad centered at freq (Hz).
+//
+// For undesignable parameters it returns [biquad.Identity]; see the package
+// documentation.
 func Allpass(freq, q, sampleRate float64) biquad.Coefficients {
 	w0, ok := normalizedW0(freq, sampleRate)
 	if !ok {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	q = normalizedQ(q)
@@ -115,14 +130,26 @@ func Allpass(freq, q, sampleRate float64) biquad.Coefficients {
 // and/or WithNyquistGain activates the Orfanidis algorithm which supports
 // prescribed gain at DC and Nyquist. If the Orfanidis constraints cannot be
 // met, it silently falls back to the RBJ formula.
+//
+// For undesignable parameters it returns [biquad.Identity]; see the package
+// documentation.
 func Peak(freq, gainDB, q, sampleRate float64, opts ...PeakOption) biquad.Coefficients {
-	return peakWithOpts(freq, gainDB, q, sampleRate, opts)
+	c, _ := peakWithOpts(freq, gainDB, q, sampleRate, opts)
+
+	return c
 }
 
-func peakRBJ(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
+// peakRBJ designs a peaking-EQ biquad using the RBJ cookbook formula.
+//
+// The second result reports whether the section could be designed. It is false
+// when the parameters are undesignable or the normalization would produce
+// non-finite coefficients (for example a gain so negative that math.Pow
+// underflows to zero), in which case the coefficients are the pass-through
+// section.
+func peakRBJ(freq, gainDB, q, sampleRate float64) (biquad.Coefficients, bool) {
 	w0, ok := normalizedW0(freq, sampleRate)
 	if !ok {
-		return biquad.Coefficients{}
+		return biquad.Identity(), false
 	}
 
 	q = normalizedQ(q)
@@ -138,14 +165,17 @@ func peakRBJ(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	a1 := -2 * cw
 	a2 := 1 - alpha/a
 
-	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
+	return normalizeBiquadOK(b0, b1, b2, a0, a1, a2)
 }
 
 // LowShelf designs a low-shelf biquad with gain in dB.
+//
+// For undesignable parameters it returns [biquad.Identity]; see the package
+// documentation.
 func LowShelf(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	w0, ok := normalizedW0(freq, sampleRate)
 	if !ok {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	q = normalizedQ(q)
@@ -166,10 +196,13 @@ func LowShelf(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 }
 
 // HighShelf designs a high-shelf biquad with gain in dB.
+//
+// For undesignable parameters it returns [biquad.Identity]; see the package
+// documentation.
 func HighShelf(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	w0, ok := normalizedW0(freq, sampleRate)
 	if !ok {
-		return biquad.Coefficients{}
+		return biquad.Identity()
 	}
 
 	q = normalizedQ(q)
@@ -211,15 +244,30 @@ func normalizedQ(q float64) float64 {
 }
 
 func normalizeBiquad(b0, b1, b2, a0, a1, a2 float64) biquad.Coefficients {
+	c, _ := normalizeBiquadOK(b0, b1, b2, a0, a1, a2)
+
+	return c
+}
+
+// normalizeBiquadOK divides the section by a0. The second result is false when
+// the normalization is undefined or yields non-finite coefficients, in which
+// case the returned section is [biquad.Identity].
+func normalizeBiquadOK(b0, b1, b2, a0, a1, a2 float64) (biquad.Coefficients, bool) {
 	if a0 == 0 || math.IsNaN(a0) || math.IsInf(a0, 0) {
-		return biquad.Coefficients{}
+		return biquad.Identity(), false
 	}
 
-	return biquad.Coefficients{
+	c := biquad.Coefficients{
 		B0: b0 / a0,
 		B1: b1 / a0,
 		B2: b2 / a0,
 		A1: a1 / a0,
 		A2: a2 / a0,
 	}
+
+	if hasInvalidFloat(c.B0, c.B1, c.B2, c.A1, c.A2) {
+		return biquad.Identity(), false
+	}
+
+	return c, true
 }

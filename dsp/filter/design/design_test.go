@@ -239,12 +239,12 @@ func TestChebyshev2FiniteResponses(t *testing.T) {
 }
 
 func TestInvalidInputs(t *testing.T) {
-	if got := Lowpass(1000, 0.707, 0); got != (biquad.Coefficients{}) {
-		t.Fatalf("expected zero coefficients for invalid sample rate, got %#v", got)
+	if got := Lowpass(1000, 0.707, 0); got != biquad.Identity() {
+		t.Fatalf("expected pass-through coefficients for invalid sample rate, got %#v", got)
 	}
 
-	if got := Highpass(0, 0.707, 48000); got != (biquad.Coefficients{}) {
-		t.Fatalf("expected zero coefficients for invalid frequency, got %#v", got)
+	if got := Highpass(0, 0.707, 48000); got != biquad.Identity() {
+		t.Fatalf("expected pass-through coefficients for invalid frequency, got %#v", got)
 	}
 
 	_ = Bandpass(1000, 0, 48000) // q<=0 path uses defaultQ

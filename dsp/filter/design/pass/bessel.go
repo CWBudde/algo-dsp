@@ -16,7 +16,7 @@ func BesselLP(freq float64, order int, sampleRate float64) []biquad.Coefficients
 		return nil
 	}
 
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return nil
 	}
 
@@ -49,7 +49,7 @@ func BesselHP(freq float64, order int, sampleRate float64) []biquad.Coefficients
 		return nil
 	}
 
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return nil
 	}
 

@@ -20,7 +20,7 @@ func Chebyshev2LP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 		return nil
 	}
 
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return nil
 	}
 
@@ -96,7 +96,7 @@ func Chebyshev2HP(freq float64, order int, rippleDB, sampleRate float64) []biqua
 		return nil
 	}
 
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return nil
 	}
 

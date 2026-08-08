@@ -96,7 +96,23 @@ func (c *Chain) Section(i int) *Section {
 	return &c.sections[i]
 }
 
+// FlushDenormals flushes denormal delay-line state in every section to exact
+// zero. See [Section.FlushDenormals] for the rationale.
+//
+// It is allocation-free, intended to be called once per block from a
+// real-time audio callback.
+func (c *Chain) FlushDenormals() {
+	for i := range c.sections {
+		c.sections[i].FlushDenormals()
+	}
+}
+
 // State returns a snapshot of all section delay-line states.
+//
+// It allocates a new slice on every call and is therefore unsuitable for use
+// inside a real-time audio callback; take snapshots off the audio thread, or
+// use [Chain.Section] together with [Section.State] to read a single section
+// without allocating.
 func (c *Chain) State() [][2]float64 {
 	states := make([][2]float64, len(c.sections))
 	for i := range c.sections {
@@ -107,7 +123,11 @@ func (c *Chain) State() [][2]float64 {
 }
 
 // SetState restores previously saved section states.
-// The slice length must match NumSections.
+//
+// The slice length must be at least [Chain.NumSections]; a shorter slice
+// panics with an index-out-of-range error. SetState itself does not allocate,
+// but the caller must keep the snapshot slice alive, so a save/restore round
+// trip through [Chain.State] does.
 func (c *Chain) SetState(states [][2]float64) {
 	for i := range c.sections {
 		c.sections[i].SetState(states[i])

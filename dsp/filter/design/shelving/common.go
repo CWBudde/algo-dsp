@@ -24,7 +24,7 @@ func validateParams(sampleRate, freqHz float64, order int) error {
 
 // passthroughSections returns a single passthrough section (unity gain).
 func passthroughSections() []biquad.Coefficients {
-	return []biquad.Coefficients{{B0: 1, B1: 0, B2: 0, A1: 0, A2: 0}}
+	return []biquad.Coefficients{biquad.Identity()}
 }
 
 // negateOddPowers converts a low-shelf cascade to high-shelf by applying
