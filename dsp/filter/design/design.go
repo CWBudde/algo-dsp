@@ -139,10 +139,17 @@ func Peak(freq, gainDB, q, sampleRate float64, opts ...PeakOption) biquad.Coeffi
 	return c
 }
 
-func peakRBJ(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
+// peakRBJ designs a peaking-EQ biquad using the RBJ cookbook formula.
+//
+// The second result reports whether the section could be designed. It is false
+// when the parameters are undesignable or the normalization would produce
+// non-finite coefficients (for example a gain so negative that math.Pow
+// underflows to zero), in which case the coefficients are the pass-through
+// section.
+func peakRBJ(freq, gainDB, q, sampleRate float64) (biquad.Coefficients, bool) {
 	w0, ok := normalizedW0(freq, sampleRate)
 	if !ok {
-		return biquad.Identity()
+		return biquad.Identity(), false
 	}
 
 	q = normalizedQ(q)
@@ -158,7 +165,7 @@ func peakRBJ(freq, gainDB, q, sampleRate float64) biquad.Coefficients {
 	a1 := -2 * cw
 	a2 := 1 - alpha/a
 
-	return normalizeBiquad(b0, b1, b2, a0, a1, a2)
+	return normalizeBiquadOK(b0, b1, b2, a0, a1, a2)
 }
 
 // LowShelf designs a low-shelf biquad with gain in dB.
@@ -237,15 +244,30 @@ func normalizedQ(q float64) float64 {
 }
 
 func normalizeBiquad(b0, b1, b2, a0, a1, a2 float64) biquad.Coefficients {
+	c, _ := normalizeBiquadOK(b0, b1, b2, a0, a1, a2)
+
+	return c
+}
+
+// normalizeBiquadOK divides the section by a0. The second result is false when
+// the normalization is undefined or yields non-finite coefficients, in which
+// case the returned section is [biquad.Identity].
+func normalizeBiquadOK(b0, b1, b2, a0, a1, a2 float64) (biquad.Coefficients, bool) {
 	if a0 == 0 || math.IsNaN(a0) || math.IsInf(a0, 0) {
-		return biquad.Identity()
+		return biquad.Identity(), false
 	}
 
-	return biquad.Coefficients{
+	c := biquad.Coefficients{
 		B0: b0 / a0,
 		B1: b1 / a0,
 		B2: b2 / a0,
 		A1: a1 / a0,
 		A2: a2 / a0,
 	}
+
+	if hasInvalidFloat(c.B0, c.B1, c.B2, c.A1, c.A2) {
+		return biquad.Identity(), false
+	}
+
+	return c, true
 }

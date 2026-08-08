@@ -1,6 +1,8 @@
 package design
 
 import (
+	"errors"
+	"math"
 	"testing"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
@@ -55,6 +57,14 @@ func TestUndesignableFiltersArePassThrough(t *testing.T) {
 		{"negative freq", -100, 48000},
 		{"zero sample rate", 1000, 0},
 		{"negative sample rate", 1000, -48000},
+		// Non-finite parameters: every ordered comparison against NaN is
+		// false, so these slip past a naive range check and poison the
+		// coefficients instead of bypassing.
+		{"NaN freq", math.NaN(), 48000},
+		{"NaN sample rate", 1000, math.NaN()},
+		{"Inf freq", math.Inf(1), 48000},
+		{"Inf sample rate", 1000, math.Inf(1)},
+		{"-Inf sample rate", 1000, math.Inf(-1)},
 	}
 
 	for name, design := range designers {
@@ -118,6 +128,46 @@ func TestButterworthCascadeUndesignableIsPassThrough(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestButterworthCascadeNonFiniteIsPassThrough covers the same contract for
+// non-finite parameters, which a plain range check lets through.
+func TestButterworthCascadeNonFiniteIsPassThrough(t *testing.T) {
+	params := []struct {
+		name             string
+		freq, sampleRate float64
+	}{
+		{"NaN freq", math.NaN(), 48000},
+		{"NaN sample rate", 1000, math.NaN()},
+		{"Inf sample rate", 1000, math.Inf(1)},
+	}
+
+	for _, p := range params {
+		for _, order := range []int{1, 2, 3, 4, 5} {
+			for _, c := range ButterworthLP(p.freq, order, p.sampleRate) {
+				if c != biquad.Identity() {
+					t.Fatalf("ButterworthLP(%s, order %d): got %#v, want biquad.Identity()", p.name, order, c)
+				}
+			}
+
+			for _, c := range ButterworthHP(p.freq, order, p.sampleRate) {
+				if c != biquad.Identity() {
+					t.Fatalf("ButterworthHP(%s, order %d): got %#v, want biquad.Identity()", p.name, order, c)
+				}
+			}
+		}
+	}
+}
+
+// TestPeakCascadeUndesignableGainReportsError pins that the explicit-error API
+// still reports failure when the RBJ normalization degenerates: a gain that
+// negative underflows math.Pow to zero, making a0 infinite. Returning
+// transparent sections with a nil error would hide that from the caller.
+func TestPeakCascadeUndesignableGainReportsError(t *testing.T) {
+	_, err := PeakCascade(48000, 1000, 0.707, -20000, 2)
+	if !errors.Is(err, ErrInvalidPeakParams) {
+		t.Fatalf("err = %v, want ErrInvalidPeakParams", err)
 	}
 }
 

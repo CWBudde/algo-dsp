@@ -216,11 +216,7 @@ func peakWithOpts(freq, gainDB, q, sampleRate float64, opts []PeakOption) (biqua
 		// Fall back to RBJ.
 	}
 
-	if _, ok := normalizedW0(freq, sampleRate); !ok {
-		return biquad.Identity(), false
-	}
-
-	return peakRBJ(freq, gainDB, q, sampleRate), true
+	return peakRBJ(freq, gainDB, q, sampleRate)
 }
 
 func closeRel(got, want, rel float64) bool {

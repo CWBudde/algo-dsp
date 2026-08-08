@@ -68,7 +68,11 @@ func TestPeak_WithoutOptions_MatchesRBJ(t *testing.T) {
 	gainDB := 6.0
 
 	withOpts := Peak(f0, gainDB, q, sr)
-	rbj := peakRBJ(f0, gainDB, q, sr)
+
+	rbj, ok := peakRBJ(f0, gainDB, q, sr)
+	if !ok {
+		t.Fatal("peakRBJ reported the section as undesignable")
+	}
 
 	if !almostEqual(withOpts.B0, rbj.B0, 1e-12) ||
 		!almostEqual(withOpts.B1, rbj.B1, 1e-12) ||

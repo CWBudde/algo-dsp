@@ -26,7 +26,7 @@ func LinkwitzRileyLP(freq float64, order int, sampleRate float64) []biquad.Coeff
 		return nil
 	}
 
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return nil
 	}
 
@@ -64,7 +64,7 @@ func LinkwitzRileyHP(freq float64, order int, sampleRate float64) []biquad.Coeff
 		return nil
 	}
 
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return nil
 	}
 

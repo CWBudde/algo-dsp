@@ -65,13 +65,11 @@ func ButterworthHP(freq float64, order int, sampleRate float64) []biquad.Coeffic
 // For undesignable parameters (freq outside (0, Nyquist), invalid sample
 // rate) it returns [biquad.Identity], a pass-through section.
 func LowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return biquad.Identity()
 	}
 
-	if q <= 0 {
-		q = 1 / math.Sqrt2
-	}
+	q = normalizedQ(q)
 
 	w0 := 2 * math.Pi * freq / sampleRate
 	cw := math.Cos(w0)
@@ -103,13 +101,11 @@ func LowpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
 // For undesignable parameters (freq outside (0, Nyquist), invalid sample
 // rate) it returns [biquad.Identity], a pass-through section.
 func HighpassRBJ(freq, q, sampleRate float64) biquad.Coefficients {
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return biquad.Identity()
 	}
 
-	if q <= 0 {
-		q = 1 / math.Sqrt2
-	}
+	q = normalizedQ(q)
 
 	w0 := 2 * math.Pi * freq / sampleRate
 	cw := math.Cos(w0)

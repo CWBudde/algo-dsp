@@ -77,15 +77,24 @@ func TestSectionFlushDenormalsAfterDecay(t *testing.T) {
 		s.ProcessBlock(buf)
 	}
 
-	st := s.State()
-	if math.Abs(st[0]) >= 1e-30 || math.Abs(st[1]) >= 1e-30 {
-		t.Skipf("state did not decay below the flush threshold: %v", st)
-	}
+	// How far the state has decayed depends on the platform's floating-point
+	// details, so assert the contract itself: entries below the threshold are
+	// zeroed, entries above it are left untouched.
+	before := s.State()
 
 	s.FlushDenormals()
 
-	if got := s.State(); got != [2]float64{0, 0} {
-		t.Fatalf("state = %v, want zeroed", got)
+	after := s.State()
+
+	for i := range before {
+		want := before[i]
+		if math.Abs(before[i]) < denormalThreshold {
+			want = 0
+		}
+
+		if after[i] != want {
+			t.Fatalf("state[%d] = %v, want %v (before flush: %v)", i, after[i], want, before[i])
+		}
 	}
 }
 

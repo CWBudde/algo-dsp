@@ -32,7 +32,7 @@ func EllipticLP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		return nil
 	}
 
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return nil
 	}
 
@@ -75,7 +75,7 @@ func EllipticHP(freq float64, order int, rippleDB, stopbandDB, sampleRate float6
 		return nil
 	}
 
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return nil
 	}
 

@@ -6,10 +6,39 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
 
+// defaultQ is the Butterworth quality factor used when no usable Q is given.
+const defaultQ = 1 / math.Sqrt2
+
+// validPassband reports whether freq and sampleRate describe a designable
+// corner frequency: both finite, sampleRate positive and freq strictly inside
+// (0, Nyquist). Non-finite inputs are rejected explicitly because every
+// ordered comparison against NaN is false, which would otherwise let NaN slip
+// through into the coefficients.
+func validPassband(freq, sampleRate float64) bool {
+	if sampleRate <= 0 || math.IsNaN(sampleRate) || math.IsInf(sampleRate, 0) {
+		return false
+	}
+
+	if freq <= 0 || freq >= sampleRate/2 || math.IsNaN(freq) || math.IsInf(freq, 0) {
+		return false
+	}
+
+	return true
+}
+
+// normalizedQ clamps an unusable quality factor to the Butterworth default.
+func normalizedQ(q float64) float64 {
+	if q <= 0 || math.IsNaN(q) || math.IsInf(q, 0) {
+		return defaultQ
+	}
+
+	return q
+}
+
 // bilinearK computes the bilinear transform frequency warping factor tan(π*freq/sampleRate).
 // Returns (k, true) on success, (0, false) if parameters are invalid.
 func bilinearK(freq, sampleRate float64) (float64, bool) {
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return 0, false
 	}
 
@@ -33,7 +62,7 @@ func butterworthQ(order, index int) float64 {
 // Used for odd-order filters. Returns [biquad.Identity] for undesignable
 // parameters, so an odd-order cascade stays transparent instead of muting.
 func butterworthFirstOrderLP(freq, sampleRate float64) biquad.Coefficients {
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return biquad.Identity()
 	}
 
@@ -53,7 +82,7 @@ func butterworthFirstOrderLP(freq, sampleRate float64) biquad.Coefficients {
 // Used for odd-order filters. Returns [biquad.Identity] for undesignable
 // parameters, so an odd-order cascade stays transparent instead of muting.
 func butterworthFirstOrderHP(freq, sampleRate float64) biquad.Coefficients {
-	if sampleRate <= 0 || freq <= 0 || freq >= sampleRate/2 {
+	if !validPassband(freq, sampleRate) {
 		return biquad.Identity()
 	}
 
