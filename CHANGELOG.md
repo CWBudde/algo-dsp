@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [v0.6.0] - 2026-08-08
+
+Note: v0.2.0 through v0.5.1 were tagged without their own headings, so the entries
+below cover everything accumulated since v0.1.0, not only what is new in v0.6.0.
+
 ### Added
 
 - `biquad.Identity()` returns the pass-through second-order section (`B0 = 1`, all other coefficients zero, `H(z) = 1`), and `biquad.Coefficients.IsZero()` reports whether every coefficient is zero. `Identity()` is the failure return of the single-section designers in `dsp/filter/design` (see Changed); `IsZero` lets callers detect an accidentally zero-valued — that is, muting — `Coefficients` before installing it in a chain.
