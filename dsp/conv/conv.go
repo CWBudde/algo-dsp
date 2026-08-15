@@ -30,7 +30,6 @@ package conv
 
 import (
 	"errors"
-	"sync"
 
 	"github.com/cwbudde/algo-vecmath"
 )
@@ -42,14 +41,6 @@ var (
 	ErrLengthMismatch   = errors.New("conv: buffer length mismatch")
 	ErrInvalidBlockSize = errors.New("conv: invalid block size")
 )
-
-// Pool of scratch buffers for DirectTo SIMD optimization.
-var scratchPool = sync.Pool{
-	New: func() any {
-		buf := make([]float64, 1024) // Initial capacity
-		return &buf
-	},
-}
 
 // Mode specifies the output mode for convolution and correlation.
 type Mode int
@@ -122,26 +113,16 @@ func directToScalar(dst, a, b []float64, n, m int) {
 
 // directToSIMD performs SIMD-accelerated convolution for larger kernels.
 // Uses vecmath operations to vectorize the inner loop.
+//
+// The accumulate step is exactly AXPY, so it goes through a single fused
+// kernel. Scaling the kernel into a scratch buffer and adding that buffer in
+// afterwards computes the same thing, but costs an extra write and read of the
+// whole kernel on every one of the n iterations, plus the scratch buffer
+// itself.
 func directToSIMD(dst, a, b []float64, n, m int) {
-	// Get scratch buffer from pool
-	bufPtr := scratchPool.Get().(*[]float64)
-	defer scratchPool.Put(bufPtr)
-
-	// Ensure scratch buffer is large enough
-	temp := *bufPtr
-	if cap(temp) < m {
-		temp = make([]float64, m)
-		*bufPtr = temp
-	}
-
-	temp = temp[:m]
-
 	for i := 0; i < n; i++ {
-		// Scale kernel by current input sample: temp = b * a[i]
-		vecmath.ScaleBlock(temp, b, a[i])
-
-		// Accumulate into destination: dst[i:i+m] += temp
-		vecmath.AddBlockInPlace(dst[i:i+m], temp)
+		// dst[i:i+m] += b * a[i]
+		vecmath.AddScaledBlockInPlace(dst[i:i+m], b, a[i])
 	}
 }
 

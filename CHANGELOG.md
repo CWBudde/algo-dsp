@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- `conv.DirectTo` accumulates through the single fused `vecmath.AddScaledBlockInPlace` (AXPY) kernel instead of scaling the kernel into a scratch buffer with `ScaleBlock` and adding that buffer in with `AddBlockInPlace`. The two-pass form did an extra write and read of the whole kernel on each of the `n` outer iterations; the scratch buffer and its `sync.Pool` are gone entirely. Measured 1.26x-2.28x on `BenchmarkDirect` for kernels of 32 and 64 taps (amd64); kernels below the 16-tap SIMD threshold take the scalar path and are unaffected. Results are bit-identical on amd64. On arm64 they differ by up to an ulp, because the NEON AXPY kernel fuses the multiply-add where the two-pass form rounded twice.
+- Requires `algo-vecmath` v0.1.3, up from v0.1.0. That release fixes an out-of-bounds write in the arm64 kernels — reachable from any length-1 slice, and a reproducible segfault in `ScaleBlock` on Apple Silicon — so this is a correctness-relevant bump for arm64 builds, not only a performance one. It also carries a rewrite of the NEON backend that lifts `DotProduct` by 3.0x-3.9x and `Sum` by 2.1x-2.5x, which `filter/fir` and the statistics packages inherit for free.
+
 ## [v0.6.0] - 2026-08-08
 
 Note: v0.2.0 through v0.5.1 were tagged without their own headings, so the entries
