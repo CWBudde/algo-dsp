@@ -1,9 +1,7 @@
 github.com/cwbudde/algo-approx v0.1.0 h1:0i+ogADelGMNKx82mOes80ikmdA8SNdSM5UDJ27G/TY=
 github.com/cwbudde/algo-approx v0.1.0/go.mod h1:Bz0OrNQt5WJFTjbrOrNjg1JOZCPDZsjfSYfkSmBeNUc=
-github.com/cwbudde/algo-fft v0.7.3 h1:1MDkBhgo/hhigpbTMDvcXZpMaW0ubz844IL6rDL/Bms=
-github.com/cwbudde/algo-fft v0.7.3/go.mod h1:H5rJ7JNXvhe3kT4yc41TJB9DEnO7KlhHN7toLO+ZZXU=
-github.com/cwbudde/algo-vecmath v0.1.0 h1:RjZLXt3BAu1f3UmdWWXbgw3Xscyh+bsg31PkS5K4y4c=
-github.com/cwbudde/algo-vecmath v0.1.0/go.mod h1:lc9dLv41D4RCmhXG/CsIesfJXmONI7pQXcFrkxQSfeQ=
+github.com/cwbudde/algo-fft v0.8.0 h1:kmjmSYdYYC0cELjORwUV5Qd02KQB91sTLFC4ifm07D4=
+github.com/cwbudde/algo-fft v0.8.0/go.mod h1:H5rJ7JNXvhe3kT4yc41TJB9DEnO7KlhHN7toLO+ZZXU=
 github.com/cwbudde/algo-vecmath v0.1.3 h1:lzXRUI1XP/RLgyCfSPGvAB7HFEU4bjQtZdfel6ZUjjw=
 github.com/cwbudde/algo-vecmath v0.1.3/go.mod h1:lc9dLv41D4RCmhXG/CsIesfJXmONI7pQXcFrkxQSfeQ=
 golang.org/x/sys v0.40.0 h1:DBZZqJ2Rkml6QMQsZywtnjnnGvHza6BTfYFWY9kjEWQ=
