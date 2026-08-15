@@ -206,6 +206,8 @@ Phase 38: Interpolation Kernel Expansion                   [1 week]   📋 Plann
 Phase 39: Interpolation Integration & Validation           [1 week]   📋 Planned
 Phase 40: Benchmark Regression Guard                       [1 week]   🔄 In Progress
 Phase 41: SIMD Modal Oscillator Bank                       [2 weeks]  📋 Planned
+Phase 41b: Web Demo — Purpose, Hardening, Coverage         [2 weeks]  🔄 In Progress
+Phase 41c: SIMD Adoption in Existing Hot Paths             [1 week]   📋 Planned
 Phase 42: Release Readiness (v1.0)                         [1 week]   📋 Planned
 Phase 43: Tag and Publish v1.0                             [0.5 week] 📋 Planned
 ```
@@ -807,6 +809,58 @@ Exit criteria:
       down to mono. Widening the output channel count alone would change nothing audible; real
       stereo means threading it through `dsp/effectchain`, which is library work and needs its
       own phase.
+
+### Phase 41c: SIMD Adoption in Existing Hot Paths (Planned)
+
+Distinct from Phase 41, which adds a _new_ modal oscillator package. This phase vectorizes
+loops that already exist and already run in production paths. It came out of the 2026-08-15
+`algo-vecmath` arm64 round, which rewrote the NEON backend (nine of ten kernels had been
+2x-unrolled _scalar_ loops living in a package called `neon`) and lifted `DotProduct` by
+3.0x-3.9x and `Sum` by 2.1x-2.5x on an Apple M5. `dsp/filter/fir` and `stats/*` inherited
+that for free; the items below are what a survey of this repo found still on the table.
+
+The first entry is the substantial one; the rest are progressively cheaper.
+
+- [ ] **`MulComplexBlock` over `[]complex128`** — the strongest remaining candidate, and the
+      one that needs a new `algo-vecmath` primitive (tracked there; see that repo's PLAN.md).
+      The same `dst[i] = a[i] * b[i]` complex multiply appears at **8 sites**, including both
+      streaming convolvers and `dsp/conv/partitioned.go:150` / `:166` — the hottest loop in
+      the repo for long-IR convolution and the lowest-latency real-time path. Go compiles a
+      complex multiply to 4 multiplies and 2 adds with no vectorization. **No data-layout
+      change is needed anywhere**: `[]complex128` is already bit-identical to interleaved
+      `[]float64`, and `dsp/conv/streaming.go:104-138` already reinterprets it via
+      `unsafe.Slice`. Needs a `complex64` twin for the generic streaming paths.
+- [ ] **`SumSquaredDiff` for the YIN difference function** (`dsp/effects/pitch/yin_detector.go:465-475`)
+      — roughly 640k FLOPs per frame, the densest scalar loop in the repo. Also needs a new
+      `algo-vecmath` primitive.
+- [ ] **Call primitives that already exist and are simply not used.** No new assembly, no new
+      API — these are one-line substitutions: `AddBlockInPlace` at `dsp/conv/partitioned.go:159`
+      / `:175`, `dsp/effects/dynamics/multiband.go:459`, `dsp/effectchain/chain_process.go:312`;
+      `MaxAbs` at `stats/time/stats.go:206` and `measure/ir/ir.go:390`; `ScaleBlockInPlace` at
+      `measure/sweep/sweep.go:147` and `dsp/effectchain/chain.go:62`. Start here — it is the
+      best ratio of win to risk in the phase.
+- [ ] **Interleaved `Magnitude` / `Power` consuming `[]complex128` directly**, letting
+      `dsp/spectrum` delete its deinterleave scratch pool and one whole memory pass.
+- [ ] **Bin-parallel Goertzel.** The recurrence is serial _per bin_, but bins are independent,
+      so `GoertzelBank.ProcessBlock` can run 4 bins at a time.
+
+> **Confirmed non-starters, so nobody re-surveys them:** biquad/IIR and Hilbert recursions,
+> the Moog ladder, envelope followers, dither noise shaping, and phase unwrap are all serial
+> by construction. Kahan and Welford accumulation are vectorizable only by changing the
+> documented numerics, which is not a trade this library should make silently.
+
+> **Precedent set by the conv change (already landed, `d2ec9ef`).** `conv.DirectTo` moved from
+> the two-pass `ScaleBlock` + `AddBlockInPlace` idiom to the single fused
+> `vecmath.AddScaledBlockInPlace`, worth 1.26x-2.28x on `BenchmarkDirect` for 32- and 64-tap
+> kernels. **That change is bit-identical on amd64 but not on arm64**, where the NEON AXPY
+> fuses the multiply-add that the two-pass form rounded twice. Every item above carries the
+> same hazard: check it against real fixtures rather than assuming, and state the answer in
+> the CHANGELOG either way.
+
+> **Do not size these against the `*Ref` / `*Generic` benchmarks.** Those call test-local
+> copies that get inlined while a dispatched call cannot be, so the comparison flatters the
+> generic side. Measure against `-tags purego`, and keep an untouched kernel in the same run
+> as a control — if it does not read ~1.00x, nothing in that run is trustworthy.
 
 ### Phase 42: Release Readiness (v1.0) (Planned)
 
