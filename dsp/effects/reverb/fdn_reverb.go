@@ -273,14 +273,12 @@ func (r *FDNReverb) ProcessSample(input float64) float64 {
 
 	r.advanceLFO()
 
-	// Row 0 of the matrix is all ones, so the network output is the first
-	// element of the transform and needs no separate summing loop.
-	out := mixed[0]
-	for i := 1; i < fdnSize; i++ {
-		out += mixed[i]
-	}
-
 	hadamardInPlace(&mixed)
+
+	// Row 0 of the matrix is all ones, so the network output is the first
+	// element of the transform the feedback path already needs. Summing the
+	// taps separately would be seven more adds a sample for the same number.
+	out := mixed[0]
 
 	for i := 0; i < fdnSize; i++ {
 		feedback := mixed[i] * r.matrixScale

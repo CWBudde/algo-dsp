@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- `reverb.FDNReverb.ProcessSample` no longer calls `math.Sin` and no longer multiplies the feedback matrix out. The modulator is one unit-magnitude complex rotor advanced per sample, with each delay line's fixed phase offset applied by angle addition, which removes eight sine calls per sample; the Hadamard mixing runs as a three-stage fast Walsh-Hadamard butterfly, 24 add/subtracts against 64 multiplies and 56 adds. **2.2x faster** on a 128-sample block (34.8 -> 16.0 us, amd64, best of three), and the mixing alone is 3.3x (66.4 -> 20.4 ns). The gain is larger where `math.Sin` has no hardware instruction behind it: measured in a browser under `GOARCH=wasm`, a stereo pair of these went from 89-179% of realtime to 45-55% in Firefox and from 9-13% to 4.5-5% in Chromium. Output is unchanged to within 4.1e-11 over ten seconds at 48 kHz -- roughly three decimal digits below a 24-bit LSB -- the difference being rounding: a rotor against a sine, and pairwise against left-to-right summation. `TestFDNReverbMatchesReference` keeps the previous implementation and checks against it.
+
 ## [v0.7.0] - 2026-08-15
 
 ### Changed
@@ -9,10 +15,6 @@ All notable changes to this project are documented in this file.
 - Requires `algo-fft` v0.8.0, up from v0.7.3. The only breaking change in that range is the removal of the `KernelEightStep` kernel strategy constant, which duplicated `KernelSixStep` — algo-dsp never referenced it, so no call site changed. The upgrade also brings the additive v0.8.0 surface (`ConvolveReal64`, the reusable `Convolver`/`Correlator`/`RealConvolver` types, `CurrentCPUIdentifier`, and per-plan algorithm reporting via `Plan.ForwardAlgorithm`/`InverseAlgorithm`), none of which is adopted here yet.
 - `conv.DirectTo` accumulates through the single fused `vecmath.AddScaledBlockInPlace` (AXPY) kernel instead of scaling the kernel into a scratch buffer with `ScaleBlock` and adding that buffer in with `AddBlockInPlace`. The two-pass form did an extra write and read of the whole kernel on each of the `n` outer iterations; the scratch buffer and its `sync.Pool` are gone entirely. Measured 1.26x-2.28x on `BenchmarkDirect` for kernels of 32 and 64 taps (amd64); kernels below the 16-tap SIMD threshold take the scalar path and are unaffected. Results are bit-identical on amd64. On arm64 they differ by up to an ulp, because the NEON AXPY kernel fuses the multiply-add where the two-pass form rounded twice.
 - Requires `algo-vecmath` v0.1.3, up from v0.1.0. That release fixes an out-of-bounds write in the arm64 kernels — reachable from any length-1 slice, and a reproducible segfault in `ScaleBlock` on Apple Silicon — so this is a correctness-relevant bump for arm64 builds, not only a performance one. It also carries a rewrite of the NEON backend that lifts `DotProduct` by 3.0x-3.9x and `Sum` by 2.1x-2.5x, which `filter/fir` and the statistics packages inherit for free.
-
-### Changed
-
-- `reverb.FDNReverb.ProcessSample` no longer calls `math.Sin` and no longer multiplies the feedback matrix out. The modulator is one unit-magnitude complex rotor advanced per sample, with each delay line's fixed phase offset applied by angle addition, which removes eight sine calls per sample; the Hadamard mixing runs as a three-stage fast Walsh-Hadamard butterfly, 24 add/subtracts against 64 multiplies and 56 adds. **2.2x faster** on a 128-sample block (35.4 -> 16.3 us, amd64), and the mixing alone is 4x (69.8 -> 17.6 ns). The gain is larger where `math.Sin` has no hardware instruction behind it: measured in a browser under `GOARCH=wasm`, a stereo pair of these went from 89-179% of realtime to 45-55% in Firefox and from 9-13% to 4.5-5% in Chromium. Output is unchanged to within 4.1e-11 over ten seconds at 48 kHz -- roughly three decimal digits below a 24-bit LSB -- the difference being rounding: a rotor against a sine, and pairwise against left-to-right summation. `TestFDNReverbMatchesReference` keeps the previous implementation and checks against it.
 
 ## [v0.6.0] - 2026-08-08
 

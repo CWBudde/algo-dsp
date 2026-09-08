@@ -45,29 +45,47 @@ func BenchmarkFDNReverbProcessBlockReference(b *testing.B) {
 	})
 }
 
-func BenchmarkFDNHadamardInPlace(b *testing.B) {
-	v := [fdnSize]float64{1, 2, 3, 4, 5, 6, 7, 8}
+// fdnHadamardInput is the vector both mixing benchmarks transform.
+//
+// Each iteration starts from it again rather than feeding the previous result
+// back in. The transform is unnormalised -- H*H = fdnSize*I -- so a vector run
+// through it repeatedly grows by a factor of eight every second pass and
+// reaches infinity in a few hundred iterations, well inside a benchmark that
+// runs for millions. What is timed after that is arithmetic on Inf and NaN,
+// which is not the thing being measured.
+//
+// The copy is one eight-element array assignment and is identical in both
+// benchmarks, so it does not tilt the comparison between them.
+var fdnHadamardInput = [fdnSize]float64{1, 2, 3, 4, 5, 6, 7, 8}
 
+// fdnHadamardSink keeps the results reachable, so neither loop can be optimised
+// away as dead.
+var fdnHadamardSink [fdnSize]float64
+
+func BenchmarkFDNHadamardInPlace(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
+		v := fdnHadamardInput
 		hadamardInPlace(&v)
+		fdnHadamardSink = v
 	}
 }
 
 func BenchmarkFDNHadamardMatrix(b *testing.B) {
-	in := [fdnSize]float64{1, 2, 3, 4, 5, 6, 7, 8}
-
 	b.ReportAllocs()
 
 	for n := 0; n < b.N; n++ {
+		in := fdnHadamardInput
+
 		var out [fdnSize]float64
+
 		for i := 0; i < fdnSize; i++ {
 			for j := 0; j < fdnSize; j++ {
 				out[i] += fdnHadamard[i][j] * in[j]
 			}
 		}
 
-		in = out
+		fdnHadamardSink = out
 	}
 }
