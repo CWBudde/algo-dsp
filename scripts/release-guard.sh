@@ -103,7 +103,7 @@ cmd_deps() {
 
 	while IFS= read -r line; do
 		[ -z "$line" ] && continue
-		if [[ "$line" == *" -> "* ]]; then
+		if [[ $line == *" -> "* ]]; then
 			fail "$line"
 		else
 			ok "$line"
@@ -166,7 +166,7 @@ cmd_gate() {
 	# `return 1` explicitly, never a bare `return`: fail() ends in an assignment,
 	# which succeeds, so a bare return here would report the gate as PASSED and
 	# cmd_tag would go on to tag and push an invalid version.
-	if ! [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+	if ! [[ $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 		fail "'$version' is not a vX.Y.Z tag"
 		return 1
 	fi
