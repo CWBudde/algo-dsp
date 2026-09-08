@@ -3,7 +3,7 @@ module github.com/cwbudde/algo-dsp
 go 1.25.0
 
 require (
-	github.com/cwbudde/algo-approx v0.1.0
+	github.com/cwbudde/algo-approx v0.2.0
 	github.com/cwbudde/algo-fft v0.8.0
 	github.com/cwbudde/algo-vecmath v0.1.3
 )

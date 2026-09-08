@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- Requires `algo-approx` v0.2.0, up from v0.1.0. That release removes `FastSqrt`, `FastInvSqrt` and `FastRecip`, none of which algo-dsp ever referenced -- the only call sites here are `approx.FastLog` and `approx.FastExp` in the `fastmath`-tagged `dynamics` helpers, both unchanged. It also adds a public batch API and NEON kernels for batch exp and fused tanh/log(cosh), neither adopted here yet.
+
 - `reverb.FDNReverb.ProcessSample` no longer calls `math.Sin` and no longer multiplies the feedback matrix out. The modulator is one unit-magnitude complex rotor advanced per sample, with each delay line's fixed phase offset applied by angle addition, which removes eight sine calls per sample; the Hadamard mixing runs as a three-stage fast Walsh-Hadamard butterfly, 24 add/subtracts against 64 multiplies and 56 adds. **2.2x faster** on a 128-sample block (34.8 -> 16.0 us, amd64, best of three), and the mixing alone is 3.3x (66.4 -> 20.4 ns). The gain is larger where `math.Sin` has no hardware instruction behind it: measured in a browser under `GOARCH=wasm`, a stereo pair of these went from 89-179% of realtime to 45-55% in Firefox and from 9-13% to 4.5-5% in Chromium. Output is unchanged to within 4.1e-11 over ten seconds at 48 kHz -- roughly three decimal digits below a 24-bit LSB -- the difference being rounding: a rotor against a sine, and pairwise against left-to-right summation. `TestFDNReverbMatchesReference` keeps the previous implementation and checks against it.
 
 ## [v0.7.0] - 2026-08-15
