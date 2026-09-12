@@ -7,6 +7,7 @@ import (
 	"math/cmplx"
 
 	algofft "github.com/cwbudde/algo-fft"
+	"github.com/cwbudde/algo-vecmath"
 )
 
 // Errors returned by sweep functions.
@@ -142,10 +143,7 @@ func (s *LogSweep) InverseFilter() ([]float64, error) {
 	// which for a log sweep evaluates to T*f1/ln(f2/f1)
 	normFactor := T * s.StartFreq / lnRatio * s.SampleRate
 	if normFactor > 0 {
-		scale := 1.0 / normFactor
-		for i := range inv {
-			inv[i] *= scale
-		}
+		vecmath.ScaleBlockInPlace(inv, 1.0/normFactor)
 	}
 
 	return inv, nil

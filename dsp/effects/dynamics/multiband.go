@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/crossover"
+	"github.com/cwbudde/algo-vecmath"
 )
 
 const (
@@ -13,6 +14,12 @@ const (
 	maxMultibandOrder     = 24
 	maxMultibandBands     = 8
 	minCrossoverFrequency = 20.0
+
+	// bandSumSIMDThreshold is the block length above which summing the bands
+	// through vecmath beats an inlined scalar loop. Same measured crossover as
+	// the other vecmath call sites in this module (see stats/time.Peak): the
+	// dispatched call costs on the order of 100 ns regardless of length.
+	bandSumSIMDThreshold = 64
 )
 
 // Float64Ptr returns a pointer to the given float64 value, for use in [BandConfig].
@@ -454,10 +461,20 @@ func (mc *MultibandCompressor) ProcessInPlace(buf []float64) {
 	// Sum all bands back into buf
 	copy(buf, bandBlocks[0])
 
-	for i := 1; i < len(bandBlocks); i++ {
-		for j, v := range bandBlocks[i] {
-			buf[j] += v
+	// crossover.MultiBand.ProcessBlock allocates every band at exactly len(buf),
+	// so the lengths always match vecmath's equal-length contract.
+	if len(buf) < bandSumSIMDThreshold {
+		for i := 1; i < len(bandBlocks); i++ {
+			for j, v := range bandBlocks[i] {
+				buf[j] += v
+			}
 		}
+
+		return
+	}
+
+	for i := 1; i < len(bandBlocks); i++ {
+		vecmath.AddBlockInPlace(buf, bandBlocks[i])
 	}
 }
 
