@@ -207,7 +207,7 @@ Phase 39: Interpolation Integration & Validation           [1 week]   📋 Plann
 Phase 40: Benchmark Regression Guard                       [1 week]   🔄 In Progress
 Phase 41: SIMD Modal Oscillator Bank                       [2 weeks]  📋 Planned
 Phase 41b: Web Demo — Purpose, Hardening, Coverage         [2 weeks]  🔄 In Progress
-Phase 41c: SIMD Adoption in Existing Hot Paths             [1 week]   📋 Planned
+Phase 41c: SIMD Adoption in Existing Hot Paths             [1 week]   🔄 In Progress
 Phase 42: Release Readiness (v1.0)                         [1 week]   📋 Planned
 Phase 43: Tag and Publish v1.0                             [0.5 week] 📋 Planned
 ```
@@ -810,7 +810,7 @@ Exit criteria:
       stereo means threading it through `dsp/effectchain`, which is library work and needs its
       own phase.
 
-### Phase 41c: SIMD Adoption in Existing Hot Paths (Planned)
+### Phase 41c: SIMD Adoption in Existing Hot Paths (In Progress)
 
 Distinct from Phase 41, which adds a _new_ modal oscillator package. This phase vectorizes
 loops that already exist and already run in production paths. It came out of the 2026-08-15
@@ -833,16 +833,42 @@ The first entry is the substantial one; the rest are progressively cheaper.
 - [ ] **`SumSquaredDiff` for the YIN difference function** (`dsp/effects/pitch/yin_detector.go:465-475`)
       — roughly 640k FLOPs per frame, the densest scalar loop in the repo. Also needs a new
       `algo-vecmath` primitive.
-- [ ] **Call primitives that already exist and are simply not used.** No new assembly, no new
-      API — these are one-line substitutions: `AddBlockInPlace` at `dsp/conv/partitioned.go:159`
-      / `:175`, `dsp/effects/dynamics/multiband.go:459`, `dsp/effectchain/chain_process.go:312`;
-      `MaxAbs` at `stats/time/stats.go:206` and `measure/ir/ir.go:390`; `ScaleBlockInPlace` at
-      `measure/sweep/sweep.go:147` and `dsp/effectchain/chain.go:62`. Start here — it is the
-      best ratio of win to risk in the phase.
+- [x] **Call primitives that already exist and are simply not used.** Done: `AddBlockInPlace`
+      in both `dsp/conv/partitioned.go` overlap-add loops, the `dsp/conv/streaming_overlap_add.go`
+      tail merge (a site this list missed), `dsp/effects/dynamics/multiband.go` and
+      `dsp/effectchain/chain_process.go`; `ScaleBlock` for that file's output scaling;
+      `MaxAbs` in `stats/time.Peak` and `measure/ir`'s onset search; `ScaleBlockInPlace` in
+      `measure/sweep.LogSweep.InverseFilter`. All bit-identical on amd64 and arm64 by
+      construction — element-wise ops and a max reduction have nothing to fuse or reassociate.
+      `measure/ir.BenchmarkFindImpulseStart` 5.6x, `Peak` up to 3.0x; the partitioned-conv,
+      multiband and sweep benchmarks show no significant change, because the substituted loop
+      is a small fraction of each.
+
+      Three corrections to this list, for whoever reads it next:
+
+          1. **`dsp/effectchain/chain.go:62` has no scale loop and never did** — line 62 was
+             `LoadGraph` already in `5606165`, the commit that wrote this phase. The only
+             scale-shaped site in the package is the one in `chain_process.go`, counted above.
+          2. **These were not one-line substitutions.** `dsp/conv`'s loops live in
+             `partStageT[F, C]`, generic over `float32`/`float64`, and `algo-vecmath` is
+             float64-only; they needed a helper dispatching on `unsafe.Sizeof`, per the precedent
+             in `dsp/conv/streaming.go`. The `float32` instantiations keep the scalar loop.
+          3. **Unguarded, half of these are regressions.** A dispatched vecmath call costs ~110 ns
+             on amd64 regardless of length, so `MaxAbs` is 10x *slower* than the inlined loop at 8
+             samples and the four-parent mix loses 0.72x at a 16-sample block. Every site is now
+             behind a benchmarked length threshold of 64, in the style of `conv.simdThreshold`.
+             Assume the same is true of items 1, 2 and 4 below.
+
 - [ ] **Interleaved `Magnitude` / `Power` consuming `[]complex128` directly**, letting
       `dsp/spectrum` delete its deinterleave scratch pool and one whole memory pass.
-- [ ] **Bin-parallel Goertzel.** The recurrence is serial _per bin_, but bins are independent,
-      so `GoertzelBank.ProcessBlock` can run 4 bins at a time.
+- [x] **Bin-parallel Goertzel.** Done: `GoertzelBank.ProcessBlock` advances four bins per pass
+      over the sample buffer, with bins past the last full group falling through to the per-bin
+      path. 3.8x for four bins and 4.2x for the eight-bin DTMF case over a 1024-sample block;
+      one to three bins are unchanged. Bit-identical per bin, pinned by a `==` comparison in
+      `TestGoertzelBankProcessBlockBitExact`. The win is latency hiding, not width — the
+      single-bin loop is bound on the multiply-add dependency chain, so four independent chains
+      fill the stalls. The recurrence now lives in one `goertzelStep` helper shared by all three
+      paths so they cannot diverge in how the compiler contracts the multiply-add.
 
 > **Confirmed non-starters, so nobody re-surveys them:** biquad/IIR and Hilbert recursions,
 > the Moog ladder, envelope followers, dither noise shaping, and phase unwrap are all serial

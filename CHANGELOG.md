@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Phase 41c, first half: eight hand-rolled loops now call the `algo-vecmath` kernels that were already available and simply unused. `AddBlockInPlace` takes the partitioned-convolution overlap-add (`dsp/conv/partitioned.go`), the streaming overlap-add tail merge (`dsp/conv/streaming_overlap_add.go`), the multiband band sum (`dsp/effects/dynamics/multiband.go`) and the parent-edge mix (`dsp/effectchain/chain_process.go`); `ScaleBlock` takes that mix's output scaling; `ScaleBlockInPlace` takes the log-sweep inverse-filter normalization (`measure/sweep/sweep.go`); and `MaxAbs` takes `stats/time.Peak` and the IR onset search (`measure/ir`). The two zeroing loops in the mix became `clear`.
+
+  **Every one of these is bit-identical on amd64 and arm64, by construction.** They are element-wise adds, element-wise scalar multiplies, and a max reduction -- there is no multiply-add to fuse and no reassociation, so the hazard behind the `d2ec9ef` AXPY change (bit-identical on amd64, an ulp apart on arm64) cannot recur here. Max is the interesting case and it is still exact: unlike a sum, a tree reduction over max returns the identical double as a serial scan.
+
+  Measured on amd64/AVX2 (Ryzen 5 4600H), before vs after on the same benchmarks: `measure/ir.BenchmarkFindImpulseStart` **5.6x** (176 -> 31 us); `stats/time.Peak` **1.7x at 128 samples, 2.0x at 256, 3.0x at 1024**. `BenchmarkPartitionedConvolution`, `BenchmarkMultibandProcessInPlace` and `BenchmarkLogSweepInverseFilter` show **no significant change** (p >= 0.33) -- in each the substituted loop is a small fraction of what the benchmark measures, so the gain is real but below the noise floor of the enclosing function. Allocation counts are unchanged everywhere, and the touched paths are pinned allocation-free by new `testing.AllocsPerRun` assertions.
+
+- `spectrum.GoertzelBank.ProcessBlock` advances four bins per pass over the sample buffer instead of one. The recurrence is serial within a bin but the bins are independent, so a group of four reads the buffer once rather than four times and gives the processor four independent dependency chains to overlap -- the single-bin loop is latency-bound on the multiply-add, not throughput-bound. Bins past the last full group of four fall through to the existing per-bin path. **3.8x for four bins** (13.6 -> 3.5 us over a 1024-sample block) and **4.2x for the eight-bin DTMF case** (27.1 -> 6.4 us); a bank of one, two or three bins is unchanged. Output is **bit-identical per bin** -- `TestGoertzelBankProcessBlockBitExact` compares with `==`, not a tolerance, across bin counts 1-9 and block lengths 0-1024. The recurrence itself was factored into one `goertzelStep` helper shared by the single-bin, bank and four-wide paths so no two of them can diverge in how the compiler contracts the multiply-add.
+
+- The vecmath call sites above are guarded by benchmarked length thresholds (`maxAbsSIMDThreshold`, `mixSIMDThreshold`, `addBlockSIMDThreshold`, `bandSumSIMDThreshold`, all 64), in the same style as the existing `conv.simdThreshold`. This is not caution: a dispatched vecmath call carries roughly 110 ns of fixed cost on this machine regardless of length, so an unguarded `MaxAbs` is **10x slower** than the inlined scalar loop at 8 samples and still 1.4x slower at 48, and the four-parent mix loses 0.72x at a 16-sample block. Short buffers are not hypothetical here -- a partitioned convolver built with a low `minBlockOrder` has a `partSize` of a handful of samples, and `Peak` is public API callable on any length.
+
+- `stats/time.Peak` now documents that its result for a signal containing NaN is unspecified. This is a real behavior change and it is CPU- **and** length-dependent: the vectorized kernel compares with `MAXPD`/`FMAX`, which return their second operand when either is NaN, so NaN propagates or is discarded according to the lane it lands in, while the scalar path below the threshold skips it as before. Verified on this machine: for `{NaN, 1, 2, 3}` the AVX2 kernel returns 3 and the `purego` kernel returns NaN; for `{1, 2, 3, NaN}` they return NaN and 3 respectively. Finite values, `+/-Inf` and `+/-0` are handled identically on every path, and the empty signal still yields 0. No guard was added, because defending input that is already broken would cost a full extra pass over every signal.
+
+- Not covered, deliberately: `algo-vecmath` v0.1.3 is float64-only, so `PartitionedConvolution32`, `StreamingOverlapAdd32` and the other `float32` instantiations keep their scalar loops. The generic helper dispatches on `unsafe.Sizeof` rather than boxing through `any()`, so that branch resolves at compile time per instantiation and the float32 stencils are byte-for-byte unchanged.
+
 ## [v0.7.1] - 2026-09-08
 
 ### Changed
