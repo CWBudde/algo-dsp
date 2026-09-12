@@ -1,10 +1,6 @@
 package time
 
-import (
-	"math"
-
-	"github.com/cwbudde/algo-vecmath"
-)
+import "math"
 
 // Stats holds time-domain signal statistics.
 type Stats struct {
@@ -201,27 +197,17 @@ func DC(signal []float64) float64 {
 	return sum / float64(len(signal))
 }
 
-// maxAbsSIMDThreshold is the signal length above which vecmath.MaxAbs beats an
-// inlined scalar loop. Threshold determined by benchmarking (amd64/AVX2,
-// BenchmarkPeakScalarReference vs BenchmarkPeakVecmath in one binary): the
-// dispatched call carries roughly 110 ns of fixed cost, so it loses 10x at 8
-// samples and 1.4x at 48, breaks even near 64, and wins 1.7x at 128 and 3x at
-// 1024.
-const maxAbsSIMDThreshold = 64
-
 // Peak returns the peak absolute amplitude of the signal. An empty signal
-// yields 0.
+// yields 0. A signal containing NaN yields NaN only if signal[0] is NaN;
+// NaN elsewhere is skipped.
 //
-// If the signal contains NaN the result is unspecified: it depends on the
-// signal length and on the CPU, because the vectorized kernel compares with
-// MAXPD/FMAX, which propagate or discard NaN depending on which lane it lands
-// in, while the scalar path skips it. Finite values, +/-Inf and +/-0 are
-// handled identically on every path.
+// The scan is deliberately scalar. vecmath.MaxAbs is roughly 3x faster on long
+// signals but is unsafe here: on AVX2 a NaN anywhere in the slice can discard
+// the true maximum and return a smaller finite value -- MaxAbs([999, NaN, 0.5])
+// returns 0.5, while the pure-Go kernel returns 999 -- so the reported peak
+// would be silently wrong by orders of magnitude, on some CPUs only. Detecting
+// that costs a full extra pass, which is the whole speedup, so the loop stays.
 func Peak(signal []float64) float64 {
-	if len(signal) >= maxAbsSIMDThreshold {
-		return vecmath.MaxAbs(signal)
-	}
-
 	if len(signal) == 0 {
 		return 0
 	}

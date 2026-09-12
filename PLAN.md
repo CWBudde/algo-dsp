@@ -839,25 +839,38 @@ The first entry is the substantial one; the rest are progressively cheaper.
       `dsp/effectchain/chain_process.go`; `ScaleBlock` for that file's output scaling;
       `MaxAbs` in `stats/time.Peak` and `measure/ir`'s onset search; `ScaleBlockInPlace` in
       `measure/sweep.LogSweep.InverseFilter`. All bit-identical on amd64 and arm64 by
-      construction — element-wise ops and a max reduction have nothing to fuse or reassociate.
-      `measure/ir.BenchmarkFindImpulseStart` 5.6x, `Peak` up to 3.0x; the partitioned-conv,
+      construction — element-wise ops have nothing to fuse or reassociate. The partitioned-conv,
       multiband and sweep benchmarks show no significant change, because the substituted loop
       is a small fraction of each.
 
-      Three corrections to this list, for whoever reads it next:
+      **`MaxAbs` is excluded and must stay excluded until `algo-vecmath` is fixed.** It is
+          3.0x faster in `stats/time.Peak` and 5.6x in `measure/ir`'s onset search, and unsafe in
+          both: on AVX2 a NaN anywhere in the slice can discard the true maximum and return a
+          smaller **finite** value — `MaxAbs([999, NaN, 0.5])` returns `0.5` on AVX2 and `999` in
+          pure Go. That is silent corruption of the finite result, not a NaN-policy difference, and
+          an `IsNaN` check on the result does not catch it. Detecting NaN up front costs a full
+          pass, which is the entire speedup. Both sites keep their scalar loops, and
+          `TestPeakNaNIsDeterministic` / `TestFindImpulseStartNaNIsDeterministic` fail on an AVX2
+          machine if anyone re-adopts it. **Action for `algo-vecmath`: `MaxAbs` should either skip
+          NaN or propagate it, consistently across kernels — returning an arbitrary finite
+          non-maximum is defensible under no policy.** Found by review on #25.
 
-          1. **`dsp/effectchain/chain.go:62` has no scale loop and never did** — line 62 was
-             `LoadGraph` already in `5606165`, the commit that wrote this phase. The only
-             scale-shaped site in the package is the one in `chain_process.go`, counted above.
-          2. **These were not one-line substitutions.** `dsp/conv`'s loops live in
-             `partStageT[F, C]`, generic over `float32`/`float64`, and `algo-vecmath` is
-             float64-only; they needed a helper dispatching on `unsafe.Sizeof`, per the precedent
-             in `dsp/conv/streaming.go`. The `float32` instantiations keep the scalar loop.
-          3. **Unguarded, half of these are regressions.** A dispatched vecmath call costs ~110 ns
-             on amd64 regardless of length, so `MaxAbs` is 10x *slower* than the inlined loop at 8
-             samples and the four-parent mix loses 0.72x at a 16-sample block. Every site is now
-             behind a benchmarked length threshold of 64, in the style of `conv.simdThreshold`.
-             Assume the same is true of items 1, 2 and 4 below.
+          Three corrections to this list, for whoever reads it next:
+
+              1. **`dsp/effectchain/chain.go:62` has no scale loop and never did** — line 62 was
+                 `LoadGraph` already in `5606165`, the commit that wrote this phase. The only
+                 scale-shaped site in the package is the one in `chain_process.go`, counted above.
+              2. **These were not one-line substitutions.** `dsp/conv`'s loops live in
+                 `partStageT[F, C]`, generic over `float32`/`float64`, and `algo-vecmath` is
+                 float64-only; they needed a helper dispatching on `unsafe.Sizeof`, per the precedent
+                 in `dsp/conv/streaming.go`. The `float32` instantiations keep the scalar loop.
+              3. **Unguarded, these are regressions at small N.** A dispatched vecmath call costs
+                 ~110 ns on amd64 regardless of length, so the four-parent mix loses 0.72x at a
+                 16-sample block and only turns over to 3.0x at 512. Every site is now behind a
+                 benchmarked length threshold of 64, in the style of `conv.simdThreshold`. Assume
+                 the same is true of items 1, 2 and 4 below — and, per the `MaxAbs` finding above,
+                 never assume a vecmath kernel is correct on non-finite input just because it is
+                 fast.
 
 - [ ] **Interleaved `Magnitude` / `Power` consuming `[]complex128` directly**, letting
       `dsp/spectrum` delete its deinterleave scratch pool and one whole memory pass.
