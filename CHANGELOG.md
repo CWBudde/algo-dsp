@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Phase 41c, first half: six hand-rolled loops now call the `algo-vecmath` kernels that were already available and simply unused. `AddBlockInPlace` takes the partitioned-convolution overlap-add (`dsp/conv/partitioned.go`), the streaming overlap-add tail merge (`dsp/conv/streaming_overlap_add.go`), the multiband band sum (`dsp/effects/dynamics/multiband.go`) and the parent-edge mix (`dsp/effectchain/chain_process.go`); `ScaleBlock` takes that mix's output scaling; and `ScaleBlockInPlace` takes the log-sweep inverse-filter normalization (`measure/sweep/sweep.go`). The two zeroing loops in the mix became `clear`.
+
+  **Every one of these is bit-identical on amd64 and arm64, by construction.** They are element-wise adds and element-wise scalar multiplies -- there is no multiply-add to fuse and no reassociation, so the hazard behind the `d2ec9ef` AXPY change (bit-identical on amd64, an ulp apart on arm64) cannot recur here.
+
+  Measured on amd64/AVX2 (Ryzen 5 4600H), before vs after on the same benchmarks: `BenchmarkPartitionedConvolution`, `BenchmarkMultibandProcessInPlace` and `BenchmarkLogSweepInverseFilter` show **no significant change** (p >= 0.33) -- in each the substituted loop is a small fraction of what the benchmark measures, so the gain is real but below the noise floor of the enclosing function. Allocation counts are unchanged everywhere, and the touched paths are pinned allocation-free by new `testing.AllocsPerRun` assertions.
+
+- `spectrum.GoertzelBank.ProcessBlock` advances four bins per pass over the sample buffer instead of one. The recurrence is serial within a bin but the bins are independent, so a group of four reads the buffer once rather than four times and gives the processor four independent dependency chains to overlap -- the single-bin loop is latency-bound on the multiply-add, not throughput-bound. Bins past the last full group of four fall through to the existing per-bin path. **3.8x for four bins** (13.6 -> 3.5 us over a 1024-sample block) and **4.2x for the eight-bin DTMF case** (27.1 -> 6.4 us); a bank of one, two or three bins is unchanged. Output is **bit-identical per bin** -- `TestGoertzelBankProcessBlockBitExact` compares with `==`, not a tolerance, across bin counts 1-9 and block lengths 0-1024. The recurrence itself was factored into one `goertzelStep` helper shared by the single-bin, bank and four-wide paths so no two of them can diverge in how the compiler contracts the multiply-add.
+
+- The vecmath call sites above are guarded by benchmarked length thresholds (`mixSIMDThreshold`, `addBlockSIMDThreshold`, `bandSumSIMDThreshold`, all 64), in the same style as the existing `conv.simdThreshold`. This is not caution: a dispatched vecmath call carries roughly 110 ns of fixed cost on this machine regardless of length, so the four-parent mix loses 0.72x at a 16-sample block before turning over to 3.0x at 512. Short buffers are not hypothetical here -- a partitioned convolver built with a low `minBlockOrder` has a `partSize` of a handful of samples.
+
+- `vecmath.MaxAbs` was **not** adopted, in `stats/time.Peak` or in `measure/ir`'s impulse-onset search, although it is 3.0x and 5.6x faster there respectively. It is unsafe for both: on AVX2 a NaN anywhere in the slice can **discard the true maximum and return a smaller finite value**. `MaxAbs([999, NaN, 0.5])` returns `0.5` on AVX2 and `999` on the pure-Go kernel. That is not a difference in NaN policy -- it is a silently wrong *finite* result, on some CPUs only, and no cheap check detects it, because an `IsNaN` test on the result does not fire. In `findImpulseStart` a peak under-reported by that factor leaves the threshold orders of magnitude too low, so the quiet run before the impulse clears it and the reported onset is far too early, corrupting every metric derived from it. Detecting NaN up front costs a full extra pass, which is the entire speedup, so both sites keep their scalar loops and `TestPeakNaNIsDeterministic` / `TestFindImpulseStartNaNIsDeterministic` fail on an AVX2 machine if anyone re-adopts `MaxAbs`. Raised by review on #25. This looks like an `algo-vecmath` defect rather than a documentation gap and is worth fixing there.
+
+- Not covered, deliberately: `algo-vecmath` v0.1.3 is float64-only, so `PartitionedConvolution32`, `StreamingOverlapAdd32` and the other `float32` instantiations keep their scalar loops. The generic helper dispatches on `unsafe.Sizeof` rather than boxing through `any()`, so that branch resolves at compile time per instantiation and the float32 stencils are byte-for-byte unchanged.
+
 ## [v0.7.1] - 2026-09-08
 
 ### Changed

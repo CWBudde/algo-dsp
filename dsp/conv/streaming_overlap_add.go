@@ -116,10 +116,8 @@ func (soa *StreamingOverlapAddT[F, C]) processBlockCore(input []F) {
 	unpackReal[F, C](soa.convResult[:resultLen], soa.outputPadded[:resultLen])
 
 	// Add tail from previous block
-	tailLen := len(soa.tail)
-	for i := 0; i < tailLen && i < resultLen; i++ {
-		soa.convResult[i] += soa.tail[i]
-	}
+	tailLen := min(len(soa.tail), resultLen)
+	addBlockInPlace(soa.convResult[:tailLen], soa.tail[:tailLen])
 
 	// Update tail for next block
 	newTailLen := resultLen - soa.blockSize

@@ -384,12 +384,18 @@ func (a *Analyzer) FindImpulseStart(ir []float64) (int, error) {
 }
 
 // findImpulseStart finds the first sample above threshold*peak.
+//
+// The peak scan is deliberately scalar. vecmath.MaxAbs is faster but is unsafe
+// for this input: on AVX2 a NaN anywhere in the slice can discard the true
+// maximum and return a smaller finite value -- MaxAbs([999, NaN, 0.5]) returns
+// 0.5 -- which would leave the threshold orders of magnitude too low and
+// report an onset far too early, silently corrupting every metric derived from
+// it. The loop below skips NaN and is identical on every architecture.
 func (a *Analyzer) findImpulseStart(ir []float64, thresholdRatio float64) int {
 	peak := 0.0
 
 	for _, v := range ir {
-		av := math.Abs(v)
-		if av > peak {
+		if av := math.Abs(v); av > peak {
 			peak = av
 		}
 	}

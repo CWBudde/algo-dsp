@@ -197,7 +197,16 @@ func DC(signal []float64) float64 {
 	return sum / float64(len(signal))
 }
 
-// Peak returns the peak absolute amplitude of the signal.
+// Peak returns the peak absolute amplitude of the signal. An empty signal
+// yields 0. A signal containing NaN yields NaN only if signal[0] is NaN;
+// NaN elsewhere is skipped.
+//
+// The scan is deliberately scalar. vecmath.MaxAbs is roughly 3x faster on long
+// signals but is unsafe here: on AVX2 a NaN anywhere in the slice can discard
+// the true maximum and return a smaller finite value -- MaxAbs([999, NaN, 0.5])
+// returns 0.5, while the pure-Go kernel returns 999 -- so the reported peak
+// would be silently wrong by orders of magnitude, on some CPUs only. Detecting
+// that costs a full extra pass, which is the whole speedup, so the loop stays.
 func Peak(signal []float64) float64 {
 	if len(signal) == 0 {
 		return 0
@@ -205,8 +214,7 @@ func Peak(signal []float64) float64 {
 
 	peak := math.Abs(signal[0])
 	for _, x := range signal[1:] {
-		a := math.Abs(x)
-		if a > peak {
+		if a := math.Abs(x); a > peak {
 			peak = a
 		}
 	}

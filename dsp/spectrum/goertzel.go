@@ -152,9 +152,7 @@ func (g *Goertzel) Reset() {
 // ProcessSample feeds one input sample into the analyzer and returns the input
 // unchanged, allowing the analyzer to be inserted transparently into a chain.
 func (g *Goertzel) ProcessSample(in float64) float64 {
-	s := in + g.coef*g.s0 - g.s1
-	g.s1 = g.s0
-	g.s0 = s
+	g.s0, g.s1 = goertzelStep(in, g.coef, g.s0, g.s1), g.s0
 
 	return in
 }
@@ -165,12 +163,18 @@ func (g *Goertzel) ProcessSample(in float64) float64 {
 func (g *Goertzel) ProcessBlock(buf []float64) {
 	s0, s1, coef := g.s0, g.s1, g.coef
 	for _, x := range buf {
-		s := x + coef*s0 - s1
-		s1 = s0
-		s0 = s
+		s0, s1 = goertzelStep(x, coef, s0, s1), s0
 	}
 
 	g.s0, g.s1 = s0, s1
+}
+
+// goertzelStep is the second-order recurrence s = in + coef*s0 - s1, factored
+// out so every caller -- single bin, bank, and the four-wide bank kernel --
+// compiles the identical expression and cannot diverge in how the compiler
+// contracts the multiply-add.
+func goertzelStep(in, coef, s0, s1 float64) float64 {
+	return in + coef*s0 - s1
 }
 
 // Power returns the accumulated power |X|^2 at the target frequency using the
@@ -285,20 +289,58 @@ func (b *GoertzelBank) Reset() {
 // ProcessSample feeds one input sample into every bin.
 func (b *GoertzelBank) ProcessSample(in float64) {
 	for _, g := range b.bins {
-		s := in + g.coef*g.s0 - g.s1
-		g.s1 = g.s0
-		g.s0 = s
+		g.s0, g.s1 = goertzelStep(in, g.coef, g.s0, g.s1), g.s0
 	}
 }
 
-// ProcessBlock feeds an entire block of samples into every bin. Each bin is run
-// over the whole block in turn (reusing [Goertzel.ProcessBlock]) so its state
-// stays in registers across the block; the bins are independent, so the result
-// is identical to interleaving them sample by sample.
+// ProcessBlock feeds an entire block of samples into every bin.
+//
+// Bins are advanced four at a time in a single pass over buf, rather than one
+// bin per pass: the recurrence is serial within a bin but the bins are
+// independent, so a group of four reads the sample buffer once instead of four
+// times and gives the processor four independent dependency chains to overlap.
+// Each bin's state is hoisted into locals for the duration of the pass and
+// written back afterwards. Bins left over after the last full group of four are
+// run through [Goertzel.ProcessBlock].
+//
+// Every bin sees the identical recurrence with the identical operands in the
+// identical order, so the result is bit-for-bit what per-bin passes produce.
 func (b *GoertzelBank) ProcessBlock(buf []float64) {
-	for _, g := range b.bins {
-		g.ProcessBlock(buf)
+	if len(buf) == 0 {
+		return
 	}
+
+	idx := 0
+	for ; idx+4 <= len(b.bins); idx += 4 {
+		processBlock4(b.bins[idx], b.bins[idx+1], b.bins[idx+2], b.bins[idx+3], buf)
+	}
+
+	for ; idx < len(b.bins); idx++ {
+		b.bins[idx].ProcessBlock(buf)
+	}
+}
+
+// processBlock4 advances four independent Goertzel recurrences over buf in one
+// pass. The four analyzers must be distinct; NewGoertzelBank is the only
+// producer of GoertzelBank.bins and allocates one analyzer per frequency, so
+// they always are.
+func processBlock4(g0, g1, g2, g3 *Goertzel, buf []float64) {
+	c0, a0, b0 := g0.coef, g0.s0, g0.s1
+	c1, a1, b1 := g1.coef, g1.s0, g1.s1
+	c2, a2, b2 := g2.coef, g2.s0, g2.s1
+	c3, a3, b3 := g3.coef, g3.s0, g3.s1
+
+	for _, x := range buf {
+		a0, b0 = goertzelStep(x, c0, a0, b0), a0
+		a1, b1 = goertzelStep(x, c1, a1, b1), a1
+		a2, b2 = goertzelStep(x, c2, a2, b2), a2
+		a3, b3 = goertzelStep(x, c3, a3, b3), a3
+	}
+
+	g0.s0, g0.s1 = a0, b0
+	g1.s0, g1.s1 = a1, b1
+	g2.s0, g2.s1 = a2, b2
+	g3.s0, g3.s1 = a3, b3
 }
 
 // Powers writes the per-bin power into dst and returns it. If dst has

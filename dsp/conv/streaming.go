@@ -4,6 +4,7 @@ import (
 	"unsafe"
 
 	algofft "github.com/cwbudde/algo-fft"
+	"github.com/cwbudde/algo-vecmath"
 )
 
 // StreamingConvolverT performs block-by-block convolution with persistent state.
@@ -135,5 +136,36 @@ func unpackReal[F algofft.Float, C algofft.Complex](dst []F, src []C) {
 		for i, v := range s {
 			d[i] = real(v)
 		}
+	}
+}
+
+// addBlockSIMDThreshold is the block length above which the dispatched vecmath
+// kernel beats an inlined scalar loop, in the same spirit as simdThreshold in
+// conv.go. It matters here because a partitioned convolver built with a low
+// minBlockOrder has a partSize of only a handful of samples, where the fixed
+// call cost dominates.
+const addBlockSIMDThreshold = 64
+
+// addBlockInPlace accumulates src into dst element-wise, dispatching to the
+// vecmath float64 kernel where the type parameter permits it.
+//
+// algo-vecmath is float64-only, so the float32 instantiations keep the scalar
+// loop. As in packReal and unpackReal, the branch is on unsafe.Sizeof rather
+// than any() so it resolves at compile time per instantiation: the float32
+// stencil carries no residual test, and neither path boxes a slice header on
+// what is the lowest-latency real-time path in the package.
+//
+// Both slices must have the same length; vecmath panics otherwise.
+func addBlockInPlace[F algofft.Float](dst, src []F) {
+	if unsafe.Sizeof(F(0)) == 8 && len(dst) >= addBlockSIMDThreshold {
+		d := unsafe.Slice((*float64)(unsafe.Pointer(unsafe.SliceData(dst))), len(dst))
+		s := unsafe.Slice((*float64)(unsafe.Pointer(unsafe.SliceData(src))), len(src))
+		vecmath.AddBlockInPlace(d, s)
+
+		return
+	}
+
+	for i, v := range src {
+		dst[i] += v
 	}
 }
