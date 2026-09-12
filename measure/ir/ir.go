@@ -3,6 +3,8 @@ package ir
 import (
 	"errors"
 	"math"
+
+	"github.com/cwbudde/algo-vecmath"
 )
 
 // Errors returned by IR analysis functions.
@@ -385,16 +387,7 @@ func (a *Analyzer) FindImpulseStart(ir []float64) (int, error) {
 
 // findImpulseStart finds the first sample above threshold*peak.
 func (a *Analyzer) findImpulseStart(ir []float64, thresholdRatio float64) int {
-	peak := 0.0
-
-	for _, v := range ir {
-		av := math.Abs(v)
-		if av > peak {
-			peak = av
-		}
-	}
-
-	threshold := peak * thresholdRatio
+	threshold := vecmath.MaxAbs(ir) * thresholdRatio
 	for i, v := range ir {
 		if math.Abs(v) >= threshold {
 			return i
