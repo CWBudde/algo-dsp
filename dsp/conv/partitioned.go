@@ -156,9 +156,7 @@ func (s *partStageT[F, C]) process(inputBuf []F, outputBuf []F) {
 
 		outPos := s.outputPos + s.latency - s.partSize
 		if outPos >= 0 && outPos+s.partSize <= len(outputBuf) {
-			for i := range s.partSize {
-				outputBuf[outPos+i] += s.convTime[i]
-			}
+			addBlockInPlace(outputBuf[outPos:outPos+s.partSize], s.convTime[:s.partSize])
 		}
 	} else {
 		// Multi-block path: IFFT each block individually and overlap-add.
@@ -172,9 +170,7 @@ func (s *partStageT[F, C]) process(inputBuf []F, outputBuf []F) {
 
 			outPos := s.outputPos + s.latency - s.partSize + blockIdx*s.partSize
 			if outPos >= 0 && outPos+s.partSize <= len(outputBuf) {
-				for i := range s.partSize {
-					outputBuf[outPos+i] += s.convTime[i]
-				}
+				addBlockInPlace(outputBuf[outPos:outPos+s.partSize], s.convTime[:s.partSize])
 			}
 		}
 	}
