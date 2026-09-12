@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/crossover"
+	"github.com/cwbudde/algo-vecmath"
 )
 
 // Process applies the effect chain to the block in-place.
@@ -283,6 +284,15 @@ func (c *Chain) applyNode(node Params, block []float64) {
 	rt.runtime.Process(block)
 }
 
+// mixSIMDThreshold is the block length above which routing the parent mix
+// through vecmath beats the inlined scalar loops. Threshold determined by
+// benchmarking (amd64/AVX2, BenchmarkMixReference vs BenchmarkMixVecmath in one
+// binary, median of 10): mixing four parents costs 0.72x at 16 samples and
+// 0.78x at 32, then turns over to 1.5x at 64, 1.9x at 128 and 3.0x at 512. Each
+// parent adds one dispatched call, so the shorter the block the more the fixed
+// cost dominates.
+const mixSIMDThreshold = 64
+
 func mixParentEdgesInto(
 	parents []compiledEdge,
 	dst []float64,
@@ -290,10 +300,7 @@ func mixParentEdgesInto(
 	edgeSrc func(edge compiledEdge) []float64,
 ) {
 	if len(parents) == 0 {
-		for i := range dst {
-			dst[i] = 0
-		}
-
+		clear(dst)
 		return
 	}
 
@@ -302,19 +309,32 @@ func mixParentEdgesInto(
 		return
 	}
 
-	for i := range mixBuf {
-		mixBuf[i] = 0
+	clear(mixBuf)
+
+	scale := 1.0 / float64(len(parents))
+
+	if len(mixBuf) < mixSIMDThreshold {
+		for _, edge := range parents {
+			src := edgeSrc(edge)
+			for i := range mixBuf {
+				mixBuf[i] += src[i]
+			}
+		}
+
+		for i := range mixBuf {
+			dst[i] = mixBuf[i] * scale
+		}
+
+		return
 	}
 
 	for _, edge := range parents {
-		src := edgeSrc(edge)
-		for i := range mixBuf {
-			mixBuf[i] += src[i]
-		}
+		vecmath.AddBlockInPlace(mixBuf, edgeSrc(edge))
 	}
 
-	scale := 1.0 / float64(len(parents))
-	for i := range mixBuf {
-		dst[i] = mixBuf[i] * scale
-	}
+	// dst may alias mixBuf exactly: processSidechainNode passes c.mixBuf[:len(dst)]
+	// as dst and c.mixBuf as mixBuf. ScaleBlock is element-wise and loads each
+	// vector before storing it, so identical base pointers are safe. Partial
+	// overlap never occurs -- prepareBuffers sizes every buffer at len(block).
+	vecmath.ScaleBlock(dst, mixBuf, scale)
 }
