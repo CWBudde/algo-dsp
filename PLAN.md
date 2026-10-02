@@ -21,7 +21,7 @@ This plan is **actionable**: every phase contains **checkable tasks and subtasks
 3. Architecture and Package Layout
 4. API Design Principles
 5. Phase Overview
-6. Detailed Phase Plan (Phases 0–43)
+6. Detailed Phase Plan (Phases 0–44)
 7. Appendices
    - Appendix A: Testing and Validation Strategy
    - Appendix B: Benchmarking and Performance Strategy
@@ -210,6 +210,9 @@ Phase 41b: Web Demo — Purpose, Hardening, Coverage         [2 weeks]  🔄 In 
 Phase 41c: SIMD Adoption in Existing Hot Paths             [1 week]   🔄 In Progress
 Phase 42: Release Readiness (v1.0)                         [1 week]   📋 Planned
 Phase 43: Tag and Publish v1.0                             [0.5 week] 📋 Planned
+
+# Post-v1.0
+Phase 44: Music Analysis & Source Separation (Demucs port)  [6-8 weeks] 📋 Planned
 ```
 
 ---
@@ -917,6 +920,300 @@ Exit criteria:
 
 - [ ] `v1.0.0` tag exists and release notes are published.
 
+### Phase 44: Music Analysis & Source Separation (Planned, post-v1.0)
+
+Ports the two Python steps of the `AudioVisualizer` analysis pipeline
+(`github.com/cwbudde/AudioVisualizer`, `scripts/separate.py` and `scripts/plot_analysis.py`) to
+Go, so that pipeline no longer needs a Python/PyTorch venv. The Go half of that pipeline
+(`internal/audioanalysis`) already consumes `dsp/window`, `dsp/resample`, `stats/frequency` and
+`algo-fft`; the reusable parts of it move here as well (Workstream B). Scheduled after v1.0
+because nothing in it blocks the release, and because Workstream D is by far the largest single
+item in this plan.
+
+**What the two scripts actually do — read this before scoping anything:**
+
+- `plot_analysis.py` does **no signal analysis at all**. It loads the precomputed
+  `analysis/features.json` and draws a six-panel matplotlib PNG: per track (mix, drums, bass,
+  other, vocals), the RMS curve and five band envelopes in dBFS (`20·log10(max(x, 1e-6))`,
+  y-range −85…0), shaded silence intervals and cue lines; then a 64-bin log-frequency
+  spectrogram of the mix (25 Hz–12 kHz, `magma`, −75…−10 dB). Drawing a figure is a §1.3
+  non-goal ("GUI/visualization components"), so **the renderer does not move into this
+  library**. What moves here are the data products it plots, all of which are currently computed
+  in `AudioVisualizer/internal/audioanalysis/features.go`.
+- `separate.py` runs **Demucs v4 (`htdemucs`, the Hybrid Transformer Demucs)** through PyTorch
+  to split a stereo mix into `drums`, `bass`, `other`, `vocals`, and records provenance in
+  `analysis/separation.json`. Porting it means writing a neural-network inference engine, not a
+  DSP algorithm. Workstream C adds a classical (weight-free) separation baseline, and
+  Workstream D is the actual Demucs port.
+
+#### Decision gate (resolve before starting Workstream D)
+
+- [ ] **Where the neural inference lives.** §1.2/§2.2 define this library as algorithm-only with
+      minimal dependencies. A Demucs port adds a tensor/layer runtime (conv, attention, norms,
+      GEMM) with a 42M-parameter model, which is a different kind of code from anything else
+      here. Options: (a) `dsp/separate/htdemucs` in this module, with weights supplied by the
+      caller as an `io.Reader` (never embedded, never fetched); (b) a separate module (e.g.
+      `algo-demucs`) that depends on `algo-dsp` for STFT, resampling and windows. **Lean: (b)**,
+      with Workstreams A–C landing here either way, since they are what (b) would import.
+      Record the decision here and in §2.1.
+- [ ] **Weights licence.** The Demucs code is MIT. Before anything ships beyond local use,
+      confirm the licence terms of the pretrained `htdemucs` checkpoint; this plan assumes users
+      download it themselves and the repo never redistributes it.
+
+#### Workstream A: STFT / ISTFT primitive (`dsp/spectrum` or a new `dsp/stft`)
+
+Needed by B, C and D, and also wanted by Phase 37 (noise reduction) and already open-coded in
+`dsp/effects/spectral_freeze.go` and `dsp/effects/pitch/pitch_shift_spectral.go`.
+
+- [ ] Frame-wise forward STFT over a whole buffer and as a streaming processor: window from
+      `dsp/window`, configurable `nfft`/hop, `center` framing with selectable padding
+      (`zero` as `audioanalysis` uses today, `reflect` as `torch.stft` uses in Demucs), and
+      optional orthonormal scaling (`torch.stft(normalized=True)` divides by `sqrt(nfft)`).
+- [ ] ISTFT with window-sum-squared normalization (not a COLA assumption), so non-COLA
+      window/hop pairs still reconstruct; report an error on hops where the window sum has zeros.
+- [ ] Both `float64` and `float32` (`algo-fft` plans are generic; D runs in `float32`).
+- [ ] Tests: perfect reconstruction (Hann periodic, hop = nfft/4, error < 1e-12 for float64);
+      golden vectors exported from `torch.stft`/`torch.istft` for the exact Demucs settings
+      (`nfft=4096`, `hop=1024`, Hann, reflect, normalized); zero-alloc streaming benchmark.
+- [ ] Migrate `SpectralFreeze` and the spectral pitch shifter onto it, keeping their output
+      bit-identical (or document the difference).
+
+#### Workstream B: Music-analysis features (new `measure/musicfeatures` or `stats/frame`; name TBD)
+
+Lift the generic parts of `AudioVisualizer/internal/audioanalysis` here. Current parameters
+used there, which become defaults rather than constants: analysis rate 24 kHz, `FFTSize = 2048`,
+`Hop = 240` (10 ms, frame `i` centred at `i·hop`, first frame zero-padded), band edges
+`{25, 140, 400, 2000, 6000, 12000}` Hz.
+
+- [ ] **Per-frame feature extractor** producing RMS and peak (over `center ± hop`, all
+      channels pooled), spectral centroid (via `stats/frequency.Centroid`), stereo width
+      `side/(mid+side)` with `mid=(L+R)²/4`, `side=(L−R)²/4`, and positive spectral flux on
+      `log1p(|X|)`. Channel spectra are combined by **averaging power**, not by summing the
+      signals, so out-of-phase content is not cancelled. Centroid and flux are forced to 0 below
+      an RMS gate (1e-4 today), and the gate is an option.
+- [ ] **Band envelopes**: RMS amplitude per band with one-sided power scaling
+      `2·|X|²/(N·Σw²)`, so a full-scale sine in a band reads ≈ its RMS. Bins are assigned by
+      `edge[b] ≤ f < edge[b+1]`.
+- [ ] **Log-frequency spectrogram** (frame-major, `bins` log-spaced between `fmin`/`fmax`, in
+      dBFS). **Known defect to fix during the port, not carry over:** today each FFT bin is
+      assigned to `floor(log(f/25)/log(12000/25)·64)`. At 24 kHz / 2048 points the FFT bin
+      spacing is 11.7 Hz, while the lowest log bins are only ~2.5 Hz wide, so the bottom of the
+      spectrogram has empty bins (drawn as −120 dB stripes) and others with exactly one FFT bin.
+      Use triangular or energy-preserving interpolation of FFT bins onto the log grid (as in a
+      constant-Q or mel filterbank) and test that a swept sine produces no empty rows.
+      Also export the frequency of each log bin, so a renderer can label its axis without
+      re-deriving the mapping (`plot_analysis.py` re-implements it for its tick labels).
+- [ ] **dB helper** with an explicit floor (`20·log10(max(x, floor))`, floor 1e-6 → −120 dB);
+      check whether `dsp/core` already has one before adding it.
+- [ ] **Envelope normalizer** (`Normalize` today): scale to the 95th percentile of
+      above-gate values, clamp to [0, 1], then a one-pole attack/release smoother with
+      `α = 1 − exp(−hop/(fs·τ))`. Check whether `dsp/effects/dynamics` already has the smoother
+      before writing a new one.
+- [ ] **Onset detector** (`DetectOnsets` today): adaptive spectral-novelty peak picking (local
+      maximum, ≥ 12% of the 95th-percentile flux, ≥ 1.35× the ±25-frame mean, RMS gate), then
+      the onset time is refined to the largest causal 5 ms RMS rise within ±50 ms, and events
+      closer than 75 ms are de-duplicated, keeping the stronger one. Document that events are
+      observations, not instrument labels.
+- [ ] **Tempo / beat grid** (`EstimateRhythm` today): novelty = flux minus a ±30-frame moving
+      mean, half-wave rectified; tempo score = normalized autocorrelation at lags
+      `{1, 2, 4, 8}` × beat period with linear fractional-lag interpolation; broad scan
+      60–180 BPM in 0.5 BPM steps, with candidates closer than 2 BPM merged (top 6 kept); optional
+      caller-supplied prior refined ±3 BPM in 0.01 steps; beat phase fitted in 1 ms steps to the
+      positive changes of the lowest band (kick-like energy). The prior must remain an
+      explicit input; the "105 BPM" and "4/4" in the app are song-specific and stay there.
+- [ ] **Silence finder**: all channels below a threshold (−45 dBFS today) for at least a
+      minimum duration (150 ms).
+- [ ] **Alignment check** (`CheckAlignment` today, generalized): correlation of a reference
+      against the sum of N parts over ±lag, best lag and residual RMS. This becomes the main
+      acceptance metric of Workstream D (see its exit criteria).
+- [ ] Stays in `AudioVisualizer`: WAV loading (§1.3), `features.json` schema and quantization,
+      `PixelParadeCues` (hand-authored, song-specific), the Markdown/HTML report and the PNG
+      renderer. `ResampleAligned` (tail flush + fractional group-delay compensation around
+      `resample.NewForRates`) is generic: move it into `dsp/resample` as an option such as
+      `WithZeroDelay`, with a test that an impulse at `t` lands at `t·out/in` within 0.01 sample.
+- [ ] Tests: synthetic fixtures with known answers (click train at a known BPM, gated sines per
+      band, a silent gap of known length, ±90° stereo pair for the width); a regression fixture
+      that reproduces the current `AudioVisualizer` `features.json` for `PixelParade.wav` within
+      quantization (except the log-spectrogram rows changed by the defect fix above); runnable
+      examples.
+- [ ] `examples/analysis_overview`: computes the features for a generated test signal and writes
+      a label-free spectrogram and envelope heatmap PNG with the standard library's `image/png`
+      (no font or plotting dependency in the root module). The labelled six-panel figure is
+      `AudioVisualizer`'s job.
+
+#### Workstream C: Classical source separation baseline (`dsp/separate`)
+
+Weight-free, small, deterministic, and useful whenever the model is not available. It also gives
+Workstream D a sanity baseline to beat.
+
+- [ ] **HPSS** (Fitzgerald 2010): median filter across time (harmonic) and across frequency
+      (percussive) on the STFT magnitude, with soft Wiener masks of power `p` (Driedger et al.
+      2014 margin variant optional). Outputs harmonic + percussive (+ residual), and the outputs
+      sum back to the input.
+- [ ] **Mid/side centre extraction** as a cheap "vocals-ish / centre" split; documented as
+      heuristic.
+- [ ] **Generic soft-mask / Wiener application helper** shared with D's optional Wiener
+      post-filter and with Phase 37.
+- [ ] Tests: sum of outputs reconstructs the input (< −100 dB); a sine + click mixture separates
+      with > 20 dB isolation; zero-alloc streaming path where feasible.
+
+#### Workstream D: Demucs v4 (`htdemucs`) inference port
+
+All numbers below were read from the actual checkpoint used by `AudioVisualizer`
+(`955717e8-8726e21a.th`, SHA-256 `8726e21a993978c7ba086d3872e7608d7d5bfca646ca4aca459ffda844faa8b4`,
+84 MB) and from `demucs==4.1.0`'s `apply.py`/`api.py`/`htdemucs.py`.
+
+**Checkpoint facts:**
+
+- The `.th` file is a **pickled torch dict** (`klass`, `args`, `kwargs`, `state`,
+  `training_args`, `metrics`), not safetensors. Go must not unpickle it.
+- `state` has **533 tensors, 41,984,456 parameters, all `float16`**. PyTorch upcasts them to
+  `float32` on `load_state_dict`, so inference runs in **float32 with fp16-rounded weights**.
+  The `--float32` flag in `separate.py` affects only the output WAV encoding.
+- `kwargs`: `sources=[drums, bass, other, vocals]`, `audio_channels=2`, `samplerate=44100`,
+  `segment=Fraction(39,5)` (7.8 s), `channels=48`, `growth=2`, `nfft=4096` (hop = nfft/4 = 1024),
+  `cac=True` (complex-as-channels), `depth=4`, `rewrite=True` (1×1 conv + GLU),
+  `kernel_size=8`, `stride=4`, `time_stride=2`, `context=1`, `context_enc=0`, `norm_starts=4`,
+  `norm_groups=4`, `dconv_mode=3` (DConv residual branch in encoder and decoder),
+  `dconv_depth=2`, `dconv_comp=8`, `freq_emb=0.2`, `emb_scale=10`, `emb_smooth=True`,
+  `multi_freqs=[]`, `bottom_channels=512`, `t_layers=5`, `t_heads=8`, `t_hidden_scale=4.0`,
+  `t_emb="sin"`, `t_max_period=10000`, `t_weight_pos_embed=1.0`, `t_norm_in=True`,
+  `t_norm_first=True`, `t_norm_out=True`, `t_layer_scale=True`, `t_gelu=True`,
+  `t_cross_first=False`, sparse attention off, `wiener_iters=0`, `rescale=0.1`.
+  Training-only settings (`t_dropout=0.02`, `t_cape_augment`, `t_sin_random_shift`) have no
+  effect at inference and must be ignored, not implemented.
+
+**Pipeline exactly as `separate.py` runs it** (`-n htdemucs -d cpu --shifts 1 --float32
+--clip-mode none`, seed 42, 4 threads):
+
+1. Load the mix (48 kHz stereo for `PixelParade.wav`) and resample it to 44.1 kHz with
+   `julius` (sinc, 48000:44100 = 160:147). `algo-dsp`'s resampler is not `julius`, so its output
+   will differ slightly; parity tests must feed the **Python-resampled 44.1 kHz input** to
+   isolate model parity from resampler differences.
+2. Normalize: `ref = mean over channels`; `x = (x − ref.mean()) / (ref.std() + 1e-8)`.
+   `torch.std` is the **unbiased (n−1)** estimator. The inverse is applied to every output stem.
+3. **Shifts** (`--shifts 1` still shifts): pad the mix by `max_shift = 0.5·44100 = 22050` on
+   both sides, draw `offset = random.randint(0, 22050)` from **Python's `random` module**
+   (seeded 42; Mersenne Twister), run on `padded[offset : offset + length + max_shift − offset]`,
+   and keep `out[..., max_shift − offset:]`. The Go API takes the offsets explicitly (a slice,
+   one per shift), so the caller controls determinism without emulating Python's RNG. Also
+   **fix in `AudioVisualizer`**: `separation.json` does not currently record the drawn offset,
+   so the reference run cannot be reproduced bit-exactly from its own metadata. Record it.
+4. **Split**: `segment_length = int(44100·7.8) = 343980` samples, `overlap = 0.25` →
+   `stride = 257985`, offsets `0, stride, 2·stride, …`; each chunk is weighted by a triangle
+   (`1…L/2, L−L/2…1`, normalized to max 1, `transition_power = 1`), and the summed outputs are
+   divided by the summed weights. The last chunk is shorter and zero-padded; the model pads each
+   chunk to the training length (`use_train_segment`) and crops its output back.
+5. **Model forward** (per chunk, batch 1):
+   - Spectral branch input: reflect-padded STFT (`pad = 3·hop/2`, `le = ceil(len/hop)`,
+     `normalized=True`, `center=True`, Hann), drop the Nyquist bin (2048 bins remain) and
+     crop frames to `[2 : 2 + le]`; with CaC, real and imaginary parts become channels
+     (2 audio × 2 = 4 input channels). Normalize by the spectrogram's mean/std, and the
+     time branch by its own mean/std; both are undone at the output.
+   - 4-level encoder in each branch (channels 48 → 96 → 192 → 384): spectral `Conv2d`
+     kernel `[8,1]` stride `[4,1]` over frequency, temporal `Conv1d` kernel 8 stride 4; each
+     followed by GELU, a `DConv` residual (dilated conv → GroupNorm(1) → GELU → 1×1 conv →
+     GroupNorm(1) → GLU → LayerScale, depth 2, compress 8), and the 1×1 `rewrite` conv + GLU.
+     `ScaledEmbedding` frequency embedding (scale 10, smooth init, weight 0.2) is added after the
+     first spectral encoder. `norm_starts=4` means no GroupNorm in the 4 main layers (check this
+     against the state-dict keys, not the docs).
+   - Bottleneck: the spectral branch's remaining (frequency × time) grid is treated as one
+     sequence, both branches are projected 384 → 512 (`bottom_channels`), and go through the **cross-domain transformer**:
+     5 layers, d_model 512, 8 heads, FFN 2048, pre-norm, LayerScale, GELU. Layers alternate
+     self-attention (even) and cross-attention between the branches (odd). Positional encodings:
+     2-D sinusoidal for the spectral branch, 1-D sinusoidal for the time branch, both
+     `max_period` 10000 with weight 1.0, plus input LayerNorm and output GroupNorm-style norms.
+     Projected back 512 → 384.
+   - Decoders mirror the encoders with skip connections (`ConvTranspose`), output 4 sources ×
+     CaC channels on the spectral side and 4 sources × 2 channels on the time side.
+   - Output: iSTFT of the spectral estimate (inverse padding/cropping of step 5a) **plus** the
+     time-branch estimate, per source.
+6. Denormalize and write float32 stems (`--clip-mode none`: no clipping, no rescale). In
+   `AudioVisualizer` the stems come out at 44.1 kHz and are later resampled to 24 kHz for
+   analysis; the mix analysis uses 48 kHz → 24 kHz. Workstream B's alignment check is what
+   proves the two paths share t = 0.
+
+**Implementation tasks:**
+
+- [ ] **Weight conversion** (one-time, offline, Python): `scripts/htdemucs_export.py` loads the
+      `.th`, writes `htdemucs.safetensors` (keep fp16; 84 MB) plus `htdemucs.json` (the
+      `kwargs` above, source order, source checkpoint SHA-256). Keep it out of the module
+      proper; it is a tool, like the legacy Pascal references.
+- [ ] **safetensors reader** in Go (8-byte LE header length + JSON header + raw little-endian
+      data; fp16 → fp32 conversion at load), validating tensor names/shapes against a
+      checked-in manifest of all 533 keys so a different checkpoint fails loudly instead of
+      producing garbage.
+- [ ] **Minimal tensor/layer runtime**, float32, NCHW, no autograd: `Conv1d`, `Conv2d` (kernel
+      along one axis only, which simplifies it), `ConvTranspose1d/2d`, `Linear`, `GroupNorm`,
+      `LayerNorm`, `GELU` (exact erf form, as PyTorch's default), `GLU`, `LayerScale`,
+      multi-head attention (softmax computed in float32 with max subtraction), sinusoidal 1-D/2-D
+      embeddings, `ScaledEmbedding`. Each layer gets a golden-tensor test.
+- [ ] **GEMM is the hot path** (convs as im2col + GEMM, attention, FFN). `algo-vecmath` is
+      float64-only today (see Phase 41c), so a cache-blocked `float32` GEMM is needed: either
+      a new `algo-vecmath` primitive (preferred; tracked in that repo's PLAN.md) or a local
+      blocked pure-Go kernel as a scalar reference first. Same rule as Phase 41c: a scalar
+      reference path plus parity tests before any SIMD.
+- [ ] **Parallelism**: chunks are independent, so run them on a worker pool and accumulate
+      results **in offset order**, so output is bit-identical regardless of worker count.
+      Expose `WithWorkers(n)`.
+- [ ] **Golden-tensor harness** (`scripts/htdemucs_golden.py`): run the PyTorch model on a
+      short fixed input with forward hooks and dump every module's input and output to `.npy`/
+      safetensors, so Go parity can be checked layer by layer. Without this, debugging a 533-
+      tensor port means comparing only the final output, which is hopeless.
+- [ ] **API sketch** (final shape decided at the gate):
+      `htdemucs.Load(r io.Reader) (*Model, error)`;
+      `(*Model).Separate(ctx, mix [][]float32, opts...) (map[string][][]float32, error)` with
+      `WithShiftOffsets([]int)`, `WithOverlap(0.25)`, `WithSegment(seconds)`,
+      `WithWorkers(n)`, progress callback; input must already be 44.1 kHz stereo (resampling
+      stays the caller's choice, via `dsp/resample`). `context.Context` for cancellation, since
+      a run takes minutes.
+- [ ] **Provenance struct** returned with the result, so callers can write their own
+      `separation.json`: model id, checkpoint SHA-256, offsets used, segment/overlap, workers,
+      elapsed time, and the Go/`algo-dsp` version. The library does not write files.
+
+**Performance reference:** PyTorch CPU, 4 threads, took **126.7 s for 86.12 s of audio**
+(≈ 1.47× real time) on the dev machine. First target: ≤ 3× that with the scalar GEMM and
+the worker pool; then close the gap with SIMD. Track in `BENCHMARKS.md` as a per-chunk
+benchmark (one 7.8 s chunk), never a full-song benchmark in CI.
+
+**Risks:**
+
+- fp32 summation order differs from PyTorch/MKL, so bit-exactness is impossible; parity is
+  statistical (tolerances below). Accumulating attention/FFN dot products in float64 is an
+  option if the tolerance is missed.
+- Memory: activations of a 7.8 s chunk at 48–512 channels are hundreds of MB if every layer's
+  output is kept; free skip tensors as soon as the decoder consumes them and reuse buffers.
+- Upstream Demucs is archived and unmaintained; the port pins one checkpoint and does not try
+  to track other variants (`htdemucs_ft`, `htdemucs_6s`, `mdx`). Adding `htdemucs_ft` later is
+  "four models plus a bag average", which the API should not preclude.
+
+#### Workstream E: Hand-back to `AudioVisualizer`
+
+- [ ] Replace `scripts/separate.py` with a Go `cmd/separate` on top of D, and
+      `internal/audioanalysis` with calls to B. Delete the Python venv requirement
+      (`scripts/requirements-stems.txt`); keep the Python export/golden scripts for
+      re-verification only.
+- [ ] Move the six-panel overview figure from matplotlib to Go in `AudioVisualizer`
+      (renderer of its choice), consuming B's log-bin frequencies for axis labels. Bands colours
+      and dB ranges as in `plot_analysis.py` (bands cyan/pink/violet/yellow/white, −85…0 dBFS
+      envelopes, −75…−10 dB spectrogram).
+- [ ] Bump `separation.json` with `implementation: "go"` and the shift offset, so old Python
+      and new Go stems can be told apart.
+
+Exit criteria:
+
+- [ ] A/B: `go test -race` passes for the new packages; STFT round-trip and torch golden
+      vectors pass; features reproduce the existing `PixelParade` `features.json` within
+      quantization (spectrogram rows excepted, as documented).
+- [ ] C: HPSS reconstruction < −100 dB and isolation > 20 dB on the synthetic fixture.
+- [ ] D: every layer matches the PyTorch golden tensors to a relative error ≤ 1e-4; full-song
+      stems for `PixelParade.wav` (same 44.1 kHz input, same shift offset) match the PyTorch
+      stems at a residual of ≤ −80 dBFS RMS per stem; the stem sum still passes
+      `AudioVisualizer`'s alignment gate (correlation ≥ 0.95, |lag| ≤ 0.5 ms).
+- [ ] D: output is bit-identical across `WithWorkers(1)` and `WithWorkers(8)`; runtime within
+      the performance target above.
+- [ ] E: `AudioVisualizer` regenerates `analysis/` without Python.
+
 ---
 
 ## Appendix A: Testing and Validation Strategy
@@ -1062,6 +1359,7 @@ Quarter-end success criteria:
 | 0.16    | 2026-07-29 | Claude  | Completed Phase 36: added the YIN pitch detector (`YINDetector`), the streaming `PitchTracker` with median/hold smoothing, the auto-tune `PitchCorrector`, and the `Scale`/note-conversion helpers — all in `dsp/effects/pitch`; the two existing shifters now share the new semitone conversions. Recorded the decision not to use `modulation.FrequencyShifter` for correction (it breaks harmonicity). Effect-chain/web-demo wiring and an FFT difference function deliberately left out of scope.                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 0.17    | 2026-07-29 | Claude  | Completed Phase 33: added `dsp/effects/vocoder_example_test.go` (defaults, `ProcessBlock` envelope transfer, Bark layout with a synthesis-Q override, multirate downsampling) — the vocoder was the last effect in `dsp/effects` without runnable examples — and closed the reachable coverage gaps so every exported vocoder option/getter/setter is at 100%. Corrected the phase's stale `NewVocoder(sampleRate, bandLayout, opts...)` signature to the real `NewVocoder(sampleRate, opts...)` + `WithBandLayout`, and recorded the `WithDownsampling` multirate feature the phase text had omitted. No API change.                                                                                                                                                                                                                                                                                                  |
 | 0.18    | 2026-07-29 | Claude  | Phase 40 partially completed: added `internal/benchguard` + `cmd/benchguard`, a benchmark regression guard that diffs `go test -bench` output against the checked-in `benchmarks/baseline.json` (`allocs/op` exact and `B/op` +10% gate; `ns/op` +50% is reported but non-gating unless `-enforce-timing` is passed on quiet hardware). Broadened `just bench-ci` from 3 to 6 packages (20 benchmarks) with a `count` parameter, added `just bench-guard` / `just bench-baseline`, and wired an advisory `Benchmark Guard` CI job that drives the same justfile recipe. Timing was demoted to non-gating after measurement: repeat runs with no code change moved benchmarks 43% on an idle machine and up to 7x under load, while allocation columns held steady throughout. The remaining item — refreshing `BENCHMARKS.md` from >=2 machines — is blocked on hardware availability, so the phase stays In Progress. |
+| 0.19    | 2026-10-03 | Claude  | Added Phase 44 (post-v1.0): port of `AudioVisualizer`'s `separate.py` (Demucs v4 `htdemucs` inference) and `plot_analysis.py` (feature data products only; rendering stays a non-goal). Split into STFT/ISTFT primitive, music-analysis features, classical HPSS baseline, the Demucs port with checkpoint and pipeline facts read from the real checkpoint, and hand-back; with a decision gate on whether neural inference belongs in this module. |
 
 ---
 
