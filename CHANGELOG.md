@@ -2,6 +2,40 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.3] - 2026-10-03
+
+### Added
+
+- `resample.Resampler.ProcessInto` converts complete mono blocks into a caller's
+  destination without allocations. Short destinations and unrepresentable
+  output lengths are rejected atomically with `ErrShortDst` / `ErrOutputTooLarge`.
+- `GroupDelayInput` and `GroupDelayOutput` report fractional FIR delay in their
+  respective sample-frame units. Callers explicitly feed zeros to flush tails.
+- `Resampler.Clone` creates a reset stream sharing immutable coefficients and
+  owning independent history, avoiding repeated filter design for each channel.
+
+### Changed
+
+- `PredictOutputLen` computes the exact next-block output length in constant
+  time, without overflowing at 32-bit input limits. Lengths that cannot fit in
+  `int` saturate at the platform maximum and are rejected by `ProcessInto`.
+- Streaming positions are relative to the current block, so WASM streams no
+  longer overflow after 2^31 input frames. `Process` retains the previous FIR
+  coefficients and arithmetic, and now allocates only its returned output.
+- Regression tests cover bitwise legacy/chunk parity across ten ratios and all
+  quality modes, atomic rejection, independent clones, group delay/tail flushing,
+  zero allocations, and the WASM stream-counter boundary. Extreme 384 kHz to
+  8 kHz quality tests validate explicitly scaled taps per phase; default filter
+  design remains unchanged for compatibility.
+
+### Validation
+
+- Full native tests, race tests, lint, and native/WASM vet pass; the resampler
+  suite also runs under Node/V8 with `GOOS=js GOARCH=wasm`. Package coverage is
+  94%, and `ProcessInto` benchmarks report 0 B/op and 0 allocs/op for all quality
+  modes. At 384 kHz to 8 kHz, scaling taps per phase by 48 measures 74/89/106 dB
+  rejection at 6 kHz for Fast/Balanced/Best; regression floors are 55/75/90 dB.
+
 ## [v0.7.2] - 2026-10-02
 
 ### Added

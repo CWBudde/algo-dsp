@@ -108,6 +108,85 @@ func TestStreamingConsistency(t *testing.T) {
 	}
 }
 
+func TestConvenienceWrappersMatchProcess(t *testing.T) {
+	input := sine(1000, 48000, 257)
+
+	tests := []struct {
+		name     string
+		up, down int
+		process  func([]float64, ...Option) ([]float64, error)
+	}{
+		{"up", 2, 1, Upsample2x},
+		{"down", 1, 2, Downsample2x},
+		{"rational", 3, 2, func(input []float64, opts ...Option) ([]float64, error) {
+			return Resample(input, 3, 2, opts...)
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := []Option{WithQuality(QualityBest), WithCutoffScale(0.8), WithKaiserBeta(6)}
+			r := mustResampler(t, tc.up, tc.down, opts...)
+
+			got, err := tc.process(input, opts...)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			checkOutputBits(t, got, r.Process(input))
+		})
+	}
+
+	if _, err := Resample(input, 0, 1); err != ErrInvalidRatio {
+		t.Fatalf("invalid ratio error = %v", err)
+	}
+	// These deliberately invalid design parameters must propagate errors
+	// through the allocating convenience APIs, not return partial samples.
+	invalid := WithCutoffScale(math.SmallestNonzeroFloat64)
+	if _, err := Upsample2x(input, invalid); err == nil {
+		t.Fatal("Upsample2x accepted invalid filter")
+	}
+
+	if _, err := Downsample2x(input, invalid); err == nil {
+		t.Fatal("Downsample2x accepted invalid filter")
+	}
+}
+
+func TestOptionsAndEmptyCompatibility(t *testing.T) {
+	r := mustResampler(t, 3, 2, nil, WithQuality(QualityFast),
+		WithTapsPerPhase(12), WithCutoffScale(0.8), WithKaiserBeta(4))
+	if r.Quality() != QualityFast || r.TapsPerPhase() != 12 {
+		t.Fatalf("quality/taps = %v/%d", r.Quality(), r.TapsPerPhase())
+	}
+
+	if got := r.Process(nil); got != nil {
+		t.Fatalf("empty Process = %v, want nil", got)
+	}
+
+	if (&Resampler{}).TapsPerPhase() != 0 {
+		t.Fatal("empty resampler reports nonzero taps")
+	}
+
+	for _, rates := range [][2]float64{{0, 48000}, {48000, -1}, {math.NaN(), 48000}, {48000, math.NaN()}} {
+		if _, err := NewForRates(rates[0], rates[1]); err != ErrInvalidRate {
+			t.Fatalf("invalid rates %v error = %v", rates, err)
+		}
+	}
+
+	approx, err := NewForRates(44100, 48000, WithMaxDenominator(8))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, down := approx.Ratio(); down > 8 {
+		t.Fatalf("denominator = %d, exceeds configured cap", down)
+	}
+	// Out-of-range option values must retain the documented defaults.
+	defaultStream := mustResampler(t, 3, 2)
+	ignored := mustResampler(t, 3, 2, WithTapsPerPhase(0), WithCutoffScale(2),
+		WithKaiserBeta(-1), WithMaxDenominator(0))
+	checkOutputBits(t, ignored.Prototype(), defaultStream.Prototype())
+}
+
 func sine(freq, sampleRate float64, n int) []float64 {
 	out := make([]float64, n)
 	for i := range n {
@@ -140,14 +219,6 @@ func dbRatio(out, in float64) float64 {
 
 func min(a, b int) int {
 	if a < b {
-		return a
-	}
-
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
 		return a
 	}
 

@@ -3,6 +3,7 @@ package resample
 import (
 	"errors"
 	"math"
+	"math/bits"
 )
 
 var (
@@ -10,6 +11,10 @@ var (
 	ErrInvalidRatio = errors.New("resample: invalid ratio")
 	// ErrInvalidRate indicates an invalid input/output sample rate.
 	ErrInvalidRate = errors.New("resample: invalid sample rate")
+	// ErrShortDst indicates that the destination cannot hold the next output block.
+	ErrShortDst = errors.New("resample: destination too short")
+	// ErrOutputTooLarge indicates an output block whose length cannot fit in int.
+	ErrOutputTooLarge = errors.New("resample: output length exceeds int capacity")
 )
 
 // Quality controls default anti-aliasing filter settings.
@@ -145,7 +150,6 @@ type Resampler struct {
 
 	phase      int
 	inputIndex int
-	totalIn    int
 	history    []float64
 }
 
@@ -241,8 +245,19 @@ func Resample(input []float64, up, down int, opts ...Option) ([]float64, error) 
 func (r *Resampler) Reset() {
 	r.phase = 0
 	r.inputIndex = 0
-	r.totalIn = 0
 	r.history = r.history[:0]
+}
+
+// Clone creates a fresh, reset mono stream with the same ratio and filter.
+// It shares immutable coefficients with r but allocates independent history.
+// It does not copy r's streaming position or samples. Each channel can use a
+// clone without redesigning the same FIR; distinct clones may run concurrently.
+func (r *Resampler) Clone() *Resampler {
+	return &Resampler{
+		up: r.up, down: r.down, quality: r.quality, profile: r.profile,
+		taps: r.taps, phases: r.phases, maxPhaseLn: r.maxPhaseLn,
+		history: make([]float64, 0, r.maxPhaseLn-1),
+	}
 }
 
 // Process converts an input block and preserves internal state for streaming.
@@ -251,68 +266,153 @@ func (r *Resampler) Process(input []float64) []float64 {
 		return nil
 	}
 
-	nOut := r.PredictOutputLen(len(input))
-	out := make([]float64, 0, nOut)
+	out := make([]float64, r.PredictOutputLen(len(input)))
 
-	work := make([]float64, len(r.history)+len(input))
-	copy(work, r.history)
-	copy(work[len(r.history):], input)
+	n, err := r.ProcessInto(out, input)
+	if err != nil {
+		panic(err)
+	}
 
-	baseIndex := r.totalIn - len(r.history)
-	lastAvail := r.totalIn + len(input) - 1
+	return out[:n]
+}
 
-	for r.inputIndex <= lastAvail {
-		taps := r.phases[r.phase]
+// ProcessInto converts an entire mono input block into dst, preserving filter
+// state across calls. It writes exactly PredictOutputLen(len(input)) samples
+// without allocating. Input and dst must not overlap. Empty input does nothing.
+//
+// ErrShortDst and ErrOutputTooLarge leave both dst and filter state unchanged.
+// The FIR is causal: initial output includes its group delay. To flush a finite
+// signal's tail, explicitly process zeros; no tail is added implicitly. Repeated
+// input loops remain continuous when processed without Reset.
+func (r *Resampler) ProcessInto(dst, input []float64) (int, error) {
+	count, fits := r.outputLen(len(input))
+	if !fits {
+		return 0, ErrOutputTooLarge
+	}
 
-		var y float64
+	if len(dst) < count {
+		return 0, ErrShortDst
+	}
 
-		for k, c := range taps {
-			idx := r.inputIndex - k
-			if idx < baseIndex || idx > lastAvail {
+	if len(input) == 0 {
+		return 0, nil
+	}
+
+	if count == 0 {
+		r.inputIndex -= len(input)
+	} else {
+		r.processInto(dst[:count], input)
+	}
+
+	r.retainHistory(input)
+
+	return count, nil
+}
+
+func (r *Resampler) processInto(dst, input []float64) {
+	for outputIndex := range dst {
+		var value float64
+
+		for tapIndex, coefficient := range r.phases[r.phase] {
+			index := r.inputIndex - tapIndex
+
+			var sample float64
+			if index >= 0 {
+				sample = input[index]
+			} else if index >= -len(r.history) {
+				sample = r.history[len(r.history)+index]
+			} else {
 				continue
 			}
 
-			y += c * work[idx-baseIndex]
+			value += coefficient * sample
 		}
 
-		out = append(out, y)
+		dst[outputIndex] = value
 
-		r.phase += r.down
-		r.inputIndex += r.phase / r.up
-		r.phase %= r.up
+		advance := r.advancePhase()
+		if outputIndex == len(dst)-1 {
+			// Rebase before adding, so neither the offset nor an absolute
+			// stream counter can overflow on 32-bit/WASM targets.
+			r.inputIndex = advance - (len(input) - r.inputIndex)
+		} else {
+			r.inputIndex += advance
+		}
 	}
-
-	r.totalIn += len(input)
-
-	keep := max(0, r.maxPhaseLn-1)
-	if keep > len(work) {
-		keep = len(work)
-	}
-
-	r.history = append(r.history[:0], work[len(work)-keep:]...)
-
-	return out
 }
 
-// PredictOutputLen estimates output samples generated for the next Process call.
+func (r *Resampler) advancePhase() int {
+	advance, remainder := r.down/r.up, r.down%r.up
+	if r.phase >= r.up-remainder {
+		r.phase -= r.up - remainder
+		advance++
+	} else {
+		r.phase += remainder
+	}
+
+	return advance
+}
+
+func (r *Resampler) retainHistory(input []float64) {
+	keep := r.maxPhaseLn - 1
+	if len(input) >= keep {
+		r.history = r.history[:keep]
+		copy(r.history, input[len(input)-keep:])
+
+		return
+	}
+
+	retained := min(len(r.history), keep-len(input))
+	copy(r.history[:retained], r.history[len(r.history)-retained:])
+	r.history = r.history[:retained+len(input)]
+	copy(r.history[retained:], input)
+}
+
+// PredictOutputLen returns the exact output length for the next Process or
+// ProcessInto call without changing state. Nonpositive lengths return zero.
+// If the output length cannot fit in int, it returns the maximum int value;
+// ProcessInto then rejects the input with ErrOutputTooLarge.
 func (r *Resampler) PredictOutputLen(inputLen int) int {
-	if inputLen <= 0 {
-		return 0
-	}
-
-	lastAvail := r.totalIn + inputLen - 1
-	i := r.inputIndex
-	phase := r.phase
-
-	count := 0
-	for i <= lastAvail {
-		count++
-		phase += r.down
-		i += phase / r.up
-		phase %= r.up
-	}
+	count, _ := r.outputLen(inputLen)
 
 	return count
+}
+
+func (r *Resampler) outputLen(inputLen int) (int, bool) {
+	if inputLen <= r.inputIndex {
+		return 0, true
+	}
+	// ceil(((inputLen-inputIndex)*up-phase)/down), using a wide product
+	// so prediction is safe even for lengths near the platform's int limit.
+	high, low := bits.Mul64(uint64(inputLen-r.inputIndex), uint64(r.up))
+	low, borrow := bits.Sub64(low, uint64(r.phase), 0)
+	high -= borrow
+	maxLength := int(^uint(0) >> 1)
+
+	limitHigh, limitLow := bits.Mul64(uint64(maxLength), uint64(r.down))
+	if high > limitHigh || (high == limitHigh && low > limitLow) {
+		return maxLength, false
+	}
+
+	quotient, remainder := bits.Div64(high, low, uint64(r.down))
+	if remainder != 0 {
+		quotient++
+	}
+
+	return int(quotient), true
+}
+
+// GroupDelayInput returns the linear-phase FIR delay in input sample frames.
+// It can be fractional. Feeding zeros explicitly flushes the delayed tail.
+func (r *Resampler) GroupDelayInput() float64 {
+	return float64(len(r.taps)-1) / (2 * float64(r.up))
+}
+
+// GroupDelayOutput returns the linear-phase FIR delay in output sample frames.
+// It can be fractional; a transport can discard its ceiling for integer-frame
+// alignment, then trim the flushed output to the desired signal duration.
+func (r *Resampler) GroupDelayOutput() float64 {
+	return float64(len(r.taps)-1) / (2 * float64(r.down))
 }
 
 // Ratio returns reduced up/down conversion factors.
