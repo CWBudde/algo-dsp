@@ -24,3 +24,19 @@ func ExampleStreamingStats() {
 	// Output:
 	// len=4 dc=0.0
 }
+
+func ExampleSummary() {
+	s := timestats.Summary([]float32{1, -2, 3})
+	fmt.Printf("min=%.1f max=%.1f energy=%.1f\n", s.Min, s.Max, s.Energy)
+
+	// Output:
+	// min=-2.0 max=3.0 energy=14.0
+}
+
+func ExampleSummaryStats() {
+	s := timestats.Summary([]float64{1, -1, 1, -1})
+	fmt.Printf("min=%.1f max=%.1f energy=%.1f\n", s.Min, s.Max, s.Energy)
+
+	// Output:
+	// min=-1.0 max=1.0 energy=4.0
+}

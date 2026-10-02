@@ -2,7 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [v0.7.2] - 2026-10-02
+
+### Added
+
+- `stats/time.Summary` computes minimum, maximum, and float64 energy directly
+  from float32 or float64 signals in one allocation-free pass. It avoids the
+  higher-order moments and decibel conversions in `Calculate`, and needs no
+  float32-to-float64 scratch buffer. Extrema and energy follow `Calculate`'s
+  sample order and floating-point semantics, including signed zero, NaN, and
+  infinity. Empty input returns zero-valued `SummaryStats`. Runnable examples,
+  numerical parity tests, allocation checks, and benchmarks cover both widths.
 
 ### Changed
 
