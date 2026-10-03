@@ -40,3 +40,10 @@ func ExampleSummaryStats() {
 	// Output:
 	// min=-1.0 max=1.0 energy=4.0
 }
+
+func ExampleNearestZeroCrossing() {
+	index, found := timestats.NearestZeroCrossing([]float32{1, 0, 1, -1, -1}, 2, 1)
+	fmt.Printf("index=%d found=%v\n", index, found)
+	// Output:
+	// index=1 found=true
+}

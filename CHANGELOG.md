@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.4] - 2026-10-03
+
+### Added
+
+- `stats/time.NearestZeroCrossing` locates the nearest exact zero or finite
+  strict-sign crossing in an inclusive bounded sample window for float32 or
+  float64 signals, with earlier-index tie breaking. EOF targets are supported;
+  empty/invalid inputs and absent candidates return `found=false`. NaN and
+  infinity gaps are not bridged. The helper does not allocate or mutate samples,
+  and radius clipping remains safe at 32-bit and 64-bit integer limits.
+- Regression tests cover both precisions, signed zeros, subnormal and extreme
+  samples, window boundaries, EOF, nonfinite values, exhaustive window parity,
+  named sample types, mutation/NaN-payload preservation, and zero allocations.
+  Runnable examples and zero-allocation benchmarks accompany the API.
+
+### Validation
+
+- Full native tests and race tests, lint, native/WASM vet, and actual Node/V8
+  WASM statistics tests pass. The new helper has 100% statement coverage; the
+  package has 98.9%. Float32/float64 benchmarks report 0 B/op and 0 allocs/op.
+
 ## [v0.7.3] - 2026-10-03
 
 ### Added
