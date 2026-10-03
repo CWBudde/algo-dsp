@@ -219,11 +219,19 @@ type widenerRuntime struct {
 	sampleRate float64
 	mix        float64
 	scratchBuf []float64
+	monoDelay  []float64
+	monoWrite  int
 }
 
 func (r *widenerRuntime) Configure(ctx Context, p Params) error {
 	r.sampleRate = ctx.SampleRate
 	r.mix = core.Clamp(p.GetNum("mix", 0.5), 0, 1)
+
+	size := max(int(ctx.SampleRate*0.001), 1)
+	if len(r.monoDelay) != size {
+		r.monoDelay = make([]float64, size)
+		r.monoWrite = 0
+	}
 
 	return configureWidener(r.fx, ctx.SampleRate, core.Clamp(p.GetNum("width", 1), 0, 4))
 }
@@ -240,19 +248,27 @@ func (r *widenerRuntime) Process(block []float64) {
 	dry := r.scratchBuf[:len(block)]
 	copy(dry, block)
 
-	delaySamples := max(int(r.sampleRate*0.001), 1)
-
 	for i := range block {
 		left := dry[i]
+		right := r.monoDelay[r.monoWrite]
+		r.monoDelay[r.monoWrite] = left
 
-		right := dry[i]
-		if i >= delaySamples {
-			right = dry[i-delaySamples]
+		r.monoWrite++
+		if r.monoWrite == len(r.monoDelay) {
+			r.monoWrite = 0
 		}
 
 		l2, r2 := r.fx.ProcessStereo(left, right)
 		wet := 0.5 * (l2 + r2)
 		block[i] = dry[i]*(1-r.mix) + wet*r.mix
+	}
+}
+
+func (r *widenerRuntime) ProcessStereo(left, right []float64) {
+	for i := range left {
+		l, rt := r.fx.ProcessStereo(left[i], right[i])
+		left[i] += (l - left[i]) * r.mix
+		right[i] += (rt - right[i]) * r.mix
 	}
 }
 
@@ -302,17 +318,28 @@ func (r *tremoloRuntime) Process(block []float64) {
 }
 
 type delayRuntime struct {
-	fx *effects.Delay
+	fx        *effects.Delay
+	hasConfig bool
 }
 
 func (r *delayRuntime) Configure(ctx Context, p Params) error {
-	return configureDelay(
+	err := configureDelay(
 		r.fx,
 		ctx.SampleRate,
 		core.Clamp(p.GetNum("time", 0.25), 0.001, 2),
 		core.Clamp(p.GetNum("feedback", 0.35), 0, 0.99),
 		core.Clamp(p.GetNum("mix", 0.25), 0, 1),
 	)
+	if err != nil {
+		return err
+	}
+
+	if !r.hasConfig {
+		err = r.fx.SetTime(core.Clamp(p.GetNum("time", 0.25), 0.001, 2))
+		r.hasConfig = true
+	}
+
+	return wrapConfigureErr(err)
 }
 
 func (r *delayRuntime) Process(block []float64) {
@@ -322,6 +349,10 @@ func (r *delayRuntime) Process(block []float64) {
 type rotaryRuntime struct {
 	fx         *modulation.RotarySpeaker
 	scratchBuf []float64
+}
+
+func (r *rotaryRuntime) ProcessStereo(left, right []float64) {
+	r.fx.ProcessStereoInPlace(left, right)
 }
 
 func (r *rotaryRuntime) Configure(ctx Context, p Params) error {

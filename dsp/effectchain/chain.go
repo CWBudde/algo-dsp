@@ -24,11 +24,19 @@ type Chain struct {
 	graph *compiledGraph
 	nodes map[string]*nodeRuntime
 
-	outBuf       map[string][]float64
-	splitLowBuf  map[string][]float64
-	splitHighBuf map[string][]float64
-	crossovers   map[string]*crossover.Crossover
-	mixBuf       []float64
+	outBuf           map[string][]float64
+	splitLowBuf      map[string][]float64
+	splitHighBuf     map[string][]float64
+	crossovers       map[string]*crossover.Crossover
+	mixBuf           []float64
+	planar           []*Chain
+	preparedFrames   int
+	channelIndex     int
+	latency          int
+	lastError        error
+	edgeCompensation map[compiledEdge]int
+	delayedEdges     map[compiledEdge]*routingDelay
+	renderSerial     uint64
 }
 
 // New creates a Chain with the given context and registry.
@@ -69,6 +77,24 @@ func (c *Chain) LoadGraph(jsonGraph string) error {
 	}
 
 	c.graph = graph
+	for _, buffers := range []map[string][]float64{c.outBuf, c.splitLowBuf, c.splitHighBuf} {
+		for id := range buffers {
+			exists := false
+			if graph != nil {
+				_, exists = graph.Nodes[id]
+			}
+
+			if !exists {
+				delete(buffers, id)
+			}
+		}
+	}
+
+	c.updateLatency()
+	c.planar = nil
+	c.preparedFrames = 0
+	c.lastError = nil
+	c.delayedEdges = nil
 
 	return nil
 }
@@ -82,6 +108,13 @@ func (c *Chain) Reset() {
 	c.splitLowBuf = nil
 	c.splitHighBuf = nil
 	c.mixBuf = nil
+	c.planar = nil
+	c.preparedFrames = 0
+	c.latency = 0
+	c.lastError = nil
+	c.edgeCompensation = nil
+	c.delayedEdges = nil
+	c.renderSerial = 0
 }
 
 // syncNodes synchronises runtime effect instances with the compiled graph topology.
@@ -131,6 +164,10 @@ func (c *Chain) syncNodes(graph *compiledGraph) error {
 
 			rt = &nodeRuntime{effectType: node.Type, runtime: runtime}
 			c.nodes[node.ID] = rt
+		}
+
+		if conv, ok := rt.runtime.(*convReverbRuntime); ok {
+			conv.channelIndex = c.channelIndex
 		}
 
 		err := rt.runtime.Configure(c.ctx, node)

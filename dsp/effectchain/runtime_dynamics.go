@@ -242,6 +242,11 @@ type deesserRuntime struct {
 }
 
 func (r *deesserRuntime) Configure(ctx Context, p Params) error {
+	freq := core.Clamp(p.GetNum("freqHz", 6000), 1000, ctx.SampleRate*0.49)
+	if err := r.fx.SetFrequency(min(freq, r.fx.SampleRate()*0.49)); err != nil {
+		return fmt.Errorf("effectchain: prepare de-esser frequency: %w", err)
+	}
+
 	err := r.fx.SetSampleRate(ctx.SampleRate)
 	if err != nil {
 		return fmt.Errorf("effectchain: configure de-esser sample rate: %w", err)

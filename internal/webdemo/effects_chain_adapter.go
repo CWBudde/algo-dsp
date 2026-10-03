@@ -1,6 +1,7 @@
 package webdemo
 
 import (
+	"github.com/cwbudde/algo-dsp/dsp/effectchain"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
 
@@ -26,21 +27,21 @@ func (a *irLibAdapter) GetIR(index int) ([][]float64, float64, bool) {
 type eqFilterDesigner struct{}
 
 func (d *eqFilterDesigner) NormalizeFamily(family string) string {
-	return normalizeEQFamily(family)
+	return (effectchain.BuiltInFilterDesigner{}).NormalizeFamily(family)
 }
 
 func (d *eqFilterDesigner) NormalizeFamilyForType(kind, family string) string {
-	return normalizeEQFamilyForType(kind, family)
+	return (effectchain.BuiltInFilterDesigner{}).NormalizeFamilyForType(kind, family)
 }
 
 func (d *eqFilterDesigner) NormalizeOrder(kind, family string, order int) int {
-	return normalizeEQOrder(kind, family, order)
+	return (effectchain.BuiltInFilterDesigner{}).NormalizeOrder(kind, family, order)
 }
 
 func (d *eqFilterDesigner) ClampShape(kind, family string, freq, sampleRate, value float64) float64 {
-	return clampEQShape(kind, family, freq, sampleRate, value)
+	return (effectchain.BuiltInFilterDesigner{}).ClampShape(kind, family, freq, sampleRate, value)
 }
 
 func (d *eqFilterDesigner) BuildChain(family, kind string, order int, freq, gainDB, q, sampleRate float64) *biquad.Chain {
-	return buildEQChain(family, kind, order, freq, gainDB, q, sampleRate)
+	return (effectchain.BuiltInFilterDesigner{}).BuildChain(family, kind, order, freq, gainDB, q, sampleRate)
 }

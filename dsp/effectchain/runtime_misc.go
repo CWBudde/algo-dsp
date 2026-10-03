@@ -2,6 +2,7 @@ package effectchain
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/cwbudde/algo-dsp/dsp/core"
 	"github.com/cwbudde/algo-dsp/dsp/effects"
@@ -10,37 +11,48 @@ import (
 
 // convReverbRuntime handles the "reverb-conv" node type using partitioned convolution.
 type convReverbRuntime struct {
-	fx         *reverb.ConvolutionReverb
-	irIndex    int
-	irProvider IRProvider
+	fx           *reverb.ConvolutionReverb
+	irIndex      int
+	sampleRate   float64
+	irProvider   IRProvider
+	channelIndex int
 }
 
-func (r *convReverbRuntime) Configure(_ Context, p Params) error {
+func (r *convReverbRuntime) Configure(ctx Context, p Params) error {
 	irIndex := int(p.GetNum("irIndex", 0))
 	wet := p.GetNum("wet", 0.35)
 
-	if r.fx == nil || r.irIndex != irIndex {
+	if r.fx == nil || r.irIndex != irIndex || r.sampleRate != ctx.SampleRate {
 		if r.irProvider == nil {
-			return nil
+			return fmt.Errorf("effectchain: convolution requires an impulse response provider")
 		}
 
-		samples, _, ok := r.irProvider.GetIR(irIndex)
-		if !ok || len(samples) == 0 {
-			return nil
+		samples, sampleRate, ok := r.irProvider.GetIR(irIndex)
+		if !ok || len(samples) == 0 || len(samples[0]) == 0 {
+			return fmt.Errorf("effectchain: unavailable impulse response %d", irIndex)
 		}
 
-		ch0 := samples[0]
-		kernel := make([]float64, len(ch0))
-		copy(kernel, ch0)
+		if sampleRate != ctx.SampleRate {
+			return fmt.Errorf("effectchain: impulse response sample rate %g differs from %g", sampleRate, ctx.SampleRate)
+		}
 
-		if len(samples) > 1 {
-			ch1 := samples[1]
+		for _, channel := range samples {
+			if len(channel) != len(samples[0]) {
+				return fmt.Errorf("effectchain: unequal impulse response channels")
+			}
 
-			n := min(len(ch0), len(ch1))
-			for i := range n {
-				kernel[i] = (ch0[i] + ch1[i]) * 0.5
+			for _, sample := range channel {
+				if math.IsNaN(sample) || math.IsInf(sample, 0) {
+					return fmt.Errorf("effectchain: non-finite impulse response")
+				}
 			}
 		}
+
+		if len(samples) > 2 {
+			return fmt.Errorf("effectchain: impulse response must be mono or stereo")
+		}
+
+		kernel := samples[r.channelIndex%len(samples)]
 
 		cr, err := reverb.NewConvolutionReverb(kernel, 7)
 		if err != nil {
@@ -48,11 +60,13 @@ func (r *convReverbRuntime) Configure(_ Context, p Params) error {
 		}
 
 		r.fx = cr
+		r.fx.SetLatencyAlignedDry(true)
 		r.irIndex = irIndex
+		r.sampleRate = ctx.SampleRate
 	}
 
 	if r.fx != nil {
-		r.fx.SetWetDry(wet, 1.0)
+		r.fx.SetWetDry(core.Clamp(wet, 0, 1), 1.0)
 	}
 
 	return nil

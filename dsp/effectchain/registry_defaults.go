@@ -38,7 +38,7 @@ func WithFilterDesigner(d FilterDesigner) RegistryOption {
 //
 //nolint:funlen,gocognit,cyclop,maintidx
 func DefaultRegistry(opts ...RegistryOption) *Registry {
-	cfg := &registryConfig{}
+	cfg := &registryConfig{filterDesigner: BuiltInFilterDesigner{}}
 	for _, opt := range opts {
 		opt(cfg)
 	}
@@ -302,6 +302,8 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 
 		return &vocoderRuntime{fx: fx}, nil
 	})
+
+	registerExtended(r)
 
 	return r
 }

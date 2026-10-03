@@ -2,9 +2,48 @@
 
 All notable changes to this project are documented in this file.
 
-## [v0.8.1] - Unreleased
+## [v0.8.1] - 2026-10-03
+
+### Added
+
+- `effectchain.DefaultDescriptors` exposes all 51 registered effects with
+  sample-rate-aware parameter bounds, explicit units/enumerations and owned
+  factory presets. New factories cover parametric/graphic/dynamic EQ,
+  A/C weighting, auto-wah, frequency shifting, panning, Haas and crosstalk.
+  Default filter construction supports Butterworth, Bessel, Chebyshev I/II,
+  elliptic and RBJ designs without application-supplied builders.
+- `Chain.Prepare`, `PreparePlanar`, `ProcessPlanar` and `ResetProcessing`
+  provide reusable mono/stereo graph rendering with no built-in processing
+  allocations. Stereo effects preserve both channels. `Response` evaluates
+  actual filter/EQ coefficients, including current dynamic EQ coefficients;
+  `Transfer` evaluates actual static dynamics gain computers.
+- Public streaming WSOLA/Hermite and phase-vocoder pitch processors and
+  spectral freeze preserve their sample clocks across arbitrary partitions.
+  `Chain.Latency` reports technical lookahead and aligns parallel graph paths;
+  callers can compensate startup and flush selected-duration output.
+  Checked processing propagates runtime failures rather than silently using
+  partially processed audio.
+- `EstimateWorkspace` bounds cold graph/runtime/preparation allocations,
+  including maximum block geometry, convolution IR lengths and technical
+  branch delays, before constructors allocate DSP storage.
+- `Chain.TryUpdateGraph` stages zero-latency parameter changes atomically while
+  preserving unchanged processors, including expensive convolution spectra
+  and tails. Convolution wet-only updates retain all histories; topology, IR
+  or buffered-latency changes explicitly request full replacement.
 
 ### Fixed
+
+- Convolution graph nodes reject missing, nonfinite, unequal-length or
+  sample-rate-mismatched IRs and preserve corresponding stereo IR channels.
+  Their optional aligned dry path follows the actual engine latency.
+- Delay reset restores the configured initial time, mono widener histories
+  persist across blocks, and multiband compression reuses prepared crossover
+  buffers. Independent numerical tests cover long pitch/freeze histories,
+  every catalogue default/preset, partition/reset parity, true stereo routing
+  and zero allocations after FFT/WSOLA startup.
+- Butterworth graphic-EQ pole construction uses analytic quadratic factors,
+  preserving stable low-frequency bands at high sample rates where generic
+  quartic root finding lost precision.
 
 - `measure/thd`: aggregate metrics (THD+N, Noise, SINAD, OddHD, EvenHD,
   RubNBuzz) are now computed by power summation (root-sum-square) instead of

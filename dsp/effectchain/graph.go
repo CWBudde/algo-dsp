@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 )
 
 const (
@@ -42,10 +43,12 @@ type graphState struct {
 // compiledGraph holds the compiled effect chain graph with adjacency info
 // and a topologically sorted traversal order.
 type compiledGraph struct {
-	Nodes    map[string]Params
-	Incoming map[string][]compiledEdge
-	Outgoing map[string][]compiledEdge
-	Order    []string
+	Nodes        map[string]Params
+	Incoming     map[string][]compiledEdge
+	Outgoing     map[string][]compiledEdge
+	Order        []string
+	MainIncoming map[string][]compiledEdge
+	SideIncoming map[string][]compiledEdge
 }
 
 type compiledEdge struct {
@@ -141,6 +144,8 @@ func parseGraph(raw string) (*compiledGraph, error) {
 		}
 	}
 
+	sort.Strings(queue)
+
 	order := make([]string, 0, len(nodes))
 	for len(queue) > 0 {
 		id := queue[0]
@@ -159,11 +164,26 @@ func parseGraph(raw string) (*compiledGraph, error) {
 		return nil, errors.New("invalid chain graph: contains cycle")
 	}
 
+	mainIncoming := make(map[string][]compiledEdge, len(nodes))
+	sideIncoming := make(map[string][]compiledEdge)
+
+	for id, parents := range incoming {
+		for _, edge := range parents {
+			if edge.ToPortIndex == 1 && (nodes[id].Type == "dyn-lookahead" || nodes[id].Type == "vocoder") {
+				sideIncoming[id] = append(sideIncoming[id], edge)
+			} else {
+				mainIncoming[id] = append(mainIncoming[id], edge)
+			}
+		}
+	}
+
 	return &compiledGraph{
-		Nodes:    nodes,
-		Incoming: incoming,
-		Outgoing: outgoing,
-		Order:    order,
+		Nodes:        nodes,
+		Incoming:     incoming,
+		Outgoing:     outgoing,
+		Order:        order,
+		MainIncoming: mainIncoming,
+		SideIncoming: sideIncoming,
 	}, nil
 }
 

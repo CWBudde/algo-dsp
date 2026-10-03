@@ -2,6 +2,7 @@ package band
 
 import (
 	"math"
+	"math/cmplx"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
@@ -56,7 +57,6 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 	g := math.Pow(G, 1.0/float64(order))
 	g0 := math.Pow(G0, 1.0/float64(order))
 	beta := math.Pow(e, -1.0/float64(order)) * math.Tan(wb/2)
-	c0 := math.Cos(w0)
 
 	sections := make([]biquad.Coefficients, 0, order)
 
@@ -65,34 +65,33 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 		ui := (2.0*float64(i) - 1) / float64(order)
 		si := math.Sin(math.Pi * ui * 0.5)
 
-		Di := beta*beta + 2*si*beta + 1
-		if Di == 0 {
-			return nil, ErrInvalidParams
-		}
-
-		B := [5]float64{
-			(g*g*beta*beta + 2*g*g0*si*beta + g0*g0) / Di,
-			-4 * c0 * (g0*g0 + g*g0*si*beta) / Di,
-			2 * (g0*g0*(1+2*c0*c0) - g*g*beta*beta) / Di,
-			-4 * c0 * (g0*g0 - g*g0*si*beta) / Di,
-			(g*g*beta*beta - 2*g*g0*si*beta + g0*g0) / Di,
-		}
-
-		A := [5]float64{
-			1,
-			-4 * c0 * (1 + si*beta) / Di,
-			2 * (1 + 2*c0*c0 - beta*beta) / Di,
-			-4 * c0 * (1 - si*beta) / Di,
-			(beta*beta - 2*si*beta + 1) / Di,
-		}
-
-		biquads, err := splitFOSection(B, A)
-		if err != nil {
-			return nil, err
+		// Factor P(z)^2 + 2*sin(theta)*beta*P(z)*(z^2-1)
+		// + beta^2*(z^2-1)^2 analytically. Generic quartic roots lose
+		// precision when low-frequency roots cluster around z=1.
+		ci := math.Cos(math.Pi * ui * 0.5)
+		poleV := complex(si*beta, ci*beta)
+		zeroV := poleV * complex(g/g0, 0)
+		pole1, pole2 := bandQuadraticRoots(w0, poleV)
+		zero1, zero2 := bandQuadraticRoots(w0, zeroV)
+		gain := (g*g*beta*beta + 2*g*g0*si*beta + g0*g0) / (beta*beta + 2*si*beta + 1)
+		sectionGain := math.Sqrt(gain)
+		biquads := []biquad.Coefficients{
+			{B0: sectionGain, B1: -2 * real(zero1) * sectionGain, B2: real(zero1*cmplx.Conj(zero1)) * sectionGain, A1: -2 * real(pole1), A2: real(pole1 * cmplx.Conj(pole1))},
+			{B0: sectionGain, B1: -2 * real(zero2) * sectionGain, B2: real(zero2*cmplx.Conj(zero2)) * sectionGain, A1: -2 * real(pole2), A2: real(pole2 * cmplx.Conj(pole2))},
 		}
 
 		sections = append(sections, biquads...)
 	}
 
 	return sections, nil
+}
+
+// bandQuadraticRoots solves (1+v)z²-2*cos(w0)z+(1-v)=0.
+// sin(w0)² replaces 1-cos(w0)² to avoid cancellation near DC.
+func bandQuadraticRoots(w0 float64, v complex128) (complex128, complex128) {
+	sine := math.Sin(w0)
+	delta := cmplx.Sqrt(v*v - complex(sine*sine, 0))
+	cosine := complex(math.Cos(w0), 0)
+
+	return (cosine + delta) / (1 + v), (cosine - delta) / (1 + v)
 }

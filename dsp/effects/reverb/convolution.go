@@ -14,11 +14,14 @@ import (
 // response using non-uniformly partitioned overlap-add (UPOLA) convolution,
 // which provides low-latency processing even for very long impulse responses.
 type ConvolutionReverb struct {
-	engine  *conv.PartitionedConvolution
-	wet     float64
-	dry     float64
-	latency int
-	buf     []float64 // scratch output buffer
+	engine      *conv.PartitionedConvolution
+	wet         float64
+	dry         float64
+	latency     int
+	buf         []float64 // scratch output buffer
+	dryHistory  []float64
+	dryPosition int
+	alignedDry  bool
 }
 
 // NewConvolutionReverb creates a convolution reverb from a mono IR.
@@ -53,6 +56,34 @@ func (r *ConvolutionReverb) SetWetDry(wet, dry float64) {
 	r.dry = dry
 }
 
+// SetLatencyAlignedDry delays the dry path by the convolution engine's technical
+// latency. This permits a host to compensate startup latency without shifting
+// the dry signal relative to the impulse response. The default is false to
+// preserve the traditional send-reverb API. Enabling reserves bounded storage.
+func (r *ConvolutionReverb) SetLatencyAlignedDry(enabled bool) {
+	if enabled && len(r.dryHistory) != r.latency {
+		r.dryHistory = make([]float64, r.latency)
+		r.dryPosition = 0
+	}
+
+	r.alignedDry = enabled
+}
+
+// Prepare reserves scratch space for blocks up to maxFrames without advancing
+// convolution history. Later ProcessInPlace calls within that size allocate no
+// scratch space. Existing processing state is preserved.
+func (r *ConvolutionReverb) Prepare(maxFrames int) error {
+	if maxFrames < 1 {
+		return errors.New("reverb: invalid maximum block size")
+	}
+
+	if len(r.buf) < maxFrames {
+		r.buf = make([]float64, maxFrames)
+	}
+
+	return nil
+}
+
 // ProcessInPlace applies reverb to block in place (mono).
 // The output is: block[i] = dry*block[i] + wet*reverb(block[i]).
 // The block length may vary between calls.
@@ -78,7 +109,18 @@ func (r *ConvolutionReverb) ProcessInPlace(block []float64) error {
 	dry := r.dry
 
 	for i := range n {
-		block[i] = dry*block[i] + wet*reverbOut[i]
+		drySample := block[i]
+		if r.alignedDry {
+			drySample = r.dryHistory[r.dryPosition]
+			r.dryHistory[r.dryPosition] = block[i]
+
+			r.dryPosition++
+			if r.dryPosition == len(r.dryHistory) {
+				r.dryPosition = 0
+			}
+		}
+
+		block[i] = dry*drySample + wet*reverbOut[i]
 	}
 
 	return nil
@@ -87,6 +129,8 @@ func (r *ConvolutionReverb) ProcessInPlace(block []float64) error {
 // Reset clears convolution state.
 func (r *ConvolutionReverb) Reset() {
 	r.engine.Reset()
+	clear(r.dryHistory)
+	r.dryPosition = 0
 }
 
 // Latency returns the reverb latency in samples.

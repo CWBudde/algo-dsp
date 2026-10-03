@@ -72,8 +72,9 @@ type MultibandMetrics struct {
 // instantiate two MultibandCompressor instances or implement stereo-linking
 // externally.
 type MultibandCompressor struct {
-	xover       *crossover.MultiBand
-	compressors []*Compressor
+	preparedBands [][]float64
+	xover         *crossover.MultiBand
+	compressors   []*Compressor
 
 	// Configuration
 	crossoverFreqs []float64
@@ -451,7 +452,16 @@ func (mc *MultibandCompressor) ProcessInPlace(buf []float64) {
 	}
 
 	// Split into bands using block processing
-	bandBlocks := mc.xover.ProcessBlock(buf)
+	if len(mc.preparedBands) == 0 || cap(mc.preparedBands[0]) < len(buf) {
+		_ = mc.Prepare(len(buf))
+	}
+
+	bandBlocks := mc.preparedBands
+	for i := range bandBlocks {
+		bandBlocks[i] = bandBlocks[i][:len(buf)]
+	}
+
+	_ = mc.xover.ProcessBlockInto(buf, bandBlocks)
 
 	// Compress each band in place
 	for i, block := range bandBlocks {
@@ -476,6 +486,29 @@ func (mc *MultibandCompressor) ProcessInPlace(buf []float64) {
 	for i := 1; i < len(bandBlocks); i++ {
 		vecmath.AddBlockInPlace(buf, bandBlocks[i])
 	}
+}
+
+// Prepare reserves independent band scratch storage without processing audio
+// or changing detector/crossover history. ProcessInPlace up to maxFrames then
+// allocates no storage. Existing prepared storage is retained when large enough.
+func (mc *MultibandCompressor) Prepare(maxFrames int) error {
+	if maxFrames < 1 {
+		return fmt.Errorf("multiband compressor: invalid maximum block size")
+	}
+
+	if len(mc.preparedBands) == 0 {
+		mc.preparedBands = make([][]float64, mc.NumBands())
+	}
+
+	for i := range mc.preparedBands {
+		if cap(mc.preparedBands[i]) < maxFrames {
+			mc.preparedBands[i] = make([]float64, maxFrames)
+		} else {
+			mc.preparedBands[i] = mc.preparedBands[i][:maxFrames]
+		}
+	}
+
+	return nil
 }
 
 // ProcessStereoInPlace applies multiband compression independently to left and

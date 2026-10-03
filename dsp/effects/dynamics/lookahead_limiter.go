@@ -155,10 +155,19 @@ func (l *LookaheadLimiter) Release() float64 { return l.releaseMs }
 // Lookahead returns lookahead time in milliseconds.
 func (l *LookaheadLimiter) Lookahead() float64 { return l.lookaheadMs }
 
+// Latency returns the actual rounded lookahead delay in samples.
+func (l *LookaheadLimiter) Latency() int { return len(l.delayBuf) - 1 }
+
 // SampleRate returns sample rate in Hz.
 func (l *LookaheadLimiter) SampleRate() float64 { return l.sampleRate }
 
 // Reset clears limiter and delay state.
+// CalculateOutputLevel reports the actual steady-state limiting gain computer
+// without advancing lookahead or release history.
+func (l *LookaheadLimiter) CalculateOutputLevel(inputMagnitude float64) float64 {
+	return l.comp.CalculateOutputLevel(inputMagnitude)
+}
+
 func (l *LookaheadLimiter) Reset() {
 	l.comp.Reset()
 

@@ -8,8 +8,11 @@ import (
 )
 
 // Process applies the effect chain to the block in-place.
-// Returns false if the chain has no valid graph with I/O nodes.
+// Returns false if the chain has no valid graph with I/O nodes or a checked
+// runtime fails. Err reports checked processing failures.
 func (c *Chain) Process(block []float64) bool {
+	c.lastError = nil
+
 	if len(block) == 0 {
 		return true
 	}
@@ -19,8 +22,12 @@ func (c *Chain) Process(block []float64) bool {
 		return false
 	}
 
+	if len(c.edgeCompensation) != 0 {
+		c.prepareRoutingDelays(len(block))
+	}
+
 	buffers, splitLow, splitHigh, mixBuf := c.prepareBuffers(block, g)
-	edgeSrc := graphEdgeSource(g, buffers, splitLow, splitHigh)
+	edgeSrc := c.edgeSource(g, buffers, splitLow, splitHigh)
 
 	for _, id := range g.Order {
 		if id == InputNodeID {
@@ -28,9 +35,18 @@ func (c *Chain) Process(block []float64) bool {
 		}
 
 		c.processNode(id, g, buffers, splitLow, splitHigh, mixBuf, edgeSrc)
+
+		if c.lastError != nil {
+			delete(c.outBuf, InputNodeID)
+			return false
+		}
 	}
 
-	return copyOutputToBlock(block, buffers)
+	ok := copyOutputToBlock(block, buffers)
+
+	delete(c.outBuf, InputNodeID)
+
+	return ok
 }
 
 // NodeRuntime returns the Runtime for the given node ID, or nil.
@@ -47,6 +63,7 @@ func (c *Chain) prepareBuffers(
 	block []float64,
 	g *compiledGraph,
 ) (map[string][]float64, map[string][]float64, map[string][]float64, []float64) {
+	c.renderSerial++
 	if c.outBuf == nil {
 		c.outBuf = make(map[string][]float64, len(g.Nodes))
 	}
@@ -122,29 +139,6 @@ func graphEdgeSource(
 	}
 }
 
-func splitMainAndSideParents(nodeType string, parents []compiledEdge) ([]compiledEdge, []compiledEdge) {
-	mainParents := parents
-
-	var sideParents []compiledEdge
-
-	if nodeType != "dyn-lookahead" && nodeType != "vocoder" {
-		return mainParents, sideParents
-	}
-
-	mainParents = mainParents[:0]
-
-	for _, edge := range parents {
-		if edge.ToPortIndex == 1 {
-			sideParents = append(sideParents, edge)
-			continue
-		}
-
-		mainParents = append(mainParents, edge)
-	}
-
-	return mainParents, sideParents
-}
-
 func (c *Chain) processNode(
 	id string,
 	g *compiledGraph,
@@ -157,8 +151,7 @@ func (c *Chain) processNode(
 	node := g.Nodes[id]
 	dst := buffers[id]
 
-	parents := g.Incoming[id]
-	mainParents, sideParents := splitMainAndSideParents(node.Type, parents)
+	mainParents, sideParents := g.MainIncoming[id], g.SideIncoming[id]
 	mixParentEdgesInto(mainParents, dst, mixBuf, edgeSrc)
 
 	if c.processSplitFreqNode(id, node, dst, splitLow, splitHigh) {
@@ -281,7 +274,11 @@ func (c *Chain) applyNode(node Params, block []float64) {
 		return
 	}
 
-	rt.runtime.Process(block)
+	if processor, ok := rt.runtime.(ErrorProcessor); ok {
+		c.lastError = processor.ProcessWithError(block)
+	} else {
+		rt.runtime.Process(block)
+	}
 }
 
 // mixSIMDThreshold is the block length above which routing the parent mix

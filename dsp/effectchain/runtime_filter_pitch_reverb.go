@@ -37,6 +37,7 @@ type filterRuntime struct {
 	lastGainDB     float64
 	lastShape      float64
 	lastSampleRate float64
+	lastStopband   float64
 }
 
 //nolint:cyclop,funlen,nestif
@@ -45,7 +46,26 @@ func (r *filterRuntime) Configure(ctx Context, p Params) error {
 	kind := normalizeFilterKind(p.Type, p.Str["kind"])
 	freq := core.Clamp(p.GetNum("freq", 1200), 20, ctx.SampleRate*0.49)
 	gainDB := core.Clamp(p.GetNum("gain", 0), -24, 24)
-	shape := core.Clamp(p.GetNum("q", 0.707), 0.2, 8)
+	shape := p.GetNum("q", 0.707)
+
+	stopband := core.Clamp(p.GetNum("stopbandDB", 40), 10, 120)
+	if family == familyChebyshev1 || family == familyElliptic {
+		if value, ok := p.Num["rippleDB"]; ok {
+			shape = core.Clamp(value, 0.05, 12)
+		}
+	}
+
+	if family == familyChebyshev2 {
+		if _, ok := p.Num["stopbandDB"]; ok {
+			shape = stopband
+		}
+	}
+
+	if kind == kindPeak && family != familyRBJ {
+		if value, ok := p.Num["bandwidthHz"]; ok {
+			shape = core.Clamp(value, 1, ctx.SampleRate*0.49)
+		}
+	}
 
 	if family == familyMoog {
 		order := int(math.Round(p.GetNum("order", 8)))
@@ -60,6 +80,7 @@ func (r *filterRuntime) Configure(ctx Context, p Params) error {
 			floatEq(r.lastFreq, freq) &&
 			floatEq(r.lastGainDB, gainDB) &&
 			floatEq(r.lastShape, shape) &&
+			floatEq(r.lastStopband, stopband) &&
 			floatEq(r.lastSampleRate, ctx.SampleRate) {
 			return nil
 		}
@@ -117,6 +138,7 @@ func (r *filterRuntime) Configure(ctx Context, p Params) error {
 		r.lastGainDB = gainDB
 		r.lastShape = shape
 		r.lastSampleRate = ctx.SampleRate
+		r.lastStopband = stopband
 
 		return nil
 	}
@@ -137,11 +159,16 @@ func (r *filterRuntime) Configure(ctx Context, p Params) error {
 			floatEq(r.lastFreq, freq) &&
 			floatEq(r.lastGainDB, gainDB) &&
 			floatEq(r.lastShape, shape) &&
+			floatEq(r.lastStopband, stopband) &&
 			floatEq(r.lastSampleRate, ctx.SampleRate) {
 			return nil
 		}
 
 		next := r.designer.BuildChain(family, kind, order, freq, gainDB, shape, ctx.SampleRate)
+		if _, builtin := r.designer.(BuiltInFilterDesigner); builtin && family == familyElliptic && (kind == kindLowpass || kind == kindHighpass) {
+			next = ellipticPassChain(kind, order, freq, gainDB, shape, stopband, ctx.SampleRate)
+		}
+
 		switch {
 		case r.fx == nil:
 			r.fx = next
@@ -167,6 +194,7 @@ func (r *filterRuntime) Configure(ctx Context, p Params) error {
 		r.lastGainDB = gainDB
 		r.lastShape = shape
 		r.lastSampleRate = ctx.SampleRate
+		r.lastStopband = stopband
 
 		return nil
 	}
@@ -220,7 +248,8 @@ func (r *bassRuntime) Process(block []float64) {
 }
 
 type timePitchRuntime struct {
-	fx *pitch.PitchShifter
+	fx     *pitch.PitchShifter
+	stream *pitch.StreamingPitchShifter
 }
 
 func (r *timePitchRuntime) Configure(ctx Context, p Params) error {
@@ -231,7 +260,7 @@ func (r *timePitchRuntime) Configure(ctx Context, p Params) error {
 		ov = seq - 1
 	}
 
-	return configureTimePitch(
+	err := configureTimePitch(
 		r.fx,
 		ctx.SampleRate,
 		core.Clamp(p.GetNum("semitones", 0), -24, 24),
@@ -239,14 +268,22 @@ func (r *timePitchRuntime) Configure(ctx Context, p Params) error {
 		ov,
 		core.Clamp(p.GetNum("search", 15), 2, 40),
 	)
+	if err != nil {
+		return err
+	}
+
+	r.stream, err = pitch.NewStreamingPitchShifter(r.fx)
+
+	return err
 }
 
 func (r *timePitchRuntime) Process(block []float64) {
-	r.fx.ProcessInPlace(block)
+	_ = r.stream.ProcessInPlace(block)
 }
 
 type spectralPitchRuntime struct {
-	fx *pitch.SpectralPitchShifter
+	fx     *pitch.SpectralPitchShifter
+	stream *pitch.StreamingSpectralPitchShifter
 }
 
 func (r *spectralPitchRuntime) Configure(ctx Context, p Params) error {
@@ -258,21 +295,29 @@ func (r *spectralPitchRuntime) Configure(ctx Context, p Params) error {
 		hop = frame - 1
 	}
 
-	return configureSpectralPitch(
+	err := configureSpectralPitch(
 		r.fx,
 		ctx.SampleRate,
 		core.Clamp(p.GetNum("semitones", 0), -24, 24),
 		frame,
 		hop,
 	)
+	if err != nil {
+		return err
+	}
+
+	r.stream, err = pitch.NewStreamingSpectralPitchShifter(r.fx)
+
+	return err
 }
 
 func (r *spectralPitchRuntime) Process(block []float64) {
-	r.fx.ProcessInPlace(block)
+	_ = r.stream.ProcessInPlace(block)
 }
 
 type spectralFreezeRuntime struct {
-	fx *effects.SpectralFreeze
+	fx     *effects.SpectralFreeze
+	stream *effects.StreamingSpectralFreeze
 }
 
 func (r *spectralFreezeRuntime) Configure(ctx Context, p Params) error {
@@ -286,7 +331,7 @@ func (r *spectralFreezeRuntime) Configure(ctx Context, p Params) error {
 
 	frozen := p.GetNum("frozen", 1) >= 0.5
 
-	return configureSpectralFreeze(
+	err := configureSpectralFreeze(
 		r.fx,
 		ctx.SampleRate,
 		frame,
@@ -296,10 +341,17 @@ func (r *spectralFreezeRuntime) Configure(ctx Context, p Params) error {
 		frozen,
 		window.TypeHann,
 	)
+	if err != nil {
+		return err
+	}
+
+	r.stream, err = effects.NewStreamingSpectralFreeze(r.fx)
+
+	return err
 }
 
 func (r *spectralFreezeRuntime) Process(block []float64) {
-	r.fx.ProcessInPlace(block)
+	_ = r.stream.ProcessInPlace(block)
 }
 
 type granularRuntime struct {

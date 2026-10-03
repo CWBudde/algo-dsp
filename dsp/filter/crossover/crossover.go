@@ -219,3 +219,27 @@ func (m *MultiBand) Reset() {
 		s.Reset()
 	}
 }
+
+// ProcessBlockInto splits input into caller-owned band buffers without
+// allocation. There must be NumBands equally sized output buffers, each matching
+// input length. Band buffers must not overlap each other; the last band may
+// alias input exactly. Invalid geometry is rejected before changing state.
+func (m *MultiBand) ProcessBlockInto(input []float64, output [][]float64) error {
+	if len(output) != m.bands {
+		return fmt.Errorf("crossover: incorrect output band count")
+	}
+
+	for _, band := range output {
+		if len(band) != len(input) {
+			return fmt.Errorf("crossover: output band length differs from input")
+		}
+	}
+
+	remainder := input
+	for i, stage := range m.stages {
+		stage.ProcessBlock(remainder, output[i], output[m.bands-1])
+		remainder = output[m.bands-1]
+	}
+
+	return nil
+}

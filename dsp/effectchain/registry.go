@@ -3,6 +3,7 @@ package effectchain
 import (
 	"errors"
 	"fmt"
+	"sort"
 )
 
 // Factory builds one Runtime instance for a node.
@@ -50,4 +51,16 @@ func (r *Registry) MustRegister(effectType string, factory Factory) {
 // Lookup returns the factory for the given effect type, or nil.
 func (r *Registry) Lookup(effectType string) Factory {
 	return r.factories[effectType]
+}
+
+// Types returns registered effect identifiers in stable lexical order.
+func (r *Registry) Types() []string {
+	types := make([]string, 0, len(r.factories))
+	for id := range r.factories {
+		types = append(types, id)
+	}
+
+	sort.Strings(types)
+
+	return types
 }

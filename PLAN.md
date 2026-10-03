@@ -1341,7 +1341,7 @@ From `internal/story/grid.go`, `notes.go` and `internal/audioanalysis/melody.go`
       2 slots).
 
       Defaults are the app's `LeadCleanParams`. The bass preset differs only in the floor
-      (MIDI 28).
+          (MIDI 28).
 
 - [x] **`melody.BassPreset() []Option`**: FFT 8192, MIDI 28–60, 30–1200 Hz, 6 harmonics, minimum
       note 0.10 s, onset snap 0.06 s (for use with bass-stem onsets). Currently
@@ -1408,8 +1408,8 @@ cleaned notes plus a `rhythm.Grid`, or beat-level chroma.
       octave-tolerant).
 
       Greedy clustering keeps occurrences non-overlapping. Rotations of the same figure and
-      shorter motifs mostly covered by longer ones are suppressed. Matches need similarity
-      ≥ 0.8 and at least 3 occurrences.
+          shorter motifs mostly covered by longer ones are suppressed. Matches need similarity
+          ≥ 0.8 and at least 3 occurrences.
 
 - [x] **`FindChromaMotifs(chroma, grid, opts...)`**: fallback for material without reliable
       notes. Beat-chroma windows of 8 and 4 beats are grouped under the optimal transposition

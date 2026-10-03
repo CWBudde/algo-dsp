@@ -134,6 +134,7 @@ func (d *Delay) Reset() {
 	}
 
 	d.write = 0
+	d.currentSamples = d.targetSamples
 }
 
 // ProcessSample processes one sample.
