@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/cwbudde/algo-dsp/dsp/stft"
 	"github.com/cwbudde/algo-dsp/internal/testutil"
 	"github.com/cwbudde/algo-dsp/measure/music/features"
 )
@@ -42,6 +43,80 @@ func TestStereoPowerAndFrequencyBands(t *testing.T) {
 		if b != 2 && f.Bands[b][i] > 0.005 {
 			t.Fatalf("tone leaks into band %d: %f", b, f.Bands[b][i])
 		}
+	}
+}
+
+// TestFullRangeBandParseval checks the one-sided band scaling at the
+// spectrum edges: a band over every FFT bin, DC and Nyquist included, must
+// read the window-weighted RMS of the frame, sqrt(Σ(x·w)²/Σw²). DC and the
+// Nyquist bin of an even FFT size have no negative-frequency partner and
+// count once; weighting them twice inflated a constant signal by sqrt(5/3).
+func TestFullRangeBandParseval(t *testing.T) {
+	t.Parallel()
+
+	const (
+		n     = 2048
+		hop   = 64
+		frame = 10
+	)
+
+	constant := make([]float64, n)
+	alternating := make([]float64, n)
+
+	for i := range constant {
+		constant[i] = 0.5
+		alternating[i] = 0.5 * float64(1-2*(i%2))
+	}
+
+	noise := testutil.DeterministicNoise(5, 0.5, n)
+
+	tests := []struct {
+		name    string
+		fftSize int
+		x       []float64
+	}{
+		{"DC even FFT", 256, constant},
+		{"DC odd FFT", 255, constant},
+		{"Nyquist even FFT", 256, alternating},
+		{"noise even FFT", 256, noise},
+		{"noise odd FFT", 255, noise},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := features.Config{
+				SampleRate: SampleRate,
+				FFTSize:    tc.fftSize,
+				Hop:        hop,
+				BandEdges:  []float64{0, SampleRate},
+			}
+
+			f, err := features.Extract([][]float64{tc.x}, cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			tr, err := stft.New(tc.fftSize, hop)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			start := frame*hop - tc.fftSize/2
+			energy, windowPower := 0.0, 0.0
+
+			for k, w := range tr.Window() {
+				v := tc.x[start+k] * w
+				energy += v * v
+				windowPower += w * w
+			}
+
+			want := math.Sqrt(energy / windowPower)
+			if got := f.Bands[0][frame]; math.Abs(got-want) > 1e-12*want {
+				t.Fatalf("band RMS %.15g, want %.15g", got, want)
+			}
+		})
 	}
 }
 

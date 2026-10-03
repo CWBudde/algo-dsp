@@ -36,9 +36,12 @@ type Result struct {
 	// at lag 0 (on the decimated grid).
 	Correlation float64
 	// BestLag is the lag in seconds with the highest correlation; positive
-	// means the part sum lags behind the reference.
+	// means the part sum lags behind the reference. Only lags whose
+	// decimated overlap has non-zero energy in both signals are
+	// candidates; without any, BestLag is 0.
 	BestLag float64
-	// BestCorrelation is the correlation at BestLag.
+	// BestCorrelation is the correlation at BestLag (0 without a
+	// candidate).
 	BestCorrelation float64
 	// ResidualRMS is the RMS of reference - sum over all samples.
 	ResidualRMS float64
@@ -60,7 +63,8 @@ type config struct {
 }
 
 // WithMaxLag sets the lag search range to ±seconds (default 2 ms), rounded
-// to whole samples.
+// to whole samples. [Check] limits the range to lags shorter than the
+// reference, the only ones that overlap it.
 func WithMaxLag(seconds float64) Option {
 	return func(c *config) error {
 		if !(seconds >= 0) || math.IsInf(seconds, 0) {
@@ -151,8 +155,11 @@ func Check(ref [][]float64, parts [][][]float64, sampleRate float64, opts ...Opt
 		}
 	}
 
-	maxLag := int(math.Round(cfg.maxLag * sampleRate))
-	best := -1.0
+	// Lags of n samples or more leave no overlap. Clamp in float so that a
+	// huge WithMaxLag neither overflows the int conversion nor scans lags
+	// that cannot overlap.
+	maxLag := int(math.Min(math.Round(cfg.maxLag*sampleRate), float64(n-1)))
+	found := false
 
 	for lag := -maxLag; lag <= maxLag; lag++ {
 		dot, aa, bb := 0.0, 0.0, 0.0
@@ -164,20 +171,27 @@ func Check(ref [][]float64, parts [][][]float64, sampleRate float64, opts ...Opt
 			bb += b * b
 		}
 
-		corr := 0.0
-		if aa*bb > 0 {
-			corr = dot / math.Sqrt(aa*bb)
+		// Without signal energy in the overlap the correlation is
+		// undefined: lag 0 reports 0, and the lag is no BestLag candidate.
+		if !(aa*bb > 0) {
+			continue
 		}
+
+		corr := dot / math.Sqrt(aa*bb)
 
 		if lag == 0 {
 			result.Correlation = corr
 		}
 
-		if corr > best {
-			best = corr
+		if !found || corr > result.BestCorrelation {
+			found = true
 			result.BestLag = float64(lag) / sampleRate
 			result.BestCorrelation = corr
 		}
+	}
+
+	if !found {
+		result.BestLag, result.BestCorrelation = 0, result.Correlation
 	}
 
 	residual := 0.0

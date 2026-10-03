@@ -244,8 +244,10 @@ func (t *Transform[F, C]) frameStart(frame int) int {
 //
 // Valid frames are 0 <= frame < FrameCount(len(x)); with centred framing
 // frame == len(x)/hop is accepted too (the extra trailing frame of
-// torch.stft when hop divides len(x)). FrameInto does not allocate. It uses
-// the Transform's scratch buffer and must not be called concurrently.
+// torch.stft when hop divides len(x)). PadReflect with an odd nfft accepts
+// frames up to (len(x)-1)/hop only, the last frame the nfft/2 reflected
+// samples still cover. FrameInto does not allocate. It uses the
+// Transform's scratch buffer and must not be called concurrently.
 func (t *Transform[F, C]) FrameInto(dst []C, x []F, frame int) error {
 	if len(dst) < t.bins {
 		return fmt.Errorf("%w: dst has %d bins, need %d", ErrShortDst, len(dst), t.bins)
@@ -267,8 +269,18 @@ func (t *Transform[F, C]) checkFrame(n, frame int) error {
 	}
 
 	last := t.FrameCount(n) - 1
-	if t.padding != PadNone && n > 0 {
-		last = n / t.hop
+
+	switch t.padding {
+	case PadReflect:
+		// torch.stft reflects nfft/2 samples on each side; the last frame
+		// must end inside that padded signal of n + 2*(nfft/2) samples,
+		// which for odd nfft is one sample short of n + nfft.
+		last = (n - t.nfft%2) / t.hop
+	case PadZero:
+		if n > 0 {
+			last = n / t.hop
+		}
+	case PadNone:
 	}
 
 	if frame < 0 || frame > last {

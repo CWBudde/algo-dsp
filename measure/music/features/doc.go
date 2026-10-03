@@ -25,9 +25,11 @@
 //   - Centroid: spectral centroid of sqrt(P) in Hz (stats/frequency.Centroid);
 //   - Flux: Σ_k max(0, log1p(sqrt(P[k])) - log1p(sqrt(P_prev[k]))), zero for
 //     the first frame;
-//   - Bands[b]: sqrt(Σ 2·P[k]/(N·Σw²)) over the bins with
+//   - Bands[b]: sqrt(Σ g_k·P[k]/(N·Σw²)) over the bins with
 //     edge[b] <= f_k < edge[b+1], so a full-scale sine reads ≈ its RMS
-//     amplitude (one-sided power scaling).
+//     amplitude (one-sided power scaling). g_k is 2, except 1 for DC and,
+//     for an even N, the Nyquist bin, which have no negative-frequency
+//     partner; a band over all bins reads the window-weighted frame RMS.
 //
 // RMS and Peak pool all channels over the samples [i*Hop-Hop, i*Hop+Hop).
 // Width is side/(mid+side) with mid = (L+R)²/4 and side = (L-R)²/4 summed

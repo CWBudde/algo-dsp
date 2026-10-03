@@ -1,6 +1,7 @@
 package rhythm
 
 import (
+	"fmt"
 	"math"
 	"sort"
 
@@ -9,6 +10,10 @@ import (
 
 // PhaseStep is the resolution in seconds of [FitBeatPhase].
 const PhaseStep = 0.001
+
+// MaxBeats is the largest number of beats [BeatGrid] returns: 2^20, over 58
+// hours at 300 BPM. Longer grids are rejected instead of allocated.
+const MaxBeats = 1 << 20
 
 // FitBeatPhase returns the time in [0, 60/bpm) of the first beat that best
 // aligns a beat grid of bpm with the positive changes of lowBand, a
@@ -58,20 +63,39 @@ func FitBeatPhase(lowBand []float64, timing features.Timing, bpm, duration float
 
 // BeatGrid returns the beat times phase, phase+60/bpm, ... before duration
 // seconds, accumulated by repeated addition of the period. It returns nil
-// for a non-positive bpm or when no beat falls before duration.
-func BeatGrid(phase, bpm, duration float64) []float64 {
-	if !(bpm > 0) {
-		return nil
-	}
-
+// when no beat falls before duration.
+//
+// BeatGrid returns [ErrInvalidArgument] unless phase and duration are
+// finite and bpm is positive with a finite positive period 60/bpm, and when
+// the grid would hold more than [MaxBeats] beats (including a period too
+// small to advance the time).
+func BeatGrid(phase, bpm, duration float64) ([]float64, error) {
 	period := 60 / bpm
 
+	switch {
+	case !(bpm > 0) || !(period > 0) || math.IsInf(period, 0):
+		return nil, fmt.Errorf("%w: beat grid tempo %v BPM", ErrInvalidArgument, bpm)
+	case math.IsNaN(phase) || math.IsInf(phase, 0):
+		return nil, fmt.Errorf("%w: beat grid phase %v", ErrInvalidArgument, phase)
+	case math.IsNaN(duration) || math.IsInf(duration, 0):
+		return nil, fmt.Errorf("%w: beat grid duration %v", ErrInvalidArgument, duration)
+	case (duration-phase)/period > MaxBeats:
+		return nil, fmt.Errorf("%w: beat grid of %v s at %v BPM exceeds %d beats",
+			ErrInvalidArgument, duration-phase, bpm, MaxBeats)
+	}
+
 	var beats []float64
+
 	for time := phase; time < duration; time += period {
+		if len(beats) == MaxBeats {
+			return nil, fmt.Errorf("%w: beat grid at %v BPM from %v s exceeds %d beats",
+				ErrInvalidArgument, bpm, phase, MaxBeats)
+		}
+
 		beats = append(beats, time)
 	}
 
-	return beats
+	return beats, nil
 }
 
 // GridError returns the median distance in seconds of the event times to the

@@ -38,7 +38,11 @@ func ExampleFitBeatPhase() {
 	low := pulses(2000, 10, 50) // kick energy at 0.1 s, 0.6 s, ...
 
 	phase := rhythm.FitBeatPhase(low, tm, 120, 20)
-	beats := rhythm.BeatGrid(phase, 120, 20)
+
+	beats, err := rhythm.BeatGrid(phase, 120, 20)
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Printf("phase %.3f s, %d beats, first %.2f s\n", phase, len(beats), beats[0])
 	// Output:
@@ -64,7 +68,12 @@ func ExampleGridError() {
 }
 
 func ExampleBeatGrid() {
-	fmt.Println(rhythm.BeatGrid(0.25, 120, 2))
+	beats, err := rhythm.BeatGrid(0.25, 120, 2)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(beats)
 	// Output:
 	// [0.25 0.75 1.25 1.75]
 }

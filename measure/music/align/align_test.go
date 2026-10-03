@@ -171,8 +171,58 @@ func TestCheckSilence(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if res.Correlation != 0 || res.ResidualRMSDB != -120 {
+	if res.Correlation != 0 || res.BestLag != 0 || res.BestCorrelation != 0 || res.ResidualRMSDB != -120 {
 		t.Fatalf("%+v", res)
+	}
+}
+
+// TestCheckLagCandidates checks that lags without a defined correlation (no
+// overlap, or no energy in the overlap) never win against a genuinely
+// overlapping, even negative, correlation, and that a huge WithMaxLag is
+// limited to the overlapping lags.
+func TestCheckLagCandidates(t *testing.T) {
+	t.Parallel()
+
+	ramp := make([]float64, 200)
+	shifted := make([]float64, len(ramp))
+
+	for i := range ramp {
+		ramp[i] = math.Sin(0.3*float64(i)) + 0.01*float64(i)
+		if i >= 3 {
+			shifted[i] = ramp[i-3]
+		}
+	}
+
+	tests := []struct {
+		name     string
+		ref      []float64
+		part     []float64
+		rate     float64
+		maxLag   float64
+		wantLag  float64
+		wantCorr float64
+	}{
+		// Lags ±1..±10 have no overlap with a one-sample clip.
+		{"no overlap", []float64{1}, []float64{-1}, 1, 10, 0, -1},
+		// Lags ±1, ±2 overlap only silence in one of the signals.
+		{"silent overlap", []float64{1, 0, 0, 0, 0}, []float64{-1, 0, 0, 0, 0}, 1, 2, 0, -1},
+		{"huge max lag", ramp, shifted, SampleRate, math.MaxFloat64, 3.0 / SampleRate, 1},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			res, err := align.Check([][]float64{tc.ref}, [][][]float64{{tc.part}}, tc.rate,
+				align.WithMaxLag(tc.maxLag), align.WithStride(1))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if res.BestLag != tc.wantLag || math.Abs(res.BestCorrelation-tc.wantCorr) > 1e-12 {
+				t.Fatalf("best lag %v (corr %v), want %v (corr %v)", res.BestLag, res.BestCorrelation, tc.wantLag, tc.wantCorr)
+			}
+		})
 	}
 }
 

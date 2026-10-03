@@ -33,7 +33,12 @@ func adapterRhythm(t *testing.T, flux, low, eventTimes []float64, duration, prio
 
 	r.BPM = tempo.BPM
 	r.BeatOrigin = rhythm.FitBeatPhase(low, timing, tempo.BPM, duration)
-	r.Beats = rhythm.BeatGrid(r.BeatOrigin, tempo.BPM, duration)
+
+	r.Beats, err = rhythm.BeatGrid(r.BeatOrigin, tempo.BPM, duration)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	r.MedianOnsetErrorMS = rhythm.GridError(eventTimes, r.BeatOrigin, tempo.BPM, 4) * 1000
 
 	return r
@@ -251,12 +256,61 @@ func TestSilenceHasNoTempo(t *testing.T) {
 		t.Fatalf("invented tempo for silence: %+v", tempo)
 	}
 
-	if beats := rhythm.BeatGrid(0, tempo.BPM, 5); beats != nil {
-		t.Fatalf("beats %v", beats)
+	if beats, err := rhythm.BeatGrid(0, tempo.BPM, 5); !errors.Is(err, rhythm.ErrInvalidArgument) || beats != nil {
+		t.Fatalf("beats %v, err %v", beats, err)
 	}
 
 	if rhythm.FitBeatPhase(make([]float64, 10), timing, 0, 1) != 0 || rhythm.GridError([]float64{1}, 0, 0, 4) != 0 {
 		t.Fatal("zero tempo produced a grid")
+	}
+}
+
+// TestBeatGridArguments checks that BeatGrid rejects arguments that would
+// loop forever (+Inf BPM gives a zero period, +Inf duration never ends) or
+// allocate without bound, and keeps the valid edge cases.
+func TestBeatGridArguments(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                 string
+		phase, bpm, duration float64
+		wantErr              bool
+		wantLen              int
+	}{
+		{"+Inf bpm", 0, math.Inf(1), 10, true, 0},
+		{"-Inf bpm", 0, math.Inf(-1), 10, true, 0},
+		{"NaN bpm", 0, math.NaN(), 10, true, 0},
+		{"zero bpm", 0, 0, 10, true, 0},
+		{"negative bpm", 0, -120, 10, true, 0},
+		{"infinite period", 0, 1e-310, 10, true, 0},
+		{"+Inf duration", 0, 120, math.Inf(1), true, 0},
+		{"NaN duration", 0, 120, math.NaN(), true, 0},
+		{"NaN phase", math.NaN(), 120, 10, true, 0},
+		{"-Inf phase", math.Inf(-1), 120, 10, true, 0},
+		{"too many beats", 0, 1e6, 1e6, true, 0},
+		{"period below resolution", 1e17, 120, 1e17 + 1000, true, 0},
+		{"at the limit", 0, 60, rhythm.MaxBeats, false, rhythm.MaxBeats},
+		{"duration before phase", 5, 120, 1, false, 0},
+		{"regular", 0.25, 120, 2, false, 4},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			beats, err := rhythm.BeatGrid(tc.phase, tc.bpm, tc.duration)
+			if tc.wantErr {
+				if !errors.Is(err, rhythm.ErrInvalidArgument) || beats != nil {
+					t.Fatalf("got %d beats, err %v; want %v", len(beats), err, rhythm.ErrInvalidArgument)
+				}
+
+				return
+			}
+
+			if err != nil || len(beats) != tc.wantLen {
+				t.Fatalf("got %d beats, err %v; want %d", len(beats), err, tc.wantLen)
+			}
+		})
 	}
 }
 

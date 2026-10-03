@@ -240,6 +240,78 @@ func TestPaddingMatchesExplicitPadding(t *testing.T) {
 	}
 }
 
+// TestReflectLastFrame checks that PadReflect accepts exactly the frames of
+// torch.stft(center=True, pad_mode="reflect"), which pads nfft/2 samples on
+// each side, and rejects the next frame instead of reading outside the
+// reflected padding (odd nfft once panicked there).
+func TestReflectLastFrame(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		nfft, hop, n int
+	}{
+		{"odd minimal signal", 5, 1, 3},
+		{"odd hop divides n", 5, 2, 4},
+		{"odd hop not dividing n", 7, 3, 10},
+		{"odd large", 255, 60, 600},
+		{"even hop divides n", 64, 16, 192},
+		{"even hop not dividing n", 64, 16, 200},
+		{"even minimal signal", 4, 1, 3},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			x := testutil.DeterministicNoise(11, 1, tc.n)
+			pad := tc.nfft / 2
+
+			padded := make([]float64, tc.n+2*pad)
+			copy(padded[pad:], x)
+
+			for j := 1; j <= pad; j++ {
+				padded[pad-j] = x[j]
+				padded[pad+tc.n-1+j] = x[tc.n-1-j]
+			}
+
+			centred, err := stft.New(tc.nfft, tc.hop, stft.WithCenter(stft.PadReflect))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			plain, err := stft.New(tc.nfft, tc.hop, stft.WithCenter(stft.PadNone))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			frames := plain.FrameCount(len(padded))
+			a := make([]complex128, centred.Bins())
+			b := make([]complex128, plain.Bins())
+
+			for frame := range frames {
+				if err := centred.FrameInto(a, x, frame); err != nil {
+					t.Fatalf("frame %d: %v", frame, err)
+				}
+
+				if err := plain.FrameInto(b, padded, frame); err != nil {
+					t.Fatal(err)
+				}
+
+				for k := range a {
+					if a[k] != b[k] {
+						t.Fatalf("frame %d bin %d: %v != %v", frame, k, a[k], b[k])
+					}
+				}
+			}
+
+			if err := centred.FrameInto(a, x, frames); !errors.Is(err, stft.ErrFrameRange) {
+				t.Fatalf("frame %d: err = %v, want %v", frames, err, stft.ErrFrameRange)
+			}
+		})
+	}
+}
+
 func TestUnitaryParseval(t *testing.T) {
 	t.Parallel()
 

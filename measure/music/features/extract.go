@@ -31,7 +31,11 @@ type Frames struct {
 	// the gate and in frame 0).
 	Flux []float64
 	// Bands holds one RMS amplitude envelope per band, band-major:
-	// Bands[b][i] is band b in frame i.
+	// Bands[b][i] is band b in frame i. It is the square root of the
+	// one-sided power of the FFT bins in the band, normalized by N·Σw²:
+	// every bin counts twice, except DC and (for an even FFT size) the
+	// Nyquist bin, which count once. A band covering all bins thus reads
+	// the window-weighted RMS of the frame (Parseval).
 	Bands [][]float64
 	// Spectrogram is the log-frequency spectrogram, or nil unless
 	// [WithLogSpectrogram] was given.
@@ -194,6 +198,13 @@ func newExtractor(tr *stft.STFT, cfg Config, channels int) *extractor {
 	return e
 }
 
+// isEdgeBin reports whether FFT bin k is DC or, for an even FFT size, the
+// Nyquist bin: the bins without a negative-frequency partner, which count
+// once instead of twice in the one-sided band power.
+func (e *extractor) isEdgeBin(k int) bool {
+	return k == 0 || (e.cfg.FFTSize%2 == 0 && k == e.cfg.FFTSize/2)
+}
+
 func (e *extractor) binHz(k int) float64 {
 	return float64(k) * e.cfg.SampleRate / float64(e.cfg.FFTSize)
 }
@@ -251,7 +262,12 @@ func (e *extractor) spectralFrame(f *Frames, channels [][]float64, frame int) er
 		e.bandPower[k] = q
 
 		if b := e.bandOf[k]; b >= 0 {
-			f.Bands[b][frame] += q
+			if e.isEdgeBin(k) {
+				// DC and Nyquist have no negative-frequency partner.
+				f.Bands[b][frame] += p / e.norm
+			} else {
+				f.Bands[b][frame] += q
+			}
 		}
 	}
 
