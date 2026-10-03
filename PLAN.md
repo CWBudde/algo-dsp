@@ -1294,6 +1294,7 @@ None of it exists here yet. PLAN.md's Phase 44 B extension lists "key/chord esti
 of chroma" as open, and that item moves into this phase.
 
 Same rules as Phase 44 B:
+
 - One package per concern.
 - Song-specific values (105 BPM, G major, the Demucs stem names, the hand-set cues) stay in the
   app and become explicit inputs.
@@ -1332,28 +1333,21 @@ From `internal/story/grid.go`, `notes.go` and `internal/audioanalysis/melody.go`
       beat start and bar position. It complements `BeatGrid` (beat times only), and its input
       is `BeatGrid`/`Downbeat` output, not the app's `Rhythm` type.
 - [x] **`melody.Clean(notes, grid, opts...)`** returns cleaned notes plus the dropped raw notes
-      with a reason:
-      - drop notes below a floor MIDI note (the tracker's lowest pitch is mostly artefacts) or
-        below a minimum strength;
-      - quantise starts to 16th slots, flag notes more than 50 ms off the grid, and keep the
-        stronger note per slot (monophonic);
-      - octave correction in three steps: a bar-periodic vote (same slot one 16-slot period
-        apart, at least 2 votes), then the distance to the median of nearby bars, then
-        folding lone octave spikes;
-      - split short repeated runs into an arpeggio voice (min run 4, max gap 2 slots, max note
-        2 slots).
+      with a reason: - drop notes below a floor MIDI note (the tracker's lowest pitch is mostly artefacts) or
+      below a minimum strength; - quantise starts to 16th slots, flag notes more than 50 ms off the grid, and keep the
+      stronger note per slot (monophonic); - octave correction in three steps: a bar-periodic vote (same slot one 16-slot period
+      apart, at least 2 votes), then the distance to the median of nearby bars, then
+      folding lone octave spikes; - split short repeated runs into an arpeggio voice (min run 4, max gap 2 slots, max note
+      2 slots).
 
       Defaults are the app's `LeadCleanParams`. The bass preset differs only in the floor
       (MIDI 28).
+
 - [x] **`melody.BassPreset() []Option`**: FFT 8192, MIDI 28–60, 30–1200 Hz, 6 harmonics, minimum
       note 0.10 s, onset snap 0.06 s (for use with bass-stem onsets). Currently
       `audioanalysis.BassMelodyOptions` in the app.
-- [x] Tests:
-      - an arpeggio with planted octave errors comes back corrected, and genuine leaps
-        (G5 G4 F#5) survive;
-      - a pickup bar and a downbeat offset map correctly;
-      - quantisation is stable for notes jittered by ±30 ms;
-      - the bass preset tracks a synthetic 41–55 Hz bass line within 10 cents.
+- [x] Tests: - an arpeggio with planted octave errors comes back corrected, and genuine leaps
+      (G5 G4 F#5) survive; - a pickup bar and a downbeat offset map correctly; - quantisation is stable for notes jittered by ±30 ms; - the bass preset tracks a synthetic 41–55 Hz bass line within 10 cents.
 
 #### Workstream B: Key and chords (`measure/music/harmony`)
 
@@ -1362,31 +1356,20 @@ From `internal/story/harmony.go` and the window pooling in `story.go`.
 - [x] **`EstimateKey(chroma [12]float64, opts...) (Key, error)`**: correlates the chroma with
       the Krumhansl–Kessler major/minor profiles over all 24 rotations. If the relative major
       and minor keys are within a tie margin (0.05), optional tonic evidence (typically bass
-      pitch-class weight, `WithTonicEvidence`) decides, and `Key.Ambiguous` is set.
-      - `Key` reports tonic (`pitch.PitchClass`), mode, correlation, runner-up and margin.
-      - Methods: `Sharps()` and `Diatonic(pc)`, built on `pitch.Scale`.
-      - Profile set is an option, so Temperley or Albrecht–Shanahan profiles can be added
-        later without an API change.
+      pitch-class weight, `WithTonicEvidence`) decides, and `Key.Ambiguous` is set. - `Key` reports tonic (`pitch.PitchClass`), mode, correlation, runner-up and margin. - Methods: `Sharps()` and `Diatonic(pc)`, built on `pitch.Scale`. - Profile set is an option, so Temperley or Albrecht–Shanahan profiles can be added
+      later without an API change.
 - [x] **`Windows(chroma, frameRate, spans, opts...)`**: pools frame chroma (Phase 44's
       `melody.Result.Chroma`) over grid spans, RMS-weighted, into per-window evidence
       (chroma, optional bass pitch-class weight, level in dBFS).
-- [x] **`Chords(windows, key, opts...) ([]Chord, error)`**:
-      - scores 12 roots × templates (maj, min, 7, maj7, m7; the template set is an option)
-        against each window's chroma;
-      - adds a bass-root bonus (0.2), half credit for a bass on another chord tone
-        (inversions, 0.5), a seventh penalty (0.03) and an in-key bonus (0.05);
-      - outputs `N` when the window is below the gate (−50 dBFS) or flat
-        (max/mean < 1.5);
-      - Viterbi smoothing with a switch penalty (0.10), then merges equal neighbours.
+- [x] **`Chords(windows, key, opts...) ([]Chord, error)`**: - scores 12 roots × templates (maj, min, 7, maj7, m7; the template set is an option)
+      against each window's chroma; - adds a bass-root bonus (0.2), half credit for a bass on another chord tone
+      (inversions, 0.5), a seventh penalty (0.03) and an in-key bonus (0.05); - outputs `N` when the window is below the gate (−50 dBFS) or flat
+      (max/mean < 1.5); - Viterbi smoothing with a switch penalty (0.10), then merges equal neighbours.
 
       `Chord` carries root, quality, bass (slash chords), symbol, score, margin and voicing.
-- [x] Tests:
-      - every one of the 24 keys is recovered from a synthetic I–IV–V–I cadence;
-      - the relative-key tie is broken by bass evidence and flagged ambiguous;
-      - a I–vi–IV–V progression with one first-inversion chord yields the right symbols,
-        including the slash;
-      - a B7/D♯ window is not read as D♯m (the regression the 0.2 bass bonus fixes);
-      - silence gives `N`; one noisy window does not cause a chord flip.
+
+- [x] Tests: - every one of the 24 keys is recovered from a synthetic I–IV–V–I cadence; - the relative-key tie is broken by bass evidence and flagged ambiguous; - a I–vi–IV–V progression with one first-inversion chord yields the right symbols,
+      including the slash; - a B7/D♯ window is not read as D♯m (the regression the 0.2 bass bonus fixes); - silence gives `N`; one noisy window does not cause a chord flip.
 - [ ] Optional: golden comparison against `librosa`/`madmom` chord output on a public-domain
       clip.
 
@@ -1408,10 +1391,7 @@ From `internal/story/structure.go`. Feature-agnostic: callers pass rows (beats o
 - [x] **`Label(ssm, unit, same, variant)`**: phrase labelling into A, A′, B, … Phrases are
       `unit` rows long (4 bars). Similarity ≥ `same` (0.6) reuses a label, ≥ `variant` (0.35)
       marks a variant, otherwise a new letter. Returns labels and per-phrase similarity.
-- [x] Tests:
-      - a synthetic A B A B feature sequence gives boundaries at the joins and labels A B A B;
-      - a perturbed third phrase becomes A′;
-      - a constant input gives no boundaries and no NaN.
+- [x] Tests: - a synthetic A B A B feature sequence gives boundaries at the joins and labels A B A B; - a perturbed third phrase becomes A′; - a constant input gives no boundaries and no NaN.
 - [x] `examples/structure_overview`: writes the SSM and novelty curve as a label-free heat-map
       PNG with `image/png`, replacing the app's `ssmpng.go`. Same pattern as
       `examples/analysis_overview`.
@@ -1421,17 +1401,16 @@ From `internal/story/structure.go`. Feature-agnostic: callers pass rows (beats o
 From `internal/story/motif.go` (613 LOC), the most valuable piece of the layer. Inputs are
 cleaned notes plus a `rhythm.Grid`, or beat-level chroma.
 
-- [x] **`FindNoteMotifs(notes, grid, opts...)`**, two passes:
-      1. bar and half-bar windows (16 and 8 slots, at least 4 notes) compared by Dice overlap
-         on (slot position, pitch class) under the best transposition, with a small
-         transposition penalty;
-      2. transposition-invariant n-grams of 8, 6 and 4 notes (span ≤ 32 slots, gaps ≤ 4)
-         compared by interval and inter-onset-ratio distance (weights 0.7 and 0.3,
-         octave-tolerant).
+- [x] **`FindNoteMotifs(notes, grid, opts...)`**, two passes: 1. bar and half-bar windows (16 and 8 slots, at least 4 notes) compared by Dice overlap
+      on (slot position, pitch class) under the best transposition, with a small
+      transposition penalty; 2. transposition-invariant n-grams of 8, 6 and 4 notes (span ≤ 32 slots, gaps ≤ 4)
+      compared by interval and inter-onset-ratio distance (weights 0.7 and 0.3,
+      octave-tolerant).
 
       Greedy clustering keeps occurrences non-overlapping. Rotations of the same figure and
       shorter motifs mostly covered by longer ones are suppressed. Matches need similarity
       ≥ 0.8 and at least 3 occurrences.
+
 - [x] **`FindChromaMotifs(chroma, grid, opts...)`**: fallback for material without reliable
       notes. Beat-chroma windows of 8 and 4 beats are grouped under the optimal transposition
       index (similarity ≥ 0.85).
@@ -1442,13 +1421,9 @@ cleaned notes plus a `rhythm.Grid`, or beat-level chroma.
       and a per-source cap.
 - [x] Types: `Motif` (ID, role theme/ostinato, notes or chroma pattern, salience terms) and
       `Occurrence{Start, End, Bar, Slot, Transposition, Similarity, Variant, NoteIndices}`.
-- [x] Tests:
-      - a planted 8-note motif returns transposed (+5), varied (one note changed) and with an
-        octave error, and all three are found with the right transpositions;
-      - a bar-long repeating arpeggio is found once and flagged as an ostinato, not as 16
-        rotations;
-      - the chroma fallback finds the planted motif when the notes are removed;
-      - the result is deterministic under input order.
+- [x] Tests: - a planted 8-note motif returns transposed (+5), varied (one note changed) and with an
+      octave error, and all three are found with the right transpositions; - a bar-long repeating arpeggio is found once and flagged as an ostinato, not as 16
+      rotations; - the chroma fallback finds the planted motif when the notes are removed; - the result is deterministic under input order.
 - [x] Benchmarks: the n-gram pass on 2,000 notes; allocations bounded and reported in
       `BENCHMARKS.md`.
 
