@@ -600,3 +600,74 @@ func TestDeterministic(t *testing.T) {
 		t.Fatal("repeated analysis differs")
 	}
 }
+
+// TestNonFiniteInputRejected checks that NaN and ±Inf inputs give
+// ErrInvalidArgument instead of propagating into the novelty and peaks.
+func TestNonFiniteInputRejected(t *testing.T) {
+	t.Parallel()
+
+	for _, bad := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+		if _, err := structure.Peaks([]float64{0, 1, bad, 0.2}, 1, 1); !errors.Is(err, structure.ErrInvalidArgument) {
+			t.Fatalf("Peaks with %v: %v", bad, err)
+		}
+
+		rows := [][]float64{{1, 0}, {0, bad}, {1, 1}}
+		if _, err := structure.SelfSimilarity(rows); !errors.Is(err, structure.ErrInvalidArgument) {
+			t.Fatalf("SelfSimilarity with %v: %v", bad, err)
+		}
+
+		dst := [][]float64{make([]float64, 3), make([]float64, 3), make([]float64, 3)}
+		if err := structure.SelfSimilarityInto(dst, rows); !errors.Is(err, structure.ErrInvalidArgument) {
+			t.Fatalf("SelfSimilarityInto with %v: %v", bad, err)
+		}
+
+		ssm := [][]float64{{1, 0}, {bad, 1}}
+		if _, err := structure.FooteNovelty(ssm, 1); !errors.Is(err, structure.ErrInvalidArgument) {
+			t.Fatalf("FooteNovelty with %v: %v", bad, err)
+		}
+
+		if err := structure.FooteNoveltyInto(make([]float64, 2), ssm, 1); !errors.Is(err, structure.ErrInvalidArgument) {
+			t.Fatalf("FooteNoveltyInto with %v: %v", bad, err)
+		}
+	}
+
+	// A ragged matrix still reports the shape first.
+	if _, err := structure.SelfSimilarity([][]float64{{1, math.NaN()}, {1}}); !errors.Is(err, structure.ErrShape) {
+		t.Fatalf("ragged rows: %v", err)
+	}
+}
+
+// TestLabelBeyond260Letters checks that letter names stay unique past Z9:
+// the 261st letter is A10, not A followed by ':'.
+func TestLabelBeyond260Letters(t *testing.T) {
+	t.Parallel()
+
+	n := 290
+	ssm := make([][]float64, n)
+
+	for i := range ssm {
+		ssm[i] = make([]float64, n)
+		ssm[i][i] = 1
+	}
+
+	phrases, err := structure.Label(ssm, 1, 0.6, 0.35, structure.WithLowercase())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	seen := map[string]bool{}
+
+	for i, p := range phrases {
+		if p.Letter != i || seen[p.Label] {
+			t.Fatalf("phrase %d: letter %d label %q (duplicate %v)", i, p.Letter, p.Label, seen[p.Label])
+		}
+
+		seen[p.Label] = true
+	}
+
+	for i, want := range map[int]string{0: "a", 25: "z", 26: "a1", 259: "z9", 260: "a10", 285: "z10", 286: "a11"} {
+		if phrases[i].Label != want {
+			t.Fatalf("phrase %d: label %q, want %q", i, phrases[i].Label, want)
+		}
+	}
+}

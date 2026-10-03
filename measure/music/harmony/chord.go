@@ -377,28 +377,27 @@ func NewChorder(opts ...ChordOption) (*Chorder, error) {
 }
 
 // Chords detects the chord chart of windows (as from [Windows]) in the given
-// key, the one-shot form of [Chorder.Chords].
+// key, the one-shot form of [Chorder.Chords]. The zero [Key] is C major, so
+// pass the estimated key (see [EstimateKey]): the in-key bonus applies to the
+// chords of the key passed in. Chords returns an empty, non-nil slice for no
+// windows.
 func Chords(windows []Window, key Key, opts ...ChordOption) ([]Chord, error) {
 	c, err := NewChorder(opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	out, err := c.Chords(nil, windows, key)
-	if err != nil {
-		return nil, err
-	}
-
-	if out == nil {
-		out = []Chord{}
-	}
-
-	return out, nil
+	return c.Chords(nil, windows, key)
 }
 
 // Chords detects the chord chart of windows (as from [Windows]) in the given
 // key and appends it to dst[:0], reusing dst's storage including the
-// capacity of its Voicing slices. The windows should be in time order.
+// capacity of its Voicing slices. The windows should be in time order. The
+// result is never nil: no windows give an empty slice.
+//
+// The in-key bonus ([WithInKeyBonus]) applies to chords whose tones all lie
+// in the scale of key ([Key.Scale]). The zero [Key] is C major, so a key
+// left unset favours the chords of C major.
 //
 // Each window is scored against every root and template:
 //
@@ -451,7 +450,12 @@ func (c *Chorder) Chords(dst []Chord, windows []Window, key Key) ([]Chord, error
 
 	viterbi(c.scores[:nw*ns], nw, ns, c.cfg.switchCost, c.acc, c.next, c.back[:nw*ns], c.path[:nw])
 
-	return c.collect(dst[:0], windows), nil
+	out := c.collect(dst[:0], windows)
+	if out == nil {
+		out = []Chord{}
+	}
+
+	return out, nil
 }
 
 func validateWindow(i int, w *Window) error {

@@ -301,7 +301,8 @@ func WithArpeggio(minRun, maxGapSlots, maxNoteSlots int) CleanOption {
 // The cleaned notes are ordered by slot, and the dropped notes by input
 // index; both slices are non-nil. Notes with non-finite times or strength,
 // or with a slot beyond ±2^50, return an error wrapping [ErrInvalidNote]; an
-// invalid grid returns an error wrapping [rhythm.ErrInvalidArgument].
+// invalid grid returns an error wrapping [ErrInvalidArgument] and
+// [rhythm.ErrInvalidArgument].
 //
 // The defaults reproduce AudioVisualizer's CleanNotes with LeadCleanParams
 // bit for bit.
@@ -321,7 +322,7 @@ func Clean(notes []Note, grid rhythm.Grid, opts ...CleanOption) ([]CleanNote, []
 
 	err := grid.Validate()
 	if err != nil {
-		return nil, nil, fmt.Errorf("melody: %w", err)
+		return nil, nil, fmt.Errorf("%w: %w", ErrInvalidArgument, err)
 	}
 
 	for i, n := range notes {

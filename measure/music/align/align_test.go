@@ -272,3 +272,56 @@ func BenchmarkCheck(b *testing.B) {
 		}
 	}
 }
+
+// TestCheckHugeMaxLag checks that a max lag beyond the signal keeps the
+// result of the unbounded search (lags without overlap correlate 0, and the
+// first of them wins when nothing correlates positively) and that a huge one
+// neither overflows nor runs away.
+func TestCheckHugeMaxLag(t *testing.T) {
+	t.Parallel()
+
+	const n = 64
+
+	impulse := make([]float64, n)
+	impulse[0] = 1
+
+	inverted := make([]float64, n)
+	inverted[0] = -1
+
+	ref, parts := [][]float64{impulse}, [][][]float64{{inverted}}
+
+	for _, maxLag := range []float64{10, n - 1, n, n + 5, 1e300} {
+		res, err := align.Check(ref, parts, SampleRate, align.WithMaxLag(maxLag/SampleRate), align.WithStride(1))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Only lag 0 pairs the two impulses; every other lag has no energy
+		// in its overlap and is no candidate, so lag 0 wins with -1 however
+		// wide the range is.
+		if res.BestLag != 0 || res.BestCorrelation != -1 || res.Correlation != -1 {
+			t.Errorf("max lag %v: %+v, want best lag 0 with correlation -1", maxLag, res)
+		}
+	}
+
+	// With positive correlations inside the signal, a huge range finds what
+	// the full range of n-1 samples finds.
+	const m = SampleRate / 4
+
+	parts = stems(m)
+	mix := mixOf(parts, m, -12)
+
+	full, err := align.Check(mix, parts, SampleRate, align.WithMaxLag(float64(m-1)/SampleRate), align.WithStride(8))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	huge, err := align.Check(mix, parts, SampleRate, align.WithMaxLag(1e300), align.WithStride(8))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if huge != full {
+		t.Errorf("huge max lag: %+v, want %+v", huge, full)
+	}
+}

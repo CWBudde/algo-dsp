@@ -81,7 +81,8 @@ func Corroborate(m *Motif, chroma []Motif, grid rhythm.Grid, opts ...Option) err
 //     the mean occurrence similarity (so loose clusters do not outrank tight
 //     ones), times, when the occurrences have notes, their mean strength
 //     relative to the median strength of notes (voicing shares of a clean
-//     bass line and a polyphonic lead are not comparable).
+//     bass line and a polyphonic lead are not comparable). The strength
+//     factor is left out when the median strength is not positive.
 //   - Distinctiveness: the entropy in bits of the intervals (or, for chroma
 //     motifs, the note names), capped at 1, times 0.3 below 1 bit.
 //   - Span: SpanBeats capped at 8 beats, divided by 8.
@@ -96,6 +97,10 @@ func Corroborate(m *Motif, chroma []Motif, grid rhythm.Grid, opts ...Option) err
 // source over a time range in seconds, for example the mean frame energy of
 // the source's stem; it is called once per occurrence. sections are the
 // song sections.
+//
+// Score returns an error wrapping [ErrInvalidArgument], and leaves m
+// unchanged, when energy returns a non-finite value or the salience is not
+// finite (for example from non-finite note strengths).
 //
 // The defaults reproduce AudioVisualizer's Score bit for bit. Options read:
 // [WithOstinatoShare].
@@ -127,16 +132,28 @@ func Score(m *Motif, notes []melody.CleanNote, sections []Span, energy func(star
 		}
 	}
 
-	t := salienceTerms(m, notes, sections, energy)
-	m.Salience = r3(t.Count * t.Sections * t.Prominence * t.Distinctiveness * t.Span * t.Confirmed)
+	t, err := salienceTerms(m, notes, sections, energy)
+	if err != nil {
+		return err
+	}
+
+	salience := t.Count * t.Sections * t.Prominence * t.Distinctiveness * t.Span * t.Confirmed
+	if !finite(salience) {
+		return fmt.Errorf("%w: salience is %g (prominence %g)", ErrInvalidArgument, salience, t.Prominence)
+	}
+
+	m.Salience = r3(salience)
 	m.SalienceTerms = SalienceTerms{r3(t.Count), r3(t.Sections), r3(t.Prominence), r3(t.Distinctiveness), r3(t.Span), t.Confirmed}
 	m.Role = role(m.Occurrences, grid, cfg.ostinatoShare)
 
 	return nil
 }
 
-// salienceTerms returns the unrounded salience terms of m.
-func salienceTerms(m *Motif, notes []melody.CleanNote, sections []Span, energy func(start, end float64) float64) SalienceTerms {
+// salienceTerms returns the unrounded salience terms of m, or an error for a
+// non-finite energy.
+func salienceTerms(m *Motif, notes []melody.CleanNote, sections []Span,
+	energy func(start, end float64) float64,
+) (SalienceTerms, error) {
 	visited := map[string]bool{}
 	prominence, strength, n := 0.0, 0.0, 0.0
 
@@ -147,7 +164,12 @@ func salienceTerms(m *Motif, notes []melody.CleanNote, sections []Span, energy f
 			}
 		}
 
-		prominence += energy(o.Start, o.End) / float64(len(m.Occurrences))
+		e := energy(o.Start, o.End)
+		if !finite(e) {
+			return SalienceTerms{}, fmt.Errorf("%w: energy of %g..%g s is %g", ErrInvalidArgument, o.Start, o.End, e)
+		}
+
+		prominence += e / float64(len(m.Occurrences))
 
 		for _, k := range o.NoteIndices {
 			strength += notes[k].Strength
@@ -169,7 +191,12 @@ func salienceTerms(m *Motif, notes []melody.CleanNote, sections []Span, energy f
 		}
 
 		slices.Sort(all)
-		prominence *= strength / n / all[len(all)/2]
+
+		// A median of zero (or NaN) would make the salience infinite or NaN;
+		// cleaned notes always have positive strengths.
+		if median := all[len(all)/2]; median > 0 {
+			prominence *= strength / n / median
+		}
 	}
 
 	entropy := symbolEntropy(m)
@@ -186,7 +213,7 @@ func salienceTerms(m *Motif, notes []melody.CleanNote, sections []Span, energy f
 		t.Confirmed = confirmedBonus
 	}
 
-	return t
+	return t, nil
 }
 
 // symbolEntropy is the Shannon entropy in bits of m's intervals, or of its
@@ -271,16 +298,26 @@ func role(occs []Occurrence, grid rhythm.Grid, share float64) Role {
 // before it, or when its source already has [WithLeitmotifsPerSource]
 // leitmotifs. Leitmotifs are ranked 1, 2, … by salience.
 //
-// Call [Score] on every motif first, and pass motifs that [Rank] has not
-// seen: it does not clear Leitmotif and Rank set by an earlier call. The
-// defaults reproduce
-// AudioVisualizer's Rank bit for bit. Options read: [WithLeitmotifs],
-// [WithLeitmotifOverlap], [WithLeitmotifMinRatio] and
-// [WithLeitmotifsPerSource].
+// Call [Score] on every motif first. Rank clears Leitmotif and Rank of all
+// motifs before picking, so calling it again gives the same result. A
+// non-finite salience returns an error wrapping [ErrInvalidArgument] and
+// leaves motifs unchanged. The defaults reproduce AudioVisualizer's Rank bit
+// for bit. Options read: [WithLeitmotifs], [WithLeitmotifOverlap],
+// [WithLeitmotifMinRatio] and [WithLeitmotifsPerSource].
 func Rank(motifs []Motif, opts ...Option) ([]Motif, error) {
 	cfg, err := newConfig(opts)
 	if err != nil {
 		return nil, err
+	}
+
+	for i := range motifs {
+		if !finite(motifs[i].Salience) {
+			return nil, fmt.Errorf("%w: motif %d has salience %g", ErrInvalidArgument, i, motifs[i].Salience)
+		}
+	}
+
+	for i := range motifs {
+		motifs[i].Leitmotif, motifs[i].Rank = false, 0
 	}
 
 	slices.SortStableFunc(motifs, func(a, b Motif) int {

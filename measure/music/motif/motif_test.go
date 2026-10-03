@@ -663,3 +663,165 @@ func TestCompareNotesIsTotal(t *testing.T) {
 		}
 	}
 }
+
+// TestSizeOptionsAreCapped checks that huge sizes are rejected by the
+// options instead of panicking in make or running away in the passes.
+func TestSizeOptionsAreCapped(t *testing.T) {
+	t.Parallel()
+
+	g := mustGrid(t, 120, 40)
+	notes, _ := motifSong(t, 0)
+
+	for i, opt := range []Option{
+		WithGridWindows(1 << 60), WithGridWindows(16, MaxSize+1), WithLengths(1 << 60), WithLengths(MaxSize + 1),
+		WithMaxSpanSlots(MaxSize + 1), WithMaxSpanSlots(math.MaxInt), WithChromaWindows(1 << 60), WithChromaWindows(MaxSize + 1),
+	} {
+		_, err := FindNoteMotifs(notes, g, "lead", opt)
+		if !errors.Is(err, ErrInvalidOption) {
+			t.Errorf("option %d: FindNoteMotifs error %v, want ErrInvalidOption", i, err)
+		}
+
+		_, err = FindChromaMotifs([][12]float64{{1}}, g, opt)
+		if !errors.Is(err, ErrInvalidOption) {
+			t.Errorf("option %d: FindChromaMotifs error %v, want ErrInvalidOption", i, err)
+		}
+	}
+
+	// The limit itself is accepted.
+	_, err := FindNoteMotifs(notes, g, "lead", WithGridWindows(MaxSize), WithLengths(MaxSize), WithMaxSpanSlots(MaxSize))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = FindChromaMotifs([][12]float64{{1}}, g, WithChromaWindows(MaxSize))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNilOptionWrapsBothSentinels(t *testing.T) {
+	t.Parallel()
+
+	_, err := Rank(nil, WithLeitmotifs(2), nil)
+	if !errors.Is(err, ErrNilOption) || !errors.Is(err, ErrInvalidOption) {
+		t.Fatalf("error %v, want ErrNilOption and ErrInvalidOption", err)
+	}
+
+	_, err = Rank(nil, WithLeitmotifs(-1))
+	if errors.Is(err, ErrNilOption) || !errors.Is(err, ErrInvalidOption) {
+		t.Fatalf("error %v, want ErrInvalidOption only", err)
+	}
+}
+
+// TestScoreGuardsNonFinite checks that a zero median strength skips the
+// strength factor and that non-finite energies and saliences are rejected.
+func TestScoreGuardsNonFinite(t *testing.T) {
+	t.Parallel()
+
+	g := mustGrid(t, 120, 40)
+	motif := func() Motif {
+		return Motif{
+			Source: "lead", Intervals: []int{2, -1}, SpanBeats: 8,
+			Occurrences: []Occurrence{
+				{Start: 0, End: 1, Similarity: 1, NoteIndices: []int{0, 1}},
+				{Start: 10, End: 11, Similarity: 1, NoteIndices: []int{2, 3}},
+			},
+		}
+	}
+	energy := func(float64, float64) float64 { return 2 }
+
+	// Median strength 0: the strength factor is left out.
+	m := motif()
+
+	err := Score(&m, []melody.CleanNote{{Strength: 0}, {Strength: 0}, {Strength: 0.5}, {Strength: 0}}, nil, energy, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if m.SalienceTerms.Prominence != 2 || !finite(m.Salience) {
+		t.Fatalf("zero median: terms %+v salience %v", m.SalienceTerms, m.Salience)
+	}
+
+	notes := []melody.CleanNote{{Strength: 0.5}, {Strength: 0.6}, {Strength: 0.7}, {Strength: 0.8}}
+
+	for _, e := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+		m := motif()
+
+		err := Score(&m, notes, nil, func(float64, float64) float64 { return e }, g)
+		if !errors.Is(err, ErrInvalidArgument) || !reflect.DeepEqual(m, motif()) {
+			t.Fatalf("energy %v: error %v, motif %+v", e, err, m)
+		}
+	}
+
+	m = motif()
+	notes[1].Strength = math.Inf(1)
+
+	err = Score(&m, notes, nil, energy, g)
+	if !errors.Is(err, ErrInvalidArgument) || !reflect.DeepEqual(m, motif()) {
+		t.Fatalf("infinite strength: error %v, motif %+v", err, m)
+	}
+}
+
+func TestRankRejectsNonFiniteSalience(t *testing.T) {
+	t.Parallel()
+
+	for _, s := range []float64{math.NaN(), math.Inf(1)} {
+		motifs := []Motif{{Source: "lead", Salience: 1}, {Source: "bass", Salience: s, Leitmotif: true, Rank: 3}}
+
+		_, err := Rank(motifs)
+		if !errors.Is(err, ErrInvalidArgument) {
+			t.Fatalf("salience %v: error %v", s, err)
+		}
+
+		if motifs[0].ID != "" || !motifs[1].Leitmotif || motifs[1].Rank != 3 {
+			t.Fatalf("salience %v: motifs changed: %+v", s, motifs)
+		}
+	}
+}
+
+// TestRankIsIdempotent checks that Rank clears earlier leitmotif marks, so
+// a second call (or stale marks) gives the same result as a fresh call.
+func TestRankIsIdempotent(t *testing.T) {
+	t.Parallel()
+
+	occ := func(start float64) Occurrence { return Occurrence{Start: start, End: start + 2} }
+	fresh := func() []Motif {
+		return []Motif{
+			{Source: "lead", Salience: 1, Role: RoleTheme, Occurrences: []Occurrence{occ(0)}},
+			{Source: "lead", Salience: 0.9, Role: RoleTheme, Occurrences: []Occurrence{occ(10)}},
+			{Source: "keys", Salience: 0.8, Role: RoleTheme, Occurrences: []Occurrence{occ(20)}},
+			{Source: "bass", Salience: 0.2, Role: RoleTheme, Occurrences: []Occurrence{occ(30)}}, // below the ratio
+		}
+	}
+
+	want, err := Rank(fresh())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	again, err := Rank(slices.Clone(want))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(again, want) {
+		t.Fatalf("second call %+v, want %+v", again, want)
+	}
+
+	// Stale marks from elsewhere are cleared.
+	stale := fresh()
+	stale[3].Leitmotif, stale[3].Rank = true, 7
+
+	got, err := Rank(stale)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("stale marks: %+v, want %+v", got, want)
+	}
+
+	if got[3].Leitmotif || got[3].Rank != 0 || !got[2].Leitmotif || got[2].Rank != 3 {
+		t.Fatalf("leitmotifs %+v", got)
+	}
+}

@@ -331,3 +331,113 @@ func BenchmarkLagChannels(b *testing.B) {
 		}
 	}
 }
+
+// naiveLag is the unbounded search of LagChannels for one channel: every
+// coarse lag from -maxLag to +maxLag, then the fine search, with partners
+// outside x skipped. It returns the best lag.
+func naiveLag(ref, x []float64, maxLag, step, radius, stride int) int {
+	corr := func(lag int) float64 {
+		var ab, aa, bb float64
+
+		for i := 0; i < len(ref); i += stride {
+			if j := i + lag; j >= 0 && j < len(x) {
+				ab += ref[i] * x[j]
+				aa += ref[i] * ref[i]
+				bb += x[j] * x[j]
+			}
+		}
+
+		return ab / math.Sqrt(aa*bb)
+	}
+
+	best, lag := -1.0, 0
+
+	for offset := -maxLag; offset <= maxLag; offset += step {
+		if c := corr(offset); c > best {
+			best, lag = c, offset
+		}
+	}
+
+	coarse := lag
+	for offset := coarse - radius; offset <= coarse+radius; offset++ {
+		if c := corr(offset); c > best {
+			best, lag = c, offset
+		}
+	}
+
+	return lag
+}
+
+// TestLagSkipsLagsBeyondSignals checks that bounding the search to lags
+// with overlapping samples keeps the result of the unbounded search,
+// including the alignment of the coarse grid.
+func TestLagSkipsLagsBeyondSignals(t *testing.T) {
+	t.Parallel()
+
+	ref := partials(500, 0, 1)
+
+	for _, nx := range []int{300, 500, 800} {
+		x := rendered(ref, nx, 37, 1, 0.05, 3)
+
+		for _, maxLag := range []int{0, 20, 299, 500, 813, 2*nx + 7} {
+			for _, step := range []int{1, 7, 16, 1000} {
+				for _, radius := range []int{0, 3, 16, 5000} {
+					want := naiveLag(ref, x, maxLag, step, radius, 3)
+
+					res, err := align.Lag(ref, x, SampleRate, align.WithLagMaxLag(float64(maxLag)/SampleRate),
+						align.WithLagCoarseStep(step), align.WithLagFineRadius(radius), align.WithLagStride(3))
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					if res.Samples != want {
+						t.Fatalf("x %d, max lag %d, step %d, radius %d: lag %d, want %d", nx, maxLag, step, radius, res.Samples, want)
+					}
+				}
+			}
+		}
+	}
+}
+
+// TestLagHugeOptions checks that huge option values neither overflow the
+// integer conversions nor make the search run away.
+func TestLagHugeOptions(t *testing.T) {
+	t.Parallel()
+
+	ref := partials(2000, 0, 1)
+	x := rendered(ref, 2000, 37, 1, 0, 0)
+
+	for _, opts := range [][]align.LagOption{
+		{align.WithLagMaxLag(1e300), align.WithLagCoarseStep(1)},
+		{align.WithLagMaxLag(math.MaxFloat64), align.WithLagCoarseStep(math.MaxInt), align.WithLagFineRadius(math.MaxInt)},
+		{align.WithLagMaxLag(1e18), align.WithLagCoarseStep(16), align.WithLagFineRadius(1 << 62)},
+	} {
+		res, err := align.Lag(ref, x, SampleRate, opts...)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if res.Samples != 37 {
+			t.Errorf("lag %d, want 37", res.Samples)
+		}
+	}
+
+	plain, err := align.Lag(ref, x, SampleRate)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wide, err := align.Lag(ref, x, SampleRate, align.WithLagWindow(0, 1e300))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if wide != plain {
+		t.Errorf("window to 1e300 s: %+v, want %+v", wide, plain)
+	}
+
+	_, err = align.Lag(ref, x, SampleRate, align.WithLagWindow(1e300, math.MaxFloat64))
+	if !errors.Is(err, align.ErrInvalidArgument) {
+		t.Errorf("window beyond the signal: %v", err)
+	}
+}

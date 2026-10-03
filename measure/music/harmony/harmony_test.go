@@ -649,6 +649,22 @@ func TestWindowsBassAndErrors(t *testing.T) {
 			_, err := Windows(chroma, rms, 100, nil, WithBassNotes([]melody.Note{{End: math.NaN()}}))
 			return err
 		}},
+		{"note input", ErrInvalidInput, func() error {
+			_, err := Windows(chroma, rms, 100, nil, WithBassNotes([]melody.Note{{End: math.NaN()}}))
+			return err
+		}},
+		{"note order", ErrInvalidInput, func() error {
+			_, err := Windows(chroma, rms, 100, nil, WithBassNotes([]melody.Note{{Start: 0, End: 1, Strength: 1}, {Start: 2, End: 1, Strength: 1}}))
+			return err
+		}},
+		{"note order option", ErrInvalidOption, func() error {
+			_, err := Windows(chroma, rms, 100, nil, WithBassNotes([]melody.Note{{Start: 2, End: 1, Strength: 1}}))
+			return err
+		}},
+		{"note strength", ErrInvalidInput, func() error {
+			_, err := Windows(chroma, rms, 100, nil, WithBassNotes([]melody.Note{{Start: 0, End: 1, Strength: -0.5}}))
+			return err
+		}},
 		{"floor", ErrInvalidOption, func() error { _, err := Windows(chroma, rms, 100, nil, WithLevelFloor(0)); return err }},
 	}
 
@@ -660,5 +676,65 @@ func TestWindowsBassAndErrors(t *testing.T) {
 
 	if Normalize([12]float64{}) != [12]float64{} {
 		t.Fatal("normalize zero")
+	}
+}
+
+// TestChordsEmptyIsNonNil checks that both forms return an empty, non-nil
+// slice for no windows.
+func TestChordsEmptyIsNonNil(t *testing.T) {
+	t.Parallel()
+
+	c, err := NewChorder()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, windows := range [][]Window{nil, {}} {
+		got, err := c.Chords(nil, windows, Key{})
+		if err != nil || got == nil || len(got) != 0 {
+			t.Fatalf("Chorder.Chords(%v): %#v, %v", windows, got, err)
+		}
+
+		got, err = Chords(windows, Key{})
+		if err != nil || got == nil || len(got) != 0 {
+			t.Fatalf("Chords(%v): %#v, %v", windows, got, err)
+		}
+	}
+}
+
+// TestZeroKeyIsCMajor documents that the zero Key is C major and that the
+// in-key bonus follows the key passed in.
+func TestZeroKeyIsCMajor(t *testing.T) {
+	t.Parallel()
+
+	var zero Key
+	if zero.Tonic != pitch.PitchClassC || zero.Mode != Major || zero.String() != "C major" {
+		t.Fatalf("zero key %v", zero)
+	}
+
+	// C, E and Em match the window equally well; C and Em are in C major,
+	// only E is in E major. Ties go to the lower root.
+	w := Window{End: 1, LevelDB: -10}
+	for _, pc := range []pitch.PitchClass{pitch.PitchClassC, pitch.PitchClassE, pitch.PitchClassG, pitch.PitchClassGSharp, pitch.PitchClassB} {
+		w.Chroma[pc] = 1
+	}
+
+	triads := WithTemplates(DefaultTemplates()[:2]...)
+
+	for _, tc := range []struct {
+		key  Key
+		want string
+	}{
+		{Key{}, "C"},
+		{Key{Tonic: pitch.PitchClassE, Mode: Major}, "E"},
+	} {
+		got, err := Chords([]Window{w}, tc.key, triads)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if got[0].Symbol != tc.want {
+			t.Errorf("key %v: chord %s, want %s", tc.key, got[0].Symbol, tc.want)
+		}
 	}
 }

@@ -56,7 +56,8 @@ type lagConfig struct {
 
 // WithLagMaxLag sets the coarse search range to ±seconds (default 20 ms),
 // rounded to whole samples. The fine search may extend up to the fine
-// radius beyond it.
+// radius beyond it. Lags as long as the longer signal or longer are never
+// evaluated: no samples overlap there, so they could not win anyway.
 func WithLagMaxLag(seconds float64) LagOption {
 	return func(c *lagConfig) error {
 		if !(seconds >= 0) || math.IsInf(seconds, 0) {
@@ -184,7 +185,7 @@ func LagChannels(ref, x [][]float64, sampleRate float64, opts ...LagOption) (Lag
 
 	lo, hi := 0, len(ref[0])
 	if cfg.window {
-		lo, hi = int(cfg.start*sampleRate), min(int(cfg.end*sampleRate), len(ref[0]))
+		lo, hi = truncClamp(cfg.start*sampleRate, len(ref[0])), truncClamp(cfg.end*sampleRate, len(ref[0]))
 	}
 
 	if lo >= hi {
@@ -192,19 +193,30 @@ func LagChannels(ref, x [][]float64, sampleRate float64, opts ...LagOption) (Lag
 	}
 
 	s := lagSearch{ref: ref, x: x, lo: lo, hi: hi, stride: cfg.stride}
-	maxLag := int(math.Round(cfg.maxLag * sampleRate))
+
+	// No reference sample has a partner in x at a lag of limit or more in
+	// either direction, so those lags have NaN correlations and never win.
+	// Skipping them keeps the result and bounds the search.
+	limit := max(len(ref[0]), len(x[0]))
+	first, last := coarseRange(math.Round(cfg.maxLag*sampleRate), cfg.coarseStep, limit)
 
 	best, lag := -1.0, 0
 
-	for offset := -maxLag; offset <= maxLag; offset += cfg.coarseStep {
+	for offset := first; offset <= last; offset += cfg.coarseStep {
 		c, _ := s.stats(offset)
 		if c > best {
 			best, lag = c, offset
 		}
+
+		if cfg.coarseStep > last-offset {
+			break
+		}
 	}
 
 	coarse := lag
-	for offset := coarse - cfg.fineRadius; offset <= coarse+cfg.fineRadius; offset++ {
+	radius := min(cfg.fineRadius, 2*limit)
+
+	for offset := max(coarse-radius, -limit); offset <= min(coarse+radius, limit); offset++ {
 		c, _ := s.stats(offset)
 		if c > best {
 			best, lag = c, offset
@@ -225,6 +237,42 @@ func LagChannels(ref, x [][]float64, sampleRate float64, opts ...LagOption) (Lag
 		Correlation:    c,
 		GainDB:         gain,
 	}, nil
+}
+
+// coarseRange returns the first and last lag of the coarse grid -maxLag,
+// -maxLag+step, ... (up to +maxLag) that lie within ±limit. maxLag is a
+// whole, non-negative number of samples. The grid keeps its alignment to
+// -maxLag; maxLag is clamped in float, so huge values cannot overflow. The
+// range is empty (first > last) when no grid lag lies within ±limit.
+func coarseRange(maxLag float64, step, limit int) (int, int) {
+	if maxLag <= float64(limit) {
+		m := int(maxLag)
+
+		return -m, m
+	}
+
+	// Advance from -maxLag to the first grid lag >= -limit.
+	// The remainder is NaN for an infinite maxLag, which has no alignment.
+	first := -limit
+	if rem := math.Mod(maxLag-float64(limit), float64(step)); rem > 0 {
+		first += step - int(rem)
+	}
+
+	return first, limit
+}
+
+// truncClamp returns x truncated to an integer and limited to [0, n],
+// clamping before the integer conversion so that huge values cannot
+// overflow.
+func truncClamp(x float64, n int) int {
+	switch {
+	case x <= 0:
+		return 0
+	case x >= float64(n):
+		return n
+	default:
+		return int(x)
+	}
 }
 
 // lagSearch holds the inputs of one lag search.

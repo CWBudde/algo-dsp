@@ -3,6 +3,7 @@ package structure
 import (
 	"fmt"
 	"math"
+	"strconv"
 )
 
 // DefaultPrime is the default suffix of a variant label ("A'"). Use
@@ -171,5 +172,5 @@ func letterName(i int, lower bool) string {
 		return string(a + rune(i))
 	}
 
-	return string(a+rune(i%26)) + string(rune('0'+i/26))
+	return string(a+rune(i%26)) + strconv.Itoa(i/26)
 }

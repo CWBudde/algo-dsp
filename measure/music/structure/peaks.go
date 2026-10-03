@@ -70,8 +70,10 @@ func WithPositions(position func(index int) float64) PeakOption {
 // maximum within ±radius indices; of equal values in a window only the
 // earliest counts. Boundaries are returned in index order.
 //
-// radius must be at least 0 ([DefaultPeakRadius] is 4) and sigma finite
-// ([DefaultPeakSigma] is 1). A constant curve has no boundaries.
+// radius must be at least 0 ([DefaultPeakRadius] is 4), sigma finite
+// ([DefaultPeakSigma] is 1) and every novelty value finite; otherwise Peaks
+// returns an error wrapping [ErrInvalidArgument]. A constant curve has no
+// boundaries.
 func Peaks(novelty []float64, radius int, sigma float64, opts ...PeakOption) ([]Boundary, error) {
 	if radius < 0 {
 		return nil, fmt.Errorf("%w: peak radius must be >= 0, got %d", ErrInvalidArgument, radius)
@@ -91,6 +93,12 @@ func Peaks(novelty []float64, radius int, sigma float64, opts ...PeakOption) ([]
 		err := opt(&cfg)
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	for t, v := range novelty {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return nil, fmt.Errorf("%w: novelty %d is %g", ErrInvalidArgument, t, v)
 		}
 	}
 

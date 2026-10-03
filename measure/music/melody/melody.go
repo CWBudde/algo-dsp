@@ -24,6 +24,9 @@ var (
 	ErrNilOption = errors.New("melody: nil option")
 	// ErrInvalidOption reports an option value outside its valid range.
 	ErrInvalidOption = errors.New("melody: invalid option")
+	// ErrInvalidArgument reports an invalid argument, such as an invalid
+	// grid passed to [Clean].
+	ErrInvalidArgument = errors.New("melody: invalid argument")
 	// ErrLengthMismatch reports input slices whose lengths must agree but
 	// do not.
 	ErrLengthMismatch = errors.New("melody: length mismatch")

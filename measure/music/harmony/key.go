@@ -123,7 +123,8 @@ func (c Candidate) String() string { return keyName(c.Tonic, c.Mode) }
 
 func keyName(tonic pitch.PitchClass, mode Mode) string { return tonic.String() + " " + mode.String() }
 
-// Key is the result of [EstimateKey].
+// Key is the result of [EstimateKey]. The zero Key is C major (with zero
+// correlations); [Chords] and [Chorder.Chords] read only Tonic and Mode.
 type Key struct {
 	// Tonic is the tonic pitch class of the estimated key.
 	Tonic pitch.PitchClass

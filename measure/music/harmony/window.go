@@ -85,12 +85,16 @@ func WithBassChroma(chroma [12][]float64, voicing []float64) WindowOption {
 // the span in seconds times its strength to [Window.Bass] at the pitch class
 // of its MIDI note. Use the cleaned notes of a bass melody. The slice is not
 // copied.
+//
+// Like the spans and weights of [Windows], every note needs finite bounds
+// with Start ≤ End and a finite, non-negative strength. Otherwise the error
+// wraps [ErrInvalidInput], and [ErrInvalidOption] as well.
 func WithBassNotes(notes []melody.Note) WindowOption {
 	return func(cfg *windowConfig) error {
 		for i, n := range notes {
-			if !finite(n.Start) || !finite(n.End) || !finite(n.Strength) {
-				return fmt.Errorf("%w: bass note %d (%g..%g s, strength %g)",
-					ErrInvalidOption, i, n.Start, n.End, n.Strength)
+			if !finite(n.Start) || !finite(n.End) || n.Start > n.End || !finite(n.Strength) || n.Strength < 0 {
+				return fmt.Errorf("%w: bass note %d (%g..%g s, strength %g): %w",
+					ErrInvalidInput, i, n.Start, n.End, n.Strength, ErrInvalidOption)
 			}
 		}
 

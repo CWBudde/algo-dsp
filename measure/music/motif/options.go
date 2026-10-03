@@ -63,6 +63,11 @@ const (
 	// DefaultLeitmotifsPerSource is the default most leitmotifs per source.
 	DefaultLeitmotifsPerSource = 2
 
+	// MaxSize is the largest value the size options accept:
+	// [WithGridWindows], [WithLengths], [WithMaxSpanSlots] and
+	// [WithChromaWindows]. It bounds the buffers and loops the sizes feed.
+	MaxSize = 1 << 16
+
 	// maxUnitTable bounds the inter-onset values tabulated for the n-gram
 	// distance; larger values are computed directly.
 	maxUnitTable = 256
@@ -82,7 +87,8 @@ func DefaultChromaWindows() []int { return []int{8, 4} }
 // Option configures the functions of this package. All functions share the
 // option type and read only the options that concern them; each function's
 // documentation lists them. Options return an error wrapping
-// [ErrInvalidOption] for out-of-range values.
+// [ErrInvalidOption] for out-of-range values; a nil option gives an error
+// wrapping [ErrNilOption] and [ErrInvalidOption].
 //
 // The options map one to one onto the fields of AudioVisualizer's
 // MotifParams, in order: [WithGridWindows], [WithGridMinNotes],
@@ -150,7 +156,7 @@ func newConfig(opts []Option) (config, error) {
 
 	for i, opt := range opts {
 		if opt == nil {
-			return config{}, fmt.Errorf("%w: option %d is nil", ErrInvalidOption, i)
+			return config{}, fmt.Errorf("%w: %w: option %d is nil", ErrNilOption, ErrInvalidOption, i)
 		}
 
 		err := opt(&cfg)
@@ -178,13 +184,23 @@ func shareOption(name string, v float64, set func(*config)) Option {
 	}
 }
 
+// checkSize requires minimum <= n <= [MaxSize].
+func checkSize(name string, minimum, n int) error {
+	if n < minimum || n > MaxSize {
+		return fmt.Errorf("%w: %s must be in [%d, %d], got %d", ErrInvalidOption, name, minimum, MaxSize, n)
+	}
+
+	return nil
+}
+
 func sizesOption(name string, minimum int, sizes []int, set func(*config, []int)) Option {
 	sizes = slices.Clone(sizes)
 
 	return func(cfg *config) error {
 		for _, n := range sizes {
-			if n < minimum {
-				return fmt.Errorf("%w: %s must be >= %d, got %d", ErrInvalidOption, name, minimum, n)
+			err := checkSize(name, minimum, n)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -195,10 +211,10 @@ func sizesOption(name string, minimum int, sizes []int, set func(*config, []int)
 }
 
 // WithGridWindows sets the widths in slots of the grid windows that
-// [FindNoteMotifs] compares by position and pitch class, each >= 2, in the
-// order they are searched (default [DefaultGridWindows]: 16 and 8). Windows
-// start every half width from the start of bar 0. No widths disable the grid
-// pass.
+// [FindNoteMotifs] compares by position and pitch class, each from 2 to
+// [MaxSize], in the order they are searched (default [DefaultGridWindows]: 16
+// and 8). Windows start every half width from the start of bar 0. No widths
+// disable the grid pass.
 func WithGridWindows(slots ...int) Option {
 	return sizesOption("grid window", 2, slots, func(cfg *config, v []int) { cfg.gridWindows = v })
 }
@@ -231,19 +247,21 @@ func WithGridTranspositionPenalty(v float64) Option {
 	return shareOption("grid transposition penalty", v, func(cfg *config) { cfg.gridTransposeCost = v })
 }
 
-// WithLengths sets the n-gram lengths in notes, each >= 2, in the order they
-// are searched (default [DefaultLengths]: 8, 6 and 4). No lengths disable the
-// n-gram pass.
+// WithLengths sets the n-gram lengths in notes, each from 2 to [MaxSize], in
+// the order they are searched (default [DefaultLengths]: 8, 6 and 4). No
+// lengths disable the n-gram pass.
 func WithLengths(notes ...int) Option {
 	return sizesOption("n-gram length", 2, notes, func(cfg *config, v []int) { cfg.lengths = v })
 }
 
-// WithMaxSpanSlots sets the longest n-gram in slots, >= 1, from the first
-// note's start to the last note's end (default [DefaultMaxSpanSlots]).
+// WithMaxSpanSlots sets the longest n-gram in slots, from 1 to [MaxSize],
+// from the first note's start to the last note's end (default
+// [DefaultMaxSpanSlots]).
 func WithMaxSpanSlots(n int) Option {
 	return func(cfg *config) error {
-		if n < 1 {
-			return fmt.Errorf("%w: maximum span must be >= 1 slot, got %d", ErrInvalidOption, n)
+		err := checkSize("maximum span in slots", 1, n)
+		if err != nil {
+			return err
 		}
 
 		cfg.maxSpanSlots = n
@@ -320,8 +338,9 @@ func WithCoveredShare(v float64) Option {
 }
 
 // WithChromaWindows sets the widths in beats of the chroma windows of
-// [FindChromaMotifs], each >= 1, in the order they are searched (default
-// [DefaultChromaWindows]: 8 and 4). No widths disable the chroma pass.
+// [FindChromaMotifs], each from 1 to [MaxSize], in the order they are
+// searched (default [DefaultChromaWindows]: 8 and 4). No widths disable the
+// chroma pass.
 func WithChromaWindows(beats ...int) Option {
 	return sizesOption("chroma window", 1, beats, func(cfg *config, v []int) { cfg.chromaWindows = v })
 }

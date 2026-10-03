@@ -522,8 +522,8 @@ func TestCleanOptionsAndErrors(t *testing.T) {
 	}
 
 	_, _, err = Clean(notes, rhythm.Grid{})
-	if !errors.Is(err, rhythm.ErrInvalidArgument) {
-		t.Errorf("zero grid: %v", err)
+	if !errors.Is(err, rhythm.ErrInvalidArgument) || !errors.Is(err, ErrInvalidArgument) {
+		t.Errorf("zero grid: %v, want rhythm.ErrInvalidArgument and ErrInvalidArgument", err)
 	}
 
 	for _, bad := range []Note{

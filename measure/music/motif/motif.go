@@ -10,13 +10,18 @@ import (
 )
 
 // ErrInvalidOption reports an option with an out-of-range value, or a nil
-// option.
+// option. Errors for nil options wrap [ErrNilOption] as well.
 var ErrInvalidOption = errors.New("motif: invalid option")
+
+// ErrNilOption reports a nil option. Errors wrapping it also wrap
+// [ErrInvalidOption].
+var ErrNilOption = errors.New("motif: nil option")
 
 // ErrInvalidArgument reports an invalid argument: a grid not built by
 // [rhythm.NewGrid], a nil motif or callback, the reserved source name
-// [SourceChroma] for note motifs, note indices outside the note slice, or a
-// note range too long to scan.
+// [SourceChroma] for note motifs, note indices outside the note slice, a
+// note range too long to scan, a non-finite energy, or a non-finite
+// salience.
 var ErrInvalidArgument = errors.New("motif: invalid argument")
 
 // SourceChroma is the [Motif].Source of the motifs [FindChromaMotifs] finds.

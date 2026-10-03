@@ -10,7 +10,7 @@ import (
 // so test for them with errors.Is.
 var (
 	// ErrInvalidArgument reports an argument or option value outside its
-	// valid range.
+	// valid range, including non-finite input values.
 	ErrInvalidArgument = errors.New("structure: invalid argument")
 	// ErrShape reports rows of unequal length, blocks with unequal row
 	// counts, a non-square matrix, or a destination of the wrong size.
@@ -61,6 +61,20 @@ func checkRows(rows [][]float64) (int, error) {
 	}
 
 	return dims, nil
+}
+
+// checkFinite reports whether every value of rows is finite. It does not
+// allocate unless it fails.
+func checkFinite(name string, rows [][]float64) error {
+	for i, r := range rows {
+		for j, v := range r {
+			if math.IsNaN(v) || math.IsInf(v, 0) {
+				return fmt.Errorf("%w: %s[%d][%d] is %g", ErrInvalidArgument, name, i, j, v)
+			}
+		}
+	}
+
+	return nil
 }
 
 // checkSquare reports whether s is an n×n matrix.
@@ -221,9 +235,10 @@ func cosine(a, b []float64) float64 {
 
 // SelfSimilarity returns the n×n cosine self-similarity matrix of n rows:
 // entry (i, j) is the cosine of rows i and j, in [-1, 1], and 0 when either
-// row is all zeros. All rows must have the same length.
+// row is all zeros. All rows must have the same length, and all values must
+// be finite (else the error wraps [ErrInvalidArgument]).
 func SelfSimilarity(rows [][]float64) ([][]float64, error) {
-	_, err := checkRows(rows)
+	err := checkSimilarityRows(rows)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +260,7 @@ func SelfSimilarity(rows [][]float64) ([][]float64, error) {
 // [SelfSimilarity]) into dst, which must have len(rows) rows of len(rows)
 // values. It does not allocate.
 func SelfSimilarityInto(dst, rows [][]float64) error {
-	_, err := checkRows(rows)
+	err := checkSimilarityRows(rows)
 	if err != nil {
 		return err
 	}
@@ -262,6 +277,15 @@ func SelfSimilarityInto(dst, rows [][]float64) error {
 	selfSimilarity(dst, rows)
 
 	return nil
+}
+
+func checkSimilarityRows(rows [][]float64) error {
+	_, err := checkRows(rows)
+	if err != nil {
+		return err
+	}
+
+	return checkFinite("rows", rows)
 }
 
 // selfSimilarity fills the symmetric matrix s. cosine(a, b) and cosine(b, a)
@@ -289,7 +313,8 @@ func selfSimilarity(s, rows [][]float64) {
 // truncated, so a homogeneous start or end scores up to a quarter of an
 // ideal boundary (similarity +1 within and -1 across the sections).
 //
-// ssm must be square and halfWidth at least 1 ([DefaultHalfWidth] is 8).
+// ssm must be square with finite values (else the error wraps [ErrShape] or
+// [ErrInvalidArgument]) and halfWidth at least 1 ([DefaultHalfWidth] is 8).
 func FooteNovelty(ssm [][]float64, halfWidth int) ([]float64, error) {
 	err := checkNovelty(ssm, halfWidth)
 	if err != nil {
@@ -324,7 +349,12 @@ func checkNovelty(ssm [][]float64, halfWidth int) error {
 		return fmt.Errorf("%w: half-width must be >= 1, got %d", ErrInvalidArgument, halfWidth)
 	}
 
-	return checkSquare(ssm)
+	err := checkSquare(ssm)
+	if err != nil {
+		return err
+	}
+
+	return checkFinite("ssm", ssm)
 }
 
 // footeNovelty computes the novelty curve in the reference operation order.
