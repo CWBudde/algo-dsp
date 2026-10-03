@@ -62,4 +62,15 @@
 //
 // Chroma is independent of the pitch estimate and is the more robust feature
 // for harmony.
+//
+// # Note cleanup and bass lines
+//
+// [Clean] turns the tracker notes into a monophonic note list on a
+// rhythm.Grid: it drops floor and weak notes, quantises starts to sixteenth
+// slots (flagging off-grid notes), keeps one note per slot, corrects octave
+// errors (a bar-periodic vote, the distance to the median of nearby bars,
+// then lone spikes) and labels arpeggio runs. [BassPreset] retunes [Analyze]
+// for a bass line (long FFT, E1–C4 candidates) and [BassCleanOptions] lowers
+// the cleanup floor to match. Both reproduce the AudioVisualizer story layer
+// bit for bit with their defaults.
 package melody

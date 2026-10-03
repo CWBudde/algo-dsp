@@ -21,7 +21,7 @@ This plan is **actionable**: every phase contains **checkable tasks and subtasks
 3. Architecture and Package Layout
 4. API Design Principles
 5. Phase Overview
-6. Detailed Phase Plan (Phases 0–44)
+6. Detailed Phase Plan (Phases 0–45)
 7. Appendices
    - Appendix A: Testing and Validation Strategy
    - Appendix B: Benchmarking and Performance Strategy
@@ -213,6 +213,7 @@ Phase 43: Tag and Publish v1.0                             [0.5 week] 📋 Plann
 
 # Post-v1.0
 Phase 44: Music Analysis & Source Separation (Demucs port)  [6-8 weeks] 🔄 In Progress
+Phase 45: Music Structure & Harmony (story layer port)      [3-4 weeks] ✅ Complete
 ```
 
 ---
@@ -1096,7 +1097,8 @@ Added after the PixelParade visualizer rework, which needed the lead melody and 
       over the first 30 ms; heuristic labels for the default 5-band layout, rules replaceable.
 - [x] **Downbeat** (`rhythm.Downbeat`): bar phase from weighted accents (kicks, bass onsets)
       near beats.
-- [ ] pYIN/Melodia-style probabilistic pitch tracking and key/chord estimation on top of chroma.
+- [ ] pYIN/Melodia-style probabilistic pitch tracking. (Key/chord estimation on top of chroma
+      moved to Phase 45.)
 
 #### Workstream C: Classical source separation baseline (`dsp/separate`)
 
@@ -1276,6 +1278,208 @@ Exit criteria:
       the performance target above.
 - [ ] E: `AudioVisualizer` regenerates `analysis/` without Python.
 
+### Phase 45: Music Structure & Harmony (Complete, post-v1.0)
+
+Status: Workstreams A–F landed (`measure/music/{rhythm,melody,harmony,structure,motif,align,features}`,
+`examples/structure_overview`, the `github.com/cwbudde/midi` module and the `AudioVisualizer`
+hand-back). Only the optional librosa/madmom chord comparison is open. Depends on Phase 44
+Workstream B (`measure/music/{features,melody,rhythm}`).
+
+Ports the second analysis layer of `AudioVisualizer` (`github.com/cwbudde/AudioVisualizer`,
+`internal/story` behind `cmd/story`, about 2,600 LOC with tests) that was written for the
+PixelParade v3 music video. Phase 44 B turns audio into frame features, onsets, a beat grid and
+melody notes. This layer turns those into musical facts: a key, a chord chart, phrase
+structure with A/A′/B labels, and recurring motifs (leitmotifs) with their transposed returns.
+None of it exists here yet. PLAN.md's Phase 44 B extension lists "key/chord estimation on top
+of chroma" as open, and that item moves into this phase.
+
+Same rules as Phase 44 B:
+
+- One package per concern.
+- Song-specific values (105 BPM, G major, the Demucs stem names, the hand-set cues) stay in the
+  app and become explicit inputs.
+- Each package carries a `reference_test.go` with a verbatim copy of the app code and a
+  `TestXParity`, which must reproduce it bit for bit with the default options.
+
+The app's parameter structs are positional literals today, for example
+`CleanParams{52, 0.35, 50, 1, 19, 2, 16, 2, 4, 2, 2}`. They become functional options with
+those values as documented defaults.
+
+#### Decision gate (resolve before starting Workstream F)
+
+- [x] **Where the MIDI file writer lives.** `AudioVisualizer/internal/smf` (208 LOC,
+      dependency-free) is a format-1 Standard MIDI File writer and reader: PPQ 480, tempo, time
+      and key signature, markers, text, explicit note-offs, no running status, and a
+      deterministic order for simultaneous events (meta, note-off, other, note-on).
+      It was used to export the analysis as `PixelParade.mid` for checking in a DAW.
+      §1.3 excludes file containers, so it does not belong in this module.
+      **Lean: a separate `github.com/cwbudde/midi` module**, like `wav`.
+      This library returns the note, chord and marker data, and the caller encodes it.
+      **Decided: `github.com/cwbudde/midi` (package `smf`)**, API-compatible with the app's
+      `internal/smf` and byte-identical on its output; `Track.Note` now clamps a negative
+      note-on before placing the note-off, so a note before tick 0 no longer hangs.
+- [x] **Viterbi placement.** Chord smoothing is a small Viterbi over a constant switch
+      penalty. **Lean: keep it unexported in `harmony`** until a second user appears
+      (e.g. pYIN from Phase 44 B); only then promote it to `stats/hmm`.
+      **Decided: unexported in `harmony/viterbi.go`**, allocation-free on a reused `Chorder`.
+
+#### Workstream A: Grid and note cleanup (`measure/music/rhythm`, `measure/music/melody`)
+
+From `internal/story/grid.go`, `notes.go` and `internal/audioanalysis/melody.go`.
+
+- [x] **`rhythm.Grid`**: a constant-tempo 16th/beat/bar grid built from plain values (BPM,
+      beat origin, downbeat index, beats per bar, subdivisions per beat), including a pickup
+      bar before the first downbeat. Methods map time to slot, slot to time, bar, bar start,
+      beat start and bar position. It complements `BeatGrid` (beat times only), and its input
+      is `BeatGrid`/`Downbeat` output, not the app's `Rhythm` type.
+- [x] **`melody.Clean(notes, grid, opts...)`** returns cleaned notes plus the dropped raw notes
+      with a reason: - drop notes below a floor MIDI note (the tracker's lowest pitch is mostly artefacts) or
+      below a minimum strength; - quantise starts to 16th slots, flag notes more than 50 ms off the grid, and keep the
+      stronger note per slot (monophonic); - octave correction in three steps: a bar-periodic vote (same slot one 16-slot period
+      apart, at least 2 votes), then the distance to the median of nearby bars, then
+      folding lone octave spikes; - split short repeated runs into an arpeggio voice (min run 4, max gap 2 slots, max note
+      2 slots).
+
+      Defaults are the app's `LeadCleanParams`. The bass preset differs only in the floor
+      (MIDI 28).
+
+- [x] **`melody.BassPreset() []Option`**: FFT 8192, MIDI 28–60, 30–1200 Hz, 6 harmonics, minimum
+      note 0.10 s, onset snap 0.06 s (for use with bass-stem onsets). Currently
+      `audioanalysis.BassMelodyOptions` in the app.
+- [x] Tests: - an arpeggio with planted octave errors comes back corrected, and genuine leaps
+      (G5 G4 F#5) survive; - a pickup bar and a downbeat offset map correctly; - quantisation is stable for notes jittered by ±30 ms; - the bass preset tracks a synthetic 41–55 Hz bass line within 10 cents.
+
+#### Workstream B: Key and chords (`measure/music/harmony`)
+
+From `internal/story/harmony.go` and the window pooling in `story.go`.
+
+- [x] **`EstimateKey(chroma [12]float64, opts...) (Key, error)`**: correlates the chroma with
+      the Krumhansl–Kessler major/minor profiles over all 24 rotations. If the relative major
+      and minor keys are within a tie margin (0.05), optional tonic evidence (typically bass
+      pitch-class weight, `WithTonicEvidence`) decides, and `Key.Ambiguous` is set. - `Key` reports tonic (`pitch.PitchClass`), mode, correlation, runner-up and margin. - Methods: `Sharps()` and `Diatonic(pc)`, built on `pitch.Scale`. - Profile set is an option, so Temperley or Albrecht–Shanahan profiles can be added
+      later without an API change.
+- [x] **`Windows(chroma, frameRate, spans, opts...)`**: pools frame chroma (Phase 44's
+      `melody.Result.Chroma`) over grid spans, RMS-weighted, into per-window evidence
+      (chroma, optional bass pitch-class weight, level in dBFS).
+- [x] **`Chords(windows, key, opts...) ([]Chord, error)`**: - scores 12 roots × templates (maj, min, 7, maj7, m7; the template set is an option)
+      against each window's chroma; - adds a bass-root bonus (0.2), half credit for a bass on another chord tone
+      (inversions, 0.5), a seventh penalty (0.03) and an in-key bonus (0.05); - outputs `N` when the window is below the gate (−50 dBFS) or flat
+      (max/mean < 1.5); - Viterbi smoothing with a switch penalty (0.10), then merges equal neighbours.
+
+      `Chord` carries root, quality, bass (slash chords), symbol, score, margin and voicing.
+
+- [x] Tests: - every one of the 24 keys is recovered from a synthetic I–IV–V–I cadence; - the relative-key tie is broken by bass evidence and flagged ambiguous; - a I–vi–IV–V progression with one first-inversion chord yields the right symbols,
+      including the slash; - a B7/D♯ window is not read as D♯m (the regression the 0.2 bass bonus fixes); - silence gives `N`; one noisy window does not cause a chord flip.
+- [ ] Optional: golden comparison against `librosa`/`madmom` chord output on a public-domain
+      clip.
+
+#### Workstream C: Structure (`measure/music/structure`)
+
+From `internal/story/structure.go`. Feature-agnostic: callers pass rows (beats or bars × dims).
+
+- [x] **`ZScore(rows)`**: standardises each dimension in place; constant dimensions become 0.
+      **`Blocks`**: L2-normalises then weights feature groups (e.g. chroma, bass chroma, band
+      dB, stem dB, drum grid), so callers can mix heterogeneous features. The app weights are
+      1, 0.7, 0.5, 0.5, 0.5.
+- [x] **`SelfSimilarity(rows)` / `SelfSimilarityInto(dst, rows)`**: cosine SSM.
+- [x] **`FooteNovelty(ssm, halfWidth)`**: Gaussian-tapered checkerboard kernel (half-width 8
+      beats in the app).
+- [x] **`Peaks(novelty, radius, sigma)`**: boundaries are local maxima within ±radius (4) above
+      mean + σ·sd (σ = 1). Optional reference marks (`WithMarks`) report the nearest mark
+      and its offset for each boundary. This is how the app compares detected boundaries
+      with its hand-set cues; the cues themselves stay in the app.
+- [x] **`Label(ssm, unit, same, variant)`**: phrase labelling into A, A′, B, … Phrases are
+      `unit` rows long (4 bars). Similarity ≥ `same` (0.6) reuses a label, ≥ `variant` (0.35)
+      marks a variant, otherwise a new letter. Returns labels and per-phrase similarity.
+- [x] Tests: - a synthetic A B A B feature sequence gives boundaries at the joins and labels A B A B; - a perturbed third phrase becomes A′; - a constant input gives no boundaries and no NaN.
+- [x] `examples/structure_overview`: writes the SSM and novelty curve as a label-free heat-map
+      PNG with `image/png`, replacing the app's `ssmpng.go`. Same pattern as
+      `examples/analysis_overview`.
+
+#### Workstream D: Motifs (`measure/music/motif`)
+
+From `internal/story/motif.go` (613 LOC), the most valuable piece of the layer. Inputs are
+cleaned notes plus a `rhythm.Grid`, or beat-level chroma.
+
+- [x] **`FindNoteMotifs(notes, grid, opts...)`**, two passes: 1. bar and half-bar windows (16 and 8 slots, at least 4 notes) compared by Dice overlap
+      on (slot position, pitch class) under the best transposition, with a small
+      transposition penalty; 2. transposition-invariant n-grams of 8, 6 and 4 notes (span ≤ 32 slots, gaps ≤ 4)
+      compared by interval and inter-onset-ratio distance (weights 0.7 and 0.3,
+      octave-tolerant).
+
+      Greedy clustering keeps occurrences non-overlapping. Rotations of the same figure and
+      shorter motifs mostly covered by longer ones are suppressed. Matches need similarity
+      ≥ 0.8 and at least 3 occurrences.
+
+- [x] **`FindChromaMotifs(chroma, grid, opts...)`**: fallback for material without reliable
+      notes. Beat-chroma windows of 8 and 4 beats are grouped under the optimal transposition
+      index (similarity ≥ 0.85).
+- [x] **`Corroborate(motif, chromaMotifs, share)`** marks note motifs that the chroma pass
+      confirms. **`Rank(motifs, opts...)`** scores salience from count, sections spanned,
+      prominence (energy), distinctiveness, span and confirmation. It flags ostinatos (a
+      figure covering ≥ 0.6 of its span) and picks the top N leitmotifs with an overlap limit
+      and a per-source cap.
+- [x] Types: `Motif` (ID, role theme/ostinato, notes or chroma pattern, salience terms) and
+      `Occurrence{Start, End, Bar, Slot, Transposition, Similarity, Variant, NoteIndices}`.
+- [x] Tests: - a planted 8-note motif returns transposed (+5), varied (one note changed) and with an
+      octave error, and all three are found with the right transpositions; - a bar-long repeating arpeggio is found once and flagged as an ostinato, not as 16
+      rotations; - the chroma fallback finds the planted motif when the notes are removed; - the result is deterministic under input order.
+- [x] Benchmarks: the n-gram pass on 2,000 notes; allocations bounded and reported in
+      `BENCHMARKS.md`.
+
+#### Workstream E: Small generalisations (`measure/music/align`, `measure/music/features`)
+
+- [x] **`align.Lag(ref, x, sampleRate, opts...) (LagResult, error)`**: lag, normalised
+      correlation and gain in dB of one signal against a reference. Coarse search with a
+      stride over ±max lag, then a fine search around the best coarse lag.
+      `AudioVisualizer/cmd/verifyrender` open-codes this (stride 16 over ±20 ms, then ±16
+      samples) to check a rendered video's soundtrack against the source WAV. `Check` covers
+      the N-part sum case but reports no gain. Reuse `dsp/conv` for the correlation where it
+      pays off.
+- [x] **`features.Activity(levels map[string][]float64, spans, opts...)`**: per-span activity of
+      named tracks. A track is active in a span when its mean level is within X dB
+      (−12 dB in the app) of its own 95th-percentile frame level. Generalised from
+      `internal/story/roles.go`, which hardcodes the four Demucs stem names. Role names
+      ("rhythm", "root", "theme") stay in the app.
+- [x] Tests: a known integer and fractional lag and gain are recovered; a silent span is
+      inactive; a quiet but present track is active relative to its own level.
+
+#### Workstream F: Hand-back to `AudioVisualizer`
+
+- [x] `internal/story` keeps only the pipeline, the `story.json` schema, the Markdown report
+      and the PixelParade parameters, and calls A–E.
+- [x] `cmd/verifyrender` uses `align.Lag`.
+- [x] `internal/smf` moves to the module chosen at the gate.
+- [x] `bun run story` regenerates `analysis/story.json`, `public/analysis/story.json`,
+      `story.md` and `PixelParade.mid` byte-identically. Any intended difference is
+      documented here, like the log-spectrogram fix in Phase 44 B.
+
+> Outcome notes: every package reproduces the app bit for bit with default options
+> (`motif/song_test.go` reproduces PixelParade's 20 motifs from a real-song fixture), and the
+> app's `story.json`, `story.md`, `PixelParade.mid` and SSM PNGs regenerate byte-identically
+> (only the provenance strings change). API differences from the plan sketch: `Windows` takes
+> the RMS track positionally; `Corroborate` takes the grid and options; `structure` functions
+> return errors; `align.LagChannels` was added because the app sums channels inside the lag
+> loop. Review hardening rejects non-finite input, caps motif sizes and makes `Rank`
+> idempotent. Open follow-ups (API polish, not blocking): one span type across `harmony`,
+> `motif` and `features`; consistent error-variable names; options instead of positional
+> tuning parameters in `structure`; per-input drop reasons from `melody.Clean`; an exported
+> per-span level helper in `features`.
+
+Exit criteria:
+
+- [x] A–D: `go test -race` and `-tags purego` pass for the new and extended packages; each
+      `TestXParity` reproduces the `AudioVisualizer` code bit for bit with default options;
+      `SelfSimilarityInto`, `FooteNovelty` and the chord Viterbi report 0 allocs/op on
+      reused buffers; every exported identifier has a runnable example.
+- [x] B: all 24 synthetic keys correct; chord fixture symbols exact.
+- [x] D: the planted motif fixture finds every occurrence with the correct transposition and
+      no rotations.
+- [x] E: `verifyrender` reports the same lag, correlation and gain as before on the
+      PixelParade v3 master.
+- [x] F: `AudioVisualizer` story outputs are regenerated byte-identically, and
+      `internal/story` contains no signal-analysis code.
+
 ---
 
 ## Appendix A: Testing and Validation Strategy
@@ -1423,6 +1627,8 @@ Quarter-end success criteria:
 | 0.18    | 2026-07-29 | Claude  | Phase 40 partially completed: added `internal/benchguard` + `cmd/benchguard`, a benchmark regression guard that diffs `go test -bench` output against the checked-in `benchmarks/baseline.json` (`allocs/op` exact and `B/op` +10% gate; `ns/op` +50% is reported but non-gating unless `-enforce-timing` is passed on quiet hardware). Broadened `just bench-ci` from 3 to 6 packages (20 benchmarks) with a `count` parameter, added `just bench-guard` / `just bench-baseline`, and wired an advisory `Benchmark Guard` CI job that drives the same justfile recipe. Timing was demoted to non-gating after measurement: repeat runs with no code change moved benchmarks 43% on an idle machine and up to 7x under load, while allocation columns held steady throughout. The remaining item — refreshing `BENCHMARKS.md` from >=2 machines — is blocked on hardware availability, so the phase stays In Progress. |
 | 0.19    | 2026-10-03 | Claude  | Added Phase 44 (post-v1.0): port of `AudioVisualizer`'s `separate.py` (Demucs v4 `htdemucs` inference) and `plot_analysis.py` (feature data products only; rendering stays a non-goal). Split into STFT/ISTFT primitive, music-analysis features, classical HPSS baseline, the Demucs port with checkpoint and pipeline facts read from the real checkpoint, and hand-back; with a decision gate on whether neural inference belongs in this module.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 0.20    | 2026-10-03 | Claude  | Phase 44 Workstreams A, B and C implemented: `dsp/stft` (float64/float32 STFT with zero/reflect/no padding, unitary scaling, WSS-normalized ISTFT), `measure/music/{features,onset,rhythm,align}` (bit-identical to `AudioVisualizer`, log spectrogram defect fixed with energy-preserving bin overlap), the B extension `measure/music/melody` plus drum kinds and downbeat, `dsp/separate` (HPSS, soft masks, mid/side and centre extraction), `resample.ResampleAligned` and `core.LinearToDBFloor`. Open: streaming STFT processor, torch/librosa golden vectors, SpectralFreeze migration, `examples/analysis_overview`, Workstream D.                                                                                                                                                                                                                                                                            |
+| 0.21    | 2026-10-03 | Claude  | Added Phase 45 (post-v1.0): port of `AudioVisualizer`'s `internal/story` layer — `rhythm.Grid` and `melody.Clean` note cleanup, a bass melody preset, `measure/music/harmony` (Krumhansl–Kessler key, template chords with Viterbi smoothing), `measure/music/structure` (SSM, Foote novelty, A/A′/B labels), `measure/music/motif` (transposition-invariant note and chroma motifs, salience ranking), `align.Lag` and `features.Activity`. Decision gate: the SMF writer goes to a separate `midi` module (§1.3). Phase 44's key/chord item moved here.                                                                                                                                                                                                                                                                                                                                                              |
+| 0.22    | 2026-10-03 | Claude  | Completed Phase 45: `rhythm.Grid`, `melody.Clean`/`BassPreset`, `measure/music/harmony` (key, windows, chords), `measure/music/structure` (SSM, novelty, peaks, labels), `measure/music/motif` (note and chroma motifs, salience, leitmotifs), `align.Lag`/`LagChannels` and `features.Activity`, all bit-identical to AudioVisualizer; `examples/structure_overview`; SMF writer moved to `github.com/cwbudde/midi`; review hardening against non-finite and oversized input. Optional librosa/madmom comparison open.                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ---
 

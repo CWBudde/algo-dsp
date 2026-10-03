@@ -47,4 +47,11 @@
 //
 // The extractor is deterministic: the same input and configuration always
 // produce bit-identical output.
+//
+// # Activity
+//
+// [Activity] decides per span (for example per bar) whether each named
+// track plays, comparing the span's level with the track's own
+// 95th-percentile frame level, so quiet tracks are judged on their own
+// scale.
 package features
