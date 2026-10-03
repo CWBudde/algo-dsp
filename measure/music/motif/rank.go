@@ -383,7 +383,8 @@ func pickLeitmotifs(motifs []Motif, cfg config) {
 			}
 		}
 
-		if total > 0 && shared/total >= cfg.leitmotifOverlap {
+		// shared > 0 keeps disjoint motifs eligible when the limit is 0.
+		if total > 0 && shared > 0 && shared/total >= cfg.leitmotifOverlap {
 			return false
 		}
 

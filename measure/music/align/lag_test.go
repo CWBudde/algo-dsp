@@ -412,7 +412,9 @@ func TestLagHugeOptions(t *testing.T) {
 		{align.WithLagMaxLag(math.MaxFloat64), align.WithLagCoarseStep(math.MaxInt), align.WithLagFineRadius(math.MaxInt)},
 		{align.WithLagMaxLag(1e18), align.WithLagCoarseStep(16), align.WithLagFineRadius(1 << 62)},
 	} {
-		res, err := align.Lag(ref, x, SampleRate, opts...)
+		// A range this wide reaches lags with only a few overlapping pairs,
+		// so the overlap gate is required for a meaningful answer.
+		res, err := align.Lag(ref, x, SampleRate, append(opts, align.WithLagMinOverlap(0.5))...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -439,5 +441,52 @@ func TestLagHugeOptions(t *testing.T) {
 	_, err = align.Lag(ref, x, SampleRate, align.WithLagWindow(1e300, math.MaxFloat64))
 	if !errors.Is(err, align.ErrInvalidArgument) {
 		t.Errorf("window beyond the signal: %v", err)
+	}
+}
+
+func TestLagIgnoresLagsWithLittleOverlap(t *testing.T) {
+	t.Parallel()
+
+	// A reference whose last samples repeat at the start of x: at lag
+	// -(len-4) the four overlapping pairs correlate perfectly, while the true
+	// lag (37) correlates below 1 because of added noise.
+	const n = 2000
+
+	ref := partials(n, 0, 1)
+	x := rendered(ref, n, 37, 1, 0, 0)
+
+	for i := range x {
+		x[i] += 0.05 * math.Sin(float64(i)*1.7)
+	}
+
+	copy(x[:4], ref[n-4:])
+
+	search := []align.LagOption{align.WithLagMaxLag(1), align.WithLagCoarseStep(1), align.WithLagStride(1)}
+
+	res, err := align.Lag(ref, x, SampleRate, append(search, align.WithLagMinOverlap(0.5))...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.Samples != 37 {
+		t.Errorf("lag %d, want 37", res.Samples)
+	}
+
+	// Without the gate (the default) the four-sample edge lag wins, which is
+	// what the fixture is built to show.
+	res, err = align.Lag(ref, x, SampleRate, search...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.Samples != -(n - 4) {
+		t.Errorf("ungated lag %d, want %d", res.Samples, -(n - 4))
+	}
+
+	for _, share := range []float64{-1, 1.5, math.NaN()} {
+		_, err := align.Lag(ref, x, SampleRate, align.WithLagMinOverlap(share))
+		if !errors.Is(err, align.ErrInvalidArgument) {
+			t.Errorf("WithLagMinOverlap(%v): %v", share, err)
+		}
 	}
 }

@@ -124,6 +124,20 @@ func ExampleWithLagFineRadius() {
 	// lag 0
 }
 
+func ExampleWithLagMinOverlap() {
+	// A search range as long as the signal reaches lags that pair only a few
+	// samples; requiring half the window to overlap keeps them out.
+	res, err := align.Lag(tones(4800, 0, 1), tones(4800, 25, 1), 24000,
+		align.WithLagMaxLag(0.2), align.WithLagMinOverlap(0.5))
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("lag", res.Samples)
+	// Output:
+	// lag 25
+}
+
 func ExampleWithLagStride() {
 	// Use every sample in the correlation sums.
 	res, err := align.Lag(tones(24000, 0, 1), tones(24000, -40, 2), 24000, align.WithLagStride(1))

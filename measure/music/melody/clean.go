@@ -330,6 +330,10 @@ func Clean(notes []Note, grid rhythm.Grid, opts ...CleanOption) ([]CleanNote, []
 			return nil, nil, fmt.Errorf("%w: note %d %+v", ErrInvalidNote, i, n)
 		}
 
+		if n.End < n.Start {
+			return nil, nil, fmt.Errorf("%w: note %d ends (%g s) before it starts (%g s)", ErrInvalidNote, i, n.End, n.Start)
+		}
+
 		if !onGrid(grid, n.Start) || !onGrid(grid, n.End) {
 			return nil, nil, fmt.Errorf("%w: note %d (%g..%g s) is too far from the grid", ErrInvalidNote, i, n.Start, n.End)
 		}

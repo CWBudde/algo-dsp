@@ -21,6 +21,10 @@ const (
 	// DefaultLagStride is the default sample decimation of the correlation
 	// sums.
 	DefaultLagStride = 16
+	// DefaultLagMinOverlap is the default share of the window's grid samples
+	// that must have a partner in x for a lag to be a candidate. The default
+	// 0 only requires one pair, as verifyrender does.
+	DefaultLagMinOverlap = 0.0
 )
 
 // LagResult is the outcome of [Lag] and [LagChannels].
@@ -50,6 +54,7 @@ type lagConfig struct {
 	coarseStep int
 	fineRadius int
 	stride     int
+	minOverlap float64
 	start, end float64
 	window     bool
 }
@@ -112,6 +117,25 @@ func WithLagStride(n int) LagOption {
 	}
 }
 
+// WithLagMinOverlap sets the share of the window's grid samples (0 <= share
+// <= 1, default 0) that must pair with samples of x for a lag to be
+// considered. Lags near the ends of the signals keep only a few pairs, whose
+// correlation can approach 1 by chance. With the default 20 ms range and
+// windows much longer than that this cannot happen; when the lag range
+// approaches the window length, set a share such as 0.5 so that those edge
+// lags cannot win.
+func WithLagMinOverlap(share float64) LagOption {
+	return func(c *lagConfig) error {
+		if !(share >= 0) || share > 1 {
+			return fmt.Errorf("%w: minimum overlap %v", ErrInvalidArgument, share)
+		}
+
+		c.minOverlap = share
+
+		return nil
+	}
+}
+
 // WithLagWindow restricts the reference samples to the window [start, end)
 // in seconds, converted to sample indices by truncation and clamped to the
 // reference length. Samples of x outside the window are still used when the
@@ -167,6 +191,7 @@ func LagChannels(ref, x [][]float64, sampleRate float64, opts ...LagOption) (Lag
 		coarseStep: DefaultLagCoarseStep,
 		fineRadius: DefaultLagFineRadius,
 		stride:     DefaultLagStride,
+		minOverlap: DefaultLagMinOverlap,
 	}
 
 	if len(opts) > 0 {
@@ -193,6 +218,12 @@ func LagChannels(ref, x [][]float64, sampleRate float64, opts ...LagOption) (Lag
 	}
 
 	s := lagSearch{ref: ref, x: x, lo: lo, hi: hi, stride: cfg.stride}
+
+	// A candidate lag must pair at least minOverlap of the window's grid
+	// samples with samples of x. Edge lags that keep only a handful of pairs
+	// can reach a correlation near 1 by chance and must not win.
+	gridSamples := (hi - lo + cfg.stride - 1) / cfg.stride
+	s.minPairs = max(1, int(math.Ceil(cfg.minOverlap*float64(gridSamples))))
 
 	// No reference sample has a partner in x at a lag of limit or more in
 	// either direction, so those lags have NaN correlations and never win.
@@ -223,7 +254,7 @@ func LagChannels(ref, x [][]float64, sampleRate float64, opts ...LagOption) (Lag
 		}
 	}
 
-	ab, aa, bb := s.sums(lag)
+	ab, aa, bb, _ := s.sums(lag)
 	if !(aa > 0) || !(bb > 0) {
 		return LagResult{}, fmt.Errorf("%w: no signal energy at lag %d", ErrInvalidArgument, lag)
 	}
@@ -279,13 +310,17 @@ func truncClamp(x float64, n int) int {
 type lagSearch struct {
 	ref, x         [][]float64
 	lo, hi, stride int
+	minPairs       int
 }
 
 // sums returns Σab, Σa² and Σb² at lag over the stride grid of [lo, hi),
-// skipping reference samples whose partner lies outside x. The iteration
-// order (samples, then channels) is the one of verifyrender's stats.
-func (s *lagSearch) sums(lag int) (float64, float64, float64) {
+// skipping reference samples whose partner lies outside x, and the number of
+// grid samples that had a partner. The iteration order (samples, then
+// channels) is the one of verifyrender's stats.
+func (s *lagSearch) sums(lag int) (float64, float64, float64, int) {
 	var ab, aa, bb float64
+
+	pairs := 0
 
 	first, last := s.lo, min(s.hi, len(s.x[0])-lag)
 	if first+lag < 0 {
@@ -294,6 +329,8 @@ func (s *lagSearch) sums(lag int) (float64, float64, float64) {
 	}
 
 	for i := first; i < last; i += s.stride {
+		pairs++
+
 		j := i + lag
 		for ch := range s.ref {
 			x, y := s.ref[ch][i], s.x[ch][j]
@@ -303,13 +340,17 @@ func (s *lagSearch) sums(lag int) (float64, float64, float64) {
 		}
 	}
 
-	return ab, aa, bb
+	return ab, aa, bb, pairs
 }
 
 // stats returns the normalized correlation and the gain in dB at lag, NaN
-// when a sum is zero (NaN never wins a search).
+// when a sum is zero or fewer than minPairs grid samples overlap (NaN never
+// wins a search).
 func (s *lagSearch) stats(lag int) (float64, float64) {
-	ab, aa, bb := s.sums(lag)
+	ab, aa, bb, pairs := s.sums(lag)
+	if pairs < s.minPairs {
+		return math.NaN(), math.NaN()
+	}
 
 	return ab / math.Sqrt(aa*bb), 10 * math.Log10(bb/aa)
 }

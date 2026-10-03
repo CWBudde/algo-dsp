@@ -825,3 +825,28 @@ func TestRankIsIdempotent(t *testing.T) {
 		t.Fatalf("leitmotifs %+v", got)
 	}
 }
+
+func TestLeitmotifOverlapZeroKeepsDisjointMotifs(t *testing.T) {
+	t.Parallel()
+
+	occ := func(start float64) Occurrence { return Occurrence{Start: start, End: start + 2} }
+	motifs := []Motif{
+		{Source: "lead", Salience: 1, Role: RoleTheme, Occurrences: []Occurrence{occ(0)}},
+		{Source: "keys", Salience: 0.9, Role: RoleTheme, Occurrences: []Occurrence{occ(1)}}, // overlaps the first
+		{Source: "bass", Salience: 0.8, Role: RoleTheme, Occurrences: []Occurrence{occ(10)}},
+	}
+
+	got, err := Rank(motifs, WithLeitmotifOverlap(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	picked := map[string]bool{}
+	for _, m := range got {
+		picked[m.Source] = m.Leitmotif
+	}
+
+	if !picked["lead"] || picked["keys"] || !picked["bass"] {
+		t.Fatalf("leitmotifs %v, want lead and bass only", picked)
+	}
+}

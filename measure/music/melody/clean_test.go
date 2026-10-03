@@ -532,6 +532,7 @@ func TestCleanOptionsAndErrors(t *testing.T) {
 		{Start: 0, End: 1, MIDI: 60, Strength: math.NaN()},
 		{Start: 1e300, End: 1e300, MIDI: 60, Strength: 1},
 		{Start: 0, End: -1e300, MIDI: 60, Strength: 1},
+		{Start: 1, End: 0.5, MIDI: 60, Strength: 1},
 	} {
 		_, _, err := Clean([]Note{bad}, g)
 		if !errors.Is(err, ErrInvalidNote) {

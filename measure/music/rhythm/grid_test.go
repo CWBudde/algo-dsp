@@ -247,6 +247,7 @@ func TestGridErrors(t *testing.T) {
 		{"zero bpm", 0, 0, 0, 10, nil},
 		{"nan bpm", nan, 0, 0, 10, nil},
 		{"inf bpm", inf, 0, 0, 10, nil},
+		{"subnormal bpm", math.SmallestNonzeroFloat64, 0, 0, 10, nil},
 		{"nan origin", 120, nan, 0, 10, nil},
 		{"negative downbeat", 120, 0, -1, 10, nil},
 		{"negative duration", 120, 0, 0, -1, nil},

@@ -121,8 +121,17 @@ func TestPixelParadeReproducesStory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !bytes.Equal(data, fx.Motifs) {
-		t.Fatalf("motifs differ from story.json:\ngot  %s\nwant %s", data, fx.Motifs)
+	// The fixture is pretty-printed by the repository formatter; compare the
+	// compact encodings, which still checks every byte of every value.
+	var want bytes.Buffer
+
+	err = json.Compact(&want, fx.Motifs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(data, want.Bytes()) {
+		t.Fatalf("motifs differ from story.json:\ngot  %s\nwant %s", data, want.Bytes())
 	}
 
 	leitmotifs := make([]string, 0, len(fx.Leitmotifs))

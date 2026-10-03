@@ -145,6 +145,11 @@ func NewGrid(bpm, origin float64, downbeat int, duration float64, opts ...GridOp
 	}
 
 	beat := 60 / bpm
+	if !positive(beat) {
+		// A subnormal tempo passes the check above but overflows the period.
+		return Grid{}, fmt.Errorf("%w: tempo %v BPM gives a beat period of %v s", ErrInvalidArgument, bpm, beat)
+	}
+
 	g := Grid{
 		bpm:          bpm,
 		origin:       origin,

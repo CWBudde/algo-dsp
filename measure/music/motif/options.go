@@ -381,7 +381,8 @@ func WithLeitmotifs(n int) Option {
 
 // WithLeitmotifOverlap sets the share, finite and >= 0, of its occurrence
 // time a leitmotif may share with the leitmotifs picked before it,
-// exclusive (default [DefaultLeitmotifOverlap]).
+// exclusive (default [DefaultLeitmotifOverlap]). With 0 only motifs that
+// share no occurrence time with an earlier pick qualify.
 func WithLeitmotifOverlap(v float64) Option {
 	return func(cfg *config) error {
 		if !finite(v) || v < 0 {
