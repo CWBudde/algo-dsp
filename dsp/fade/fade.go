@@ -67,6 +67,14 @@ func ApplyInto32(dst, src []float32, start, total int64, shape Shape, fadeIn boo
 		return err
 	}
 
+	if len(src) == 0 {
+		return nil
+	}
+
+	if total <= 1<<53 {
+		return applyFast32(dst, src, start, total, shape, fadeIn)
+	}
+
 	denominator := float64(max(total-1, 1))
 	for i, sample := range src {
 		x := float64(start+int64(i)) / denominator
@@ -96,6 +104,14 @@ func CrossfadeInto32(dst, left, right []float32, start, total int64, shape Shape
 
 	if err := validate(start, total, len(dst), shape); err != nil {
 		return fmt.Errorf("crossfade: %w", err)
+	}
+
+	if len(dst) == 0 {
+		return nil
+	}
+
+	if total <= 1<<53 {
+		return crossfadeFast32(dst, left, right, start, total, shape)
 	}
 
 	denominator := float64(max(total-1, 1))

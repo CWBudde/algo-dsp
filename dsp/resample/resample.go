@@ -138,8 +138,9 @@ func (c config) finalized() config {
 
 // Resampler performs rational sample-rate conversion using a polyphase FIR.
 type Resampler struct {
-	up   int
-	down int
+	up                 int
+	down               int
+	advance, remainder int
 
 	quality Quality
 	profile Profile
@@ -181,6 +182,8 @@ func NewRational(up, down int, opts ...Option) (*Resampler, error) {
 	return &Resampler{
 		up:         up,
 		down:       down,
+		advance:    down / up,
+		remainder:  down % up,
 		quality:    cfg.quality,
 		profile:    QualityProfile(cfg.quality),
 		taps:       taps,
@@ -254,7 +257,7 @@ func (r *Resampler) Reset() {
 // clone without redesigning the same FIR; distinct clones may run concurrently.
 func (r *Resampler) Clone() *Resampler {
 	return &Resampler{
-		up: r.up, down: r.down, quality: r.quality, profile: r.profile,
+		up: r.up, down: r.down, advance: r.advance, remainder: r.remainder, quality: r.quality, profile: r.profile,
 		taps: r.taps, phases: r.phases, maxPhaseLn: r.maxPhaseLn,
 		history: make([]float64, 0, r.maxPhaseLn-1),
 	}
@@ -310,47 +313,69 @@ func (r *Resampler) ProcessInto(dst, input []float64) (int, error) {
 }
 
 func (r *Resampler) processInto(dst, input []float64) {
+	phase, inputIndex := r.phase, r.inputIndex
+	advance, remainder, up := r.advance, r.remainder, r.up
+	phases, history := r.phases, r.history
+
 	for outputIndex := range dst {
 		var value float64
 
-		for tapIndex, coefficient := range r.phases[r.phase] {
-			index := r.inputIndex - tapIndex
+		coefficients := phases[phase]
+		if inputIndex >= len(coefficients)-1 {
+			// Most output windows lie entirely in the current block. Establish
+			// one slice bound, then keep the original newest-to-oldest order.
+			length := len(coefficients)
+			window := input[inputIndex-length+1 : inputIndex+1]
 
-			var sample float64
-			if index >= 0 {
-				sample = input[index]
-			} else if index >= -len(r.history) {
-				sample = r.history[len(r.history)+index]
-			} else {
-				continue
+			i := 0
+			for ; i+3 < length; i += 4 {
+				value += coefficients[i] * window[length-1-i]
+				value += coefficients[i+1] * window[length-2-i]
+				value += coefficients[i+2] * window[length-3-i]
+				value += coefficients[i+3] * window[length-4-i]
 			}
 
-			value += coefficient * sample
+			for ; i < length; i++ {
+				value += coefficients[i] * window[length-1-i]
+			}
+		} else {
+			for tapIndex, coefficient := range coefficients {
+				index := inputIndex - tapIndex
+
+				var sample float64
+				if index >= 0 {
+					sample = input[index]
+				} else if index >= -len(history) {
+					sample = history[len(history)+index]
+				} else {
+					continue
+				}
+
+				value += coefficient * sample
+			}
 		}
 
 		dst[outputIndex] = value
 
-		advance := r.advancePhase()
+		step := advance
+
+		if phase >= up-remainder {
+			phase -= up - remainder
+			step++
+		} else {
+			phase += remainder
+		}
+
 		if outputIndex == len(dst)-1 {
 			// Rebase before adding, so neither the offset nor an absolute
 			// stream counter can overflow on 32-bit/WASM targets.
-			r.inputIndex = advance - (len(input) - r.inputIndex)
+			inputIndex = step - (len(input) - inputIndex)
 		} else {
-			r.inputIndex += advance
+			inputIndex += step
 		}
 	}
-}
 
-func (r *Resampler) advancePhase() int {
-	advance, remainder := r.down/r.up, r.down%r.up
-	if r.phase >= r.up-remainder {
-		r.phase -= r.up - remainder
-		advance++
-	} else {
-		r.phase += remainder
-	}
-
-	return advance
+	r.phase, r.inputIndex = phase, inputIndex
 }
 
 func (r *Resampler) retainHistory(input []float64) {

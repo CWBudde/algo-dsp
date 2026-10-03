@@ -23,10 +23,11 @@ func (a *MeanAccumulator) AddFloat32(data []float32) error {
 	next := *a
 
 	for _, sample := range data {
-		x := float64(sample)
-		if math.IsNaN(x) || math.IsInf(x, 0) {
+		if math.Float32bits(sample)&0x7fffffff >= 0x7f800000 {
 			return fmt.Errorf("signal.mean: samples must be finite")
 		}
+
+		x := float64(sample)
 
 		t := next.sum + x
 		if math.Abs(next.sum) >= math.Abs(x) {

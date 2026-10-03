@@ -98,7 +98,13 @@ func (g *StreamGenerator) uniform() float64 {
 	z = (z ^ (z >> 27)) * 0x94d049bb133111eb
 	z ^= z >> 31
 
-	return float64(z>>11) * (1.0 / (1 << 53))
+	// The two pieces exactly represent the same top 53 bits. Splitting avoids
+	// the uint64-to-float conversion helper on 32-bit/WASM without changing
+	// any random output: both summands and their sum are exact binary fractions.
+	high := uint32(z >> 32)
+	low := uint32(z>>11) & ((1 << 21) - 1)
+
+	return float64(high)*(1.0/(1<<32)) + float64(low)*(1.0/(1<<53))
 }
 
 func (g *StreamGenerator) sample(position int64) float64 {
@@ -157,8 +163,12 @@ func (g *StreamGenerator) GenerateInto32(dst []float32) error {
 		return fmt.Errorf("signal.stream: block exceeds configured frame count")
 	}
 
-	for i := range dst {
-		dst[i] = float32(g.cfg.Amplitude * g.sample(g.position+int64(i)))
+	if g.position+int64(len(dst)) <= 1<<53 {
+		g.generateFast32(dst)
+	} else {
+		for i := range dst {
+			dst[i] = float32(g.cfg.Amplitude * g.sample(g.position+int64(i)))
+		}
 	}
 
 	g.position += int64(len(dst))

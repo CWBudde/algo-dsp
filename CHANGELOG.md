@@ -2,6 +2,39 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.9] - 2026-10-03
+
+### Added
+
+- `fade.EnvelopeInto64`, `ApplyEnvelopeInto32` and `CrossfadeEnvelopeInto32`
+  share unrounded float64 envelope gains across linked channels. They preserve
+  the original float32 output rounding while avoiding repeated curve evaluation;
+  callers supply bounded reusable scratch and processing allocates nothing.
+
+### Changed
+
+- Float32 fades hoist shape dispatch, logarithmic constants and whole-block
+  position conversion out of sample loops. Positions through 2^53 use exact
+  float64 integer addition; larger positions retain the original formula.
+- Continuous generators dispatch once per block and avoid floating-point
+  positions for noise/silence. SplitMix64 uniform conversion splits its 53 bits
+  into exact 32-bit binary fractions, retaining the original random sequence.
+- `MeanAccumulator.AddFloat32` classifies nonfinite float32 encodings directly,
+  retaining compensated addition order and atomic invalid-input rejection.
+- Rational resampling caches phase advances, keeps streaming counters in locals,
+  and splits the current-block interior from startup/history handling. Unrolled
+  interior loops preserve filter coefficients, profile taps and sequential
+  summation order without additional coefficient storage or processing allocations.
+
+### Validation
+
+- Independent original-formula bit-parity tests cover fade directions/shapes,
+  generator streams and large-position boundaries, fixed seeded random vectors,
+  and resampling cancellation/exponent stress across ratios and custom taps.
+- A ten-minute stereo 48 kHz to 44.1 kHz benchmark uses the editor's unchanged
+  Fast/Balanced/Best profile tap scaling. Component benchmarks exclude candidate
+  storage, UI and editor acceptance timing; no full-editor timing pass is claimed.
+
 ## [v0.7.8] - 2026-10-03
 
 ### Added
