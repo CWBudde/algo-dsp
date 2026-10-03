@@ -27,10 +27,16 @@ type ConvolutionReverb struct {
 // NewConvolutionReverb creates a convolution reverb from a mono IR.
 // minBlockOrder determines latency: latency = 2^minBlockOrder samples
 // (e.g. 6=64 samples, 7=128 samples, 8=256 samples).
-// maxBlockOrder caps the maximum partition size; 13 is a good default.
+// The maximum partition size is 8192 samples (block order 13).
 func NewConvolutionReverb(kernel []float64, minBlockOrder int) (*ConvolutionReverb, error) {
-	const maxBlockOrder = 13
+	return NewConvolutionReverbWithMaxBlockOrder(kernel, minBlockOrder, 13)
+}
 
+// NewConvolutionReverbWithMaxBlockOrder creates a convolution reverb with an
+// explicit maximum partition size of 2^maxBlockOrder samples. Smaller maximum
+// partitions reduce transform bursts at the cost of more frequent processing;
+// the complete IR and latency of 2^minBlockOrder samples are preserved.
+func NewConvolutionReverbWithMaxBlockOrder(kernel []float64, minBlockOrder, maxBlockOrder int) (*ConvolutionReverb, error) {
 	if len(kernel) == 0 {
 		return nil, errors.New("reverb: empty impulse response kernel")
 	}

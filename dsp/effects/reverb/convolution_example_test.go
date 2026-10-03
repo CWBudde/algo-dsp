@@ -6,6 +6,16 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
 )
 
+func ExampleNewConvolutionReverbWithMaxBlockOrder() {
+	r, err := reverb.NewConvolutionReverbWithMaxBlockOrder([]float64{1, .5}, 7, 10)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(r.Latency())
+	// Output: 128
+}
+
 // ExampleConvolutionReverb applies a short impulse response as a wet/dry send
 // reverb. The reverb adds latency equal to 2^minBlockOrder samples.
 func ExampleConvolutionReverb() {

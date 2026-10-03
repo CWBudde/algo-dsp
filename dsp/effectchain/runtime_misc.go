@@ -9,6 +9,8 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects/reverb"
 )
 
+const convolutionMaxBlockOrder = 10
+
 // convReverbRuntime handles the "reverb-conv" node type using partitioned convolution.
 type convReverbRuntime struct {
 	fx               *reverb.ConvolutionReverb
@@ -64,7 +66,7 @@ func (r *convReverbRuntime) Configure(ctx Context, p Params) error {
 
 		kernel := samples[physicalChannel%len(samples)]
 
-		cr, err := reverb.NewConvolutionReverb(kernel, 7)
+		cr, err := reverb.NewConvolutionReverbWithMaxBlockOrder(kernel, 7, convolutionMaxBlockOrder)
 		if err != nil {
 			return fmt.Errorf("effectchain: create convolution reverb: %w", err)
 		}

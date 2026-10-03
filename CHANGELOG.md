@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.4] - 2026-10-03
+
+### Added
+
+- `reverb.NewConvolutionReverbWithMaxBlockOrder` offers an explicit maximum
+  partition hop for hosts balancing transform bursts against average CPU use.
+  The original constructor retains its 8192-sample maximum partition.
+
+### Changed
+
+- Effect-chain convolution caps partition hops at 1024 samples to reduce
+  worst render bursts. It retains the complete impulse response, 128-sample
+  latency and allocation-free processing. The generic convolution and reverb
+  defaults remain unchanged. Different FFT partitioning can change results
+  at roundoff level within the existing float32/float64 tolerances.
+- Effect-chain cold workspace estimates follow the actual partition cap.
+
 ## [v0.8.3] - 2026-10-03
 
 ### Changed

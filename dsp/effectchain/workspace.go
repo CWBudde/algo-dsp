@@ -210,7 +210,7 @@ func effectWorkspace(rate float64, p Params, cfg workspaceConfig) (int64, int64,
 		padded := ((irFrames + 127) / 128) * 128
 
 		fftSum := int64(0)
-		for block := int64(128); block <= 8192; block *= 2 {
+		for block := int64(128); block <= 1<<convolutionMaxBlockOrder; block *= 2 {
 			fftSum += 2 * block
 			if block >= padded {
 				break
