@@ -33,3 +33,21 @@ func ExampleEnsureLen() {
 	// 2 [1 2 3 4]
 	// [0 0 3 4]
 }
+
+func ExampleLinearToDBFloor() {
+	fmt.Printf("%.1f\n", core.LinearToDBFloor(0.5, 1e-6))
+	fmt.Printf("%.1f\n", core.LinearToDBFloor(0, 1e-6))
+	fmt.Println(core.LinearToDB(0))
+
+	// Output:
+	// -6.0
+	// -120.0
+	// -Inf
+}
+
+func ExampleLinearPowerToDBFloor() {
+	fmt.Printf("%.1f\n", core.LinearPowerToDBFloor(0, 1e-12))
+
+	// Output:
+	// -120.0
+}

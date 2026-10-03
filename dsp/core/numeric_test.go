@@ -91,3 +91,62 @@ func TestDBPowerConversions(t *testing.T) {
 		t.Fatal("expected NaN for negative power")
 	}
 }
+
+func TestDBFloorConversions(t *testing.T) {
+	t.Parallel()
+
+	nan, inf := math.NaN(), math.Inf(1)
+	tests := []struct {
+		name          string
+		value, floor  float64
+		amplitudeWant float64
+		powerWant     float64
+	}{
+		{name: "above floor", value: 0.5, floor: 1e-6, amplitudeWant: LinearToDB(0.5), powerWant: LinearPowerToDB(0.5)},
+		{name: "equal floor", value: 1e-6, floor: 1e-6, amplitudeWant: LinearToDB(1e-6), powerWant: -60},
+		{name: "zero floored", value: 0, floor: 1e-6, amplitudeWant: LinearToDB(1e-6), powerWant: -60},
+		{name: "negative floored", value: -1, floor: 1e-6, amplitudeWant: LinearToDB(1e-6), powerWant: -60},
+		{name: "tiny floored", value: 1e-300, floor: 1e-12, amplitudeWant: LinearToDB(1e-12), powerWant: -120},
+		{name: "infinity", value: inf, floor: 1e-6, amplitudeWant: inf, powerWant: inf},
+		{name: "nan input", value: nan, floor: 1e-6, amplitudeWant: nan, powerWant: nan},
+		{name: "zero floor zero", value: 0, floor: 0, amplitudeWant: math.Inf(-1), powerWant: math.Inf(-1)},
+		{name: "negative floor", value: -1, floor: -1, amplitudeWant: nan, powerWant: nan},
+		{name: "nan floor", value: 0, floor: nan, amplitudeWant: math.Inf(-1), powerWant: math.Inf(-1)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			checkDB(t, "LinearToDBFloor", LinearToDBFloor(tt.value, tt.floor), tt.amplitudeWant)
+			checkDB(t, "LinearPowerToDBFloor", LinearPowerToDBFloor(tt.value, tt.floor), tt.powerWant)
+		})
+	}
+
+	// Bit-identical to the inline idiom 20*log10(max(x, floor)).
+	for _, x := range []float64{1e-9, 1e-6, 3.7e-4, 0.25, 1, 17} {
+		if got, want := LinearToDBFloor(x, 1e-6), 20*math.Log10(math.Max(x, 1e-6)); got != want {
+			t.Fatalf("LinearToDBFloor(%g) = %v, want %v", x, got, want)
+		}
+	}
+
+	if got := LinearToDBFloor(0, 1e-6); !NearlyEqual(got, -120, 1e-12) {
+		t.Fatalf("LinearToDBFloor(0, 1e-6) = %v, want -120", got)
+	}
+}
+
+func checkDB(t *testing.T, name string, got, want float64) {
+	t.Helper()
+
+	if math.IsNaN(want) {
+		if !math.IsNaN(got) {
+			t.Fatalf("%s = %v, want NaN", name, got)
+		}
+
+		return
+	}
+
+	if got != want && !NearlyEqual(got, want, 1e-12) {
+		t.Fatalf("%s = %v, want %v", name, got, want)
+	}
+}

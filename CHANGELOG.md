@@ -2,6 +2,38 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.0] - Unreleased
+
+### Added
+
+- `dsp/stft`: short-time Fourier transform (`New`, `New32`) built on algo-fft's real
+  plans. Centred framing with zero or reflect padding (`PadZero` reproduces frame `i`
+  centred at `i·hop`, `PadReflect` matches `torch.stft(center=True)`) or unpadded
+  framing, optional unitary scaling (`WithNormalized`), custom windows, a zero-alloc
+  `FrameInto`, and an `Inverse` normalized by the window sum of squares, so non-COLA
+  window/hop pairs reconstruct; it reports `ErrWindowSumZero` instead of dividing by
+  zero. Reconstruction error is below 1e-12 for float64.
+- `measure/music/features`, `onset`, `rhythm`, `align`: music-analysis features lifted
+  from the AudioVisualizer pipeline (Phase 44 Workstream B): frame RMS/peak/centroid/
+  width/flux and band envelopes, an energy-preserving log-frequency spectrogram with
+  exported bin frequencies (fixes the empty low rows of the original mapping), envelope
+  normalizer, silence finder, spectral-flux onsets with attack refinement and heuristic
+  drum kinds, tempo estimation with an optional prior, beat phase/grid, downbeat, and a
+  mix-versus-parts alignment check. With default settings each reproduces the original
+  code bit for bit; parity tests embed the reference implementation.
+- `measure/music/melody`: predominant pitch by harmonic-sum salience, voicing, 12-bin
+  chroma and note segmentation with onset snapping (`Analyze`, `SegmentNotes`,
+  `MedianVoiced`, `Downmix`).
+- `dsp/separate`: HPSS (Fitzgerald 2010) with soft masks of power `p` or the margin
+  variant and a residual, outputs summing to the input (≈ −310 dB); a zero-alloc
+  sliding `MedianFilter`, N-source `SoftMasks`, `ApplyMask`, `MidSide`/`LeftRight` and a
+  heuristic `CentreExtractor`.
+- `resample.Resampler.ProcessAligned` and `resample.ResampleAligned`: whole-buffer
+  resampling with the FIR group delay removed (output sample `j` corresponds to input
+  time `j·down/up`). It runs on a clone, so the receiver's streaming state is untouched.
+- `core.LinearToDBFloor` and `core.LinearPowerToDBFloor`: dB conversions with an explicit
+  floor (1e-6 → −120 dB); NaN stays NaN.
+
 ## [v0.7.11] - 2026-10-03
 
 ### Added
@@ -295,7 +327,7 @@ All notable changes to this project are documented in this file.
 
 - The vecmath call sites above are guarded by benchmarked length thresholds (`mixSIMDThreshold`, `addBlockSIMDThreshold`, `bandSumSIMDThreshold`, all 64), in the same style as the existing `conv.simdThreshold`. This is not caution: a dispatched vecmath call carries roughly 110 ns of fixed cost on this machine regardless of length, so the four-parent mix loses 0.72x at a 16-sample block before turning over to 3.0x at 512. Short buffers are not hypothetical here -- a partitioned convolver built with a low `minBlockOrder` has a `partSize` of a handful of samples.
 
-- `vecmath.MaxAbs` was **not** adopted, in `stats/time.Peak` or in `measure/ir`'s impulse-onset search, although it is 3.0x and 5.6x faster there respectively. It is unsafe for both: on AVX2 a NaN anywhere in the slice can **discard the true maximum and return a smaller finite value**. `MaxAbs([999, NaN, 0.5])` returns `0.5` on AVX2 and `999` on the pure-Go kernel. That is not a difference in NaN policy -- it is a silently wrong *finite* result, on some CPUs only, and no cheap check detects it, because an `IsNaN` test on the result does not fire. In `findImpulseStart` a peak under-reported by that factor leaves the threshold orders of magnitude too low, so the quiet run before the impulse clears it and the reported onset is far too early, corrupting every metric derived from it. Detecting NaN up front costs a full extra pass, which is the entire speedup, so both sites keep their scalar loops and `TestPeakNaNIsDeterministic` / `TestFindImpulseStartNaNIsDeterministic` fail on an AVX2 machine if anyone re-adopts `MaxAbs`. Raised by review on #25. This looks like an `algo-vecmath` defect rather than a documentation gap and is worth fixing there.
+- `vecmath.MaxAbs` was **not** adopted, in `stats/time.Peak` or in `measure/ir`'s impulse-onset search, although it is 3.0x and 5.6x faster there respectively. It is unsafe for both: on AVX2 a NaN anywhere in the slice can **discard the true maximum and return a smaller finite value**. `MaxAbs([999, NaN, 0.5])` returns `0.5` on AVX2 and `999` on the pure-Go kernel. That is not a difference in NaN policy -- it is a silently wrong _finite_ result, on some CPUs only, and no cheap check detects it, because an `IsNaN` test on the result does not fire. In `findImpulseStart` a peak under-reported by that factor leaves the threshold orders of magnitude too low, so the quiet run before the impulse clears it and the reported onset is far too early, corrupting every metric derived from it. Detecting NaN up front costs a full extra pass, which is the entire speedup, so both sites keep their scalar loops and `TestPeakNaNIsDeterministic` / `TestFindImpulseStartNaNIsDeterministic` fail on an AVX2 machine if anyone re-adopts `MaxAbs`. Raised by review on #25. This looks like an `algo-vecmath` defect rather than a documentation gap and is worth fixing there.
 
 - Not covered, deliberately: `algo-vecmath` v0.1.3 is float64-only, so `PartitionedConvolution32`, `StreamingOverlapAdd32` and the other `float32` instantiations keep their scalar loops. The generic helper dispatches on `unsafe.Sizeof` rather than boxing through `any()`, so that branch resolves at compile time per instantiation and the float32 stencils are byte-for-byte unchanged.
 

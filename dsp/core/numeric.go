@@ -88,3 +88,29 @@ func LinearPowerToDB(power float64) float64 {
 
 	return 10 * math.Log10(power)
 }
+
+// LinearToDBFloor converts linear amplitude to dB (20*log10 convention) after
+// clamping it to floor: 20*log10(max(linear, floor)). Zero, negative and other
+// values below floor therefore return LinearToDB(floor) instead of -Inf or NaN;
+// a floor of 1e-6 yields -120 dB. NaN input stays NaN so invalid data is not
+// hidden. A floor that is not positive (including NaN) disables clamping and
+// the result equals LinearToDB(linear).
+func LinearToDBFloor(linear, floor float64) float64 {
+	if floor > 0 && linear < floor {
+		linear = floor
+	}
+
+	return LinearToDB(linear)
+}
+
+// LinearPowerToDBFloor converts linear power to dB (10*log10 convention) after
+// clamping it to floor: 10*log10(max(power, floor)). A floor of 1e-12 yields
+// -120 dB. NaN input stays NaN; a floor that is not positive (including NaN)
+// disables clamping and the result equals LinearPowerToDB(power).
+func LinearPowerToDBFloor(power, floor float64) float64 {
+	if floor > 0 && power < floor {
+		power = floor
+	}
+
+	return LinearPowerToDB(power)
+}
