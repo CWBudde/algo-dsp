@@ -13,17 +13,29 @@ var (
 // fixture generation outside the clock. This same test runs under native or
 // Go's WASM runner, and never materializes a full ten-minute input array.
 func BenchmarkTarget32TenMinuteStereo(b *testing.B) {
-	benchmarkTarget32TenMinuteStereo(b, false)
+	benchmarkTarget32TenMinuteStereo(b, false, false)
 }
 
 // BenchmarkTargetMeasurement32TenMinuteStereo exercises actual candidate
 // measurement with the same bounded fixture and optimized scan, without the
 // target solver's sorting. Setup is untimed; Reset/process/finish are timed.
 func BenchmarkTargetMeasurement32TenMinuteStereo(b *testing.B) {
-	benchmarkTarget32TenMinuteStereo(b, true)
+	benchmarkTarget32TenMinuteStereo(b, true, false)
 }
 
-func benchmarkTarget32TenMinuteStereo(b *testing.B, measurementOnly bool) {
+// BenchmarkTargetCertified32TenMinuteStereo uses cached, exact finite fixture
+// peaks, while still scanning every actual sample through K-weighting/gating.
+func BenchmarkTargetCertified32TenMinuteStereo(b *testing.B) {
+	benchmarkTarget32TenMinuteStereo(b, false, true)
+}
+
+// BenchmarkTargetCertifiedMeasurement32TenMinuteStereo includes actual stored
+// candidate measurement and finalization, with caller-owned proof cached.
+func BenchmarkTargetCertifiedMeasurement32TenMinuteStereo(b *testing.B) {
+	benchmarkTarget32TenMinuteStereo(b, true, true)
+}
+
+func benchmarkTarget32TenMinuteStereo(b *testing.B, measurementOnly, certified bool) {
 	b.Helper()
 
 	const frames = int64(48000 * 600)
@@ -44,6 +56,16 @@ func benchmarkTarget32TenMinuteStereo(b *testing.B, measurementOnly bool) {
 	}
 
 	block := make([][]float32, 2)
+	// Only full chunks and one EOF prefix occur. Cache the exact peak of each
+	// immutable range outside the clock; the certificate never predicts LUFS.
+	fullPeak := certifiedTestPeak(fixture)
+
+	lastCount := int(frames % int64(MaxIntegratedBlockFrames))
+	for channel := range block {
+		block[channel] = fixture[channel][:lastCount]
+	}
+
+	lastPeak := certifiedTestPeak(block)
 
 	b.SetBytes(frames * 2 * 4)
 	b.ReportAllocs()
@@ -58,7 +80,18 @@ func benchmarkTarget32TenMinuteStereo(b *testing.B, measurementOnly bool) {
 				block[channel] = fixture[channel][:count]
 			}
 
-			if err := a.ProcessPlanar32(block); err != nil {
+			if certified {
+				peak := fullPeak
+				if count != MaxIntegratedBlockFrames {
+					peak = lastPeak
+				}
+
+				err = a.ProcessCertifiedPlanar32(block, peak)
+			} else {
+				err = a.ProcessPlanar32(block)
+			}
+
+			if err != nil {
 				b.Fatal(err)
 			}
 

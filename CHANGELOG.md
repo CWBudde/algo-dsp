@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.10] - 2026-10-03
+
+### Added
+
+- `TargetAnalyzer.ProcessCertifiedPlanar32` accepts a caller-proven finite,
+  exact float32 sample peak to omit repeated sample classification. It still
+  processes every actual sample through the same K-weighting filters, windows
+  and loudness gates; the certificate does not predict loudness or replace an
+  independent stored-output measurement. Ordinary `ProcessPlanar32` remains
+  fully validating, and state/shape/frame/certificate validation stays atomic.
+- Independent scalar-reference bit-parity tests cover fused and custom-weight
+  layouts, mixed precisions, fractional rates, extreme/subnormal samples,
+  arbitrary partitions and input ownership. Invalid certificate and state
+  tests verify rejection before mutation; certified ten-minute stereo
+  benchmarks include actual analysis/finalization and allocate nothing.
+
 ## [v0.7.9] - 2026-10-03
 
 ### Added

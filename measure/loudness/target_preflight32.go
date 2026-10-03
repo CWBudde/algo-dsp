@@ -5,32 +5,40 @@ import (
 	"math"
 )
 
-func preflightTargetPlanar32(a *TargetAnalyzer, block [][]float32) (float64, error) {
+func validateTargetPlanar32Block(a *TargetAnalyzer, block [][]float32) error {
 	if a == nil || a.maxFrames <= 0 || len(a.blockEnergy) == 0 {
-		return 0, fmt.Errorf("loudness.target.process: unconfigured analyzer: %w", ErrState)
+		return fmt.Errorf("loudness.target.process: unconfigured analyzer: %w", ErrState)
 	}
 
 	if a.failure != nil {
-		return 0, a.failure
+		return a.failure
 	}
 
 	if a.phase != targetInput {
-		return 0, fmt.Errorf("loudness.target.process: input finalized: %w", ErrState)
+		return fmt.Errorf("loudness.target.process: input finalized: %w", ErrState)
 	}
 
 	if len(block) != len(a.weights) || len(block) == 0 {
-		return 0, fmt.Errorf("loudness.target.process: channel count: %w", ErrInvalid)
+		return fmt.Errorf("loudness.target.process: channel count: %w", ErrInvalid)
 	}
 
 	frames := len(block[0])
 	if frames > MaxIntegratedBlockFrames || int64(frames) > a.maxFrames-a.frames {
-		return 0, fmt.Errorf("loudness.target.process: frame count: %w", ErrLimit)
+		return fmt.Errorf("loudness.target.process: frame count: %w", ErrLimit)
 	}
 
 	for _, channel := range block {
 		if len(channel) != frames {
-			return 0, fmt.Errorf("loudness.target.process: unequal channel lengths: %w", ErrInvalid)
+			return fmt.Errorf("loudness.target.process: unequal channel lengths: %w", ErrInvalid)
 		}
+	}
+
+	return nil
+}
+
+func preflightTargetPlanar32(a *TargetAnalyzer, block [][]float32) (float64, error) {
+	if err := validateTargetPlanar32Block(a, block); err != nil {
+		return 0, err
 	}
 	// Positive finite IEEE float32 encodings are monotonically ordered. Ignore
 	// sign only for the local peak, classify both signed infinities and every

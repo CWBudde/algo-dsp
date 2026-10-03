@@ -39,9 +39,11 @@ type targetFilterState struct {
 // rolling sums, so a loud-to-quiet transition cannot leave a stale energy tail.
 // The published IntegratedAnalyzer's summation and outputs are unchanged.
 //
-// One caller owns processing/finalization/Reset. Input preflight is atomic and
-// successful processing and FinishStep allocate nothing. Invalid input leaves
-// streaming state unchanged; arithmetic overflow is terminal until Reset.
+// One caller owns processing/finalization/Reset. Ordinary input preflight is
+// atomic; ProcessCertifiedPlanar32 instead requires a caller proof of finite
+// samples and their exact peak. Successful processing and FinishStep allocate
+// nothing. Rejected validation leaves streaming state unchanged; arithmetic
+// overflow is terminal until Reset.
 // FinishStep is cooperative, with a bound on elementary finalization work, not
 // an unbounded sort hidden in its first call. Input blocks are at most 65536
 // frames, and total analyzer-owned workspace is at most 64 MiB.
