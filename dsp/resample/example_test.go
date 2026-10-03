@@ -54,3 +54,40 @@ func ExampleResampler_GroupDelayOutput() {
 	// Output:
 	// output delay=31.50 frames
 }
+
+func ExampleResampleAligned() {
+	input := make([]float64, 4800) // 100 ms at 48 kHz
+	input[480] = 1                 // impulse at 10 ms
+
+	output, _ := resample.ResampleAligned(input, 48000, 24000, resample.WithQuality(resample.QualityBest))
+
+	peak := 0
+	for i, v := range output {
+		if v > output[peak] {
+			peak = i
+		}
+	}
+
+	fmt.Printf("out=%d peak=%d (%.0f ms)\n", len(output), peak, 1000*float64(peak)/24000)
+	// Output:
+	// out=2400 peak=240 (10 ms)
+}
+
+func ExampleResampler_ProcessAligned() {
+	r, _ := resample.NewForRates(44100, 24000, resample.WithQuality(resample.QualityBest))
+	input := make([]float64, 4410) // 100 ms at 44.1 kHz
+	input[441] = 1                 // impulse at 10 ms
+
+	output, _ := r.ProcessAligned(input)
+
+	peak := 0
+	for i, v := range output {
+		if v > output[peak] {
+			peak = i
+		}
+	}
+
+	fmt.Printf("out=%d peak=%d delay compensated=%.2f frames\n", len(output), peak, r.GroupDelayOutput())
+	// Output:
+	// out=2400 peak=240 delay compensated=17.41 frames
+}

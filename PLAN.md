@@ -212,7 +212,7 @@ Phase 42: Release Readiness (v1.0)                         [1 week]   📋 Plann
 Phase 43: Tag and Publish v1.0                             [0.5 week] 📋 Planned
 
 # Post-v1.0
-Phase 44: Music Analysis & Source Separation (Demucs port)  [6-8 weeks] 📋 Planned
+Phase 44: Music Analysis & Source Separation (Demucs port)  [6-8 weeks] 🔄 In Progress
 ```
 
 ---
@@ -920,7 +920,10 @@ Exit criteria:
 
 - [ ] `v1.0.0` tag exists and release notes are published.
 
-### Phase 44: Music Analysis & Source Separation (Planned, post-v1.0)
+### Phase 44: Music Analysis & Source Separation (In Progress, post-v1.0)
+
+Status: Workstreams A, B (plus the B extension) and C landed in `dsp/stft`, `dsp/separate`,
+`dsp/resample`, `dsp/core` and `measure/music/*`; D and E's Demucs items remain open.
 
 Ports the two Python steps of the `AudioVisualizer` analysis pipeline
 (`github.com/cwbudde/AudioVisualizer`, `scripts/separate.py` and `scripts/plot_analysis.py`) to
@@ -960,41 +963,49 @@ item in this plan.
       confirm the licence terms of the pretrained `htdemucs` checkpoint; this plan assumes users
       download it themselves and the repo never redistributes it.
 
-#### Workstream A: STFT / ISTFT primitive (`dsp/spectrum` or a new `dsp/stft`)
+#### Workstream A: STFT / ISTFT primitive (`dsp/stft`)
 
 Needed by B, C and D, and also wanted by Phase 37 (noise reduction) and already open-coded in
 `dsp/effects/spectral_freeze.go` and `dsp/effects/pitch/pitch_shift_spectral.go`.
 
-- [ ] Frame-wise forward STFT over a whole buffer and as a streaming processor: window from
+- [x] Frame-wise forward STFT over a whole buffer: window from
       `dsp/window`, configurable `nfft`/hop, `center` framing with selectable padding
       (`zero` as `audioanalysis` uses today, `reflect` as `torch.stft` uses in Demucs), and
       optional orthonormal scaling (`torch.stft(normalized=True)` divides by `sqrt(nfft)`).
-- [ ] ISTFT with window-sum-squared normalization (not a COLA assumption), so non-COLA
+      Done as `stft.New`/`New32` with `WithWindow`, `WithCenter(PadNone|PadZero|PadReflect)`,
+      `WithNormalized`; `FrameInto` is the zero-alloc per-frame building block.
+- [ ] A separate streaming STFT processor (push samples, pull frames).
+- [x] ISTFT with window-sum-squared normalization (not a COLA assumption), so non-COLA
       window/hop pairs still reconstruct; report an error on hops where the window sum has zeros.
-- [ ] Both `float64` and `float32` (`algo-fft` plans are generic; D runs in `float32`).
-- [ ] Tests: perfect reconstruction (Hann periodic, hop = nfft/4, error < 1e-12 for float64);
-      golden vectors exported from `torch.stft`/`torch.istft` for the exact Demucs settings
+- [x] Both `float64` and `float32` (`algo-fft` plans are generic; D runs in `float32`).
+- [x] Tests: perfect reconstruction (Hann periodic, hop = nfft/4, error < 1e-12 for float64),
+      non-COLA pairs, Parseval for unitary scaling, zero-alloc `FrameInto` benchmark.
+- [ ] Golden vectors exported from `torch.stft`/`torch.istft` for the exact Demucs settings
       (`nfft=4096`, `hop=1024`, Hann, reflect, normalized); zero-alloc streaming benchmark.
 - [ ] Migrate `SpectralFreeze` and the spectral pitch shifter onto it, keeping their output
       bit-identical (or document the difference).
 
-#### Workstream B: Music-analysis features (new `measure/musicfeatures` or `stats/frame`; name TBD)
+#### Workstream B: Music-analysis features (`measure/music/{features,onset,rhythm,align}`)
 
 Lift the generic parts of `AudioVisualizer/internal/audioanalysis` here. Current parameters
 used there, which become defaults rather than constants: analysis rate 24 kHz, `FFTSize = 2048`,
 `Hop = 240` (10 ms, frame `i` centred at `i·hop`, first frame zero-padded), band edges
 `{25, 140, 400, 2000, 6000, 12000}` Hz.
 
-- [ ] **Per-frame feature extractor** producing RMS and peak (over `center ± hop`, all
+Name decision: one `measure/music` tree with a package per concern, so callers import only
+what they use. Every package carries a parity test against a verbatim copy of the app code and
+reproduces it bit for bit with the default configuration.
+
+- [x] **Per-frame feature extractor** producing RMS and peak (over `center ± hop`, all
       channels pooled), spectral centroid (via `stats/frequency.Centroid`), stereo width
       `side/(mid+side)` with `mid=(L+R)²/4`, `side=(L−R)²/4`, and positive spectral flux on
       `log1p(|X|)`. Channel spectra are combined by **averaging power**, not by summing the
       signals, so out-of-phase content is not cancelled. Centroid and flux are forced to 0 below
       an RMS gate (1e-4 today), and the gate is an option.
-- [ ] **Band envelopes**: RMS amplitude per band with one-sided power scaling
+- [x] **Band envelopes**: RMS amplitude per band with one-sided power scaling
       `2·|X|²/(N·Σw²)`, so a full-scale sine in a band reads ≈ its RMS. Bins are assigned by
       `edge[b] ≤ f < edge[b+1]`.
-- [ ] **Log-frequency spectrogram** (frame-major, `bins` log-spaced between `fmin`/`fmax`, in
+- [x] **Log-frequency spectrogram** (frame-major, `bins` log-spaced between `fmin`/`fmax`, in
       dBFS). **Known defect to fix during the port, not carry over:** today each FFT bin is
       assigned to `floor(log(f/25)/log(12000/25)·64)`. At 24 kHz / 2048 points the FFT bin
       spacing is 11.7 Hz, while the lowest log bins are only ~2.5 Hz wide, so the bottom of the
@@ -1003,35 +1014,37 @@ used there, which become defaults rather than constants: analysis rate 24 kHz, `
       constant-Q or mel filterbank) and test that a swept sine produces no empty rows.
       Also export the frequency of each log bin, so a renderer can label its axis without
       re-deriving the mapping (`plot_analysis.py` re-implements it for its tick labels).
-- [ ] **dB helper** with an explicit floor (`20·log10(max(x, floor))`, floor 1e-6 → −120 dB);
+- [x] **dB helper** with an explicit floor (`20·log10(max(x, floor))`, floor 1e-6 → −120 dB);
       check whether `dsp/core` already has one before adding it.
-- [ ] **Envelope normalizer** (`Normalize` today): scale to the 95th percentile of
+- [x] **Envelope normalizer** (`Normalize` today): scale to the 95th percentile of
       above-gate values, clamp to [0, 1], then a one-pole attack/release smoother with
       `α = 1 − exp(−hop/(fs·τ))`. Check whether `dsp/effects/dynamics` already has the smoother
       before writing a new one.
-- [ ] **Onset detector** (`DetectOnsets` today): adaptive spectral-novelty peak picking (local
+- [x] **Onset detector** (`DetectOnsets` today): adaptive spectral-novelty peak picking (local
       maximum, ≥ 12% of the 95th-percentile flux, ≥ 1.35× the ±25-frame mean, RMS gate), then
       the onset time is refined to the largest causal 5 ms RMS rise within ±50 ms, and events
       closer than 75 ms are de-duplicated, keeping the stronger one. Document that events are
       observations, not instrument labels.
-- [ ] **Tempo / beat grid** (`EstimateRhythm` today): novelty = flux minus a ±30-frame moving
+- [x] **Tempo / beat grid** (`EstimateRhythm` today): novelty = flux minus a ±30-frame moving
       mean, half-wave rectified; tempo score = normalized autocorrelation at lags
       `{1, 2, 4, 8}` × beat period with linear fractional-lag interpolation; broad scan
       60–180 BPM in 0.5 BPM steps, with candidates closer than 2 BPM merged (top 6 kept); optional
       caller-supplied prior refined ±3 BPM in 0.01 steps; beat phase fitted in 1 ms steps to the
       positive changes of the lowest band (kick-like energy). The prior must remain an
       explicit input; the "105 BPM" and "4/4" in the app are song-specific and stay there.
-- [ ] **Silence finder**: all channels below a threshold (−45 dBFS today) for at least a
+- [x] **Silence finder**: all channels below a threshold (−45 dBFS today) for at least a
       minimum duration (150 ms).
-- [ ] **Alignment check** (`CheckAlignment` today, generalized): correlation of a reference
+- [x] **Alignment check** (`CheckAlignment` today, generalized): correlation of a reference
       against the sum of N parts over ±lag, best lag and residual RMS. This becomes the main
       acceptance metric of Workstream D (see its exit criteria).
-- [ ] Stays in `AudioVisualizer`: WAV loading (§1.3), `features.json` schema and quantization,
+- [x] Stays in `AudioVisualizer`: WAV loading (§1.3), `features.json` schema and quantization,
       `PixelParadeCues` (hand-authored, song-specific), the Markdown/HTML report and the PNG
       renderer. `ResampleAligned` (tail flush + fractional group-delay compensation around
       `resample.NewForRates`) is generic: move it into `dsp/resample` as an option such as
       `WithZeroDelay`, with a test that an impulse at `t` lands at `t·out/in` within 0.01 sample.
-- [ ] Tests: synthetic fixtures with known answers (click train at a known BPM, gated sines per
+      Done as `Resampler.ProcessAligned` / `resample.ResampleAligned` (a whole-buffer call, since
+      delay removal needs the tail and cannot stream); the dB helper is `core.LinearToDBFloor`.
+- [x] Tests: synthetic fixtures with known answers (click train at a known BPM, gated sines per
       band, a silent gap of known length, ±90° stereo pair for the width); a regression fixture
       that reproduces the current `AudioVisualizer` `features.json` for `PixelParade.wav` within
       quantization (except the log-spectrogram rows changed by the defect fix above); runnable
@@ -1041,21 +1054,44 @@ used there, which become defaults rather than constants: analysis rate 24 kHz, `
       (no font or plotting dependency in the root module). The labelled six-panel figure is
       `AudioVisualizer`'s job.
 
+#### Workstream B extension: melody, drum kinds, downbeat
+
+Added after the PixelParade visualizer rework, which needed the lead melody and drum roles:
+
+- [x] **Predominant pitch and chroma** (`measure/music/melody.Analyze`): harmonic-sum salience on
+      a 0.1-semitone grid (MIDI 52–96, 8 harmonics weighted 0.8^(h−1)), voicing as the power
+      share of the chosen harmonic series, −50 dBFS gate, voiced-only median smoothing, and a
+      12-bin chroma (C…B, `pitch.PitchClass` order) per frame. Frame durations are options in
+      seconds, so other rates/hops work.
+- [x] **Note segmentation** (`melody.SegmentNotes`), usable on any pitch track (also YIN):
+      minimum length, gap, pitch-jump split and re-attack at onsets; starts snap to onsets
+      within 40 ms.
+- [x] **Drum-hit kinds** (`onset.ClassifyDrums`): kick / snare / hat from band power shares
+      over the first 30 ms; heuristic labels for the default 5-band layout, rules replaceable.
+- [x] **Downbeat** (`rhythm.Downbeat`): bar phase from weighted accents (kicks, bass onsets)
+      near beats.
+- [ ] pYIN/Melodia-style probabilistic pitch tracking and key/chord estimation on top of chroma.
+
 #### Workstream C: Classical source separation baseline (`dsp/separate`)
 
 Weight-free, small, deterministic, and useful whenever the model is not available. It also gives
 Workstream D a sanity baseline to beat.
 
-- [ ] **HPSS** (Fitzgerald 2010): median filter across time (harmonic) and across frequency
+- [x] **HPSS** (Fitzgerald 2010): median filter across time (harmonic) and across frequency
       (percussive) on the STFT magnitude, with soft Wiener masks of power `p` (Driedger et al.
       2014 margin variant optional). Outputs harmonic + percussive (+ residual), and the outputs
       sum back to the input.
-- [ ] **Mid/side centre extraction** as a cheap "vocals-ish / centre" split; documented as
+- [x] **Mid/side centre extraction** as a cheap "vocals-ish / centre" split; documented as
       heuristic.
-- [ ] **Generic soft-mask / Wiener application helper** shared with D's optional Wiener
+- [x] **Generic soft-mask / Wiener application helper** shared with D's optional Wiener
       post-filter and with Phase 37.
-- [ ] Tests: sum of outputs reconstructs the input (< −100 dB); a sine + click mixture separates
-      with > 20 dB isolation; zero-alloc streaming path where feasible.
+- [x] Tests: sum of outputs reconstructs the input (< −100 dB); a sine + click mixture separates
+      with > 20 dB isolation; zero-alloc streaming path where feasible. Measured: reconstruction
+      ≈ −310 dB, isolation 25–35 dB (tone 10 dB above the clicks; with equal energy, clicks leak
+      ≈ −18.5 dB into the harmonic output at nfft 2048, a floor set by the bins the tone
+      occupies). `SeparateInto`, `MedianFilter.Filter` and `SoftMasks` run without allocations;
+      a block-streaming HPSS (needs `harmonicKernel/2` frames of lookahead) is left open.
+- [ ] Golden-vector parity against librosa's `hpss` (edge mode and margin formula follow it).
 
 #### Workstream D: Demucs v4 (`htdemucs`) inference port
 
@@ -1205,7 +1241,7 @@ Exit criteria:
 - [ ] A/B: `go test -race` passes for the new packages; STFT round-trip and torch golden
       vectors pass; features reproduce the existing `PixelParade` `features.json` within
       quantization (spectrogram rows excepted, as documented).
-- [ ] C: HPSS reconstruction < −100 dB and isolation > 20 dB on the synthetic fixture.
+- [x] C: HPSS reconstruction < −100 dB and isolation > 20 dB on the synthetic fixture.
 - [ ] D: every layer matches the PyTorch golden tensors to a relative error ≤ 1e-4; full-song
       stems for `PixelParade.wav` (same 44.1 kHz input, same shift offset) match the PyTorch
       stems at a residual of ≤ −80 dBFS RMS per stem; the stem sum still passes
@@ -1359,7 +1395,8 @@ Quarter-end success criteria:
 | 0.16    | 2026-07-29 | Claude  | Completed Phase 36: added the YIN pitch detector (`YINDetector`), the streaming `PitchTracker` with median/hold smoothing, the auto-tune `PitchCorrector`, and the `Scale`/note-conversion helpers — all in `dsp/effects/pitch`; the two existing shifters now share the new semitone conversions. Recorded the decision not to use `modulation.FrequencyShifter` for correction (it breaks harmonicity). Effect-chain/web-demo wiring and an FFT difference function deliberately left out of scope.                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 0.17    | 2026-07-29 | Claude  | Completed Phase 33: added `dsp/effects/vocoder_example_test.go` (defaults, `ProcessBlock` envelope transfer, Bark layout with a synthesis-Q override, multirate downsampling) — the vocoder was the last effect in `dsp/effects` without runnable examples — and closed the reachable coverage gaps so every exported vocoder option/getter/setter is at 100%. Corrected the phase's stale `NewVocoder(sampleRate, bandLayout, opts...)` signature to the real `NewVocoder(sampleRate, opts...)` + `WithBandLayout`, and recorded the `WithDownsampling` multirate feature the phase text had omitted. No API change.                                                                                                                                                                                                                                                                                                  |
 | 0.18    | 2026-07-29 | Claude  | Phase 40 partially completed: added `internal/benchguard` + `cmd/benchguard`, a benchmark regression guard that diffs `go test -bench` output against the checked-in `benchmarks/baseline.json` (`allocs/op` exact and `B/op` +10% gate; `ns/op` +50% is reported but non-gating unless `-enforce-timing` is passed on quiet hardware). Broadened `just bench-ci` from 3 to 6 packages (20 benchmarks) with a `count` parameter, added `just bench-guard` / `just bench-baseline`, and wired an advisory `Benchmark Guard` CI job that drives the same justfile recipe. Timing was demoted to non-gating after measurement: repeat runs with no code change moved benchmarks 43% on an idle machine and up to 7x under load, while allocation columns held steady throughout. The remaining item — refreshing `BENCHMARKS.md` from >=2 machines — is blocked on hardware availability, so the phase stays In Progress. |
-| 0.19    | 2026-10-03 | Claude  | Added Phase 44 (post-v1.0): port of `AudioVisualizer`'s `separate.py` (Demucs v4 `htdemucs` inference) and `plot_analysis.py` (feature data products only; rendering stays a non-goal). Split into STFT/ISTFT primitive, music-analysis features, classical HPSS baseline, the Demucs port with checkpoint and pipeline facts read from the real checkpoint, and hand-back; with a decision gate on whether neural inference belongs in this module. |
+| 0.19    | 2026-10-03 | Claude  | Added Phase 44 (post-v1.0): port of `AudioVisualizer`'s `separate.py` (Demucs v4 `htdemucs` inference) and `plot_analysis.py` (feature data products only; rendering stays a non-goal). Split into STFT/ISTFT primitive, music-analysis features, classical HPSS baseline, the Demucs port with checkpoint and pipeline facts read from the real checkpoint, and hand-back; with a decision gate on whether neural inference belongs in this module.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 0.20    | 2026-10-03 | Claude  | Phase 44 Workstreams A, B and C implemented: `dsp/stft` (float64/float32 STFT with zero/reflect/no padding, unitary scaling, WSS-normalized ISTFT), `measure/music/{features,onset,rhythm,align}` (bit-identical to `AudioVisualizer`, log spectrogram defect fixed with energy-preserving bin overlap), the B extension `measure/music/melody` plus drum kinds and downbeat, `dsp/separate` (HPSS, soft masks, mid/side and centre extraction), `resample.ResampleAligned` and `core.LinearToDBFloor`. Open: streaming STFT processor, torch/librosa golden vectors, SpectralFreeze migration, `examples/analysis_overview`, Workstream D.                                                                                                                                                                                                                                                                            |
 
 ---
 

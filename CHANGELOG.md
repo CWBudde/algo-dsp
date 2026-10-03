@@ -2,6 +2,38 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.0] - Unreleased
+
+### Added
+
+- `dsp/stft`: short-time Fourier transform (`New`, `New32`) built on algo-fft's real
+  plans. Centred framing with zero or reflect padding (`PadZero` reproduces frame `i`
+  centred at `i·hop`, `PadReflect` matches `torch.stft(center=True)`) or unpadded
+  framing, optional unitary scaling (`WithNormalized`), custom windows, a zero-alloc
+  `FrameInto`, and an `Inverse` normalized by the window sum of squares, so non-COLA
+  window/hop pairs reconstruct; it reports `ErrWindowSumZero` instead of dividing by
+  zero. Reconstruction error is below 1e-12 for float64.
+- `measure/music/features`, `onset`, `rhythm`, `align`: music-analysis features lifted
+  from the AudioVisualizer pipeline (Phase 44 Workstream B): frame RMS/peak/centroid/
+  width/flux and band envelopes, an energy-preserving log-frequency spectrogram with
+  exported bin frequencies (fixes the empty low rows of the original mapping), envelope
+  normalizer, silence finder, spectral-flux onsets with attack refinement and heuristic
+  drum kinds, tempo estimation with an optional prior, beat phase/grid, downbeat, and a
+  mix-versus-parts alignment check. With default settings each reproduces the original
+  code bit for bit; parity tests embed the reference implementation.
+- `measure/music/melody`: predominant pitch by harmonic-sum salience, voicing, 12-bin
+  chroma and note segmentation with onset snapping (`Analyze`, `SegmentNotes`,
+  `MedianVoiced`, `Downmix`).
+- `dsp/separate`: HPSS (Fitzgerald 2010) with soft masks of power `p` or the margin
+  variant and a residual, outputs summing to the input (≈ −310 dB); a zero-alloc
+  sliding `MedianFilter`, N-source `SoftMasks`, `ApplyMask`, `MidSide`/`LeftRight` and a
+  heuristic `CentreExtractor`.
+- `resample.Resampler.ProcessAligned` and `resample.ResampleAligned`: whole-buffer
+  resampling with the FIR group delay removed (output sample `j` corresponds to input
+  time `j·down/up`). It runs on a clone, so the receiver's streaming state is untouched.
+- `core.LinearToDBFloor` and `core.LinearPowerToDBFloor`: dB conversions with an explicit
+  floor (1e-6 → −120 dB); NaN stays NaN.
+
 ## [v0.7.4] - 2026-10-03
 
 ### Added

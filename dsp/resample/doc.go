@@ -17,5 +17,7 @@
 //   - NewRational(up, down, opts...)
 //   - NewForRates(inRate, outRate, opts...)
 //   - Resample(input, up, down, opts...)
+//   - ResampleAligned / Resampler.ProcessAligned for whole signals with the
+//     filter group delay removed (input time t maps to output time t)
 //   - Upsample2x / Downsample2x convenience wrappers
 package resample
