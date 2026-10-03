@@ -2,7 +2,10 @@ package sweep
 
 import (
 	"math"
+	"math/cmplx"
 	"testing"
+
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 func TestLogSweepValidation(t *testing.T) {
@@ -414,5 +417,229 @@ func TestNextPowerOf2(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("nextPowerOf2(%d) = %d, want %d", tt.n, got, tt.want)
 		}
+	}
+}
+
+// --- Round-trip regression tests -------------------------------------------
+//
+// These pin the deconvolution contract that the original implementation
+// violated: for an identity system the recovered IR must be a unit impulse
+// at sample len(inverse)-1, and the deconvolved spectrum must be flat inside
+// the sweep band (the original log-sweep inverse filter used an inverted
+// amplitude envelope, tilting the spectrum by about -12 dB/octave; the
+// original linear-sweep inverse filter truncated away most of its energy,
+// leaving a misplaced peak near 0.006).
+
+func findPeak(x []float64) (int, float64) {
+	idx := 0
+	val := 0.0
+
+	for i, v := range x {
+		if math.Abs(v) > val {
+			val = math.Abs(v)
+			idx = i
+		}
+	}
+
+	return idx, val
+}
+
+func TestLogSweepIdentityRoundTrip(t *testing.T) {
+	s := &LogSweep{
+		StartFreq:  50,
+		EndFreq:    6000,
+		Duration:   0.5,
+		SampleRate: 16000,
+	}
+
+	sweep, err := s.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ir, err := s.Deconvolve(sweep)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantIdx := s.samples() - 1
+
+	peakIdx, peakVal := findPeak(ir)
+	if peakIdx != wantIdx {
+		t.Fatalf("IR peak at %d, want %d", peakIdx, wantIdx)
+	}
+
+	if math.Abs(peakVal-1.0) > 0.05 {
+		t.Fatalf("IR peak amplitude = %.4f, want 1.0 +/- 0.05", peakVal)
+	}
+}
+
+func TestLogSweepDelayedDeltaRoundTrip(t *testing.T) {
+	s := &LogSweep{
+		StartFreq:  50,
+		EndFreq:    6000,
+		Duration:   0.5,
+		SampleRate: 16000,
+	}
+
+	sweep, err := s.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const delay = 137
+
+	response := make([]float64, delay+len(sweep))
+	copy(response[delay:], sweep)
+
+	ir, err := s.Deconvolve(response)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantIdx := s.samples() - 1 + delay
+
+	peakIdx, peakVal := findPeak(ir)
+	if peakIdx != wantIdx {
+		t.Fatalf("IR peak at %d, want %d", peakIdx, wantIdx)
+	}
+
+	if math.Abs(peakVal-1.0) > 0.05 {
+		t.Fatalf("IR peak amplitude = %.4f, want 1.0 +/- 0.05", peakVal)
+	}
+}
+
+// TestLogSweepDeconvolveSpectralFlatness is the regression test for the
+// inverted inverse-filter envelope: the deconvolved identity IR must have a
+// flat magnitude spectrum inside the sweep band. The former -12 dB/octave
+// tilt amounts to a ~55 dB spread over the checked range.
+func TestLogSweepDeconvolveSpectralFlatness(t *testing.T) {
+	s := &LogSweep{
+		StartFreq:  50,
+		EndFreq:    6000,
+		Duration:   0.5,
+		SampleRate: 16000,
+	}
+
+	sweep, err := s.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ir, err := s.Deconvolve(sweep)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Window the IR around the peak and measure its spectrum.
+	const fftSize = 8192
+
+	center := s.samples() - 1
+	segment := make([]complex128, fftSize)
+
+	for i := 0; i < fftSize; i++ {
+		j := center - fftSize/2 + i
+		if j >= 0 && j < len(ir) {
+			segment[i] = complex(ir[j], 0)
+		}
+	}
+
+	plan, err := algofft.NewPlan64(fftSize)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	spec := make([]complex128, fftSize)
+	if err := plan.Forward(spec, segment); err != nil {
+		t.Fatal(err)
+	}
+
+	// Compare magnitudes across the interior of the band (well away from
+	// the sweep edges): 150 Hz .. 4000 Hz is about 4.7 octaves.
+	binHz := s.SampleRate / float64(fftSize)
+
+	loBin := int(math.Round(150 / binHz))
+	hiBin := int(math.Round(4000 / binHz))
+
+	minDB := math.Inf(1)
+	maxDB := math.Inf(-1)
+
+	for i := loBin; i <= hiBin; i++ {
+		mag := cmplx.Abs(spec[i])
+		if mag <= 0 {
+			t.Fatalf("zero magnitude at bin %d", i)
+		}
+
+		db := 20 * math.Log10(mag)
+		minDB = math.Min(minDB, db)
+		maxDB = math.Max(maxDB, db)
+	}
+
+	if spread := maxDB - minDB; spread > 3 {
+		t.Fatalf("in-band magnitude spread = %.2f dB over 150-4000 Hz, want <= 3 dB", spread)
+	}
+}
+
+func TestLinearSweepIdentityRoundTrip(t *testing.T) {
+	s := &LinearSweep{
+		StartFreq:  50,
+		EndFreq:    6000,
+		Duration:   0.5,
+		SampleRate: 16000,
+	}
+
+	sweep, err := s.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ir, err := s.Deconvolve(sweep)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantIdx := len(sweep) - 1
+
+	peakIdx, peakVal := findPeak(ir)
+	if peakIdx != wantIdx {
+		t.Fatalf("IR peak at %d, want %d", peakIdx, wantIdx)
+	}
+
+	if math.Abs(peakVal-1.0) > 0.05 {
+		t.Fatalf("IR peak amplitude = %.4f, want 1.0 +/- 0.05", peakVal)
+	}
+}
+
+func TestLinearSweepScaledSystemRoundTrip(t *testing.T) {
+	s := &LinearSweep{
+		StartFreq:  50,
+		EndFreq:    6000,
+		Duration:   0.5,
+		SampleRate: 16000,
+	}
+
+	sweep, err := s.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A pure gain of 0.5 must come back as a 0.5-amplitude impulse.
+	response := make([]float64, len(sweep))
+	for i, v := range sweep {
+		response[i] = 0.5 * v
+	}
+
+	ir, err := s.Deconvolve(response)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	peakIdx, peakVal := findPeak(ir)
+	if peakIdx != len(sweep)-1 {
+		t.Fatalf("IR peak at %d, want %d", peakIdx, len(sweep)-1)
+	}
+
+	if math.Abs(peakVal-0.5) > 0.03 {
+		t.Fatalf("IR peak amplitude = %.4f, want 0.5 +/- 0.03", peakVal)
 	}
 }
