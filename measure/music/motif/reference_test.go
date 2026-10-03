@@ -59,9 +59,11 @@ func refNewGrid(r refRhythm, duration float64) refGrid {
 func (g refGrid) Slot(t float64) int {
 	return int(math.Round((t - g.OriginSeconds) / g.SixteenthSeconds))
 }
+
 func (g refGrid) SlotTime(slot int) float64 {
 	return g.OriginSeconds + float64(slot)*g.SixteenthSeconds
 }
+
 func (g refGrid) Bar(t float64) int {
 	return max(0, int(math.Floor((t-g.barOrigin)/g.BarSeconds+1e-9)))
 }
@@ -340,8 +342,10 @@ func refFindNoteMotifs(notes []refStoryNote, g refGrid, source string, p refMoti
 				exact := fmt.Sprint(iv, ioi, notes[c.notes[0]].Slot-c.start) == fmt.Sprint(m.Intervals, m.IOI, notes[proto.notes[0]].Slot-proto.start)
 				start, end := span(c)
 				t := refFold(o.transposition - t0)
-				refOcc := refMotifOccurrence{Start: refR6(start), End: refR6(end), Bar: g.Bar(g.SlotTime(c.start)), Slot: c.start,
-					Transposition: t, Similarity: refR3(o.similarity), Variant: refVariant(exact && (o.transposition-t0)%12 == 0 == (t == 0), t), NoteIndices: c.notes}
+				refOcc := refMotifOccurrence{
+					Start: refR6(start), End: refR6(end), Bar: g.Bar(g.SlotTime(c.start)), Slot: c.start,
+					Transposition: t, Similarity: refR3(o.similarity), Variant: refVariant(exact && (o.transposition-t0)%12 == 0 == (t == 0), t), NoteIndices: c.notes,
+				}
 				for _, k := range c.notes {
 					covered[k] = true
 				}
@@ -520,8 +524,10 @@ func refFindChromaMotifs(beats [][12]float64, g refGrid, p refMotifParams) []ref
 			for _, o := range gr.occs {
 				c := cands[o.index]
 				start, t := g.BeatStart(c.first), refFold(o.transposition-t0)
-				m.Occurrences = append(m.Occurrences, refMotifOccurrence{Start: refR6(start), End: refR6(g.BeatStart(c.first + width)), Bar: g.Bar(start + 1e-6), Slot: c.start,
-					Transposition: t, Similarity: refR3(o.similarity), Variant: refVariant(o.similarity >= 0.999, t)})
+				m.Occurrences = append(m.Occurrences, refMotifOccurrence{
+					Start: refR6(start), End: refR6(g.BeatStart(c.first + width)), Bar: g.Bar(start + 1e-6), Slot: c.start,
+					Transposition: t, Similarity: refR3(o.similarity), Variant: refVariant(o.similarity >= 0.999, t),
+				})
 				for k := c.first; k < c.first+width; k++ {
 					coveredBeats[k] = true
 				}
@@ -622,8 +628,10 @@ func refScore(m *refMotif, notes []refStoryNote, sections []refSpan, energy func
 	for _, c := range symbols {
 		entropy -= c / total * math.Log2(c/total)
 	}
-	t := refSalienceTerms{Count: math.Log(1 + float64(len(m.Occurrences))), Sections: math.Log(1 + float64(len(visited))), Prominence: prominence,
-		Distinctiveness: math.Min(entropy, 1), Span: math.Min(m.SpanBeats, 8) / 8, Confirmed: 1}
+	t := refSalienceTerms{
+		Count: math.Log(1 + float64(len(m.Occurrences))), Sections: math.Log(1 + float64(len(visited))), Prominence: prominence,
+		Distinctiveness: math.Min(entropy, 1), Span: math.Min(m.SpanBeats, 8) / 8, Confirmed: 1,
+	}
 	if entropy < 1 {
 		t.Distinctiveness *= 0.3
 	}

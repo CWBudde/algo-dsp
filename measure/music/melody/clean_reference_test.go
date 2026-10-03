@@ -57,6 +57,7 @@ func newStoryGrid(r storyRhythm, duration float64) storyGrid {
 func (g storyGrid) Slot(t float64) int {
 	return int(math.Round((t - g.OriginSeconds) / g.SixteenthSeconds))
 }
+
 func (g storyGrid) SlotTime(slot int) float64 {
 	return g.OriginSeconds + float64(slot)*g.SixteenthSeconds
 }
@@ -88,6 +89,7 @@ type storyCleanParams struct {
 func storyLeadCleanParams() storyCleanParams {
 	return storyCleanParams{52, 0.35, 50, 1, 19, 2, 16, 2, 4, 2, 2}
 }
+
 func storyBassCleanParams() storyCleanParams {
 	return storyCleanParams{28, 0.35, 50, 1, 19, 2, 16, 2, 4, 2, 2}
 }
@@ -134,8 +136,10 @@ func storyCleanNotes(in []refNote, g storyGrid, p storyCleanParams) ([]storyNote
 		}
 		slot := g.Slot(n.Start)
 		offset := (n.Start - g.SlotTime(slot)) * 1000
-		notes = append(notes, storyNote{Start: n.Start, End: n.End, Slot: slot, Slots: max(1, g.Slot(n.End)-slot), MIDI: n.MIDI, RawMIDI: n.MIDI,
-			Strength: n.Strength, OffsetMS: storyR3(offset), OffGrid: math.Abs(offset) > p.OffGridMS, RawIndex: i})
+		notes = append(notes, storyNote{
+			Start: n.Start, End: n.End, Slot: slot, Slots: max(1, g.Slot(n.End)-slot), MIDI: n.MIDI, RawMIDI: n.MIDI,
+			Strength: n.Strength, OffsetMS: storyR3(offset), OffGrid: math.Abs(offset) > p.OffGridMS, RawIndex: i,
+		})
 	}
 	sort.SliceStable(notes, func(i, j int) bool { return notes[i].Slot < notes[j].Slot })
 	// Monophonic: one note per slot (strongest by strength × duration), and

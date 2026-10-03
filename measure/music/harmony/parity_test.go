@@ -392,8 +392,10 @@ func toWindows(ref []refChordWindow) []Window {
 func appChords(chords []Chord) []refChord {
 	out := make([]refChord, len(chords))
 	for i, c := range chords {
-		r := refChord{Start: refR6(c.Start), End: refR6(c.End), Root: -1, Bass: -1, Quality: c.Quality,
-			Symbol: c.Symbol, Score: c.Score, Margin: c.Margin}
+		r := refChord{
+			Start: refR6(c.Start), End: refR6(c.End), Root: -1, Bass: -1, Quality: c.Quality,
+			Symbol: c.Symbol, Score: c.Score, Margin: c.Margin,
+		}
 		if !c.NoChord {
 			r.Root, r.Bass, r.Voicing = int(c.Root), int(c.Bass), slices.Clone(c.Voicing)
 		}
@@ -502,10 +504,12 @@ func TestParityChords(t *testing.T) {
 
 	ref := make([]refChordWindow, len(spans))
 	for i, s := range spans {
-		ref[i] = refChordWindow{Start: s.Start, End: s.End,
+		ref[i] = refChordWindow{
+			Start: s.Start, End: s.End,
 			Chroma:  refHarmony(d.rms, d.chroma, parityFrameRate, s.Start, s.End),
 			Bass:    refBassPC(d.voicing, d.bassChroma, parityFrameRate, s.Start, s.End, d.refNotes),
-			LevelDB: refMeanDB(d.rms, parityFrameRate, s.Start, s.End)}
+			LevelDB: refMeanDB(d.rms, parityFrameRate, s.Start, s.End),
+		}
 	}
 
 	if !slices.Equal(toWindows(ref), windows) {

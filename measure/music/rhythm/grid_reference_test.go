@@ -51,9 +51,17 @@ func newStoryGrid(r storyRhythm, duration float64) storyGrid {
 	return g
 }
 
-func (g storyGrid) Slot(t float64) int            { return int(math.Round((t - g.OriginSeconds) / g.SixteenthSeconds)) }
-func (g storyGrid) SlotTime(slot int) float64     { return g.OriginSeconds + float64(slot)*g.SixteenthSeconds }
-func (g storyGrid) Bar(t float64) int             { return max(0, int(math.Floor((t-g.barOrigin)/g.BarSeconds+1e-9))) }
+func (g storyGrid) Slot(t float64) int {
+	return int(math.Round((t - g.OriginSeconds) / g.SixteenthSeconds))
+}
+
+func (g storyGrid) SlotTime(slot int) float64 {
+	return g.OriginSeconds + float64(slot)*g.SixteenthSeconds
+}
+
+func (g storyGrid) Bar(t float64) int {
+	return max(0, int(math.Floor((t-g.barOrigin)/g.BarSeconds+1e-9)))
+}
 func (g storyGrid) Bars() int                     { return len(g.BarStarts) }
 func (g storyGrid) BarStart(n int) float64        { return g.barOrigin + float64(n)*g.BarSeconds }
 func (g storyGrid) BeatStart(n int) float64       { return g.OriginSeconds + float64(n)*g.BeatSeconds }
