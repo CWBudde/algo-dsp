@@ -166,6 +166,26 @@ slightly higher block throughput (`ProcessInPlace`). The oversampled high-qualit
 path costs roughly factor× the base ladder plus anti-alias filtering, trading CPU
 for ~25 dB of alias rejection on out-of-band harmonics. All paths are zero-alloc.
 
+### `measure/music` structure layer (Phase 45)
+
+Command: `go test -bench=. -benchmem -run=^$ ./measure/music/{motif,harmony,structure,align,melody}/`
+(Apple M5 Pro). Inputs: 2,000 cleaned notes (motif, `Clean`), 512 beats of chroma
+(`FindChromaMotifs`), 160 chord windows (`Chorder`), 256 beats × 33 dims (structure),
+10 s mono at 24 kHz (`Lag`).
+
+- `BenchmarkChorder`: `104810 ns/op`, `0 allocs/op`
+- `BenchmarkSelfSimilarityInto`: `389350 ns/op`, `0 allocs/op`
+- `BenchmarkFooteNoveltyInto`: `258874 ns/op`, `0 allocs/op`
+- `BenchmarkLag`: `2244269 ns/op`, `0 allocs/op`
+- `BenchmarkClean`: `693031 ns/op`, `7 allocs/op`
+- `BenchmarkFindNoteMotifs`: `30485272 ns/op`, `3718 allocs/op`
+- `BenchmarkNgramPass`: `81526404 ns/op`, `4298 allocs/op`
+- `BenchmarkFindChromaMotifs`: `58291117 ns/op`, `386 allocs/op`
+
+Note: motif allocations scale with the number of candidate clusters, not with the number
+of compared pairs. These are offline analysis passes, so they are not in the regression
+guard's package list.
+
 ## SIMD vs Scalar (internal/vecmath, n=4096)
 
 Command:

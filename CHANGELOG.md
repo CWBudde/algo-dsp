@@ -33,6 +33,26 @@ All notable changes to this project are documented in this file.
   time `j·down/up`). It runs on a clone, so the receiver's streaming state is untouched.
 - `core.LinearToDBFloor` and `core.LinearPowerToDBFloor`: dB conversions with an explicit
   floor (1e-6 → −120 dB); NaN stays NaN.
+- `rhythm.Grid` (`NewGrid`, `WithBeats`, `WithBeatsPerBar`, `WithSubdivisions`): an immutable
+  16th/beat/bar grid with a pickup bar, built from `BeatGrid`/`Downbeat` output.
+- `melody.Clean`: grid quantisation, monophonic per slot, octave-error correction and an
+  arpeggio voice for tracked notes; `melody.BassPreset` and `BassCleanOptions` for bass lines.
+- `measure/music/harmony`: Krumhansl–Kessler key estimation with a tonic-evidence tie-break
+  (`EstimateKey`), RMS-weighted chroma windows (`Windows`), and template chord recognition with
+  bass, inversion, seventh and in-key terms plus Viterbi smoothing (`Chords`, allocation-free
+  `Chorder`).
+- `measure/music/structure`: z-scored weighted feature `Blocks`, cosine `SelfSimilarity`,
+  Gaussian-checkerboard `FooteNovelty`, `Peaks` with reference marks, and A/A′/B phrase `Label`;
+  `examples/structure_overview` draws the SSM and novelty curve.
+- `measure/music/motif`: transposition-invariant motif discovery on notes (`FindNoteMotifs`)
+  and beat chroma (`FindChromaMotifs`), `Corroborate`, salience `Score` and leitmotif `Rank`.
+- `align.Lag` and `align.LagChannels`: coarse-then-fine lag search with correlation, gain and a
+  parabolic sub-sample estimate. `features.Activity`: per-span activity of named tracks
+  relative to their own 95th-percentile level.
+
+### Fixed
+
+- `align.Check` no longer overflows or scans for a long time with a huge `WithMaxLag`.
 
 ## [v0.7.11] - 2026-10-03
 
