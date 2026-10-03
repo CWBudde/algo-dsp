@@ -26,7 +26,10 @@ const (
 	blockStepFactor = 1.0 - blockOverlap
 )
 
-// Meter implements EBU R128 / ITU-R BS.1770 loudness metering.
+// Meter provides legacy approximate momentary, short-term and integrated
+// loudness readings. Its filter design and startup integration are retained for
+// compatibility; Peaks reports sample peaks, not oversampled true peaks.
+// For standards-based offline integrated loudness, use IntegratedAnalyzer.
 type Meter struct {
 	sampleRate float64
 	channels   int

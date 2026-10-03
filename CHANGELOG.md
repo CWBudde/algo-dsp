@@ -34,6 +34,220 @@ All notable changes to this project are documented in this file.
 - `core.LinearToDBFloor` and `core.LinearPowerToDBFloor`: dB conversions with an explicit
   floor (1e-6 → −120 dB); NaN stays NaN.
 
+## [v0.7.11] - 2026-10-03
+
+### Added
+
+- `dither.WithPCMQuantization` opts into conventional signed PCM scaling by
+  2^(bitDepth-1), nearest rounding with halfway values away from zero, and
+  normalized `ProcessSample` output without the legacy half-LSB offset.
+  Direct integer PCM codes therefore avoid the legacy floor convention's
+  half-LSB silent-dither bias. Defaults, noise distributions and RNG draws
+  remain unchanged for existing callers.
+  Limited PCM saturates finite source input before scaling and records only
+  quantization error before output clipping, excluding saturation distortion
+  from noise-shaper feedback so over-range input cannot cause windup.
+
+### Fixed
+
+- Limited quantization clips floating-point integer codes before conversion to
+  `int`, preventing finite over-range samples or dither from overflowing and
+  reversing sample polarity. Signed endpoints are constructed safely on
+  32-bit platforms, including PCM32. Scalar-reference tests cover every dither
+  distribution, full scale, noise-shaping histories, extreme input, partitions,
+  unbiased silent TPDF statistics and zero processing allocations.
+
+## [v0.7.10] - 2026-10-03
+
+### Added
+
+- `TargetAnalyzer.ProcessCertifiedPlanar32` accepts a caller-proven finite,
+  exact float32 sample peak to omit repeated sample classification. It still
+  processes every actual sample through the same K-weighting filters, windows
+  and loudness gates; the certificate does not predict loudness or replace an
+  independent stored-output measurement. Ordinary `ProcessPlanar32` remains
+  fully validating, and state/shape/frame/certificate validation stays atomic.
+- Independent scalar-reference bit-parity tests cover fused and custom-weight
+  layouts, mixed precisions, fractional rates, extreme/subnormal samples,
+  arbitrary partitions and input ownership. Invalid certificate and state
+  tests verify rejection before mutation; certified ten-minute stereo
+  benchmarks include actual analysis/finalization and allocate nothing.
+
+## [v0.7.9] - 2026-10-03
+
+### Added
+
+- `fade.EnvelopeInto64`, `ApplyEnvelopeInto32` and `CrossfadeEnvelopeInto32`
+  share unrounded float64 envelope gains across linked channels. They preserve
+  the original float32 output rounding while avoiding repeated curve evaluation;
+  callers supply bounded reusable scratch and processing allocates nothing.
+
+### Changed
+
+- Float32 fades hoist shape dispatch, logarithmic constants and whole-block
+  position conversion out of sample loops. Positions through 2^53 use exact
+  float64 integer addition; larger positions retain the original formula.
+- Continuous generators dispatch once per block and avoid floating-point
+  positions for noise/silence. SplitMix64 uniform conversion splits its 53 bits
+  into exact 32-bit binary fractions, retaining the original random sequence.
+- `MeanAccumulator.AddFloat32` classifies nonfinite float32 encodings directly,
+  retaining compensated addition order and atomic invalid-input rejection.
+- Rational resampling caches phase advances, keeps streaming counters in locals,
+  and splits the current-block interior from startup/history handling. Unrolled
+  interior loops preserve filter coefficients, profile taps and sequential
+  summation order without additional coefficient storage or processing allocations.
+
+### Validation
+
+- Independent original-formula bit-parity tests cover fade directions/shapes,
+  generator streams and large-position boundaries, fixed seeded random vectors,
+  and resampling cancellation/exponent stress across ratios and custom taps.
+- A ten-minute stereo 48 kHz to 44.1 kHz benchmark uses the editor's unchanged
+  Fast/Balanced/Best profile tap scaling. Component benchmarks exclude candidate
+  storage, UI and editor acceptance timing; no full-editor timing pass is claimed.
+
+## [v0.7.8] - 2026-10-03
+
+### Added
+
+- `dsp/fade` offers allocation-free float32 fades and crossfades with linear,
+  equal-power, logarithmic and smooth S-curve envelopes. Explicit whole-fade
+  positions preserve endpoints and sample parity across arbitrary block sizes.
+- `dsp/signal.MeanAccumulator` measures a compensated full-range float32 mean
+  across blocks. `SubtractMeanInto32` applies that measured value without
+  recomputing block-local means; `ScaleInto32` multiplies directly from float32
+  storage using float64 gain and one final float32 rounding.
+- `dsp/signal.StreamGenerator` produces continuous float32 silence, sine,
+  seeded white/pink noise and linear/logarithmic sweeps into caller-owned
+  blocks. It retains global sample position and deterministic SplitMix64/pink
+  state; block overruns leave output and state unchanged. Existing one-shot
+  generators and their random sequences remain unchanged.
+
+### Validation
+
+- Independent analytic and fixed random golden vectors, exact block partition
+  parity, aliasing, endpoint and invalid-argument tests; successful processing
+  paths are checked for zero allocations and benchmarked with `-benchmem`.
+- Extreme logarithmic sweeps spanning subnormal frequencies stay finite.
+
+## [v0.7.7] - 2026-10-03
+
+### Changed
+
+- `measure/loudness.TargetAnalyzer` float32 preflight classifies nonfinite
+  encodings and tracks the signless sample peak with integer comparisons,
+  converting the block peak once. Shape, frame-limit and finite-input rejection
+  remain atomic, including zero-weight channels and mixed float32/float64 calls.
+- Hop aggregation checks finite sequential sums at complete or partial segment
+  boundaries instead of every frame, retaining the same addition order,
+  nearest-sample endpoints and terminal overflow/reset behavior.
+- Unit-weight mono/stereo scans fuse both K-weighting stages with hop
+  accumulation, eliminating energy-scratch initialization and extra passes.
+  Larger/custom-weight layouts retain the generic prepared path. Successful
+  filter states, window energies, target plans and actual measurements are
+  checked bit-for-bit against that independent retained path across rates,
+  partitions and extreme finite inputs; streaming remains allocation-free.
+- Published `IntegratedAnalyzer`, `Meter`, normalization plans and the
+  requirement to actually verify stored float32 loudness output are unchanged.
+  These source optimizations do not claim a passed editor browser timing gate.
+
+### Validation
+
+- Full native CI/race tests, native/WASM vet, all 12 browser demo checks, and
+  actual Node/V8 WASM loudness tests pass; loudness coverage is 96.4%.
+- Serial three-iteration ten-minute 48 kHz stereo benchmarks measure target
+  analysis / fresh-candidate measurement at 176.855 / 172.652 ms natively and
+  264.457 / 254.440 ms under Node/V8 WASM, with 0 B/op and 0 allocs/op.
+  Reset and bounded finalization are included; constructor/fixture setup,
+  scaling, storage, editor UI and commit are excluded. These host-sensitive
+  component timings are not full-editor acceptance results.
+
+## [v0.7.6] - 2026-10-03
+
+### Added
+
+- `measure/loudness.TargetAnalyzer` plans a linked gain with both loudness gates
+  recalculated after scaling. It retains positive complete-window energies,
+  including originally below-gate material, and incrementally enumerates
+  consistent absolute-gate intervals instead of assuming gated LUFS is monotonic.
+  `TargetResult` distinguishes a finite source measurement from undefined
+  below-gate LUFS, and predicts the target to 0.01 LU in the energy domain.
+- Float32 quantization can change strict gate membership, so the plan explicitly
+  requires stored-output verification. `FinishMeasurementStep` / `MeasurementResult`
+  provide bounded measurement-only finalization of a fresh candidate scan using
+  the same fast analyzer. Measurement and target finalization are mutually
+  exclusive until `Reset`; `SamplePeak` exposes finite progressive input telemetry.
+- Channel-major K-weighting and four positive hop sums avoid rescanning the full
+  400 ms energy window. Preflight rejection remains atomic, workspace remains
+  capped at 64 MiB, and successful streaming / finalization allocate nothing.
+  Existing `IntegratedAnalyzer`, `Meter` and input-derived normalization APIs
+  retain their implementations and behavior.
+- `dsp/signal.PlanPeakNormalization` derives one linked gain for a finite sample
+  peak and dBFS target without an application UI clamp. Zero peak is an identity;
+  subnormal sources are supported and unrepresentable gain/peak values rejected.
+- Runnable examples, independent direct-form-I / gating and static goldens,
+  rate/partition/weight/float32 parity, exhaustive small gate-interval oracles,
+  ownership/state/reset/overflow/allocation tests and ten-minute WASM benchmarks
+  accompany the new APIs. Predictions and sample peaks do not claim true-peak
+  support or peak limiting.
+
+### Validation
+
+- Native CI, full race tests, native/WASM vet, all 12 browser demo checks, and
+  actual Node/V8 WASM loudness/signal tests pass. Loudness package coverage is
+  96.1%; the new peak planner has 100% statement coverage.
+- Ten-minute 48 kHz stereo target analysis measures 0.49–0.52 s under Node/V8
+  WASM, and fresh-candidate measurement 0.49 s, with 0 B/op and 0 allocs/op.
+  These include reset and bounded finalization but exclude constructor/fixture
+  setup, scaling, output storage, UI and commit. They are not editor browser
+  acceptance results; the full workflow must be timed separately.
+
+## [v0.7.5] - 2026-10-03
+
+### Added
+
+- `measure/loudness.IntegratedAnalyzer` provides bounded planar float64/float32
+  integrated loudness analysis. It uses the published BS.1770-5 48 kHz
+  K-weighting coefficients (inverse-bilinear mapped at other supported rates),
+  complete 400 ms windows at nominal 100 ms intervals, and absolute -70 LUFS
+  / relative -10 LU gates. Sample-rounded accumulated timing avoids cadence
+  drift at rates such as 8005 and 11025 Hz. Channel power weights are explicit
+  and copied; nil defaults to unit weights, never an inferred surround layout.
+- Constructor validation bounds workspace to 64 MiB and caller blocks to 65536
+  frames before allocation or state changes. Successful processing and bounded
+  `FinishStep` finalization allocate nothing; `Reset` reuses reserved storage.
+  Short/below-gate input produces errors, nonfinite samples are atomically
+  rejected, and finite arithmetic overflow is terminal until reset. Combined
+  positive-energy window rebasing avoids false loud residuals after huge transients.
+- `PlanNormalization` and `NormalizeLoudness` apply one linked, input-derived
+  gain, using tagged `algo-vecmath` for fresh-output scaling. They do not mutate
+  input, limit peaks or clamp gain to a UI range. Gain/peak overflow and total
+  underflow are rejected. Post-gain LUFS is not unconditionally guaranteed:
+  absolute-gate membership may change, so callers requiring that guarantee
+  must remeasure. Sample peaks include zero-weight channels and are not true peaks.
+- Runnable examples, streamed mathematical EBU Tech 3341 integrated cases 1–6,
+  an independent direct-form-I filter/gating oracle and static golden, rate and
+  partition parity, EOF timing, ownership, overflow/reset and allocation tests,
+  and bounded ten-minute stereo analysis benchmarks accompany these APIs.
+
+### Documentation
+
+- The existing `Meter` retains its legacy approximate filters and startup
+  integration for compatibility. Corrected prior roadmap claims: its `Peaks`
+  reports sample peaks, and its tests do not establish full EBU conformance.
+  Standards-compliant live metering, LRA and oversampled true peak remain pending.
+
+### Validation
+
+- Full native CI and race suite pass, including all 12 browser demo checks,
+  lint and native/WASM vet. The integrated/normalization tests also pass under
+  Node/V8 WASM; loudness package statement coverage is 95.8%.
+- Ten-minute 48 kHz stereo analysis, including reset and bounded finalization
+  but excluding constructor/fixture setup, measures 0.45–0.56 s natively and
+  1.25–1.30 s under Node/V8 WASM on an i7-1255U. Both precisions and the block /
+  finalization microbenchmarks report 0 B/op and 0 allocs/op. These are analyzer
+  timings, not an editor end-to-end performance or browser acceptance claim.
+
 ## [v0.7.4] - 2026-10-03
 
 ### Added
@@ -113,7 +327,7 @@ All notable changes to this project are documented in this file.
 
 - The vecmath call sites above are guarded by benchmarked length thresholds (`mixSIMDThreshold`, `addBlockSIMDThreshold`, `bandSumSIMDThreshold`, all 64), in the same style as the existing `conv.simdThreshold`. This is not caution: a dispatched vecmath call carries roughly 110 ns of fixed cost on this machine regardless of length, so the four-parent mix loses 0.72x at a 16-sample block before turning over to 3.0x at 512. Short buffers are not hypothetical here -- a partitioned convolver built with a low `minBlockOrder` has a `partSize` of a handful of samples.
 
-- `vecmath.MaxAbs` was **not** adopted, in `stats/time.Peak` or in `measure/ir`'s impulse-onset search, although it is 3.0x and 5.6x faster there respectively. It is unsafe for both: on AVX2 a NaN anywhere in the slice can **discard the true maximum and return a smaller finite value**. `MaxAbs([999, NaN, 0.5])` returns `0.5` on AVX2 and `999` on the pure-Go kernel. That is not a difference in NaN policy -- it is a silently wrong *finite* result, on some CPUs only, and no cheap check detects it, because an `IsNaN` test on the result does not fire. In `findImpulseStart` a peak under-reported by that factor leaves the threshold orders of magnitude too low, so the quiet run before the impulse clears it and the reported onset is far too early, corrupting every metric derived from it. Detecting NaN up front costs a full extra pass, which is the entire speedup, so both sites keep their scalar loops and `TestPeakNaNIsDeterministic` / `TestFindImpulseStartNaNIsDeterministic` fail on an AVX2 machine if anyone re-adopts `MaxAbs`. Raised by review on #25. This looks like an `algo-vecmath` defect rather than a documentation gap and is worth fixing there.
+- `vecmath.MaxAbs` was **not** adopted, in `stats/time.Peak` or in `measure/ir`'s impulse-onset search, although it is 3.0x and 5.6x faster there respectively. It is unsafe for both: on AVX2 a NaN anywhere in the slice can **discard the true maximum and return a smaller finite value**. `MaxAbs([999, NaN, 0.5])` returns `0.5` on AVX2 and `999` on the pure-Go kernel. That is not a difference in NaN policy -- it is a silently wrong _finite_ result, on some CPUs only, and no cheap check detects it, because an `IsNaN` test on the result does not fire. In `findImpulseStart` a peak under-reported by that factor leaves the threshold orders of magnitude too low, so the quiet run before the impulse clears it and the reported onset is far too early, corrupting every metric derived from it. Detecting NaN up front costs a full extra pass, which is the entire speedup, so both sites keep their scalar loops and `TestPeakNaNIsDeterministic` / `TestFindImpulseStartNaNIsDeterministic` fail on an AVX2 machine if anyone re-adopts `MaxAbs`. Raised by review on #25. This looks like an `algo-vecmath` defect rather than a documentation gap and is worth fixing there.
 
 - Not covered, deliberately: `algo-vecmath` v0.1.3 is float64-only, so `PartitionedConvolution32`, `StreamingOverlapAdd32` and the other `float32` instantiations keep their scalar loops. The generic helper dispatches on `unsafe.Sizeof` rather than boxing through `any()`, so that branch resolves at compile time per instantiation and the float32 stencils are byte-for-byte unchanged.
 

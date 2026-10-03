@@ -16,6 +16,7 @@ type Quantizer struct {
 	limit           bool
 	shaper          NoiseShaper
 	rng             *rand.Rand
+	pcmQuantization bool
 
 	// derived from bitDepth
 	bitMul  float64
@@ -70,6 +71,7 @@ func NewQuantizer(sampleRate float64, opts ...Option) (*Quantizer, error) {
 		limit:           cfg.limit,
 		shaper:          shaper,
 		rng:             cfg.rng,
+		pcmQuantization: cfg.pcmQuantization,
 	}
 
 	if quant.rng == nil {
@@ -83,14 +85,26 @@ func NewQuantizer(sampleRate float64, opts ...Option) (*Quantizer, error) {
 
 func (q *Quantizer) updateDerived() {
 	q.bitMul = math.Exp2(float64(q.bitDepth-1)) - 0.5
+	if q.pcmQuantization {
+		q.bitMul = math.Exp2(float64(q.bitDepth - 1))
+	}
+
 	q.bitDiv = 1.0 / q.bitMul
-	q.limitLo = -int(math.Round(q.bitMul + 0.5))
-	q.limitHi = int(math.Round(q.bitMul - 0.5))
+	// Construct both endpoints without converting the positive magnitude of
+	// MinInt32 to int on a 32-bit architecture.
+	q.limitHi = int((uint64(1) << uint(q.bitDepth-1)) - 1)
+	q.limitLo = -q.limitHi - 1
 }
 
 // ProcessInteger quantizes the input (expected in [-1, +1]) to an integer
 // in the bit-depth range.
 func (q *Quantizer) ProcessInteger(input float64) int {
+	if q.pcmQuantization && q.limit {
+		// Conventional limited PCM saturates the source before feedback. A
+		// finite over-range source must not inject its clipping distortion into
+		// the noise shaper or make a later silent tail ring at full scale.
+		input = max(-1, min(1, input))
+	}
 	// 1. Scale to integer range.
 	scaled := q.bitMul * input
 
@@ -98,15 +112,24 @@ func (q *Quantizer) ProcessInteger(input float64) int {
 	shaped := q.shaper.Shape(scaled)
 
 	// 3. Add dither and quantize.
-	result := q.quantize(shaped)
+	quantized := q.quantize(shaped)
+	quantizationError := quantized - shaped
 
 	// 4. Optional limiting.
 	if q.limit {
-		result = max(q.limitLo, min(q.limitHi, result))
+		// Clip the floating-point integer before conversion; otherwise a finite
+		// over-range value can overflow int and flip polarity before limiting.
+		quantized = max(float64(q.limitLo), min(float64(q.limitHi), quantized))
 	}
 
+	result := int(quantized)
+
 	// 5. Record quantization error for next iteration.
-	q.shaper.RecordError(float64(result) - shaped)
+	if !q.pcmQuantization {
+		quantizationError = float64(result) - shaped
+	}
+
+	q.shaper.RecordError(quantizationError)
 
 	return result
 }
@@ -114,7 +137,12 @@ func (q *Quantizer) ProcessInteger(input float64) int {
 // ProcessSample quantizes the input and returns a normalized float64
 // in approximately [-1, +1].
 func (q *Quantizer) ProcessSample(input float64) float64 {
-	return (float64(q.ProcessInteger(input)) + 0.5) * q.bitDiv
+	result := float64(q.ProcessInteger(input))
+	if !q.pcmQuantization {
+		result += 0.5
+	}
+
+	return result * q.bitDiv
 }
 
 // ProcessInPlace quantizes each sample in buf in-place.
@@ -132,25 +160,28 @@ func (q *Quantizer) Reset() {
 // quantize adds dither noise per the configured type and rounds to integer.
 // The floor operation implements the truncation bias from the legacy algorithm
 // (equivalent to round(x - 0.5) with banker's rounding).
-func (q *Quantizer) quantize(input float64) int {
+func (q *Quantizer) quantize(input float64) float64 {
 	switch q.ditherType {
 	case DitherNone:
-		return int(math.Floor(input))
 	case DitherRectangular:
 		noise := q.ditherAmplitude * (q.rng.Float64()*2 - 1)
-		return int(math.Floor(input + noise))
+		input += noise
 	case DitherTriangular:
 		noise := q.ditherAmplitude * (q.rng.Float64() - q.rng.Float64())
-		return int(math.Floor(input + noise))
+		input += noise
 	case DitherGaussian:
 		noise := q.ditherAmplitude * q.rng.NormFloat64()
-		return int(math.Floor(input + noise))
+		input += noise
 	case DitherFastGaussian:
 		noise := q.ditherAmplitude * q.fastGaussian()
-		return int(math.Floor(input + noise))
-	default:
-		return int(math.Floor(input))
+		input += noise
 	}
+
+	if q.pcmQuantization {
+		return math.Round(input)
+	}
+
+	return math.Floor(input)
 }
 
 // fastGaussian approximates a Gaussian distribution by summing uniform draws.

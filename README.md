@@ -59,11 +59,57 @@ func main() {
 | `measure/thd`            | THD and THD+N analysis with auto fundamental detection, odd/even harmonic separation, rub-and-buzz detection, SINAD, and configurable frequency range                                 |
 | `measure/sweep`          | Log and linear sweep generation with inverse filter calculation, FFT-based deconvolution, and harmonic IR extraction                                                                  |
 | `measure/ir`             | Impulse response metrics: RT60, EDT, T20, T30, C50, C80, D50, D80, center time, Schroeder backward integration                                                                        |
+| `measure/loudness`       | Bounded integrated BS.1770 analysis, linked loudness-gain planning and normalization; legacy approximate live meter                                                                   |
 | `measure/music/features` | Frame features for music analysis: RMS, peak, centroid, stereo width, spectral flux, band envelopes, energy-preserving log-frequency spectrogram, envelope normalizer, silence finder |
 | `measure/music/onset`    | Spectral-flux onset detection with attack refinement, heuristic kick/snare/hat classification                                                                                         |
 | `measure/music/rhythm`   | Novelty, autocorrelation tempo estimate with optional prior, beat phase and grid, downbeat                                                                                            |
 | `measure/music/melody`   | Predominant pitch (harmonic-sum salience), voicing, 12-bin chroma, note segmentation with onset snapping                                                                              |
 | `measure/music/align`    | Alignment of a mix against the sum of separated parts: correlation, best lag, residual                                                                                                |
+
+### Offline integrated loudness
+
+`measure/loudness.NewIntegratedAnalyzer` accepts planar float64 or float32 blocks
+of at most 65536 frames. It reserves bounded workspace from `MaxFrames`, uses
+complete 400 ms K-weighted windows with 100 ms hops, and applies the absolute
+-70 LUFS and relative -10 LU gates. Processing and incremental `FinishStep`
+finalization allocate nothing; `Reset` reuses storage. K-weighting uses the
+published [ITU-R BS.1770-5](https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.1770-5-202311-I!!PDF-E.pdf)
+48 kHz coefficients, mapped to other supported rates through their
+inverse-bilinear analog transfer functions.
+Window endpoints round accumulated nominal time to the nearest sample, avoiding
+cadence drift at fractional-frame rates.
+
+Channel weights are explicit power weights in input order. Nil means all ones,
+not an inferred surround layout; use zero for an excluded LFE channel. All
+supplied channels still contribute to the reported sample peak, which is not
+true peak. Short selections and entirely below-gate material return errors,
+not invented LUFS readings. Nonfinite input is rejected before changing state;
+arithmetic overflow requires `Reset`.
+
+`PlanNormalization` computes one input-derived linked gain, and
+`NormalizeLoudness(planar, targetLUFS, config)` returns fresh scaled channel
+slices without changing its source. Neither limits peaks nor guarantees the
+post-gain integrated LUFS: scaling can change absolute-gate membership. Remeasure
+the result when that guarantee is required. See the runnable package examples.
+For a re-gated target, use `NewTargetAnalyzer(config, targetLUFS)` and bounded
+`FinishStep` calls. It retains positive windows even when the input is below the
+original absolute gate, and searches consistent gate intervals for the smallest
+linked gain. `TargetResult.HasMeasuredLUFS` makes an undefined input reading
+explicit; `PredictedLUFS` is an energy-domain prediction, not a measurement of
+rounded output. `NeedsFloat32Verification` currently requires an actual stored
+float32 candidate scan before claiming 0.01 LU target accuracy. A fresh
+`TargetAnalyzer` can do that scan and finish with `FinishMeasurementStep` /
+`MeasurementResult`, without sorting or solving another target. Choose only one
+finalization mode per scan, or call `Reset` first. Processing and both bounded
+finalization modes allocate nothing. The fast four-hop positive summation may
+round differently from the original analyzer, whose behavior remains unchanged.
+
+`dsp/signal.PlanPeakNormalization(inputPeak, targetDBFS)` similarly derives a
+linked peak gain, including subnormal positive sources and an explicit silent
+identity, without a UI gain clamp or limiting the output.
+
+The existing `Meter` retains its approximate filters and startup behavior for
+compatibility; its `Peaks` method measures sample peaks, not true peaks.
 
 ### Statistics (`stats/`)
 

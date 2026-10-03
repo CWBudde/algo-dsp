@@ -189,7 +189,7 @@ Phase 23: High-Order Shelving (Butterworth, Chebyshev I/II)[2 weeks] ✅ Complet
 Phase 24: Optimization — Spectrum Fast Path & Bench Harness[1 week]   ✅ Complete  → guard/SIMD: P40–P41
 Phase 25: Nonlinear Moog Ladder Filters                    [3 weeks]  ✅ Complete
 Phase 26: Goertzel Tone Analysis                           [2 weeks]  ✅ Complete
-Phase 27: Loudness Metering (EBU R128 / BS.1770)           [3 weeks]  ✅ Complete
+Phase 27: Loudness Metering (EBU R128 / BS.1770)           [3 weeks]  ◐ Integrated complete; live compliance pending
 Phase 28: Dither and Noise Shaping                         [3 weeks]  ✅ Complete
 Phase 29: Polyphase Hilbert / Analytic Signal              [2 weeks]  ✅ Complete
 Phase 30: Interpolation Kernels (core)                     [2 weeks]  ✅ Complete  → expansion: P38–P39
@@ -446,16 +446,42 @@ and NaN/Inf validation).
   and off-bin correctness tests, edge cases, examples, benchmarks (0 allocs/op).
 - Fused from the two lineages' implementations into one canonical file (see Appendix H).
 
-### Phase 27: Loudness Metering (EBU R128 / BS.1770) (Complete)
+### Phase 27: Loudness Metering (Integrated complete; live compliance pending)
 
-- `measure/loudness` `Meter`: K-weighting prefilter, 400 ms momentary + 3 s short-term windows,
-  integrated loudness with absolute/relative gating, mono/stereo (`WithChannels`), true-peak
-  tracking, streaming APIs (`Reset`, `Start/StopIntegration`, `ProcessSample/Block`,
-  `Momentary`, `ShortTerm`, `Integrated`, `Peaks`).
-- R128/BS.1770 conformance + parity + sample-rate-matrix + long-run stability tests, examples,
-  benchmarks; depends only on `dsp/core`, `dsp/filter/biquad`, `dsp/filter/design`.
-- Recovered from the release lineage (see Appendix H).
-- Deferred: allocation-free callback/event-hook API; explicit loudness-range (LRA) metric.
+- [x] Legacy `measure/loudness.Meter`, recovered from the release lineage (Appendix H),
+      retains approximate K-weighting, zero-padded startup integration, 400 ms momentary
+      and 3 s short-term readings for compatibility. Existing tests characterize that
+      implementation, not full EBU conformance. `Peaks` tracks sample peaks, not true peaks.
+- [x] Additive `IntegratedAnalyzer` in `integrated.go` / `k_weighting.go` uses the published
+      BS.1770-5 48 kHz coefficients and inverse-bilinear rate mapping, complete 400 ms windows
+      with 100 ms hops, absolute/relative gates, explicit copied channel weights and sample
+      peaks. Planar float32/float64 blocks and incremental finalization are bounded and
+      allocation-free; configuration caps workspace at 64 MiB. Invalid input is atomically
+      rejected; arithmetic overflow is terminal until reusable `Reset`.
+- [x] `normalize.go`: `PlanNormalization` and fresh-output `NormalizeLoudness` apply one
+      linked input-derived gain through tagged `algo-vecmath`, without source mutation,
+      clipping, layout inference or a false unconditional post-gain LUFS guarantee.
+- [x] `target.go` / `target_finish.go`: additive `TargetAnalyzer` retains positive
+      below-gate windows and cooperatively solves re-gated target intervals, including
+      tied energies and multiple solutions. Cached channel-major filters and four
+      positive hop sums remove full-window rescans; original analyzer outputs stay
+      unchanged. `target_measurement.go` provides incremental measurement-only
+      finalization for actual rounded candidate verification, and progressive finite
+      `SamplePeak`. No float32 accuracy certificate is claimed: plans require a fresh
+      output measurement. `dsp/signal/peak_normalization.go` derives unclamped linked
+      peak gains, including silence and subnormal positive sources. Independent DF1 /
+      static/rate/float32/interval tests, atomic ownership/error/reset/allocation tests,
+      examples and complete ten-minute scan/finalization benchmarks accompany them.
+- [x] Streamed EBU Tech 3341 integrated cases 1–6, independent DF1/gate static golden,
+      rate/chunk/EOF/weight tests (including accumulated fractional-frame endpoints),
+      safety/reset/ownership/allocation regressions, runnable examples and ten-minute
+      stereo benchmarks. Native CI, full race suite, native/WASM vet, 12 browser demo
+      tests and actual Node/V8 WASM loudness tests pass; package coverage is 95.8%.
+      Analyzer-only ten-minute timing is 0.45–0.56 s native / 1.25–1.30 s WASM,
+      with 0 B/op and 0 allocs/op; this is not an editor end-to-end acceptance claim.
+- [ ] Standards-compliant live momentary/short-term metering, oversampled true peak,
+      loudness range (LRA), and callback/event-hook API remain unimplemented. The integrated
+      analyzer alone does not establish full EBU Mode conformance.
 
 ### Phase 28: Dither and Noise Shaping (Complete)
 
