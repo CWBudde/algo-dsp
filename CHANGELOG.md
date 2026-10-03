@@ -2,6 +2,52 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.5] - 2026-10-03
+
+### Added
+
+- `measure/loudness.IntegratedAnalyzer` provides bounded planar float64/float32
+  integrated loudness analysis. It uses the published BS.1770-5 48 kHz
+  K-weighting coefficients (inverse-bilinear mapped at other supported rates),
+  complete 400 ms windows at nominal 100 ms intervals, and absolute -70 LUFS
+  / relative -10 LU gates. Sample-rounded accumulated timing avoids cadence
+  drift at rates such as 8005 and 11025 Hz. Channel power weights are explicit
+  and copied; nil defaults to unit weights, never an inferred surround layout.
+- Constructor validation bounds workspace to 64 MiB and caller blocks to 65536
+  frames before allocation or state changes. Successful processing and bounded
+  `FinishStep` finalization allocate nothing; `Reset` reuses reserved storage.
+  Short/below-gate input produces errors, nonfinite samples are atomically
+  rejected, and finite arithmetic overflow is terminal until reset. Combined
+  positive-energy window rebasing avoids false loud residuals after huge transients.
+- `PlanNormalization` and `NormalizeLoudness` apply one linked, input-derived
+  gain, using tagged `algo-vecmath` for fresh-output scaling. They do not mutate
+  input, limit peaks or clamp gain to a UI range. Gain/peak overflow and total
+  underflow are rejected. Post-gain LUFS is not unconditionally guaranteed:
+  absolute-gate membership may change, so callers requiring that guarantee
+  must remeasure. Sample peaks include zero-weight channels and are not true peaks.
+- Runnable examples, streamed mathematical EBU Tech 3341 integrated cases 1–6,
+  an independent direct-form-I filter/gating oracle and static golden, rate and
+  partition parity, EOF timing, ownership, overflow/reset and allocation tests,
+  and bounded ten-minute stereo analysis benchmarks accompany these APIs.
+
+### Documentation
+
+- The existing `Meter` retains its legacy approximate filters and startup
+  integration for compatibility. Corrected prior roadmap claims: its `Peaks`
+  reports sample peaks, and its tests do not establish full EBU conformance.
+  Standards-compliant live metering, LRA and oversampled true peak remain pending.
+
+### Validation
+
+- Full native CI and race suite pass, including all 12 browser demo checks,
+  lint and native/WASM vet. The integrated/normalization tests also pass under
+  Node/V8 WASM; loudness package statement coverage is 95.8%.
+- Ten-minute 48 kHz stereo analysis, including reset and bounded finalization
+  but excluding constructor/fixture setup, measures 0.45–0.56 s natively and
+  1.25–1.30 s under Node/V8 WASM on an i7-1255U. Both precisions and the block /
+  finalization microbenchmarks report 0 B/op and 0 allocs/op. These are analyzer
+  timings, not an editor end-to-end performance or browser acceptance claim.
+
 ## [v0.7.4] - 2026-10-03
 
 ### Added
