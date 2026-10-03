@@ -78,6 +78,12 @@ func (c *Chain) PreparePlanar(channels, maxFrames int) error {
 		return errors.New("effectchain: no graph to prepare")
 	}
 
+	for _, rt := range c.nodes {
+		if convolution, ok := rt.runtime.(*convReverbRuntime); ok && len(convolution.sourceChannelMap) > 0 && len(convolution.sourceChannelMap) != channels {
+			return fmt.Errorf("effectchain: source channel map length %d differs from prepared channels %d", len(convolution.sourceChannelMap), channels)
+		}
+	}
+
 	if channels%2 != 0 {
 		for _, rt := range c.nodes {
 			if _, ok := rt.runtime.(StereoProcessor); ok {

@@ -60,3 +60,32 @@ func ExampleChain_Response() {
 	fmt.Printf("1 kHz magnitude: %.6f\n", response[0])
 	// Output: 1 kHz magnitude: 1.995262
 }
+
+type mappedExampleIR struct{}
+
+func (mappedExampleIR) GetIR(int) ([][]float64, float64, bool) {
+	return [][]float64{{1}, {.5}}, 48000, true
+}
+
+func ExampleWithSourceChannelMap() {
+	registry := effectchain.DefaultRegistry(effectchain.WithIRProvider(mappedExampleIR{}), effectchain.WithSourceChannelMap([]int{1}))
+
+	chain := effectchain.New(effectchain.Context{SampleRate: 48000}, registry)
+	if err := chain.LoadGraph(`{"nodes":[{"id":"_input","type":"_input"},{"id":"reverb","type":"reverb-conv","params":{"wet":1}},{"id":"_output","type":"_output"}],"connections":[{"from":"_input","to":"reverb"},{"from":"reverb","to":"_output"}]}`); err != nil {
+		panic(err)
+	}
+
+	if err := chain.PreparePlanar(1, 129); err != nil {
+		panic(err)
+	}
+
+	block := [][]float64{make([]float64, 129)}
+
+	block[0][0] = 1
+	if err := chain.ProcessPlanar(block); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Physical right channel, dry + right IR: %.2f\n", block[0][128])
+	// Output: Physical right channel, dry + right IR: 1.50
+}

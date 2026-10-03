@@ -13,8 +13,9 @@ import (
 )
 
 type registryConfig struct {
-	irProvider     IRProvider
-	filterDesigner FilterDesigner
+	irProvider       IRProvider
+	filterDesigner   FilterDesigner
+	sourceChannelMap []int
 }
 
 func wrapRuntimeInitErr(effectType string, err error) error {
@@ -27,6 +28,33 @@ type RegistryOption func(*registryConfig)
 // WithIRProvider sets the impulse response provider for convolution reverb.
 func WithIRProvider(p IRProvider) RegistryOption {
 	return func(c *registryConfig) { c.irProvider = p }
+}
+
+// WithSourceChannelMap maps packed planar channels to physical source indices
+// when selecting stereo impulse-response channels. Indices must be unique in
+// [0,7], with at most eight entries. A nonempty map must cover exactly the
+// prepared channel count; nil/empty maps preserve packed identity indexing.
+// The map is copied both when creating the option and applying it to a registry.
+func WithSourceChannelMap(channels []int) RegistryOption {
+	owned := append([]int(nil), channels...)
+	return func(c *registryConfig) { c.sourceChannelMap = append([]int(nil), owned...) }
+}
+
+func validateSourceChannelMap(channels []int) error {
+	if len(channels) > 8 {
+		return fmt.Errorf("effectchain: source channel map exceeds eight channels")
+	}
+
+	seen := [8]bool{}
+	for _, channel := range channels {
+		if channel < 0 || channel >= len(seen) || seen[channel] {
+			return fmt.Errorf("effectchain: invalid or repeated source channel index %d", channel)
+		}
+
+		seen[channel] = true
+	}
+
+	return nil
 }
 
 // WithFilterDesigner sets the filter designer for biquad filter chain building.
@@ -231,7 +259,11 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 		return &fdnReverbRuntime{fx: fdn}, nil
 	})
 	r.MustRegister("reverb-conv", func(_ Context) (Runtime, error) {
-		return &convReverbRuntime{irIndex: -1, irProvider: cfg.irProvider}, nil
+		if err := validateSourceChannelMap(cfg.sourceChannelMap); err != nil {
+			return nil, err
+		}
+
+		return &convReverbRuntime{irIndex: -1, irProvider: cfg.irProvider, sourceChannelMap: cfg.sourceChannelMap}, nil
 	})
 
 	// Dynamics processors.

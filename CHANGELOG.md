@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.2] - 2026-10-03
+
+### Added
+
+- `effectchain.WithSourceChannelMap` preserves physical stereo IR sides when
+  hosts pack selected source channels. Right-only selections use the right IR;
+  nonadjacent source channels retain their original parity. Maps are owned,
+  validated and must cover prepared channels; omitting the option preserves
+  existing packed indexing.
+
+### Changed
+
+- Multi-partition convolution stages retain a frequency-domain input delay
+  line and combine matching past input/IR spectra before one inverse FFT.
+  The full IR, FFT sizes, partition layout and technical latency remain the
+  same, while large stages no longer execute a separate inverse transform
+  for every IR partition in one render quantum. Single-partition stages keep
+  their existing path. Floating-point sums can differ at roundoff level.
+- `effectchain.EstimateWorkspace` includes the retained frequency histories
+  in its conservative cold allocation budget before graph construction.
+
 ## [v0.8.1] - 2026-10-03
 
 ### Added

@@ -19,7 +19,9 @@ var (
 //
 // The IR is split into stages with exponentially increasing partition sizes.
 // Smaller partitions run more frequently (low latency), larger partitions
-// run less frequently (CPU efficiency via modulo scheduling).
+// run less frequently (CPU efficiency via modulo scheduling). Multi-partition
+// stages retain input spectra in a frequency-domain delay line, combine each
+// IR partition with its corresponding past input, and run one inverse FFT.
 //
 // Latency = 2^minBlockOrder samples (64–512 for real-time audio).
 //
@@ -61,12 +63,14 @@ type partStageT[F algofft.Float, C algofft.Complex] struct {
 	mod       int // current modulo counter
 	modAnd    int // (partSize/latency - 1), bitmask for mod
 
-	irSpectra  [][]C
-	fft        *fftEngine[C]
-	signalBuf  []C // size fftSize, input packing / IFFT scratch
-	signalFreq []C // size fftSize, FFT of input
-	convolved  []C // size fftSize, for multi-block accumulation
-	convTime   []F // size fftSize, IFFT output unpacked
+	irSpectra    [][]C
+	inputSpectra [][]C // frequency-domain delay line, one spectrum per IR partition
+	historyPos   int
+	fft          *fftEngine[C]
+	signalBuf    []C // size fftSize, input packing / IFFT scratch
+	signalFreq   []C // size fftSize, FFT of input
+	convolved    []C // size fftSize, for multi-block accumulation
+	convTime     []F // size fftSize, IFFT output unpacked
 }
 
 // newPartStage creates a new partition stage.
@@ -88,22 +92,31 @@ func newPartStage[F algofft.Float, C algofft.Complex](irOrder, startPos, latency
 		irSpectra[i] = make([]C, fftSize)
 	}
 
+	var inputSpectra [][]C
+	if count > 1 {
+		inputSpectra = make([][]C, count)
+		for i := range inputSpectra {
+			inputSpectra[i] = make([]C, fftSize)
+		}
+	}
+
 	modAnd := partSize/latency - 1
 
 	return &partStageT[F, C]{
-		fftOrder:   irOrder,
-		fftSize:    fftSize,
-		partSize:   partSize,
-		outputPos:  startPos,
-		latency:    latency,
-		mod:        0,
-		modAnd:     modAnd,
-		irSpectra:  irSpectra,
-		fft:        fft,
-		signalBuf:  make([]C, fftSize),
-		signalFreq: make([]C, fftSize),
-		convolved:  make([]C, fftSize),
-		convTime:   make([]F, fftSize),
+		fftOrder:     irOrder,
+		fftSize:      fftSize,
+		partSize:     partSize,
+		outputPos:    startPos,
+		latency:      latency,
+		mod:          0,
+		modAnd:       modAnd,
+		irSpectra:    irSpectra,
+		inputSpectra: inputSpectra,
+		fft:          fft,
+		signalBuf:    make([]C, fftSize),
+		signalFreq:   make([]C, fftSize),
+		convolved:    make([]C, fftSize),
+		convTime:     make([]F, fftSize),
 	}, nil
 }
 
@@ -142,9 +155,8 @@ func (s *partStageT[F, C]) process(inputBuf []F, outputBuf []F) {
 	clear(s.signalBuf)
 	packReal(s.signalBuf, inputBuf[inputStart:inputStart+s.fftSize])
 
-	s.fft.Forward(s.signalFreq, s.signalBuf)
-
 	if len(s.irSpectra) == 1 {
+		s.fft.Forward(s.signalFreq, s.signalBuf)
 		// Single-block fast path: multiply in-place, IFFT.
 		irSpec := s.irSpectra[0]
 		for i := range s.signalBuf {
@@ -159,19 +171,36 @@ func (s *partStageT[F, C]) process(inputBuf []F, outputBuf []F) {
 			addBlockInPlace(outputBuf[outPos:outPos+s.partSize], s.convTime[:s.partSize])
 		}
 	} else {
-		// Multi-block path: IFFT each block individually and overlap-add.
-		for blockIdx, irSpec := range s.irSpectra {
-			for i := range s.signalBuf {
-				s.signalBuf[i] = s.signalFreq[i] * irSpec[i]
+		// A partition k contributes after k stage periods. Keep the input
+		// spectra from those periods and sum their products before the IFFT.
+		// This evaluates the identical full IR with one inverse transform,
+		// instead of scheduling an inverse for every future IR partition.
+		s.fft.Forward(s.inputSpectra[s.historyPos], s.signalBuf)
+		clear(s.convolved)
+
+		for blockIdx := len(s.irSpectra) - 1; blockIdx >= 0; blockIdx-- {
+			history := s.historyPos - blockIdx
+			if history < 0 {
+				history += len(s.inputSpectra)
 			}
 
-			s.fft.Inverse(s.signalBuf, s.signalBuf)
-			unpackReal(s.convTime, s.signalBuf)
-
-			outPos := s.outputPos + s.latency - s.partSize + blockIdx*s.partSize
-			if outPos >= 0 && outPos+s.partSize <= len(outputBuf) {
-				addBlockInPlace(outputBuf[outPos:outPos+s.partSize], s.convTime[:s.partSize])
+			inputSpec, irSpec := s.inputSpectra[history], s.irSpectra[blockIdx]
+			for i := range s.convolved {
+				s.convolved[i] += inputSpec[i] * irSpec[i]
 			}
+		}
+
+		s.fft.Inverse(s.signalBuf, s.convolved)
+		unpackReal(s.convTime, s.signalBuf)
+
+		outPos := s.outputPos + s.latency - s.partSize
+		if outPos >= 0 && outPos+s.partSize <= len(outputBuf) {
+			addBlockInPlace(outputBuf[outPos:outPos+s.partSize], s.convTime[:s.partSize])
+		}
+
+		s.historyPos++
+		if s.historyPos == len(s.inputSpectra) {
+			s.historyPos = 0
 		}
 	}
 
@@ -399,6 +428,11 @@ func (p *PartitionedConvolutionT[F, C]) Reset() {
 
 	for _, s := range p.stages {
 		s.mod = 0
+
+		s.historyPos = 0
+		for _, spectrum := range s.inputSpectra {
+			clear(spectrum)
+		}
 	}
 }
 

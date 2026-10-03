@@ -217,7 +217,9 @@ func effectWorkspace(rate float64, p Params, cfg workspaceConfig) (int64, int64,
 			}
 		}
 
-		storage = 64*padded + 256*fftSum + 8*(frames+128)
+		// IR spectra and retained input-frequency history both scale with
+		// IR length. Include cold construction and the output accumulator.
+		storage = 96*padded + 256*fftSum + 8*(frames+128)
 		latency = 128
 	case "dyn-expander":
 		storage = 16 * workspaceSamples(max(clamp(p.GetNum("rmsWindowMs", 30), 1, 1000)*0.001, 0.03), rate)

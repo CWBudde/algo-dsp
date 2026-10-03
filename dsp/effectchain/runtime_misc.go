@@ -11,14 +11,24 @@ import (
 
 // convReverbRuntime handles the "reverb-conv" node type using partitioned convolution.
 type convReverbRuntime struct {
-	fx           *reverb.ConvolutionReverb
-	irIndex      int
-	sampleRate   float64
-	irProvider   IRProvider
-	channelIndex int
+	fx               *reverb.ConvolutionReverb
+	irIndex          int
+	sampleRate       float64
+	irProvider       IRProvider
+	channelIndex     int
+	sourceChannelMap []int
 }
 
 func (r *convReverbRuntime) Configure(ctx Context, p Params) error {
+	physicalChannel := r.channelIndex
+	if len(r.sourceChannelMap) > 0 {
+		if physicalChannel < 0 || physicalChannel >= len(r.sourceChannelMap) {
+			return fmt.Errorf("effectchain: packed channel %d not covered by source map", physicalChannel)
+		}
+
+		physicalChannel = r.sourceChannelMap[physicalChannel]
+	}
+
 	irIndex := int(p.GetNum("irIndex", 0))
 	wet := p.GetNum("wet", 0.35)
 
@@ -52,7 +62,7 @@ func (r *convReverbRuntime) Configure(ctx Context, p Params) error {
 			return fmt.Errorf("effectchain: impulse response must be mono or stereo")
 		}
 
-		kernel := samples[r.channelIndex%len(samples)]
+		kernel := samples[physicalChannel%len(samples)]
 
 		cr, err := reverb.NewConvolutionReverb(kernel, 7)
 		if err != nil {

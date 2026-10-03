@@ -41,7 +41,9 @@ All of these costs remain bounded by configured window/search sizes.
 Convolution requires a supplied `IRProvider`, a nonempty finite mono/stereo IR,
 equal channel lengths and exactly the context sample rate. Missing IRs and
 rate mismatches are errors. Adjacent source channels use corresponding stereo
-IR channels, and the dry path shares the convolution engine's technical delay.
+IR channels. Hosts packing a channel selection should supply
+`WithSourceChannelMap` with the original physical channel indices so a right-only
+selection or nonadjacent channels keep their corresponding IR sides. The dry path shares the convolution engine's technical delay.
 IR normalization, conversion or file decoding belongs to the caller.
 
 Before constructing a graph, `EstimateWorkspace` with `WithWorkspaceFrames`
