@@ -183,7 +183,7 @@ func effectWorkspace(rate float64, p Params, cfg workspaceConfig) (int64, int64,
 		latency = sequence + search + int64(math.Ceil(float64(sequence-overlap)/ratio)) + 8
 		input := workspacePower2(4*(sequence+search) + 64)
 		output := workspacePower2(4*(latency+sequence+search) + 64)
-		storage = 8*(input+output) + 80*max(overlap, int64(math.Ceil(0.01*rate)))
+		storage = 8*(input+output+2*overlap+2*search) + 80*max(overlap, int64(math.Ceil(0.01*rate)))
 
 		if math.Abs(ratio-1) <= 1e-9 {
 			latency = 0

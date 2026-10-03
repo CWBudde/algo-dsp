@@ -14,6 +14,7 @@ import (
 type StreamingPitchShifter struct {
 	processor                               *PitchShifter
 	input, stretched                        []float64
+	reference, search                       []float64
 	inputMask, outputMask                   int64
 	count, frames, previousStart, finalized int64
 	latency                                 int
@@ -42,7 +43,7 @@ func NewStreamingPitchShifter(processor *PitchShifter) (*StreamingPitchShifter, 
 		outputSize *= 2
 	}
 
-	return &StreamingPitchShifter{processor: processor, input: make([]float64, inputSize), stretched: make([]float64, outputSize), inputMask: int64(inputSize - 1), outputMask: int64(outputSize - 1), latency: latency}, nil
+	return &StreamingPitchShifter{processor: processor, input: make([]float64, inputSize), stretched: make([]float64, outputSize), reference: make([]float64, processor.overlapLen), search: make([]float64, processor.overlapLen+2*processor.searchLen), inputMask: int64(inputSize - 1), outputMask: int64(outputSize - 1), latency: latency}, nil
 }
 
 // Latency returns bounded WSOLA lookahead, or zero for the identity ratio.
@@ -58,6 +59,8 @@ func (p *StreamingPitchShifter) Latency() int {
 func (p *StreamingPitchShifter) Reset() {
 	clear(p.input)
 	clear(p.stretched)
+	clear(p.reference)
+	clear(p.search)
 	p.count = 0
 	p.frames = 0
 	p.previousStart = 0
@@ -103,18 +106,36 @@ func (p *StreamingPitchShifter) bestOverlap(predicted int64) int64 {
 	best := predicted
 	score := math.Inf(-1)
 	refEnergy := pitchShifterTiny
+	reference := p.reference[:fx.overlapLen]
 
-	for i := 0; i < fx.overlapLen; i++ {
+	for i := range reference {
 		x := p.inputSample(p.previousStart + int64(fx.stepOut+i))
+		reference[i] = x
 		refEnergy += x * x
 	}
 
-	for candidate := max(predicted-int64(fx.searchLen), 0); candidate <= predicted+int64(fx.searchLen); candidate++ {
-		dot, energy := 0.0, pitchShifterTiny
+	first := max(predicted-int64(fx.searchLen), 0)
+	last := predicted + int64(fx.searchLen)
 
-		for i := 0; i < fx.overlapLen; i++ {
-			ref := p.inputSample(p.previousStart + int64(fx.stepOut+i))
-			x := p.inputSample(candidate + int64(i))
+	if last < first {
+		return best
+	}
+
+	// Materialize the complete search window once. Correlation retains the
+	// original sample and candidate order, but avoids guarded ring accesses
+	// for every term of every candidate's dot product and energy sum.
+	search := p.search[:int(last-first)+fx.overlapLen]
+	for i := range search {
+		search[i] = p.inputSample(first + int64(i))
+	}
+
+	for candidate := first; candidate <= last; candidate++ {
+		dot, energy := 0.0, pitchShifterTiny
+		offset := int(candidate - first)
+		window := search[offset : offset+len(reference)]
+
+		for i, ref := range reference {
+			x := window[i]
 			dot += ref * x
 			energy += x * x
 		}

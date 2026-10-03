@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.3] - 2026-10-03
+
+### Changed
+
+- Streaming WSOLA overlap searches reuse owned contiguous reference and
+  candidate windows. Each input ring sample is copied once per search rather
+  than checked and indexed for every correlation term. The full search radius,
+  ascending candidate order and sequential correlation arithmetic are
+  unchanged, preserving exact output, reset and partition behavior.
+- `effectchain.EstimateWorkspace` includes both bounded search scratch buffers
+  before constructing time-pitch runtimes. Processing and reset remain
+  allocation-free.
+
 ## [v0.8.2] - 2026-10-03
 
 ### Added
