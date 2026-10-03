@@ -14,4 +14,9 @@
 // lag of 0 and a residual far below the signal level. Optionally Check
 // rejects parts whose length differs from the reference by more than a
 // tolerance.
+//
+// [Lag] and [LagChannels] compare one signal with a reference (for example
+// a decoded render with its source) and report the lag found by a coarse
+// strided search plus a fine search around it, the normalized correlation
+// and the gain in dB at that lag.
 package align
