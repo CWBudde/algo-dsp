@@ -31,14 +31,16 @@ type Config struct {
 // All ratios are amplitude ratios computed in the power domain per the
 // IEEE root-sum-square (RSS) definitions: a metric that aggregates several
 // spectral components is sqrt(sum of component powers) / fundamental
-// amplitude. Two harmonics of 1%% each therefore yield THD = 1.414%%,
-// not 2%%.
+// amplitude. Two harmonics of 1% each therefore yield THD = 1.414%,
+// not 2%.
 type Result struct {
 	FundamentalFreq float64
 	// FundamentalLevel is the RSS amplitude of the fundamental, including
 	// the configured capture window around its bin.
 	FundamentalLevel float64
-	// THD is sqrt(sum of harmonic powers) / fundamental amplitude (THD_R).
+	// THD is sqrt(sum of harmonic powers) / fundamental amplitude, i.e.
+	// THD_F. It is not THD_R, which divides by the total RMS instead and
+	// therefore never exceeds 1.
 	THD float64
 	// THDN is sqrt(total in-range power minus fundamental power) /
 	// fundamental amplitude.

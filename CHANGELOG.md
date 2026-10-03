@@ -11,7 +11,7 @@ All notable changes to this project are documented in this file.
   summing linear magnitudes. The old math inflated wideband terms by roughly
   sqrt(bin count): a pure sine with a -84 dB white noise floor reported
   SINAD ~30 dB low at realistic FFT sizes.
-- `measure/thd`: THD now follows the IEEE THD_R definition
+- `measure/thd`: THD is now the fundamental-referenced THD_F
   (sqrt(sum of harmonic powers)/fundamental). Two harmonics of 1% each
   report 1.414%, where the previous linear sum reported 2%. The
   per-harmonic `Result.Harmonics` amplitude ratios are unchanged.
