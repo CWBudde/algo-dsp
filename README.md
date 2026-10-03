@@ -54,17 +54,20 @@ func main() {
 
 ### Measurement (`measure/`)
 
-| Package                  | Description                                                                                                                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `measure/thd`            | THD and THD+N analysis with auto fundamental detection, odd/even harmonic separation, rub-and-buzz detection, SINAD, and configurable frequency range                                 |
-| `measure/sweep`          | Log and linear sweep generation with inverse filter calculation, FFT-based deconvolution, and harmonic IR extraction                                                                  |
-| `measure/ir`             | Impulse response metrics: RT60, EDT, T20, T30, C50, C80, D50, D80, center time, Schroeder backward integration                                                                        |
-| `measure/loudness`       | Bounded integrated BS.1770 analysis, linked loudness-gain planning and normalization; legacy approximate live meter                                                                   |
-| `measure/music/features` | Frame features for music analysis: RMS, peak, centroid, stereo width, spectral flux, band envelopes, energy-preserving log-frequency spectrogram, envelope normalizer, silence finder |
-| `measure/music/onset`    | Spectral-flux onset detection with attack refinement, heuristic kick/snare/hat classification                                                                                         |
-| `measure/music/rhythm`   | Novelty, autocorrelation tempo estimate with optional prior, beat phase and grid, downbeat                                                                                            |
-| `measure/music/melody`   | Predominant pitch (harmonic-sum salience), voicing, 12-bin chroma, note segmentation with onset snapping                                                                              |
-| `measure/music/align`    | Alignment of a mix against the sum of separated parts: correlation, best lag, residual                                                                                                |
+| Package                   | Description                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `measure/thd`             | THD and THD+N analysis with auto fundamental detection, odd/even harmonic separation, rub-and-buzz detection, SINAD, and configurable frequency range                                 |
+| `measure/sweep`           | Log and linear sweep generation with inverse filter calculation, FFT-based deconvolution, and harmonic IR extraction                                                                  |
+| `measure/ir`              | Impulse response metrics: RT60, EDT, T20, T30, C50, C80, D50, D80, center time, Schroeder backward integration                                                                        |
+| `measure/loudness`        | Bounded integrated BS.1770 analysis, linked loudness-gain planning and normalization; legacy approximate live meter                                                                   |
+| `measure/music/features`  | Frame features for music analysis: RMS, peak, centroid, stereo width, spectral flux, band envelopes, energy-preserving log-frequency spectrogram, envelope normalizer, silence finder |
+| `measure/music/onset`     | Spectral-flux onset detection with attack refinement, heuristic kick/snare/hat classification                                                                                         |
+| `measure/music/rhythm`    | Novelty, autocorrelation tempo estimate with optional prior, beat phase and grid, downbeat                                                                                            |
+| `measure/music/melody`    | Predominant pitch (harmonic-sum salience), voicing, 12-bin chroma, note segmentation with onset snapping                                                                              |
+| `measure/music/align`     | Alignment of a mix against the sum of separated parts: correlation, best lag, residual                                                                                                |
+| `measure/music/harmony`   | Krumhansl–Kessler key estimation, RMS-weighted chroma windows, template chord recognition with Viterbi smoothing                                                                      |
+| `measure/music/structure` | Weighted feature blocks, cosine self-similarity, Foote novelty, boundary peaks, A/A′/B phrase labels                                                                                  |
+| `measure/music/motif`     | Transposition-invariant motif discovery on notes and beat chroma, salience ranking, leitmotif pick                                                                                    |
 
 ### Offline integrated loudness
 
