@@ -24,6 +24,7 @@ type config struct {
 	rng             *rand.Rand
 	sharpPreset     bool
 	iirShelfFreq    float64 // >0 means use IIR shelf
+	pcmQuantization bool
 }
 
 func defaultConfig() config {
@@ -37,6 +38,22 @@ func defaultConfig() config {
 
 // Option configures a [Quantizer].
 type Option func(*config) error
+
+// WithPCMQuantization selects conventional signed PCM integer codes: scale by
+// 2^(bitDepth-1), round to nearest with halfway values away from zero, and map
+// ProcessSample back by dividing by that scale. This avoids the legacy half-LSB
+// offset when ProcessInteger output is written directly to PCM. Dither noise
+// distributions and amplitudes remain unchanged. Legacy quantization is the
+// default; this option does not change existing callers.
+// With limiting enabled, finite over-range input saturates to [-1,+1] before
+// scaling, and feedback records only quantization error before output clipping.
+// Clipping distortion is excluded from feedback to prevent saturation windup.
+func WithPCMQuantization() Option {
+	return func(cfg *config) error {
+		cfg.pcmQuantization = true
+		return nil
+	}
+}
 
 // WithBitDepth sets the target bit depth for quantization (1–32, default 16).
 func WithBitDepth(bits int) Option {

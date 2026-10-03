@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.11] - 2026-10-03
+
+### Added
+
+- `dither.WithPCMQuantization` opts into conventional signed PCM scaling by
+  2^(bitDepth-1), nearest rounding with halfway values away from zero, and
+  normalized `ProcessSample` output without the legacy half-LSB offset.
+  Direct integer PCM codes therefore avoid the legacy floor convention's
+  half-LSB silent-dither bias. Defaults, noise distributions and RNG draws
+  remain unchanged for existing callers.
+  Limited PCM saturates finite source input before scaling and records only
+  quantization error before output clipping, excluding saturation distortion
+  from noise-shaper feedback so over-range input cannot cause windup.
+
+### Fixed
+
+- Limited quantization clips floating-point integer codes before conversion to
+  `int`, preventing finite over-range samples or dither from overflowing and
+  reversing sample polarity. Signed endpoints are constructed safely on
+  32-bit platforms, including PCM32. Scalar-reference tests cover every dither
+  distribution, full scale, noise-shaping histories, extreme input, partitions,
+  unbiased silent TPDF statistics and zero processing allocations.
+
 ## [v0.7.10] - 2026-10-03
 
 ### Added

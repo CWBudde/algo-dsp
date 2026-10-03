@@ -8,6 +8,16 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/dither"
 )
 
+func ExampleWithPCMQuantization() {
+	quant, err := dither.NewQuantizer(48000, dither.WithPCMQuantization(), dither.WithBitDepth(16), dither.WithDitherType(dither.DitherNone), dither.WithFIRPreset(dither.PresetNone))
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(quant.ProcessInteger(0), quant.ProcessInteger(0.5), quant.ProcessInteger(-1))
+	// Output: 0 16384 -32768
+}
+
 func ExampleNewQuantizer() {
 	quant, err := dither.NewQuantizer(
 		44100,
