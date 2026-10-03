@@ -123,7 +123,12 @@ func (a *TargetAnalyzer) ProcessPlanar(block [][]float64) error {
 // ProcessPlanar32 is ProcessPlanar for float32 storage, without a source-copy
 // or intermediate channel conversion buffer.
 func (a *TargetAnalyzer) ProcessPlanar32(block [][]float32) error {
-	return processTargetPlanar(a, block)
+	peak, err := preflightTargetPlanar32(a, block)
+	if err != nil {
+		return err
+	}
+
+	return processPreparedTargetPlanar(a, block, peak)
 }
 
 func processTargetPlanar[T ~float32 | ~float64](a *TargetAnalyzer, block [][]T) error {
@@ -132,6 +137,24 @@ func processTargetPlanar[T ~float32 | ~float64](a *TargetAnalyzer, block [][]T) 
 		return err
 	}
 
+	return processPreparedTargetPlanar(a, block, peak)
+}
+
+func processPreparedTargetPlanar[T ~float32 | ~float64](a *TargetAnalyzer, block [][]T, peak float64) error {
+	if len(block) == 1 && a.weights[0] == 1 {
+		return processTargetMono(a, block[0], peak)
+	}
+
+	if len(block) == 2 && a.weights[0] == 1 && a.weights[1] == 1 {
+		return processTargetStereo(a, block[0], block[1], peak)
+	}
+
+	return processPreparedTargetPlanarGeneric(a, block, peak)
+}
+
+// Retain the channel-major prepared path as the fallback for larger/custom
+// layouts and as an independent scalar reference for fused-path tests.
+func processPreparedTargetPlanarGeneric[T ~float32 | ~float64](a *TargetAnalyzer, block [][]T, peak float64) error {
 	frames := len(block[0])
 	energies := a.blockEnergy[:frames]
 	clear(energies)
@@ -164,13 +187,25 @@ func processTargetPlanar[T ~float32 | ~float64](a *TargetAnalyzer, block [][]T) 
 	}
 
 	a.peak = peak
-	for _, energy := range energies {
-		a.hopSum += energy
-		if !integratedFinite(a.hopSum) {
+	for start := 0; start < frames; {
+		count := min(frames-start, int(a.nextHop-a.frames))
+		sum := a.hopSum
+		// Preserve the original left-to-right addition order. Every energy is
+		// nonnegative or nonfinite, so an overflowing sum cannot recover through
+		// cancellation. Checking each endpoint/partial segment detects failure
+		// in the same bounded call without a finite/state check on every frame.
+		for _, energy := range energies[start : start+count] {
+			sum += energy
+		}
+
+		if !integratedFinite(sum) {
 			return a.fail(fmt.Errorf("loudness.target.process: hop energy: %w", ErrNumericalOverflow))
 		}
 
-		a.frames++
+		a.hopSum = sum
+		a.frames += int64(count)
+		start += count
+
 		if a.frames == a.nextHop {
 			if err := a.recordHop(); err != nil {
 				return err

@@ -2,6 +2,38 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.7] - 2026-10-03
+
+### Changed
+
+- `measure/loudness.TargetAnalyzer` float32 preflight classifies nonfinite
+  encodings and tracks the signless sample peak with integer comparisons,
+  converting the block peak once. Shape, frame-limit and finite-input rejection
+  remain atomic, including zero-weight channels and mixed float32/float64 calls.
+- Hop aggregation checks finite sequential sums at complete or partial segment
+  boundaries instead of every frame, retaining the same addition order,
+  nearest-sample endpoints and terminal overflow/reset behavior.
+- Unit-weight mono/stereo scans fuse both K-weighting stages with hop
+  accumulation, eliminating energy-scratch initialization and extra passes.
+  Larger/custom-weight layouts retain the generic prepared path. Successful
+  filter states, window energies, target plans and actual measurements are
+  checked bit-for-bit against that independent retained path across rates,
+  partitions and extreme finite inputs; streaming remains allocation-free.
+- Published `IntegratedAnalyzer`, `Meter`, normalization plans and the
+  requirement to actually verify stored float32 loudness output are unchanged.
+  These source optimizations do not claim a passed editor browser timing gate.
+
+### Validation
+
+- Full native CI/race tests, native/WASM vet, all 12 browser demo checks, and
+  actual Node/V8 WASM loudness tests pass; loudness coverage is 96.4%.
+- Serial three-iteration ten-minute 48 kHz stereo benchmarks measure target
+  analysis / fresh-candidate measurement at 176.855 / 172.652 ms natively and
+  264.457 / 254.440 ms under Node/V8 WASM, with 0 B/op and 0 allocs/op.
+  Reset and bounded finalization are included; constructor/fixture setup,
+  scaling, storage, editor UI and commit are excluded. These host-sensitive
+  component timings are not full-editor acceptance results.
+
 ## [v0.7.6] - 2026-10-03
 
 ### Added
