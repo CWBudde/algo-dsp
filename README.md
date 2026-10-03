@@ -84,6 +84,23 @@ arithmetic overflow requires `Reset`.
 slices without changing its source. Neither limits peaks nor guarantees the
 post-gain integrated LUFS: scaling can change absolute-gate membership. Remeasure
 the result when that guarantee is required. See the runnable package examples.
+For a re-gated target, use `NewTargetAnalyzer(config, targetLUFS)` and bounded
+`FinishStep` calls. It retains positive windows even when the input is below the
+original absolute gate, and searches consistent gate intervals for the smallest
+linked gain. `TargetResult.HasMeasuredLUFS` makes an undefined input reading
+explicit; `PredictedLUFS` is an energy-domain prediction, not a measurement of
+rounded output. `NeedsFloat32Verification` currently requires an actual stored
+float32 candidate scan before claiming 0.01 LU target accuracy. A fresh
+`TargetAnalyzer` can do that scan and finish with `FinishMeasurementStep` /
+`MeasurementResult`, without sorting or solving another target. Choose only one
+finalization mode per scan, or call `Reset` first. Processing and both bounded
+finalization modes allocate nothing. The fast four-hop positive summation may
+round differently from the original analyzer, whose behavior remains unchanged.
+
+`dsp/signal.PlanPeakNormalization(inputPeak, targetDBFS)` similarly derives a
+linked peak gain, including subnormal positive sources and an explicit silent
+identity, without a UI gain clamp or limiting the output.
+
 The existing `Meter` retains its approximate filters and startup behavior for
 compatibility; its `Peaks` method measures sample peaks, not true peaks.
 

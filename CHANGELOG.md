@@ -2,6 +2,46 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.6] - 2026-10-03
+
+### Added
+
+- `measure/loudness.TargetAnalyzer` plans a linked gain with both loudness gates
+  recalculated after scaling. It retains positive complete-window energies,
+  including originally below-gate material, and incrementally enumerates
+  consistent absolute-gate intervals instead of assuming gated LUFS is monotonic.
+  `TargetResult` distinguishes a finite source measurement from undefined
+  below-gate LUFS, and predicts the target to 0.01 LU in the energy domain.
+- Float32 quantization can change strict gate membership, so the plan explicitly
+  requires stored-output verification. `FinishMeasurementStep` / `MeasurementResult`
+  provide bounded measurement-only finalization of a fresh candidate scan using
+  the same fast analyzer. Measurement and target finalization are mutually
+  exclusive until `Reset`; `SamplePeak` exposes finite progressive input telemetry.
+- Channel-major K-weighting and four positive hop sums avoid rescanning the full
+  400 ms energy window. Preflight rejection remains atomic, workspace remains
+  capped at 64 MiB, and successful streaming / finalization allocate nothing.
+  Existing `IntegratedAnalyzer`, `Meter` and input-derived normalization APIs
+  retain their implementations and behavior.
+- `dsp/signal.PlanPeakNormalization` derives one linked gain for a finite sample
+  peak and dBFS target without an application UI clamp. Zero peak is an identity;
+  subnormal sources are supported and unrepresentable gain/peak values rejected.
+- Runnable examples, independent direct-form-I / gating and static goldens,
+  rate/partition/weight/float32 parity, exhaustive small gate-interval oracles,
+  ownership/state/reset/overflow/allocation tests and ten-minute WASM benchmarks
+  accompany the new APIs. Predictions and sample peaks do not claim true-peak
+  support or peak limiting.
+
+### Validation
+
+- Native CI, full race tests, native/WASM vet, all 12 browser demo checks, and
+  actual Node/V8 WASM loudness/signal tests pass. Loudness package coverage is
+  96.1%; the new peak planner has 100% statement coverage.
+- Ten-minute 48 kHz stereo target analysis measures 0.49–0.52 s under Node/V8
+  WASM, and fresh-candidate measurement 0.49 s, with 0 B/op and 0 allocs/op.
+  These include reset and bounded finalization but exclude constructor/fixture
+  setup, scaling, output storage, UI and commit. They are not editor browser
+  acceptance results; the full workflow must be timed separately.
+
 ## [v0.7.5] - 2026-10-03
 
 ### Added

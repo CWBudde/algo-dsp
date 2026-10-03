@@ -461,6 +461,17 @@ and NaN/Inf validation).
 - [x] `normalize.go`: `PlanNormalization` and fresh-output `NormalizeLoudness` apply one
       linked input-derived gain through tagged `algo-vecmath`, without source mutation,
       clipping, layout inference or a false unconditional post-gain LUFS guarantee.
+- [x] `target.go` / `target_finish.go`: additive `TargetAnalyzer` retains positive
+      below-gate windows and cooperatively solves re-gated target intervals, including
+      tied energies and multiple solutions. Cached channel-major filters and four
+      positive hop sums remove full-window rescans; original analyzer outputs stay
+      unchanged. `target_measurement.go` provides incremental measurement-only
+      finalization for actual rounded candidate verification, and progressive finite
+      `SamplePeak`. No float32 accuracy certificate is claimed: plans require a fresh
+      output measurement. `dsp/signal/peak_normalization.go` derives unclamped linked
+      peak gains, including silence and subnormal positive sources. Independent DF1 /
+      static/rate/float32/interval tests, atomic ownership/error/reset/allocation tests,
+      examples and complete ten-minute scan/finalization benchmarks accompany them.
 - [x] Streamed EBU Tech 3341 integrated cases 1–6, independent DF1/gate static golden,
       rate/chunk/EOF/weight tests (including accumulated fractional-frame endpoints),
       safety/reset/ownership/allocation regressions, runnable examples and ten-minute
