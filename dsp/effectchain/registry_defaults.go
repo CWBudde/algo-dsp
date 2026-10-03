@@ -15,7 +15,7 @@ import (
 type registryConfig struct {
 	irProvider       IRProvider
 	filterDesigner   FilterDesigner
-	sourceChannelMap []int
+	sourceChannelMap *[]int
 }
 
 func wrapRuntimeInitErr(effectType string, err error) error {
@@ -37,7 +37,11 @@ func WithIRProvider(p IRProvider) RegistryOption {
 // The map is copied both when creating the option and applying it to a registry.
 func WithSourceChannelMap(channels []int) RegistryOption {
 	owned := append([]int(nil), channels...)
-	return func(c *registryConfig) { c.sourceChannelMap = append([]int(nil), owned...) }
+
+	return func(c *registryConfig) {
+		channels := append([]int(nil), owned...)
+		c.sourceChannelMap = &channels
+	}
 }
 
 func validateSourceChannelMap(channels []int) error {
@@ -259,11 +263,16 @@ func DefaultRegistry(opts ...RegistryOption) *Registry {
 		return &fdnReverbRuntime{fx: fdn}, nil
 	})
 	r.MustRegister("reverb-conv", func(_ Context) (Runtime, error) {
-		if err := validateSourceChannelMap(cfg.sourceChannelMap); err != nil {
+		var channels []int
+		if cfg.sourceChannelMap != nil {
+			channels = *cfg.sourceChannelMap
+		}
+
+		if err := validateSourceChannelMap(channels); err != nil {
 			return nil, err
 		}
 
-		return &convReverbRuntime{irIndex: -1, irProvider: cfg.irProvider, sourceChannelMap: cfg.sourceChannelMap}, nil
+		return &convReverbRuntime{irIndex: -1, irProvider: cfg.irProvider, sourceChannelMap: channels}, nil
 	})
 
 	// Dynamics processors.
