@@ -26,5 +26,14 @@
 // summing accent weights (for example kick and bass onset strengths) that
 // fall within a tolerance of each beat.
 //
+// # Grid
+//
+// [Grid] turns a tempo, a beat origin and a downbeat index (the outputs of
+// [EstimateTempo], [FitBeatPhase]/[BeatGrid] and [Downbeat]) into a
+// constant-tempo slot/beat/bar grid built by [NewGrid]: sixteenth slots by
+// default, 4/4 bars, and a pickup bar when the downbeat is not on beat 0.
+// It maps times to slots and bars and back, for quantising notes (see
+// measure/music/melody.Clean) and for bar-level analysis.
+//
 // All functions are deterministic.
 package rhythm
