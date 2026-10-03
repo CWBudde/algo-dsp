@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.8] - 2026-10-03
+
+### Added
+
+- `dsp/fade` offers allocation-free float32 fades and crossfades with linear,
+  equal-power, logarithmic and smooth S-curve envelopes. Explicit whole-fade
+  positions preserve endpoints and sample parity across arbitrary block sizes.
+- `dsp/signal.MeanAccumulator` measures a compensated full-range float32 mean
+  across blocks. `SubtractMeanInto32` applies that measured value without
+  recomputing block-local means; `ScaleInto32` multiplies directly from float32
+  storage using float64 gain and one final float32 rounding.
+- `dsp/signal.StreamGenerator` produces continuous float32 silence, sine,
+  seeded white/pink noise and linear/logarithmic sweeps into caller-owned
+  blocks. It retains global sample position and deterministic SplitMix64/pink
+  state; block overruns leave output and state unchanged. Existing one-shot
+  generators and their random sequences remain unchanged.
+
+### Validation
+
+- Independent analytic and fixed random golden vectors, exact block partition
+  parity, aliasing, endpoint and invalid-argument tests; successful processing
+  paths are checked for zero allocations and benchmarked with `-benchmem`.
+- Extreme logarithmic sweeps spanning subnormal frequencies stay finite.
+
 ## [v0.7.7] - 2026-10-03
 
 ### Changed
