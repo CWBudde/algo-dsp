@@ -19,5 +19,8 @@
 //   - Resample(input, up, down, opts...)
 //   - ResampleAligned / Resampler.ProcessAligned for whole signals with the
 //     filter group delay removed (input time t maps to output time t)
+//   - NewStreamPlan / Stream for allocation-free exact integer-rate blocks,
+//     integer delay compensation, and length-exact bounded finite tail flushing
+//   - FrameCount / FramePosition for overflow-checked duration and coordinates
 //   - Upsample2x / Downsample2x convenience wrappers
 package resample

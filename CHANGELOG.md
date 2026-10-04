@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.10.2] - 2026-10-05
+
+### Added
+
+- `resample.NewStreamPlan` preflights exact integer-rate polyphase filters and
+  conservative workspace budgets without allocating coefficients. Its mono
+  streams share FIR coefficients across clones, remove integer output delay,
+  flush finite tails to exact duration, and preserve continuous indefinite loops
+  using bounded allocation-free processing. `FrameCount` and `FramePosition`
+  centralize overflow-checked duration and coordinate conversion.
+- `signal.AddInto32` and `signal.AverageInto32` mix float32 storage directly
+  without float64 scratch or intermediate rounding between contributions.
+
 ## [v0.10.1] - 2026-10-04
 
 ### Added
