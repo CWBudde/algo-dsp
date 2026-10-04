@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.9.0] - 2026-10-04
+
+### Added
+
+- Bounded, allocation-free streaming loudness measurement: 400 ms momentary,
+  3 s short-term, gated integrated loudness, loudness range, sample-positioned
+  maxima and an inexpensive cached reading accessor. Legacy meter APIs remain
+  unchanged. Programme history is reserved at construction.
+- Four-times oversampled true-peak measurement with the published BS.1770 FIR,
+  explicit tail flushing and independent per-channel peaks.
+- Stateful mono float32/float64 STFT analysis and normalized overlap-add inverse
+  streams with bounded EOF steps, all existing padding/window options and reset.
+- Cooperative YIN analysis jobs preserve the existing detector's exact search,
+  interpolation and result while bounding each processing step.
+- Streaming time statistics, contiguous clipping runs, phase correlation and
+  chronological mid/side points; rolling/accumulated power averaging, calibrated
+  one-sided FFT dBFS and allocation-free fractional-octave smoothing.
+- Opt-in conformance tests for all 66 applicable published EBU test sequences,
+  including programme loudness/LRA, shifted maxima and true peak. See
+  `measure/loudness/CONFORMANCE.md` for provenance and fixture instructions.
+
 ## [v0.8.4] - 2026-10-03
 
 ### Added
