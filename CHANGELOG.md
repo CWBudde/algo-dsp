@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.10.1] - 2026-10-04
+
+### Added
+
+- `loudness.BS1770ChannelWeights` centralizes five/six-channel surround/LFE
+  weighting and preserves source channel identity for packed subsets.
+- `restoration.NewNoiseCapture` owns bounded noise-profile STFT framing. Complete
+  windows and reflection of short sources avoid the zero-padding power bias at
+  capture boundaries; one-frame profiles are valid for reduction.
+
 ## [0.10.0] - 2026-10-04
 
 ### Added

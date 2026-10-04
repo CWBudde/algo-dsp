@@ -71,7 +71,7 @@ type NoiseReducer struct {
 // NewNoiseReducer freezes a profile. reductionDB is the maximum attenuation
 // [0,60]; method is "wiener", "subtraction", or "gate".
 func NewNoiseReducer(profile *NoiseProfile, reductionDB float64, method string) (*NoiseReducer, error) {
-	if profile == nil || profile.count < 2 || !finite(reductionDB) || reductionDB < 0 || reductionDB > 60 || (method != "wiener" && method != "subtraction" && method != "gate") {
+	if profile == nil || profile.count < 1 || !finite(reductionDB) || reductionDB < 0 || reductionDB > 60 || (method != "wiener" && method != "subtraction" && method != "gate") {
 		return nil, fmt.Errorf("restoration.reduce: invalid profile or settings")
 	}
 
