@@ -684,11 +684,22 @@ Exit criteria:
       `BenchmarkPitchTrackerWrite` report 0 allocs/op; detection is within 1 cent on the synthetic
       sine grid with no octave errors on harmonic-rich material.
 
-### Phase 37: Noise Reduction (Planned)
+### Phase 37: Noise Reduction — Complete (2026-10-04)
 
-- [ ] Noise-profile capture + spectral subtraction / Wiener filtering over an STFT (reuse the
-      spectral-freeze STFT scaffolding).
-- [ ] Tests (SNR improvement on profiled noise; musical-noise sanity) + runnable example.
+- [x] `dsp/effects/restoration` captures mean bin powers and applies Wiener,
+      subtraction or profile-gate gains through the public bounded STFT APIs.
+      `SpectralProcessor.Step` supports rectangle/polygon attenuation, removal and
+      short-gap autoregressive healing; click/clip repair and harmonic hum removal
+      are reusable DSP primitives. Legacy lineage and intentional fixes are in
+      `docs/restoration.md`.
+- [x] `restoration_test.go` and `validation_test.go` cover stationary-noise
+      suppression >=15 dB, wanted-tone preservation, residual-power variation and
+      isolated-line musical-noise proxies, selective-bin editing, click residual
+      below -80 dBFS, hum rejection, interpolation and rejection without mutation.
+      Examples and zero-allocation reducer/hum benchmarks accompany the API.
+- [x] `pitch/time_stretch.go` exposes the private WSOLA stage and adds a bounded
+      stereo-coherent stream; tests cover exact duration, retained pitch,
+      ratio-one identity and stereo phase. Consumed by algo-audio-editor Phase 8.
 
 ### Phase 38: Interpolation Kernel Expansion (Planned)
 
@@ -1341,7 +1352,7 @@ From `internal/story/grid.go`, `notes.go` and `internal/audioanalysis/melody.go`
       2 slots).
 
       Defaults are the app's `LeadCleanParams`. The bass preset differs only in the floor
-                  (MIDI 28).
+                      (MIDI 28).
 
 - [x] **`melody.BassPreset() []Option`**: FFT 8192, MIDI 28–60, 30–1200 Hz, 6 harmonics, minimum
       note 0.10 s, onset snap 0.06 s (for use with bass-stem onsets). Currently
@@ -1408,8 +1419,8 @@ cleaned notes plus a `rhythm.Grid`, or beat-level chroma.
       octave-tolerant).
 
       Greedy clustering keeps occurrences non-overlapping. Rotations of the same figure and
-                  shorter motifs mostly covered by longer ones are suppressed. Matches need similarity
-                  ≥ 0.8 and at least 3 occurrences.
+                      shorter motifs mostly covered by longer ones are suppressed. Matches need similarity
+                      ≥ 0.8 and at least 3 occurrences.
 
 - [x] **`FindChromaMotifs(chroma, grid, opts...)`**: fallback for material without reliable
       notes. Beat-chroma windows of 8 and 4 beats are grouped under the optimal transposition

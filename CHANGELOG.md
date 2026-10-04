@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.10.0] - 2026-10-04
+
+### Added
+
+- `dsp/effects/restoration`: averaged noise-profile capture, decision-directed
+  Wiener filtering, spectral subtraction and profile gates, bounded inverse-STFT
+  rectangle/polygon editing, autoregressive short-gap healing, automatic click
+  removal, declipping and 50/60 Hz harmonic notch combs.
+- `PitchShifter.TimeStretch` exposes its existing WSOLA stage without resampling;
+  `pitch.NewStretchStream` adds bounded, cancellable processing with shared stereo
+  alignment and exact rounded output duration.
+- Native/race and actual WASM reference tests for selective spectral editing,
+  click healing, >=15 dB stationary-noise reduction, residual-noise variation and
+  tonal-spike proxies, wanted-signal preservation, hum rejection, interpolation,
+  duration/pitch/stereo invariants and invalid-input atomicity.
+
+### Notes
+
+- Restoration profile/gate behaviour derives from the legacy Delphi FFT Effects
+  examples. Capture corrects the legacy DC-bin typo; normalized STFT overlap-add
+  replaces the old hand-built filter/time-domain crossfade. See
+  `docs/restoration.md` for scope, limits and reproducible acceptance evidence.
+
 ## [v0.9.0] - 2026-10-04
 
 ### Added
