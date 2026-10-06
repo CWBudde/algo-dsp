@@ -9,7 +9,6 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/effects/spatial"
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
-	"github.com/cwbudde/algo-dsp/dsp/filter/design/band"
 	"github.com/cwbudde/algo-dsp/dsp/filter/weighting"
 )
 
@@ -31,16 +30,35 @@ func (r *equalizerRuntime) Configure(ctx Context, p Params) error {
 			order++
 		}
 
+		var (
+			centers, gains []float64
+			coincident     int
+		)
+
 		for i, hz := range graphicCenters {
 			hz = min(hz, ctx.SampleRate*0.45)
 			gain := clamp(p.GetNum(fmt.Sprintf("gain%dDB", i+1), 0), -24, 24)
 
-			sections, err := band.ButterworthBand(ctx.SampleRate, hz, min(hz*0.707, 2*(ctx.SampleRate*0.5-hz)*0.9), gain, order)
-			if err != nil {
-				return fmt.Errorf("effectchain: graphic band %d: %w", i+1, err)
+			last := len(centers) - 1
+			if last >= 0 && centers[last] == hz {
+				// Low sample rates can place several upper bands at the same
+				// center. Average their controls instead of stacking their gains.
+				coincident++
+				gains[last] += (gain - gains[last]) / float64(coincident)
+
+				continue
 			}
 
-			coeffs = append(coeffs, sections...)
+			centers = append(centers, hz)
+			gains = append(gains, gain)
+			coincident = 1
+		}
+
+		var err error
+
+		coeffs, err = design.GraphicEQ(ctx.SampleRate, centers, gains, order)
+		if err != nil {
+			return fmt.Errorf("effectchain: graphic EQ: %w", err)
 		}
 	default:
 		count := min(max(int(math.Round(p.GetNum("bands", 4))), 1), 8)

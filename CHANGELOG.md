@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.11.0] - 2026-10-07
+
+### Added
+
+- `design.GraphicEQ` designs complementary Butterworth shelf transitions at
+  geometric band boundaries. Equal neighboring gains have no extra transition;
+  equal gains across all bands are exactly flat. The first/last controls extend
+  to DC/Nyquist, and order controls the transition steepness.
+
+### Fixed
+
+- `effectchain` graphic EQ no longer stacks independent boosted band filters:
+  ten +12 dB controls previously produced nearly +24 dB overlap peaks. Actual
+  processing and response inspection now share the complementary design.
+  Upper bands that coincide after low-sample-rate clamping use their mean gain.
+- Regression sweeps cover all advertised orders and sample rates, adjacent
+  boost/cut plateaus, centered monotonic reciprocal transitions, actual impulse
+  versus inspected response, zero-allocation processing and invalid geometry.
+
 ## [v0.10.2] - 2026-10-05
 
 ### Added

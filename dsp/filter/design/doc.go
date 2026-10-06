@@ -4,6 +4,8 @@
 // dsp/filter/biquad for runtime processing. It includes both RBJ-style
 // designers (Lowpass, Highpass, Peak, etc.) and Orfanidis-style peaking EQ
 // with prescribed DC/Nyquist gain via functional options on [Peak].
+// [GraphicEQ] designs a complete equalizer with complementary transitions,
+// keeping equal neighboring gains flat instead of adding overlapping boosts.
 //
 // The sub-package design/band provides high-order graphic EQ band designers
 // (Butterworth, Chebyshev, Elliptic) returning cascaded biquad sections.
