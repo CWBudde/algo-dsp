@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.11.1] - 2026-10-07
+
+### Added
+
+- Parametric EQ supports highpass/lowpass band types in processing and response
+  inspection. Its catalogue/default preset now has six bands: highpass at 30 Hz,
+  low shelf at 100 Hz, peaks at 350 Hz and 1.2 kHz, high shelf at 4 kHz, and
+  lowpass at 14 kHz. Low sample rates compress the logarithmic spacing. Pass
+  bands use Butterworth Q; gain remains meaningful only for peaks and shelves.
+- Sparse graphs retain their legacy four-peak runtime fallbacks; explicit saved
+  graphs and the Vocal presence preset retain their original band types. Dynamic
+  EQ defaults and supported types are unchanged.
+
 ## [v0.11.0] - 2026-10-07
 
 ### Added

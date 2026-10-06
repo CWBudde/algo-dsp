@@ -161,6 +161,7 @@ func factoryPresetValues(effect string) (string, string, map[string]float64, map
 		name = "Vocal presence"
 		num = map[string]float64{"bands": 3, "band1FreqHz": 120, "band1GainDB": -3, "band2FreqHz": 2500, "band2GainDB": 3, "band3FreqHz": 8000, "band3GainDB": 2}
 		str["band1Type"] = "lowshelf"
+		str["band2Type"] = "peak"
 		str["band3Type"] = "highshelf"
 	case "eq-graphic":
 		name = "Gentle smile"

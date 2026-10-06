@@ -71,6 +71,10 @@ func (r *equalizerRuntime) Configure(ctx Context, p Params) error {
 			var c biquad.Coefficients
 
 			switch p.Str[prefix+"Type"] {
+			case "highpass":
+				c = design.Highpass(hz, q, ctx.SampleRate)
+			case "lowpass":
+				c = design.Lowpass(hz, q, ctx.SampleRate)
 			case "lowshelf":
 				c = design.LowShelf(hz, gain, q, ctx.SampleRate)
 			case "highshelf":
