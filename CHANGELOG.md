@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.12.0] - 2026-10-07
+
+### Added
+
+- `design.ParametricBand` and `band.ButterworthPeak` support actual digital band
+  orders; parametric EQ exposes per-band orders 2, 4, 6, 8, 10 and 12. The default
+  of two preserves the original RBJ coefficients and existing sparse presets.
+  Higher orders sharpen Butterworth pass, shelf and peak transitions without
+  multiplying the requested gain. Peak Q controls bandwidth; higher-order pass
+  and shelf Q is fixed. Shelf midpoints and peak center gains remain anchored.
+- `ButterworthPeak` handles odd prototype orders analytically, so total digital
+  orders 2, 6 and 10 have the correct number of sections as well as 4, 8 and 12.
+  Existing `ButterworthBand` prototype-order behavior remains unchanged.
+- Regression coverage sweeps gain/frequency/sample-rate/order combinations,
+  bounded gain, sharper slopes, exact legacy coefficients, impulse/response
+  agreement, zero-allocation processing and effectchain inspection/processing.
+
 ## [v0.11.1] - 2026-10-07
 
 ### Added

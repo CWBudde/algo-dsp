@@ -37,6 +37,12 @@ func extendedDescriptors(sr float64) []Descriptor {
 			}
 
 			params = append(params, numberParameter(prefix+"FreqHz", frequency, 20, sr*0.49), numberParameter(prefix+"GainDB", 0, -24, 24), numberParameter(prefix+"Q", q, 0.2, 8), enumParameter(prefix+"Type", kind, choices...))
+			if id == "eq-parametric" {
+				order := integerParameter(prefix+"Order", 2, 2, 12)
+				order.Step = 2
+				params = append(params, order)
+			}
+
 			if id == "dyn-eq" {
 				params = append(params, enumParameter(prefix+"Mode", "downward", "static", "downward", "upward", "upward-below"), numberParameter(prefix+"ThresholdDB", -24, -80, 0), numberParameter(prefix+"Ratio", 2, 1, 20), numberParameter(prefix+"KneeDB", 6, 0, 24), numberParameter(prefix+"AttackMs", 10, 0.1, 1000), numberParameter(prefix+"ReleaseMs", 100, 1, 5000), numberParameter(prefix+"RangeDB", 12, 0, 24))
 			}

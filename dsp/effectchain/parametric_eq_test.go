@@ -40,6 +40,10 @@ func TestParametricEQDefaultLayout(t *testing.T) {
 						t.Fatalf("invalid band %d: %g Hz, %s", i+1, hz, preset.Str[prefix+"Type"])
 					}
 
+					if preset.Num[prefix+"Order"] != 2 {
+						t.Fatal("default band order must preserve second-order filters")
+					}
+
 					if i > 0 && (hz/previous < 2.4 || hz/previous > 3.6) {
 						t.Fatalf("uneven logarithmic spacing: %g / %g", hz, previous)
 					}
@@ -53,6 +57,66 @@ func TestParametricEQDefaultLayout(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestParametricEQBandOrderProcessingAndResponse(t *testing.T) {
+	for _, kind := range []string{"highpass", "lowpass", "peak", "lowshelf", "highshelf"} {
+		for _, order := range []int{2, 4, 6, 8, 10, 12} {
+			t.Run(fmt.Sprintf("%s/order%d", kind, order), func(t *testing.T) {
+				preset := FactoryPreset{Num: map[string]float64{"bands": 1, "band1FreqHz": 1000, "band1GainDB": 12, "band1Q": 1, "band1Order": float64(order)}, Str: map[string]string{"band1Type": kind}}
+
+				chain := New(Context{SampleRate: 48000}, DefaultRegistry())
+				if err := chain.LoadGraph(catalogGraph(t, Descriptor{ID: "eq-parametric"}, preset)); err != nil {
+					t.Fatal(err)
+				}
+
+				coeffs, err := design.ParametricBand(48000, 1000, 12, 1, kind, order)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				reference := biquad.NewChain(coeffs)
+				frequencies := []float64{100, 1000, 3000, 20000}
+
+				response, err := chain.Response(frequencies)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				for i, f := range frequencies {
+					want := math.Pow(10, reference.MagnitudeDB(f, 48000)/20)
+					if math.Abs(response[i]-want) > 1e-10 {
+						t.Fatalf("%g Hz: %g, want %g", f, response[i], want)
+					}
+				}
+
+				if err := chain.PreparePlanar(1, 128); err != nil {
+					t.Fatal(err)
+				}
+
+				want := make([]float64, 2048)
+				want[0] = 1
+				reference.ProcessBlock(want)
+
+				for offset := 0; offset < len(want); offset += 128 {
+					block := [][]float64{make([]float64, 128)}
+					if offset == 0 {
+						block[0][0] = 1
+					}
+
+					if err := chain.ProcessPlanar(block); err != nil {
+						t.Fatal(err)
+					}
+
+					for i, sample := range block[0] {
+						if math.Abs(sample-want[offset+i]) > 1e-12 {
+							t.Fatalf("sample%d: %g, want %g", offset+i, sample, want[offset+i])
+						}
+					}
+				}
+			})
+		}
 	}
 }
 

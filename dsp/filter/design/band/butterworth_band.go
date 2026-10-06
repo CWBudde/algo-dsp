@@ -26,6 +26,29 @@ func ButterworthBand(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) (
 	return butterworthBandRad(w0, wb, gainDB, gb, order)
 }
 
+// ButterworthPeak designs a peaking equalizer with the specified total digital
+// filter order (an even number from 2 to 32). Unlike ButterworthBand's prototype
+// order, each order of two here corresponds to one biquad. Bandwidth follows
+// ButterworthBand's Hz/band-edge-gain convention; center gain is always gainDB.
+// Gain must be finite within ±48 dB.
+func ButterworthPeak(sampleRate, f0Hz, bandwidthHz, gainDB float64, order int) ([]biquad.Coefficients, error) {
+	if order < 2 || order > 32 || order%2 != 0 || math.IsNaN(gainDB) || math.IsInf(gainDB, 0) || math.Abs(gainDB) > 48 {
+		return nil, ErrInvalidParams
+	}
+
+	// Validate frequency geometry independently of prototype order.
+	w0, wb, err := bandParams(sampleRate, f0Hz, bandwidthHz, 4)
+	if err != nil {
+		return nil, err
+	}
+
+	if gainDB == 0 {
+		return passthroughSections(), nil
+	}
+
+	return butterworthBandRad(w0, wb, gainDB, butterworthBWGainDB(gainDB), order/2)
+}
+
 // butterworthBWGainDB computes the bandwidth gain for Butterworth band filters.
 func butterworthBWGainDB(gainDB float64) float64 {
 	if gainDB < -3 {
@@ -81,6 +104,18 @@ func butterworthBandRad(w0, wb, gainDB, gbDB float64, order int) ([]biquad.Coeff
 		}
 
 		sections = append(sections, biquads...)
+	}
+
+	if order%2 != 0 {
+		// A real prototype pole transforms into one second-order band section.
+		denominator := 1 + beta
+		sections = append(sections, biquad.Coefficients{
+			B0: (g0 + g*beta) / denominator,
+			B1: -2 * g0 * math.Cos(w0) / denominator,
+			B2: (g0 - g*beta) / denominator,
+			A1: -2 * math.Cos(w0) / denominator,
+			A2: (1 - beta) / denominator,
+		})
 	}
 
 	return sections, nil

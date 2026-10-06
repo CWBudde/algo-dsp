@@ -68,22 +68,22 @@ func (r *equalizerRuntime) Configure(ctx Context, p Params) error {
 			gain := clamp(p.GetNum(prefix+"GainDB", 0), -24, 24)
 			q := clamp(p.GetNum(prefix+"Q", 1), 0.2, 8)
 
-			var c biquad.Coefficients
-
-			switch p.Str[prefix+"Type"] {
-			case "highpass":
-				c = design.Highpass(hz, q, ctx.SampleRate)
-			case "lowpass":
-				c = design.Lowpass(hz, q, ctx.SampleRate)
-			case "lowshelf":
-				c = design.LowShelf(hz, gain, q, ctx.SampleRate)
-			case "highshelf":
-				c = design.HighShelf(hz, gain, q, ctx.SampleRate)
-			default:
-				c = design.Peak(hz, gain, q, ctx.SampleRate)
+			kind := p.Str[prefix+"Type"]
+			if kind == "" {
+				kind = "peak"
 			}
 
-			coeffs = append(coeffs, c)
+			order := min(max(int(math.Round(p.GetNum(prefix+"Order", 2))), 2), 12)
+			if order%2 != 0 {
+				order++
+			}
+
+			sections, err := design.ParametricBand(ctx.SampleRate, hz, gain, q, kind, order)
+			if err != nil {
+				return fmt.Errorf("effectchain: band %d: %w", i, err)
+			}
+
+			coeffs = append(coeffs, sections...)
 		}
 	}
 
