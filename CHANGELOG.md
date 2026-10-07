@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.12.1] - 2026-10-07
+
+### Added
+
+- Standard effectchain filters now accept and honour orders through 20 for
+  Butterworth and Chebyshev I/II pass, shelf and peak designs. Bessel
+  remains limited to its supported orders 1–10 and elliptic retains its cap of
+  12 (order 20 fails numerical impulse/response agreement at the fixed bounds).
+  RBJ and Moog behaviour is unchanged.
+  Peak order still denotes the prototype order (twice that many digital poles).
+  Regression tests verify actual cascade sizes, stable poles, finite response
+  and processing, and agreement between impulse processing and response inspection.
+- Single-band effectchain compressor exposes `autoMakeup` (default off), using
+  the dynamics core's automatic makeup gain in audio processing and transfer
+  inspection. Manual makeup remains stored and is restored when auto gain is
+  turned off; sparse existing graphs retain manual-gain behaviour.
+
 ## [v0.12.0] - 2026-10-07
 
 ### Added

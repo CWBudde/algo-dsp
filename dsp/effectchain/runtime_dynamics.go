@@ -43,14 +43,14 @@ func (r *compressorRuntime) Configure(ctx Context, p Params) error {
 		return fmt.Errorf("effectchain: configure compressor release: %w", err)
 	}
 
-	err = r.fx.SetAutoMakeup(false)
-	if err != nil {
-		return fmt.Errorf("effectchain: configure compressor auto makeup: %w", err)
-	}
-
 	err = r.fx.SetMakeupGain(core.Clamp(p.GetNum("makeupGainDB", 0), 0, 24))
 	if err != nil {
 		return fmt.Errorf("effectchain: configure compressor makeup gain: %w", err)
+	}
+
+	err = r.fx.SetAutoMakeup(p.GetNum("autoMakeup", 0) >= 0.5)
+	if err != nil {
+		return fmt.Errorf("effectchain: configure compressor auto makeup: %w", err)
 	}
 
 	return nil

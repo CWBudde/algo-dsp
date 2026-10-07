@@ -127,6 +127,8 @@ func descriptor(id, name, category, view string, params ...ParameterDescriptor) 
 			p.Step = 0.01
 		case id == "phaser" && p.ID == "stages":
 			p.Max = 12
+		case id == "dyn-compressor" && p.ID == "autoMakeup":
+			p.Label = "Auto gain"
 		}
 
 		if id == "filter-moog" && p.ID == "kind" {
@@ -141,6 +143,10 @@ func descriptor(id, name, category, view string, params ...ParameterDescriptor) 
 			p.Min = 0
 			p.Max = 4
 			p.Label = "Resonance"
+		}
+
+		if strings.HasPrefix(id, "filter") && id != "filter-moog" && p.ID == "order" {
+			p.Max = 20
 		}
 	}
 

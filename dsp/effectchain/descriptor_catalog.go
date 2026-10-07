@@ -191,6 +191,7 @@ func builtInDescriptors(sampleRate float64) []Descriptor {
 			numberParameter("attackMs", 10, 0.1, 1000),
 			numberParameter("releaseMs", 100, 1, 5000),
 			numberParameter("makeupGainDB", 0, 0, 24),
+			booleanParameter("autoMakeup", 0),
 		),
 		descriptor(
 			"dyn-limiter", "Limiter", "Dynamics", "dynamics",

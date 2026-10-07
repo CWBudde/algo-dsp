@@ -385,9 +385,14 @@ func normalizeEQOrder(kind, family string, order int) int {
 		order = eqDefaultOrder
 	}
 
-	maxOrder := 12.0
+	maxOrder := 20.0
 	if family == eqFamilyBessel {
 		maxOrder = 10
+	}
+
+	if family == eqFamilyElliptic {
+		// Higher orders are ill-conditioned at the fixed pass/stopband bounds.
+		maxOrder = 12
 	}
 
 	if kind == eqKindPeak {
