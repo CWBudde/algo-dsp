@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.12.3] - 2026-10-07
+
+### Added
+
+- Effectchain multiband compressor supports 2–4 bands, a third crossover and
+  independent Attack, Release, Knee, Makeup and Auto makeup per band when
+  `perBand` is enabled. Shared settings remain the default for existing graphs
+  and presets; the two-band high range keeps using the original `mid` parameters.
+  `responseBand` selects the actual band gain computer for `Chain.Transfer`
+  inspection. Workspace estimates reserve storage for all four bands.
+
 ## [v0.12.2] - 2026-10-07
 
 ### Added

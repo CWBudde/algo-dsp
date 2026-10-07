@@ -229,7 +229,7 @@ func effectWorkspace(rate float64, p Params, cfg workspaceConfig) (int64, int64,
 		storage = 16 * workspaceSamples(0.03+clamp(p.GetNum("lookaheadMs", 3), 0, 200)*0.001, rate)
 		latency = int64(math.Round(clamp(p.GetNum("lookaheadMs", 3), 0, 200) * 0.001 * rate))
 	case "dyn-multiband":
-		count := int64(clamp(math.Round(p.GetNum("bands", 3)), 2, 3))
+		count := int64(clamp(math.Round(p.GetNum("bands", 3)), 2, 4))
 		storage = 16*count*workspaceSamples(0.03, rate) + 8*count*frames
 	case "dyn-eq":
 		count := int64(clamp(math.Round(p.GetNum("bands", 4)), 1, 8))

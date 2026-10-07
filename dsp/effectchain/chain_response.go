@@ -112,6 +112,10 @@ func runtimeCurve(runtime Runtime) dynamics.StaticCurveProcessor {
 		return r.fx
 	case *expanderRuntime:
 		return r.fx
+	case *multibandRuntime:
+		if r.fx != nil {
+			return r.fx.Band(r.curveBand)
+		}
 	}
 
 	return nil
@@ -120,6 +124,8 @@ func runtimeCurve(runtime Runtime) dynamics.StaticCurveProcessor {
 // Transfer evaluates static input/output dBFS levels for a graph of dynamics
 // gain computers, sums and bypasses. It uses each processor's actual gain
 // computer without envelope smoothing and does not advance processing state.
+// Multiband nodes inspect the gain computer selected by responseBand (default
+// zero); this is a band curve, not the combined frequency-dependent response.
 func (c *Chain) Transfer(levelsDB []float64) ([]float64, error) {
 	if !c.HasGraph() {
 		return nil, fmt.Errorf("effectchain: transfer requires a graph")

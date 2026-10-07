@@ -371,12 +371,14 @@ type multibandRuntime struct {
 	lastOrder int
 	lastC1    float64
 	lastC2    float64
+	lastC3    float64
 	lastSR    float64
+	curveBand int
 }
 
 //nolint:cyclop,funlen
 func (r *multibandRuntime) Configure(ctx Context, p Params) error {
-	bands := min(max(int(math.Round(p.GetNum("bands", 3))), 2), 3)
+	bands := min(max(int(math.Round(p.GetNum("bands", 3))), 2), 4)
 
 	order := min(max(int(math.Round(p.GetNum("order", 4))), 2), 24)
 
@@ -386,18 +388,24 @@ func (r *multibandRuntime) Configure(ctx Context, p Params) error {
 
 	c1 := core.Clamp(p.GetNum("cross1Hz", 250), 40, ctx.SampleRate*0.2)
 	c2 := core.Clamp(p.GetNum("cross2Hz", 3000), c1+100, ctx.SampleRate*0.45)
+	c3 := core.Clamp(p.GetNum("cross3Hz", 8000), c2+100, ctx.SampleRate*0.49)
 
 	rebuild := r.fx == nil ||
 		r.lastBands != bands ||
 		r.lastOrder != order ||
 		math.Abs(r.lastC1-c1) > 1e-9 ||
 		math.Abs(r.lastC2-c2) > 1e-9 ||
+		math.Abs(r.lastC3-c3) > 1e-9 ||
 		math.Abs(r.lastSR-ctx.SampleRate) > 1e-9
 
 	if rebuild {
 		freqs := []float64{c1}
-		if bands == 3 {
+		if bands >= 3 {
 			freqs = append(freqs, c2)
+		}
+
+		if bands == 4 {
+			freqs = append(freqs, c3)
 		}
 
 		fx, err := dynamics.NewMultibandCompressor(freqs, order, ctx.SampleRate)
@@ -410,6 +418,7 @@ func (r *multibandRuntime) Configure(ctx Context, p Params) error {
 		r.lastOrder = order
 		r.lastC1 = c1
 		r.lastC2 = c2
+		r.lastC3 = c3
 		r.lastSR = ctx.SampleRate
 	}
 
@@ -433,15 +442,25 @@ func (r *multibandRuntime) Configure(ctx Context, p Params) error {
 		return fmt.Errorf("effectchain: configure multiband mid ratio: %w", err)
 	}
 
-	if bands == 3 {
-		err = r.fx.SetBandThreshold(2, core.Clamp(p.GetNum("highThresholdDB", -14), -80, 0))
+	if bands >= 3 {
+		err = r.fx.SetBandThreshold(bands-1, core.Clamp(p.GetNum("highThresholdDB", -14), -80, 0))
 		if err != nil {
 			return fmt.Errorf("effectchain: configure multiband high threshold: %w", err)
 		}
 
-		err = r.fx.SetBandRatio(2, core.Clamp(p.GetNum("highRatio", 4.0), 1, 20))
+		err = r.fx.SetBandRatio(bands-1, core.Clamp(p.GetNum("highRatio", 4.0), 1, 20))
 		if err != nil {
 			return fmt.Errorf("effectchain: configure multiband high ratio: %w", err)
+		}
+	}
+
+	if bands == 4 {
+		if err := r.fx.SetBandThreshold(2, core.Clamp(p.GetNum("upperThresholdDB", -16), -80, 0)); err != nil {
+			return fmt.Errorf("effectchain: configure multiband upper threshold: %w", err)
+		}
+
+		if err := r.fx.SetBandRatio(2, core.Clamp(p.GetNum("upperRatio", 3.5), 1, 20)); err != nil {
+			return fmt.Errorf("effectchain: configure multiband upper ratio: %w", err)
 		}
 	}
 
@@ -455,33 +474,43 @@ func (r *multibandRuntime) Configure(ctx Context, p Params) error {
 	knee := core.Clamp(p.GetNum("kneeDB", 6), 0, 24)
 	makeup := core.Clamp(p.GetNum("makeupGainDB", 0), 0, 24)
 	autoMakeup := p.GetNum("autoMakeup", 0) >= 0.5
+	r.curveBand = min(max(int(math.Round(p.GetNum("responseBand", 0))), 0), bands-1)
 
 	for b := range r.fx.NumBands() {
-		err := r.fx.SetBandAttack(b, attack)
+		bandAttack, bandRelease, bandKnee, bandMakeup, bandAuto := attack, release, knee, makeup, autoMakeup
+
+		if p.GetNum("perBand", 0) >= 0.5 {
+			prefix := multibandPrefix(b, bands)
+			bandAttack = core.Clamp(p.GetNum(prefix+"AttackMs", attack), 0.1, 1000)
+			bandRelease = core.Clamp(p.GetNum(prefix+"ReleaseMs", release), 1, 5000)
+			bandKnee = core.Clamp(p.GetNum(prefix+"KneeDB", knee), 0, 24)
+			bandMakeup = core.Clamp(p.GetNum(prefix+"MakeupGainDB", makeup), 0, 24)
+			bandAuto = p.GetNum(prefix+"AutoMakeup", p.GetNum("autoMakeup", 0)) >= 0.5
+		}
+
+		err := r.fx.SetBandAttack(b, bandAttack)
 		if err != nil {
 			return fmt.Errorf("effectchain: configure multiband attack for band %d: %w", b, err)
 		}
 
-		err = r.fx.SetBandRelease(b, release)
+		err = r.fx.SetBandRelease(b, bandRelease)
 		if err != nil {
 			return fmt.Errorf("effectchain: configure multiband release for band %d: %w", b, err)
 		}
 
-		err = r.fx.SetBandKnee(b, knee)
+		err = r.fx.SetBandKnee(b, bandKnee)
 		if err != nil {
 			return fmt.Errorf("effectchain: configure multiband knee for band %d: %w", b, err)
 		}
 
-		err = r.fx.SetBandAutoMakeup(b, autoMakeup)
+		err = r.fx.SetBandMakeupGain(b, bandMakeup)
 		if err != nil {
-			return fmt.Errorf("effectchain: configure multiband auto makeup for band %d: %w", b, err)
+			return fmt.Errorf("effectchain: configure multiband makeup gain for band %d: %w", b, err)
 		}
 
-		if !autoMakeup {
-			err = r.fx.SetBandMakeupGain(b, makeup)
-			if err != nil {
-				return fmt.Errorf("effectchain: configure multiband makeup gain for band %d: %w", b, err)
-			}
+		err = r.fx.SetBandAutoMakeup(b, bandAuto)
+		if err != nil {
+			return fmt.Errorf("effectchain: configure multiband auto makeup for band %d: %w", b, err)
 		}
 	}
 
