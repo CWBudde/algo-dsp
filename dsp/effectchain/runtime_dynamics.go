@@ -53,6 +53,11 @@ func (r *compressorRuntime) Configure(ctx Context, p Params) error {
 		return fmt.Errorf("effectchain: configure compressor auto makeup: %w", err)
 	}
 
+	err = r.fx.SetTopology(normalizeDynamicsTopology(p.Str["topology"]))
+	if err != nil {
+		return fmt.Errorf("effectchain: configure compressor topology: %w", err)
+	}
+
 	return nil
 }
 
@@ -166,6 +171,11 @@ func (r *gateRuntime) Configure(ctx Context, p Params) error {
 	err = r.fx.SetRange(core.Clamp(p.GetNum("rangeDB", -80), -120, 0))
 	if err != nil {
 		return fmt.Errorf("effectchain: configure gate range: %w", err)
+	}
+
+	err = r.fx.SetTopology(normalizeDynamicsTopology(p.Str["topology"]))
+	if err != nil {
+		return fmt.Errorf("effectchain: configure gate topology: %w", err)
 	}
 
 	return nil
@@ -433,6 +443,11 @@ func (r *multibandRuntime) Configure(ctx Context, p Params) error {
 		if err != nil {
 			return fmt.Errorf("effectchain: configure multiband high ratio: %w", err)
 		}
+	}
+
+	err = r.fx.SetAllBandsTopology(normalizeDynamicsTopology(p.Str["topology"]))
+	if err != nil {
+		return fmt.Errorf("effectchain: configure multiband topology: %w", err)
 	}
 
 	attack := core.Clamp(p.GetNum("attackMs", 8), 0.1, 1000)

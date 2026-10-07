@@ -192,6 +192,7 @@ func builtInDescriptors(sampleRate float64) []Descriptor {
 			numberParameter("releaseMs", 100, 1, 5000),
 			numberParameter("makeupGainDB", 0, 0, 24),
 			booleanParameter("autoMakeup", 0),
+			enumParameter("topology", "feedforward", "feedforward", "feedback"),
 		),
 		descriptor(
 			"dyn-limiter", "Limiter", "Dynamics", "dynamics",
@@ -213,6 +214,7 @@ func builtInDescriptors(sampleRate float64) []Descriptor {
 			numberParameter("holdMs", 50, 0, 5000),
 			numberParameter("releaseMs", 100, 1, 5000),
 			numberParameter("rangeDB", -80, -120, 0),
+			enumParameter("topology", "feedforward", "feedforward", "feedback"),
 		),
 		descriptor(
 			"dyn-expander", "Expander", "Dynamics", "dynamics",
@@ -265,6 +267,7 @@ func builtInDescriptors(sampleRate float64) []Descriptor {
 			numberParameter("kneeDB", 6, 0, 24),
 			numberParameter("makeupGainDB", 0, 0, 24),
 			booleanParameter("autoMakeup", 0),
+			enumParameter("topology", "feedforward", "feedforward", "feedback"),
 		),
 		descriptor(
 			"vocoder", "Vocoder", "Modulation", "generic",

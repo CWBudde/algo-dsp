@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.12.2] - 2026-10-07
+
+### Added
+
+- Effectchain compressor, gate and multiband compressor expose `topology`
+  (`feedforward` / `feedback`) and apply it to the dynamics processors, including
+  every multiband compressor band. Expander retains its existing topology control.
+  Sparse graphs and factory presets default to feedforward. Regression tests
+  cover catalogue availability, actual processing differences and restoring
+  feedforward on runtime reconfiguration.
+
 ## [v0.12.1] - 2026-10-07
 
 ### Added
