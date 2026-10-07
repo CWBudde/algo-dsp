@@ -19,7 +19,7 @@ func TestParametricEQDefaultLayout(t *testing.T) {
 
 				preset := d.Presets[0]
 				if d.ID == "dyn-eq" {
-					if preset.Num["bands"] != 4 || preset.Str["band1Type"] != "peak" || preset.Num["band1FreqHz"] != 80 {
+					if preset.Num["bands"] != 3 || preset.Str["band1Type"] != "peak" || preset.Num["band1FreqHz"] != 120 {
 						t.Fatal("dynamic EQ defaults changed")
 					}
 

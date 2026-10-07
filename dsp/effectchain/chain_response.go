@@ -112,6 +112,11 @@ func runtimeCurve(runtime Runtime) dynamics.StaticCurveProcessor {
 		return r.fx
 	case *expanderRuntime:
 		return r.fx
+	case *dynamicEQRuntime:
+		if r.fx != nil {
+			curve, _ := r.fx.BandCurve(r.curveBand)
+			return curve
+		}
 	case *multibandRuntime:
 		if r.fx != nil {
 			return r.fx.Band(r.curveBand)
@@ -126,6 +131,8 @@ func runtimeCurve(runtime Runtime) dynamics.StaticCurveProcessor {
 // computer without envelope smoothing and does not advance processing state.
 // Multiband nodes inspect the gain computer selected by responseBand (default
 // zero); this is a band curve, not the combined frequency-dependent response.
+// Dynamic EQ likewise inspects responseBand, including static offset, mode and
+// range, as detector-level versus centre-frequency output, without smoothing.
 func (c *Chain) Transfer(levelsDB []float64) ([]float64, error) {
 	if !c.HasGraph() {
 		return nil, fmt.Errorf("effectchain: transfer requires a graph")

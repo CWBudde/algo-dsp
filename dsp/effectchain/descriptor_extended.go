@@ -19,14 +19,16 @@ func extendedDescriptors(sr float64) []Descriptor {
 	}
 
 	for _, id := range []string{"eq-parametric", "dyn-eq"} {
-		params := []ParameterDescriptor{integerParameter("bands", 4, 1, 8)}
+		params := []ParameterDescriptor{integerParameter("bands", 3, 1, 8)}
 		if id == "eq-parametric" {
 			params[0] = integerParameter("bands", 6, 1, 8)
+		} else {
+			params = append(params, integerParameter("responseBand", 0, 0, 7))
 		}
 
 		for band := 1; band <= 8; band++ {
 			prefix := fmt.Sprintf("band%d", band)
-			frequency := min(80*float64(uint(1)<<uint(band-1)), sr*0.45)
+			frequency := dynamicEQBandDefault(band, sr)
 			kind, q := "peak", 1.0
 			choices := []string{"peak", "lowshelf", "highshelf"}
 
@@ -87,4 +89,17 @@ func parametricBandDefault(band int, sr float64) (float64, string, float64) {
 	}
 
 	return min(hz, sr*0.45), kinds[band-1], q
+}
+
+// The three default dynamic bands cover bass, midrange and treble. Compress
+// their logarithmic span at low rates to keep every handle distinct.
+func dynamicEQBandDefault(band int, sr float64) float64 {
+	frequencies := [...]float64{120, 1000, 8000, 60, 350, 2500, 14000, 18000}
+
+	hz := frequencies[band-1]
+	if sr*0.45 < 8000 && band <= 3 {
+		hz = 120 * math.Pow(sr*0.45/120, math.Log(hz/120)/math.Log(8000.0/120))
+	}
+
+	return min(hz, sr*0.45)
 }

@@ -184,3 +184,13 @@ func ExampleDynamicEQ_BandStaticCurve() {
 	// -10.0 dB in -> -7.5000 dB gain
 	// 0.0 dB in -> -15.0000 dB gain
 }
+
+func ExampleDynamicEQ_BandCurve() {
+	eq, _ := dynamics.NewDynamicEQWithConfig(48000, []dynamics.EQBandConfig{{
+		FrequencyHz: 1000, Mode: dynamics.EQBandModeDownward,
+		ThresholdDB: -20, Ratio: 4, KneeDB: dynamics.Float64Ptr(0), RangeDB: 24,
+	}})
+	curve, _ := eq.BandCurve(0)
+	fmt.Printf("Output: %.1f dB\n", 20*math.Log10(curve.CalculateOutputLevel(1)))
+	// Output: Output: -15.0 dB
+}

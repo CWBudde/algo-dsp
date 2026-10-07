@@ -103,12 +103,13 @@ func (r *equalizerRuntime) Configure(ctx Context, p Params) error {
 func (r *equalizerRuntime) Process(block []float64) { r.fx.ProcessBlock(block) }
 
 type dynamicEQRuntime struct {
-	fx    *dynamics.DynamicEQ
-	count int
+	fx        *dynamics.DynamicEQ
+	count     int
+	curveBand int
 }
 
 func (r *dynamicEQRuntime) Configure(ctx Context, p Params) error {
-	count := min(max(int(math.Round(p.GetNum("bands", 4))), 1), 8)
+	count := min(max(int(math.Round(p.GetNum("bands", 3))), 1), 8)
 	if r.fx == nil || r.count != count {
 		fx, err := dynamics.NewDynamicEQ(ctx.SampleRate)
 		if err != nil {
@@ -142,7 +143,7 @@ func (r *dynamicEQRuntime) Configure(ctx Context, p Params) error {
 		}
 
 		knee := clamp(p.GetNum(prefix+"KneeDB", 6), 0, 24)
-		cfg := dynamics.EQBandConfig{Type: kind, FrequencyHz: clamp(p.GetNum(prefix+"FreqHz", min(80*math.Exp2(float64(i-1)), ctx.SampleRate*0.45)), 20, ctx.SampleRate*0.49), Q: clamp(p.GetNum(prefix+"Q", 1), 0.2, 8), StaticGainDB: clamp(p.GetNum(prefix+"GainDB", 0), -24, 24), Mode: mode, ThresholdDB: clamp(p.GetNum(prefix+"ThresholdDB", -24), -80, 0), Ratio: clamp(p.GetNum(prefix+"Ratio", 2), 1, 20), KneeDB: &knee, AttackMs: clamp(p.GetNum(prefix+"AttackMs", 10), 0.1, 1000), ReleaseMs: clamp(p.GetNum(prefix+"ReleaseMs", 100), 1, 5000), RangeDB: clamp(p.GetNum(prefix+"RangeDB", 12), 0, 24)}
+		cfg := dynamics.EQBandConfig{Type: kind, FrequencyHz: clamp(p.GetNum(prefix+"FreqHz", dynamicEQBandDefault(i, ctx.SampleRate)), 20, ctx.SampleRate*0.49), Q: clamp(p.GetNum(prefix+"Q", 1), 0.2, 8), StaticGainDB: clamp(p.GetNum(prefix+"GainDB", 0), -24, 24), Mode: mode, ThresholdDB: clamp(p.GetNum(prefix+"ThresholdDB", -24), -80, 0), Ratio: clamp(p.GetNum(prefix+"Ratio", 2), 1, 20), KneeDB: &knee, AttackMs: clamp(p.GetNum(prefix+"AttackMs", 10), 0.1, 1000), ReleaseMs: clamp(p.GetNum(prefix+"ReleaseMs", 100), 1, 5000), RangeDB: clamp(p.GetNum(prefix+"RangeDB", 12), 0, 24)}
 
 		var err error
 		if r.count < i {
@@ -160,6 +161,8 @@ func (r *dynamicEQRuntime) Configure(ctx Context, p Params) error {
 			return wrapConfigureErr(err)
 		}
 	}
+
+	r.curveBand = min(max(int(math.Round(p.GetNum("responseBand", 0))), 0), count-1)
 
 	return nil
 }

@@ -20,7 +20,11 @@ and `stopbandDB` for Chebyshev II/elliptic passes. Unsupported family/kind
 combinations normalize to RBJ. Parametric EQ exposes one to eight bell/shelf
 bands; graphic EQ exposes ten Butterworth bands and even orders four to twelve.
 `Response` returns actual complex-cascade magnitudes for linear filter/EQ
-graphs and a coefficient snapshot for dynamic EQ. `Transfer` samples the actual static dynamics gain computers in dBFS;
+graphs and a coefficient snapshot for dynamic EQ. Dynamic EQ defaults to three
+peak bands at 120 Hz, 1 kHz and 8 kHz (compressed below Nyquist at low rates). `Transfer` samples the actual static dynamics gain computers in dBFS;
+`responseBand` selects the inspected band for multiband compression and dynamic
+EQ. Dynamic EQ transfer includes the static offset, selected mode and range cap,
+and describes detector-level versus centre-frequency output without smoothing;
 neither API advances processing state.
 
 Time-domain pitch uses streaming WSOLA plus fractional Hermite resampling.

@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.12.4] - 2026-10-07
+
+- Dynamic EQ defaults to three peak bands at 120 Hz, 1 kHz and 8 kHz, with
+  logarithmic span compression for lower sample rates. Explicit saved settings
+  remain authoritative; sparse runtime graphs use the same catalogue defaults.
+- Expose each dynamic EQ band's actual steady-state gain computer through
+  `DynamicEQ.BandCurve` and effectchain `Transfer`'s `responseBand` selection.
+  Curves include static gain, all four dynamics modes, soft knee and range
+  limiting without advancing audio processing state.
+
 ## [v0.12.3] - 2026-10-07
 
 ### Added

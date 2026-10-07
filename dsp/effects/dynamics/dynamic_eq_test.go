@@ -1027,3 +1027,44 @@ func TestDynamicEQEmptyChainIsTransparent(t *testing.T) {
 		}
 	}
 }
+
+func TestDynamicEQBandCurveValidationAndInspectionState(t *testing.T) {
+	eq := newTestEQ(t, EQBandConfig{FrequencyHz: 1000, Mode: EQBandModeDownward, ThresholdDB: -20, Ratio: 4})
+	for _, band := range []int{-1, 1} {
+		if curve, err := eq.BandCurve(band); err == nil || curve != nil {
+			t.Fatal("invalid band accepted")
+		}
+	}
+
+	for i := 0; i < 2048; i++ {
+		eq.ProcessSample(.8 * math.Sin(float64(i)*.15))
+	}
+
+	gain, _ := eq.BandGainDB(0)
+	coeff, _ := eq.BandCoefficients(0)
+	metrics := eq.GetMetrics().Bands[0]
+
+	curve, err := eq.BandCurve(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	points, err := eq.BandStaticCurve(0, -80, 0, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, point := range points {
+		output := 20 * math.Log10(curve.CalculateOutputLevel(math.Pow(10, point.InputDB/20)))
+		if math.Abs(output-point.OutputDB) > 1e-10 {
+			t.Fatal("arbitrary curve differs from sampled curve")
+		}
+	}
+
+	afterGain, _ := eq.BandGainDB(0)
+
+	afterCoeff, _ := eq.BandCoefficients(0)
+	if gain != afterGain || coeff != afterCoeff || metrics != eq.GetMetrics().Bands[0] {
+		t.Fatal("inspection changed live processor state")
+	}
+}

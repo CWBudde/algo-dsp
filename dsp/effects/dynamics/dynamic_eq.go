@@ -475,6 +475,18 @@ func (eq *DynamicEQ) ProcessInPlaceSidechain(program, sidechain []float64) error
 	return nil
 }
 
+// BandCurve returns the band's actual steady-state gain computer for arbitrary
+// input magnitudes. It includes static gain, dynamic mode and range limiting,
+// without advancing detector, envelope, filter or metering state. The returned
+// view follows parameter updates until SetBandConfig replaces that band.
+func (eq *DynamicEQ) BandCurve(band int) (StaticCurveProcessor, error) {
+	if err := eq.checkBand(band); err != nil {
+		return nil, err
+	}
+
+	return eq.bands[band], nil
+}
+
 // BandStaticCurve samples the steady-state characteristic curve of one band,
 // i.e. the band's centre-frequency gain as a function of detector level. It is
 // shorthand for [StaticCurve] over that band and does not touch detector state.
