@@ -201,14 +201,12 @@ This library must remain **algorithm-centric and transport-agnostic**:
 When extracting code from the existing `mfw` application:
 
 1. **Extraction order** (as defined in PLAN.md Phase 11):
-
    - Window functions first
    - Filter primitives and design
    - Spectrum/convolution/resampling helpers
    - Measurement kernels last
 
 2. **Migration mechanics**:
-
    - Move code **with tests** in atomic commits
    - Add **compatibility tests** in `mfw` to validate behavior parity
    - Switch imports in `mfw` only after parity verification
