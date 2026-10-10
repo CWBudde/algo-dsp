@@ -342,6 +342,20 @@ cmd_gate() {
 	green "${version} is clear to release"
 }
 
+# changelog_section prints the CHANGELOG.md section of a version (at most 40
+# lines). Same heading-boundary rule as the gate, for the same reason: a
+# "## 0.8.0-rc1" section preceding the real one would otherwise be picked up
+# and embedded as this tag's release notes. Case-insensitive like the gate's
+# `grep -qiE`, so a "## [V0.8.0]" heading the gate accepts also yields notes
+# (tolower, since BSD awk has no IGNORECASE).
+changelog_section() {
+	awk -v v="$(printf '%s' "${1#v}" | sed 's/[.]/[.]/g')" '
+      tolower($0) ~ "^##+ *\\[?v?" tolower(v) "\\]?([^0-9.-].*)?$" {f=1; next}
+      f && /^##+ /{exit}
+      f {print}
+    ' CHANGELOG.md | head -40
+}
+
 cmd_tag() {
 	local version="$1"
 
@@ -357,20 +371,19 @@ cmd_tag() {
 		return 1
 	fi
 
+	# The release notes are computed before `git tag` rather than inside its
+	# quoted -m argument: bash 3.2 (macOS /bin/bash) cannot parse a comment or
+	# quotes inside "$( ... )" and rejects the whole script.
+	local notes=""
+	if [ -f CHANGELOG.md ]; then
+		notes=$(changelog_section "$version")
+	fi
+
 	echo
 	echo "Tagging ${version}…"
 	git tag -a "$version" -m "${version}
 
-$(if [ -f CHANGELOG.md ]; then
-		# Same heading-boundary rule as the gate, for the same reason: a
-		# "## 0.8.0-rc1" section preceding the real one would otherwise be
-		# picked up and embedded as this tag's release notes.
-		awk -v v="$(printf '%s' "${version#v}" | sed 's/[.]/[.]/g')" '
-      $0 ~ "^##+ *\\[?v?" v "\\]?([^0-9.-].*)?$" {f=1; next}
-      f && /^##+ /{exit}
-      f {print}
-    ' CHANGELOG.md | head -40
-	fi)"
+${notes}"
 	git push origin "$version"
 	green "pushed ${version}"
 
