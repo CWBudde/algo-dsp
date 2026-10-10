@@ -1559,7 +1559,43 @@ bounded-work stepper for per-step time budgets follows as a later item.
 >
 > Firwin2 rejects the antisymmetric types III and IV, as planned.
 
-- [ ] 46.2 `shared-primitives` — Rebuild `dsp/cqt` on shared, public building blocks instead of private copies, without changing its output. Add `window.Type.Valid() bool` and `window.Type.String() string` in `dsp/window` (String may reuse `Info(t).Name`), and use `Valid` in `cqt.WithWindow` and `design.WithWindow` (replacing their copied range checks) and in `stft.WithWindow`, which accepts unknown types today; document that `window.Generate` treats unknown types as rectangular. Add an exported numpy/torch-"reflect" padding helper to `dsp/core` (edge sample not repeated; decide the exact signature, for example `core.PadReflect(dst, x []float64, left, right int) error`, with a clear error when the pad is not shorter than the input) and use it in `dsp/stft` (replacing its private per-frame mirroring where that keeps it zero-allocation; otherwise document why) and in `dsp/cqt`; note in its doc comment that scipy's "reflect" in `dsp/separate` is numpy's "symmetric" and deliberately different. Move `overlaps` from `dsp/cqt/process.go` to `core.Overlaps(a, b []float64) bool`. Add a public strided correlation to `dsp/conv`, for example `CorrelateStridedInto(dst, x, h []float64, start, stride int) error` computing `dst[i] = sum_k h[k]*x[start+i*stride+k]` with samples outside `x` taken as zero (so negative `start` is implicit zero padding), zero-allocation, built on `vecmath.DotProduct` over the in-range span. Rebuild cqt's `decimate` on it (`start = -(len(h)-1)/2`, stride = factor) and its kernel convolution where that is not slower; keep a fused real+imaginary inner loop only if a benchmark shows the primitive more than 5% slower, and say so in a comment. Replace cqt's `grow` with `core.EnsureLen`. Constraints: every existing `dsp/cqt` and `dsp/filter/design` test passes unchanged (including the golden tests), `ProcessInto`/`ProcessInto32` stay at 0 allocs/op, and the basic-pitch benchmark stays within 5% (record before/after in the PR body). Tests for every new primitive: table-driven against a naive loop, edge cases (empty, stride larger than kernel, start far outside the signal, aliasing), 0 allocs; `Example`s for `PadReflect` and `CorrelateStridedInto`; CHANGELOG entries under Unreleased.
+- [x] 46.2 `shared-primitives` — Rebuild `dsp/cqt` on shared, public building blocks instead of private copies, without changing its output. Add `window.Type.Valid() bool` and `window.Type.String() string` in `dsp/window` (String may reuse `Info(t).Name`), and use `Valid` in `cqt.WithWindow` and `design.WithWindow` (replacing their copied range checks) and in `stft.WithWindow`, which accepts unknown types today; document that `window.Generate` treats unknown types as rectangular. Add an exported numpy/torch-"reflect" padding helper to `dsp/core` (edge sample not repeated; decide the exact signature, for example `core.PadReflect(dst, x []float64, left, right int) error`, with a clear error when the pad is not shorter than the input) and use it in `dsp/stft` (replacing its private per-frame mirroring where that keeps it zero-allocation; otherwise document why) and in `dsp/cqt`; note in its doc comment that scipy's "reflect" in `dsp/separate` is numpy's "symmetric" and deliberately different. Move `overlaps` from `dsp/cqt/process.go` to `core.Overlaps(a, b []float64) bool`. Add a public strided correlation to `dsp/conv`, for example `CorrelateStridedInto(dst, x, h []float64, start, stride int) error` computing `dst[i] = sum_k h[k]*x[start+i*stride+k]` with samples outside `x` taken as zero (so negative `start` is implicit zero padding), zero-allocation, built on `vecmath.DotProduct` over the in-range span. Rebuild cqt's `decimate` on it (`start = -(len(h)-1)/2`, stride = factor) and its kernel convolution where that is not slower; keep a fused real+imaginary inner loop only if a benchmark shows the primitive more than 5% slower, and say so in a comment. Replace cqt's `grow` with `core.EnsureLen`. Constraints: every existing `dsp/cqt` and `dsp/filter/design` test passes unchanged (including the golden tests), `ProcessInto`/`ProcessInto32` stay at 0 allocs/op, and the basic-pitch benchmark stays within 5% (record before/after in the PR body). Tests for every new primitive: table-driven against a naive loop, edge cases (empty, stride larger than kernel, start far outside the signal, aliasing), 0 allocs; `Example`s for `PadReflect` and `CorrelateStridedInto`; CHANGELOG entries under Unreleased.
+
+> Outcome notes (46.2): `dsp/cqt` now pads with `core.PadReflect` and decimates with
+> `conv.CorrelateStridedInto`; `overlaps` became `core.Overlaps` and `grow` became
+> `core.EnsureLen`. Its output is bit-identical to 46.1: the SHA-256 of `Process` matches `main`
+> for four configurations (basic-pitch, constant padding with complex output, nnAudio defaults
+> with early downsampling, a three-octave window starting at 220 Hz) at 43844 and 3000 samples,
+> the latter running into the zero-pad fallback. Every `dsp/cqt` and `dsp/filter/design` test
+> passes unchanged.
+>
+> - **New API:** `window.Type.Valid`/`String` (`String` reuses `Info(t).Name`; the Lawrey,
+>   Burgess and Albrecht types, which have no metadata, get names like "Albrecht 4T", and
+>   unknown values give "Type(N)"). `core.PadReflect(dst, x, left, right) error` returns
+>   `ErrPadTooLong`, `ErrNegativePad`, `ErrShortBuffer` or `ErrOverlap`; it does not pad in
+>   place. `core.Overlaps`.
+>   `conv.CorrelateStridedInto(dst, x, h, start, stride) error` returns `ErrInvalidStride`, `ErrEmptyKernel` or `ErrAliasing`; an empty `x` gives
+>   zeros. Its in-range span is computed in `uint`, so `start = math.MinInt` cannot overflow.
+> - **Benchmark** (basic-pitch window, M5 Pro, 10 interleaved runs of the old and new test
+>   binaries): `ProcessInto` 3.82 → 3.79 ms (p=0.44), `ProcessInto32` 3.86 → 3.82 ms
+>   (p=0.53), 0 allocs/op before and after.
+> - **Coverage:** `dsp/core` 94.8%, `dsp/conv` 92.9%, `dsp/cqt` 98.9%.
+>
+> Deliberate residual gaps:
+>
+> 1. The cqt kernel correlation keeps its fused real+imaginary loop (`dot2`). Rebuilt on
+>    `CorrelateStridedInto` (one call each for the real and imaginary row of every filter,
+>    scattered into the frame-major output), the basic-pitch benchmark was 8–14% slower.
+>    Two `vecmath.DotProduct` calls per window were 10% slower. Both are over the 5% budget;
+>    the comment on `dot2` records this.
+> 2. `dsp/stft` keeps its per-frame mirroring. `FrameInto` must stay O(nfft) and
+>    zero-allocation for a generic `F`, and the stream reads from a ring buffer, so padding the
+>    whole signal with `core.PadReflect` does not fit either path. Comments on `fillFrame` and
+>    `emitFrame` say so.
+>
+> Behaviour change: `stft.WithWindow` now rejects unknown window types with
+> `ErrInvalidWindow`; it used to fall back to a rectangular window silently. The
+> `cqt`/`design` `WithWindow` errors now name the type ("unknown window type Type(99)").
 
 - [ ] 46.3 `generic-cqt` — Make `dsp/cqt` a generic constant-Q transform with reference presets, and align its API with `dsp/stft`. Generic defaults: every kernel sits at exactly the frequency `Frequencies()` reports, including when the bin count is not a whole number of octaves (build the full top-octave kernel set and crop, instead of nnAudio's shifted partial octave). Presets, following `melody.BassPreset`: `cqt.NNAudio() []Option` reproduces nnAudio `CQT2010v2` exactly, including its partial-octave kernel placement and zero-padding of octaves too short to reflect (a private option may carry each quirk); `cqt.BasicPitch() []Option` is `NNAudio()` plus basic-pitch's configuration (hop 256, fmin 27.5 Hz, 36 bins per octave, 309 bins, filter scale 1, L1 basis norm, periodic Hann, reflect padding, librosa normalization, magnitude output). Later options override a preset. Align naming with `dsp/stft` where the concepts match: `FrameCount`/`Bins` instead of `NumFrames`/`NumBins`, the same padding option name and enum style (check whether `stft.Padding` itself can be shared; if not, document the difference), and the same float32 approach as `stft` if that is reasonable for a float64-internal transform (otherwise keep `ProcessInto32` and say why). Document the frame-count convention next to stft's. Update `doc.go` (replace "Differences from nnAudio" with a section on presets and what each quirk does), all `Example`s (at least one generic and one `BasicPitch()`), and the CHANGELOG entry from 46.1 so it describes the released API. The golden tests run through the presets and must stay at their current tolerances; add tests that generic kernels are centred on `Frequencies()` for partial octaves and that each preset's quirk is active only in that preset. The API is unreleased, so rename freely; no deprecated aliases.
 
@@ -1571,8 +1607,9 @@ Exit criteria:
 
 - [x] `go test -race ./dsp/cqt ./dsp/filter/design` passes; the basic-pitch configuration matches
       the nnAudio golden vectors to ≤1e-5 relative; `ProcessInto` reports 0 allocs/op.
-- [ ] 46.2: `dsp/cqt` uses only public primitives for padding, decimation and strided
-      correlation; its existing tests pass unchanged at 0 allocs/op.
+- [x] 46.2: `dsp/cqt` uses only public primitives for padding, decimation and strided
+      correlation; its existing tests pass unchanged at 0 allocs/op. (The kernel correlation
+      keeps a fused loop, as 46.2 allows: the primitive was more than 5% slower.)
 - [ ] 46.3: generic defaults place kernels at `Frequencies()`; `BasicPitch()` and `NNAudio()`
       reproduce the 46.1 output to the 46.1 tolerances.
 - [ ] 46.4: no Python project or generated fixture remains for `dsp/cqt` and `design.Firwin2`.
