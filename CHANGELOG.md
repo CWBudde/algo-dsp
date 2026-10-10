@@ -29,6 +29,14 @@ All notable changes to this project are documented in this file.
   where metadata exists, names such as "Lawrey 5T" or "Albrecht 4T" for the
   types without metadata, and "Type(N)" for unknown values. `window.Generate`
   now documents that an unknown type is treated as rectangular (all ones).
+- `core.PadReflect(dst, x, left, right)`: zero-allocation reflect padding
+  matching numpy.pad / torch `F.pad` `mode="reflect"` (edge sample not
+  repeated: `[1 2 3 4]` padded by 2 → `[3 2 1 2 3 4 3 2]`). A pad that is not
+  shorter than the input returns `ErrPadTooLong`; negative pads, a short or
+  aliasing `dst` return `ErrNegativePad`, `ErrShortBuffer` and `ErrOverlap`.
+  This differs from the scipy-style reflect (edge repeated) that
+  `dsp/separate`'s median filters use. `core.Overlaps(a, b)` reports whether
+  two slices share an element (length-based, not capacity-based).
 
 ### Changed
 
