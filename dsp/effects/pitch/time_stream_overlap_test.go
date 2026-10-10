@@ -2,6 +2,7 @@ package pitch
 
 import (
 	"math"
+	"runtime"
 	"slices"
 	"testing"
 
@@ -240,10 +241,24 @@ func TestStreamingOverlapLegacyOutputAcrossPartitionsAndReset(t *testing.T) {
 			}
 
 			for i := range got {
-				if math.Float64bits(got[i]) != math.Float64bits(want[i]) {
+				// Bit identity holds on amd64. On arm64 the compiler fuses
+				// multiply-adds differently in the streaming and the legacy
+				// code paths and the rounding differences accumulate through
+				// the overlap search, so compare with a tight tolerance there.
+				if !nearlyEqual(got[i], want[i]) {
 					t.Fatalf("rate%g ratio%g partition%v frame%d got%.17g want%.17g", test.rate, test.ratio, partition, i, got[i], want[i])
 				}
 			}
 		}
 	}
+}
+
+// nearlyEqual is bit identity on amd64 and an absolute 1e-12 tolerance
+// elsewhere (arm64 FMA fusion; see the caller).
+func nearlyEqual(a, b float64) bool {
+	if runtime.GOARCH == "amd64" {
+		return math.Float64bits(a) == math.Float64bits(b)
+	}
+
+	return math.Abs(a-b) <= 1e-12
 }
