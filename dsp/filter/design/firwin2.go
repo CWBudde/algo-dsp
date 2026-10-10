@@ -61,11 +61,18 @@ func WithSampleRate(fs float64) Option {
 // symmetric form, window.Generate(t, numtaps, opts...), as scipy's
 // get_window(window, numtaps, fftbins=False) does; opts are passed through,
 // for example window.WithAlpha for the Kaiser beta. The default is Hamming.
-// A single-tap filter is never windowed, as in scipy.
+// A single-tap filter is never windowed, as in scipy. An unknown window type
+// is rejected with [ErrInvalidFirwin2].
 func WithWindow(t window.Type, opts ...window.Option) Option {
 	optsCopy := append([]window.Option(nil), opts...)
 
 	return func(c *firwin2Config) error {
+		// TypeFreeCosine is the last window.Type; window.Generate silently
+		// treats unknown types as rectangular, so reject them here.
+		if t < window.TypeRectangular || t > window.TypeFreeCosine {
+			return fmt.Errorf("%w: window type %d", ErrInvalidFirwin2, int(t))
+		}
+
 		c.noWindow = false
 		c.windowType = t
 		c.windowOpts = optsCopy

@@ -212,6 +212,14 @@ func TestFirwin2Validation(t *testing.T) {
 		{name: "type II nonzero Nyquist gain", numtaps: 10, freq: []float64{0, 0.5, 1}, gain: []float64{1, 1, 0.5}},
 		{name: "nil option", numtaps: 11, freq: lpFreq, gain: lpGain, opts: []design.Option{nil}},
 		{
+			name: "unknown window type", numtaps: 11, freq: lpFreq, gain: lpGain,
+			opts: []design.Option{design.WithWindow(window.TypeFreeCosine + 1)},
+		},
+		{
+			name: "negative window type", numtaps: 11, freq: lpFreq, gain: lpGain,
+			opts: []design.Option{design.WithWindow(window.Type(-1))},
+		},
+		{
 			name: "sample rate zero", numtaps: 11, freq: lpFreq, gain: lpGain,
 			opts: []design.Option{design.WithSampleRate(0)},
 		},
