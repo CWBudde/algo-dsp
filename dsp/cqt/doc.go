@@ -74,6 +74,15 @@
 //     does; configurations whose longest kernel has a single sample are
 //     rejected.
 //
+// nnAudio's handling of fewer bins than one octave is mirrored, although it
+// is arguably a bug: for bins < binsPerOctave nnAudio builds only bins
+// kernels but still starts them a full octave (minus one bin) below the top
+// bin, fmin*2^(bins/binsPerOctave-1). Kernel k is therefore centred on
+// fmin*2^((bins+k)/binsPerOctave-1), (binsPerOctave-bins)/binsPerOctave
+// octaves below [Transform.Frequencies]. nnAudio reports the nominal
+// frequencies too, and so does this package. Configurations with at least
+// one full octave are not affected.
+//
 // nnAudio's handling of short signals is mirrored: when an octave's signal is
 // not longer than nfft/2 samples, torch's reflection pad raises, nnAudio
 // catches that and zero pads the octave instead, and so does this package.

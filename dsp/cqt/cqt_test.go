@@ -3,6 +3,7 @@ package cqt
 import (
 	"errors"
 	"math"
+	"math/cmplx"
 	"slices"
 	"sync"
 	"testing"
@@ -262,8 +263,9 @@ func TestSingleSample(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(got) != 2*12 {
-		t.Fatalf("got %d values, want 24", len(got))
+	// One sample at hop 1 gives 1/1+1 = 2 frames of 12 magnitudes.
+	if tr.NumFrames(1) != 2 || len(got) != 2*12 {
+		t.Fatalf("got %d frames, %d values, want 2 frames, 24 values", tr.NumFrames(1), len(got))
 	}
 
 	c, err := New(8000, WithFMin(1000), WithBins(12), WithHopLength(1), WithEarlyDownsampling(false),
@@ -279,6 +281,41 @@ func TestSingleSample(t *testing.T) {
 
 	if !slices.Equal(got, want) {
 		t.Errorf("reflect fallback %v differs from constant padding %v", got, want)
+	}
+}
+
+// TestPartialOctaveKernels pins nnAudio's placement of the kernels when
+// bins < binsPerOctave: they start a full octave minus one bin below the top
+// bin, not at fmin, while Frequencies() reports the nominal centres.
+func TestPartialOctaveKernels(t *testing.T) {
+	t.Parallel()
+
+	const (
+		fs, fmin   = 8000.0, 1000.0
+		bins, bpo  = 3, 12
+		relTol     = 1e-12
+		wantFirstK = float64(bins)/bpo - 1 // log2(kernel 0 / fmin)
+	)
+
+	tr, err := New(fs, WithFMin(fmin), WithBins(bins), WithBinsPerOctave(bpo), WithEarlyDownsampling(false))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f := tr.Frequencies()[0]; f != fmin {
+		t.Errorf("Frequencies()[0] = %g, want %g", f, fmin)
+	}
+
+	for k, row := range tr.Kernels() {
+		// Adjacent kernel samples differ in phase by 2*pi*f/fs.
+		mid := len(row) / 2
+
+		got := cmplx.Phase(row[mid+1]/row[mid]) * fs / (2 * math.Pi)
+		want := fmin * math.Pow(2, wantFirstK+float64(k)/bpo)
+
+		if math.Abs(got-want) > relTol*want {
+			t.Errorf("kernel %d centred on %.9g Hz, want %.9g Hz", k, got, want)
+		}
 	}
 }
 

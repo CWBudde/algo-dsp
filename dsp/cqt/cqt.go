@@ -137,6 +137,12 @@ func build(sr float64, cfg config) (*Transform, error) {
 		fmaxT = fminT * math.Pow(2, float64(rem-1)/float64(bpo))
 	}
 
+	// nnAudio places fminT a full octave (minus one bin) below fmaxT even
+	// when nBins < bpo and only nFilters = nBins kernels are built. Those
+	// kernels then cover fmaxT/2^(1-1/bpo) upwards, so the single partial
+	// octave is analysed (bpo-nBins)/bpo octaves below Frequencies(). This
+	// is kept deliberately for nnAudio parity; see "Differences from
+	// nnAudio" in the package documentation.
 	fminT = fmaxT / math.Pow(2, 1-1/float64(bpo))
 
 	if fmaxT > sr/2 {
