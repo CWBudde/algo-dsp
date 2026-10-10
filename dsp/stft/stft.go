@@ -293,6 +293,13 @@ func (t *Transform[F, C]) checkFrame(n, frame int) error {
 
 // fillFrame writes the windowed, padded samples of frame into t.frame. The
 // frame must have been validated with checkFrame.
+//
+// The PadReflect branch mirrors only the nfft samples of this frame, fused
+// with the windowing, instead of using core.PadReflect: that helper pads a
+// whole float64 signal into a second buffer, which would cost O(len(x))
+// memory and time per FrameInto call (FrameInto must stay zero-allocation and
+// O(nfft)) and does not cover the float32 instantiation. The index mapping is
+// the same numpy/torch "reflect" convention, edge sample not repeated.
 func (t *Transform[F, C]) fillFrame(x []F, frame int) {
 	n := len(x)
 	buf, w := t.frame, t.window

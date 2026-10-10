@@ -122,6 +122,9 @@ func (s *AnalysisStream[F, C]) ready() bool {
 	return s.start()+int64(s.t.nfft) <= s.count
 }
 
+// emitFrame mirrors PadReflect positions per sample, as fillFrame does: the
+// samples live in a ring buffer, so core.PadReflect, which needs the whole
+// signal as one slice, does not apply.
 func (s *AnalysisStream[F, C]) emitFrame(emit func(int64, []C) error) error {
 	start := s.start()
 	for i := range s.t.frame {

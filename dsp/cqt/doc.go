@@ -93,7 +93,9 @@
 // # Performance and concurrency
 //
 // The kernels are stored by their non-zero support and evaluated as direct
-// dot products. [Transform.ProcessInto] and [Transform.ProcessInto32] grow
+// dot products, the real and imaginary parts in one fused pass. Octaves are
+// reflect-padded with [core.PadReflect] and decimated with
+// [conv.CorrelateStridedInto]. [Transform.ProcessInto] and [Transform.ProcessInto32] grow
 // their scratch buffers to the input length once and do not allocate after
 // that. A Transform is not safe for concurrent use; [Transform.Clone] returns
 // an independent Transform that shares the immutable kernels and filters.

@@ -46,6 +46,13 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- `dsp/cqt` pads its octaves with `core.PadReflect` and decimates them with
+  `conv.CorrelateStridedInto` instead of private copies; its output is
+  bit-identical. The kernel correlation keeps a fused real+imaginary loop,
+  because the strided primitive measured 8–14% slower on basic-pitch's
+  configuration. `cqt.WithWindow` and `design.WithWindow` check
+  `window.Type.Valid`, so their error messages now name the type
+  (`unknown window type Type(99)`).
 - `stft.WithWindow` now rejects unknown window types with `ErrInvalidWindow`
   (previously they silently produced a rectangular window).
 
