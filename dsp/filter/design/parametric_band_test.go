@@ -155,10 +155,14 @@ func TestParametricBandInvalidInputs(t *testing.T) {
 		kind              string
 		order             int
 	}{
-		{0, 1000, 6, 1, "peak", 4}, {48000, 24000, 6, 1, "peak", 4},
-		{48000, 1000, 25, 1, "peak", 4}, {48000, 1000, 6, math.NaN(), "peak", 4},
-		{48000, 1000, 6, 1, "unknown", 4}, {48000, 1000, 6, 1, "peak", 3},
-		{48000, 1000, 6, 1, "peak", 14}, {48000, 1000, 6, 1, "peak", 0},
+		{0, 1000, 6, 1, "peak", 4},
+		{48000, 24000, 6, 1, "peak", 4},
+		{48000, 1000, 25, 1, "peak", 4},
+		{48000, 1000, 6, math.NaN(), "peak", 4},
+		{48000, 1000, 6, 1, "unknown", 4},
+		{48000, 1000, 6, 1, "peak", 3},
+		{48000, 1000, 6, 1, "peak", 14},
+		{48000, 1000, 6, 1, "peak", 0},
 	} {
 		if _, err := ParametricBand(tc.rate, tc.hz, tc.gain, tc.q, tc.kind, tc.order); err == nil {
 			t.Fatalf("accepted %+v", tc)

@@ -32,9 +32,12 @@ func TestButterworthPeakInvalidParameters(t *testing.T) {
 		rate, hz, width, gain float64
 		order                 int
 	}{
-		{0, 1000, 500, 6, 4}, {48000, 24000, 500, 6, 4},
-		{48000, 1000, 2000, 6, 4}, {48000, 1000, 500, math.NaN(), 4},
-		{48000, 1000, 500, 6, 3}, {48000, 1000, 500, 6, 34},
+		{0, 1000, 500, 6, 4},
+		{48000, 24000, 500, 6, 4},
+		{48000, 1000, 2000, 6, 4},
+		{48000, 1000, 500, math.NaN(), 4},
+		{48000, 1000, 500, 6, 3},
+		{48000, 1000, 500, 6, 34},
 		{48000, 1000, 500, 49, 4},
 	} {
 		if _, err := ButterworthPeak(tc.rate, tc.hz, tc.width, tc.gain, tc.order); err == nil {

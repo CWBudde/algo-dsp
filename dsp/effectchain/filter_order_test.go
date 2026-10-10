@@ -137,8 +137,13 @@ func TestFilterFamilyOrderCaps(t *testing.T) {
 		family      string
 		order, want int
 	}{
-		{"butterworth", 20, 20}, {"chebyshev1", 20, 20}, {"chebyshev2", 20, 20},
-		{"butterworth", 30, 20}, {"bessel", 20, 10}, {"elliptic", 20, 12}, {"rbj", 20, 1},
+		{"butterworth", 20, 20},
+		{"chebyshev1", 20, 20},
+		{"chebyshev2", 20, 20},
+		{"butterworth", 30, 20},
+		{"bessel", 20, 10},
+		{"elliptic", 20, 12},
+		{"rbj", 20, 1},
 	} {
 		if got := (BuiltInFilterDesigner{}).NormalizeOrder("lowpass", tc.family, tc.order); got != tc.want {
 			t.Errorf("%s order %d: got %d, want %d", tc.family, tc.order, got, tc.want)
