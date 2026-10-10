@@ -62,10 +62,18 @@ func defaultConfig() config {
 // generated in its periodic form, window.Generate(t, nfft,
 // window.WithPeriodic(), opts...); opts are passed through, for example
 // window.WithAlpha for Kaiser or Tukey. The default is a periodic Hann window.
+// An unknown window type (see [window.Type.Valid]) is rejected with
+// [ErrInvalidWindow].
 func WithWindow(t window.Type, opts ...window.Option) Option {
 	optsCopy := append([]window.Option(nil), opts...)
 
 	return func(cfg *config) error {
+		// window.Generate silently treats unknown types as rectangular, so
+		// reject them here.
+		if !t.Valid() {
+			return fmt.Errorf("%w: unknown window type %v", ErrInvalidWindow, t)
+		}
+
 		cfg.windowType = t
 		cfg.windowOpts = optsCopy
 		cfg.customWindow = nil

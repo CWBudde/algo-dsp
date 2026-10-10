@@ -1,6 +1,9 @@
 package window
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 var metadataByType = map[Type]Metadata{
 	TypeRectangular: {
@@ -136,4 +139,38 @@ var metadataByType = map[Type]Metadata{
 		CoherentGain:        math.NaN(),
 		CoherentGainSquared: math.NaN(),
 	},
+}
+
+// namesWithoutMetadata names the valid types that have no entry in
+// metadataByType.
+var namesWithoutMetadata = map[Type]string{
+	TypeLawrey5Term:          "Lawrey 5T",
+	TypeLawrey6Term:          "Lawrey 6T",
+	TypeBurgessOptimized59dB: "Burgess Optimized 59dB",
+	TypeBurgessOptimized71dB: "Burgess Optimized 71dB",
+	TypeAlbrecht2Term:        "Albrecht 2T",
+	TypeAlbrecht3Term:        "Albrecht 3T",
+	TypeAlbrecht4Term:        "Albrecht 4T",
+	TypeAlbrecht5Term:        "Albrecht 5T",
+	TypeAlbrecht6Term:        "Albrecht 6T",
+	TypeAlbrecht7Term:        "Albrecht 7T",
+	TypeAlbrecht8Term:        "Albrecht 8T",
+	TypeAlbrecht9Term:        "Albrecht 9T",
+	TypeAlbrecht10Term:       "Albrecht 10T",
+	TypeAlbrecht11Term:       "Albrecht 11T",
+}
+
+// String returns the display name of the window type, the same as
+// Info(t).Name where Info has one, for example "Hann" or
+// "Blackman-Harris 4T". Unknown types are formatted as "Type(N)".
+func (t Type) String() string {
+	if m, ok := metadataByType[t]; ok {
+		return m.Name
+	}
+
+	if name, ok := namesWithoutMetadata[t]; ok {
+		return name
+	}
+
+	return fmt.Sprintf("Type(%d)", int(t))
 }

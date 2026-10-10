@@ -23,3 +23,19 @@ func ExampleInfo() {
 	// Output:
 	// Hann 1.5
 }
+
+func ExampleType_String() {
+	fmt.Println(TypeHann)
+	fmt.Println(TypeAlbrecht4Term)
+	fmt.Println(Type(99))
+	// Output:
+	// Hann
+	// Albrecht 4T
+	// Type(99)
+}
+
+func ExampleType_Valid() {
+	fmt.Println(TypeKaiser.Valid(), Type(99).Valid())
+	// Output:
+	// true false
+}

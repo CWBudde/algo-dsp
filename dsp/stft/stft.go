@@ -18,8 +18,9 @@ var (
 	ErrNilOption = errors.New("stft: nil option")
 	// ErrInvalidPadding reports an unknown [Padding] value.
 	ErrInvalidPadding = errors.New("stft: invalid padding")
-	// ErrInvalidWindow reports a window of the wrong length, with
-	// non-finite coefficients, or with all coefficients zero.
+	// ErrInvalidWindow reports an unknown window type, or a window of the
+	// wrong length, with non-finite coefficients, or with all coefficients
+	// zero.
 	ErrInvalidWindow = errors.New("stft: invalid window")
 	// ErrShortDst reports a destination slice shorter than required.
 	ErrShortDst = errors.New("stft: destination too short")

@@ -509,6 +509,8 @@ func TestNewErrors(t *testing.T) {
 		{"custom window NaN", 4, 1, []stft.Option{stft.WithCustomWindow([]float64{1, math.NaN(), 1, 1})}, stft.ErrInvalidWindow},
 		{"custom window zeros", 4, 1, []stft.Option{stft.WithCustomWindow(make([]float64, 4))}, stft.ErrInvalidWindow},
 		{"window all zero", 64, 16, []stft.Option{stft.WithWindow(window.TypeRectangular, window.WithInvert())}, stft.ErrInvalidWindow},
+		{"window type negative", 256, 64, []stft.Option{stft.WithWindow(window.Type(-1))}, stft.ErrInvalidWindow},
+		{"window type unknown", 256, 64, []stft.Option{stft.WithWindow(window.Type(999))}, stft.ErrInvalidWindow},
 	}
 
 	for _, tc := range tests {

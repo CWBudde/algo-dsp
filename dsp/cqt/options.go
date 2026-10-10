@@ -239,15 +239,16 @@ func WithFilterScale(s float64) Option {
 //
 // nnAudio's CQT2010v2 accepts a window argument but never forwards it to its
 // kernel builder, so nnAudio (and basic-pitch) always use Hann. This package
-// honours the selected window.
+// honours the selected window. An unknown window type (see
+// [window.Type.Valid]) is rejected with [ErrInvalidOption].
 func WithWindow(t window.Type, opts ...window.Option) Option {
 	optsCopy := append([]window.Option(nil), opts...)
 
 	return func(cfg *config) error {
-		// TypeFreeCosine is the last window.Type; window.Generate silently
-		// treats unknown types as rectangular, so reject them here.
-		if t < window.TypeRectangular || t > window.TypeFreeCosine {
-			return fmt.Errorf("%w: window type %d", ErrInvalidOption, int(t))
+		// window.Generate silently treats unknown types as rectangular, so
+		// reject them here.
+		if !t.Valid() {
+			return fmt.Errorf("%w: unknown window type %v", ErrInvalidOption, t)
 		}
 
 		cfg.windowType = t

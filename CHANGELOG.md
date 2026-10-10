@@ -24,6 +24,16 @@ All notable changes to this project are documented in this file.
   design with `scipy.signal.firwin2` parity (default `nfreqs`, Hamming window,
   `WithNFreqs`, `WithSampleRate`, `WithWindow`, `WithoutWindow`). The
   antisymmetric types III and IV are not supported yet.
+- `window.Type.Valid` reports whether a value is one of the declared window
+  types, and `window.Type.String` returns its display name: `Info(t).Name`
+  where metadata exists, names such as "Lawrey 5T" or "Albrecht 4T" for the
+  types without metadata, and "Type(N)" for unknown values. `window.Generate`
+  now documents that an unknown type is treated as rectangular (all ones).
+
+### Changed
+
+- `stft.WithWindow` now rejects unknown window types with `ErrInvalidWindow`
+  (previously they silently produced a rectangular window).
 
 ## [v0.12.4] - 2026-10-07
 
