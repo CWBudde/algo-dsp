@@ -3,6 +3,7 @@ package cqt
 import (
 	"fmt"
 	"math"
+	"unsafe"
 
 	"github.com/cwbudde/algo-vecmath"
 )
@@ -99,9 +100,35 @@ func (t *Transform) Process(x []float64) ([]float64, error) {
 //
 // ProcessInto returns [ErrSignalTooShort] if NumFrames(len(x)) is 0 and
 // [ErrShortDst] if dst is too short. It does not allocate once its scratch
-// buffers have grown to the input length.
+// buffers have grown to the input length. dst may overlap x; x is then read
+// from a copy, because the lower octaves are decimated from x after the top
+// octave's results have been written.
 func (t *Transform) ProcessInto(dst, x []float64) error {
+	if overlaps(dst, x) {
+		err := t.checkLengths(len(dst), len(x))
+		if err != nil {
+			return err
+		}
+
+		t.in64 = grow(t.in64, len(x))
+		copy(t.in64, x)
+		x = t.in64
+	}
+
 	return process(t, dst, x)
+}
+
+// overlaps reports whether a and b share any element.
+func overlaps(a, b []float64) bool {
+	if len(a) == 0 || len(b) == 0 {
+		return false
+	}
+
+	a0 := uintptr(unsafe.Pointer(unsafe.SliceData(a)))
+	b0 := uintptr(unsafe.Pointer(unsafe.SliceData(b)))
+	size := unsafe.Sizeof(a[0])
+
+	return a0 < b0+uintptr(len(b))*size && b0 < a0+uintptr(len(a))*size
 }
 
 // ProcessInto32 is [Transform.ProcessInto] for float32 input and output. The

@@ -363,6 +363,52 @@ func TestShortDst(t *testing.T) {
 	}
 }
 
+// TestOverlappingBuffers checks that ProcessInto reads x before any output
+// can overwrite it when dst and x share memory. Without early downsampling
+// (basic-pitch's configuration) the lower octaves are decimated from x itself
+// after the top octave has been written to dst.
+func TestOverlappingBuffers(t *testing.T) {
+	t.Parallel()
+
+	for _, out := range []Output{OutputMagnitude, OutputComplex} {
+		tr, err := New(22050, append(basicPitchOptions(), WithOutput(out))...)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if tr.DownsampleFactor() != 1 {
+			t.Fatalf("early downsampling factor %d, want 1 for this test", tr.DownsampleFactor())
+		}
+
+		x := sine(8192, 440, 22050)
+		need := tr.OutputLen(len(x))
+
+		want, err := tr.Process(x)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, offset := range []int{0, 1, need / 2, need - 1} {
+			buf := make([]float64, offset+max(need, len(x))+need)
+			in := buf[offset : offset+len(x)]
+			copy(in, x)
+
+			for _, dst := range [][]float64{buf[:need], buf[offset+len(x)-1 : offset+len(x)-1+need]} {
+				copy(in, x)
+
+				err := tr.ProcessInto(dst, in)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if !slices.Equal(dst, want) {
+					t.Fatalf("%v, offset %d: output differs from non-overlapping ProcessInto", out, offset)
+				}
+			}
+		}
+	}
+}
+
 func TestAccessorsReturnCopies(t *testing.T) {
 	t.Parallel()
 
