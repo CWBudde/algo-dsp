@@ -40,6 +40,8 @@ var (
 	ErrEmptyKernel      = errors.New("conv: empty kernel")
 	ErrLengthMismatch   = errors.New("conv: buffer length mismatch")
 	ErrInvalidBlockSize = errors.New("conv: invalid block size")
+	ErrInvalidStride    = errors.New("conv: invalid stride")
+	ErrAliasing         = errors.New("conv: dst overlaps an input")
 )
 
 // Mode specifies the output mode for convolution and correlation.

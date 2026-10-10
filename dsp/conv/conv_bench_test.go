@@ -175,6 +175,22 @@ func BenchmarkCorrelate(b *testing.B) {
 	}
 }
 
+// Benchmark strided cross-correlation (a CQT-style decimation: 256 taps,
+// stride 2, centred zero padding).
+func BenchmarkCorrelateStridedInto(b *testing.B) {
+	signal := makeTestSignal(43844)
+	kernel := makeTestKernel(256)
+	start := -(len(kernel) - 1) / 2
+	dst := make([]float64, (len(signal)-2*start-len(kernel))/2+1)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = CorrelateStridedInto(dst, signal, kernel, start, 2)
+	}
+}
+
 // Benchmark auto-correlation.
 func BenchmarkAutoCorrelate(b *testing.B) {
 	sizes := []int{256, 1024, 4096}

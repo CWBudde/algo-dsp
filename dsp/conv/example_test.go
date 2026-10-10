@@ -101,6 +101,27 @@ func ExampleCorrelate() {
 	// Peak at index 7 (lag 3) with value 19.00
 }
 
+func ExampleCorrelateStridedInto() {
+	// Smooth and decimate by 2 in one pass, like torch conv1d with
+	// stride=2 and padding=1: start=-1 reads one implicit zero on the left.
+	x := []float64{1, 2, 3, 4, 5, 6, 7, 8}
+	h := []float64{1, 2, 1}
+	stride, padding := 2, 1
+
+	dst := make([]float64, (len(x)+2*padding-len(h))/stride+1)
+
+	err := conv.CorrelateStridedInto(dst, x, h, -padding, stride)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(dst)
+
+	// Output:
+	// [4 12 20 28]
+}
+
 func ExampleAutoCorrelate() {
 	// Compute auto-correlation of a periodic signal
 	n := 100

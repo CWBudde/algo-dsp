@@ -37,6 +37,12 @@ All notable changes to this project are documented in this file.
   This differs from the scipy-style reflect (edge repeated) that
   `dsp/separate`'s median filters use. `core.Overlaps(a, b)` reports whether
   two slices share an element (length-based, not capacity-based).
+- `conv.CorrelateStridedInto(dst, x, h, start, stride)`: zero-allocation
+  strided cross-correlation, `dst[i] = Σ h[k]·x[start+i·stride+k]`, with
+  samples outside `x` taken as zero. It equals torch
+  `conv1d(x, h, stride=s, padding=p)` for `start = -p`. A stride below 1
+  returns `ErrInvalidStride`, a `dst` that overlaps `x` or `h` returns
+  `ErrAliasing`, an empty kernel returns `ErrEmptyKernel`.
 
 ### Changed
 
