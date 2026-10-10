@@ -186,6 +186,17 @@ Note: motif allocations scale with the number of candidate clusters, not with th
 of compared pairs. These are offline analysis passes, so they are not in the regression
 guard's package list.
 
+### `dsp/cqt` (Phase 46)
+
+Command: `go test -bench=. -benchmem -run=^$ ./dsp/cqt ./dsp/filter/design` (Apple M5 Pro,
+machine under load, so expect lower numbers on an idle one). Input: one basic-pitch window,
+43844 samples at 22050 Hz, giving 172 frames × 309 bins over 9 octaves.
+
+- `BenchmarkProcessIntoBasicPitch`: `6065937 ns/op`, `0 allocs/op`
+- `BenchmarkProcessInto32BasicPitch`: `5844125 ns/op`, `0 allocs/op`
+- `BenchmarkNewBasicPitch`: `243699 ns/op`, `166 allocs/op`
+- `BenchmarkFirwin2` (256 taps): `78701 ns/op`, `9 allocs/op`
+
 ## SIMD vs Scalar (internal/vecmath, n=4096)
 
 Command:

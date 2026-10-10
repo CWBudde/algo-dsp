@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- New package `dsp/cqt`: a multi-rate constant-Q transform compatible with
+  nnAudio `CQT2010v2`, the front end of spotify/basic-pitch. A single set of
+  top-octave kernels is applied per octave as a strided convolution while the
+  signal is low-passed and decimated by 2, with nnAudio's early downsampling,
+  basis norms (L1, L2, none), reflect/constant padding, `librosa`,
+  `convolutional` and `wrap` normalization, and magnitude or complex output.
+  `New(sampleRate, opts...)`, `Process`, zero-allocation `ProcessInto` and
+  `ProcessInto32`, `NumFrames`, `Frequencies`, `Lengths`, `Kernels`, `Lowpass`
+  and `Clone`. Output is frame-major (frames × bins). Golden tests against
+  nnAudio 0.3.4 cover eight configurations. basic-pitch's configuration
+  (22050 Hz, hop 256, 27.5 Hz, 36 bins per octave, 309 bins) matches nnAudio
+  as shipped (float32) to within 1e-5 of each bin's peak. Unlike nnAudio, which
+  ignores its `window` argument, `WithWindow` is honoured. Hop lengths the
+  octaves cannot share are rejected instead of failing inside the transform.
+- `design.Firwin2(numtaps, freq, gain, opts...)`: frequency-sampling FIR
+  design with `scipy.signal.firwin2` parity (default `nfreqs`, Hamming window,
+  `WithNFreqs`, `WithSampleRate`, `WithWindow`, `WithoutWindow`). The
+  antisymmetric types III and IV are not supported yet.
+
 ## [v0.12.4] - 2026-10-07
 
 - Dynamic EQ defaults to three peak bands at 120 Hz, 1 kHz and 8 kHz, with
