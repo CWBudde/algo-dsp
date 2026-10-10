@@ -1,0 +1,15 @@
+[project]
+name = "algo-dsp-cqt-fixtures"
+version = "0.1.0"
+description = "Golden-vector generator for dsp/cqt and design.Firwin2 (not part of the Go build)"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "nnAudio==0.3.4",
+    "torch==2.14.1",
+    "scipy==1.18.1",
+    "librosa==1.0.0",
+    "numpy==2.5.3",
+]
+
+[tool.uv]
+package = false

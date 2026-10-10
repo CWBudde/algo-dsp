@@ -1501,11 +1501,60 @@ basic-pitch, whose front end is an nnAudio `CQT2010v2` constant-Q transform (see
 log, harmonic stacking, the CNN) stay in algo-transcribe. After this phase merges, tag a minor
 release so algo-transcribe can depend on it.
 
-- [ ] 46.1 `cqt` — Add package `dsp/cqt`, a multi-rate constant-Q transform compatible with nnAudio `CQT2010v2` (as ported in spotify/basic-pitch `basic_pitch/layers/nnaudio.py`, which is the reference to read line by line) and librosa normalization. Structure: one complex kernel set for the top octave placed in an `n_fft` frame (kernel length `ceil(Q*sr/f)` with `Q = filter_scale/(2^(1/bins_per_octave)-1)`, periodic window times complex exponential, divided by the length, then basis-normalized), applied per octave as a strided VALID convolution with stride equal to the current hop after padding by `n_fft/2`, with the hop halving per octave and the signal low-passed and decimated by 2 between octaves; octaves concatenated lowest-first and cropped to `n_bins`. Options: sample rate, hop length, fmin, n_bins, bins per octave, filter scale, window (via `dsp/window`, periodic), basis norm (L1, L2, none), padding (reflect, constant), early downsampling (implemented as nnAudio does, even though basic-pitch's configuration makes it a no-op), normalization (`librosa` multiplies by sqrt of the kernel length, `convolutional`, `wrap`), and output (magnitude, complex). API: `New(sampleRate float64, opts ...Option) (*Transform, error)`, `Process(x []float64)`, zero-allocation `ProcessInto` with `float32` and `float64` variants, `NumFrames(n int)`, `Frequencies()`, `Lengths()`, `Kernels()` and `Lowpass()` for inspection and cross-checks, and `Clone()`. Also add a public `design.Firwin2(numtaps int, freq, gain []float64, opts ...Option) ([]float64, error)` in `dsp/filter/design` with `scipy.signal.firwin2` parity (default `nfreqs`, Hamming window by default, window option; reject antisymmetric types for now) and use it for the CQT's anti-alias low-pass `firwin2(256, [0, 0.5/1.001, 0.5*1.001, 1], [1, 1, 0, 0])`. Tests: golden vectors from a pinned `uv` project in `scripts/fixtures/cqt/` (nnAudio, scipy, librosa, torch pinned exactly; fixtures committed, Go tests never run Python) covering the firwin2 cases, the kernels and full transforms for several configurations including basic-pitch's (22050 Hz, hop 256, fmin 27.5, 36 bins per octave, 309 bins, filter scale 1, L1, periodic Hann, reflect, librosa normalization) on a deterministic chirp-plus-noise signal of 43844 samples, matching to ≤1e-5 relative; table-driven option validation; zero allocations in `ProcessInto`; benchmarks for the basic-pitch configuration; runnable `Example`s; a CHANGELOG entry under Unreleased.
+- [x] 46.1 `cqt` — Add package `dsp/cqt`, a multi-rate constant-Q transform compatible with nnAudio `CQT2010v2` (as ported in spotify/basic-pitch `basic_pitch/layers/nnaudio.py`, which is the reference to read line by line) and librosa normalization. Structure: one complex kernel set for the top octave placed in an `n_fft` frame (kernel length `ceil(Q*sr/f)` with `Q = filter_scale/(2^(1/bins_per_octave)-1)`, periodic window times complex exponential, divided by the length, then basis-normalized), applied per octave as a strided VALID convolution with stride equal to the current hop after padding by `n_fft/2`, with the hop halving per octave and the signal low-passed and decimated by 2 between octaves; octaves concatenated lowest-first and cropped to `n_bins`. Options: sample rate, hop length, fmin, n_bins, bins per octave, filter scale, window (via `dsp/window`, periodic), basis norm (L1, L2, none), padding (reflect, constant), early downsampling (implemented as nnAudio does, even though basic-pitch's configuration makes it a no-op), normalization (`librosa` multiplies by sqrt of the kernel length, `convolutional`, `wrap`), and output (magnitude, complex). API: `New(sampleRate float64, opts ...Option) (*Transform, error)`, `Process(x []float64)`, zero-allocation `ProcessInto` with `float32` and `float64` variants, `NumFrames(n int)`, `Frequencies()`, `Lengths()`, `Kernels()` and `Lowpass()` for inspection and cross-checks, and `Clone()`. Also add a public `design.Firwin2(numtaps int, freq, gain []float64, opts ...Option) ([]float64, error)` in `dsp/filter/design` with `scipy.signal.firwin2` parity (default `nfreqs`, Hamming window by default, window option; reject antisymmetric types for now) and use it for the CQT's anti-alias low-pass `firwin2(256, [0, 0.5/1.001, 0.5*1.001, 1], [1, 1, 0, 0])`. Tests: golden vectors from a pinned `uv` project in `scripts/fixtures/cqt/` (nnAudio, scipy, librosa, torch pinned exactly; fixtures committed, Go tests never run Python) covering the firwin2 cases, the kernels and full transforms for several configurations including basic-pitch's (22050 Hz, hop 256, fmin 27.5, 36 bins per octave, 309 bins, filter scale 1, L1, periodic Hann, reflect, librosa normalization) on a deterministic chirp-plus-noise signal of 43844 samples, matching to ≤1e-5 relative; table-driven option validation; zero allocations in `ProcessInto`; benchmarks for the basic-pitch configuration; runnable `Example`s; a CHANGELOG entry under Unreleased.
+
+> Outcome notes (46.1): `dsp/cqt` and `design.Firwin2` are in place. The golden vectors come
+> from `scripts/fixtures/cqt` (uv; nnAudio 0.3.4, torch 2.14.1, scipy 1.18.1, librosa 1.0.0,
+> numpy 2.5.3; regenerates byte-identically). They cover 17 firwin2 cases and 8 CQT
+> configurations:
+>
+> - basic-pitch's configuration, at full length and on a short signal;
+> - nnAudio's defaults;
+> - early downsampling by 8, both with and without it enabled;
+> - constant padding with L2 kernels, convolutional normalization and complex output;
+> - Hamming kernels with no basis norm and wrap normalization;
+> - Blackman kernels.
+>
+> Each configuration is run twice: through nnAudio's own code in float64, and through nnAudio
+> as shipped in float32. Errors are measured per bin, relative to that bin's peak:
+>
+> - **Float64 reference:** the Go transform matches within 1.3e-13 (limit 1e-12).
+> - **Float32 reference:** basic-pitch's configuration matches within 1.3e-6 (limit 1e-5). That
+>   difference is entirely nnAudio's own float32 rounding.
+> - **Firwin2:** matches scipy within 2.2e-16.
+>
+> On one basic-pitch window, `ProcessInto` and `ProcessInto32` make 0 allocs and take about
+> 6 ms on a loaded M5 Pro. Coverage is 99% for `dsp/cqt` and 100% for `firwin2.go`.
+>
+> Discoveries:
+>
+> 1. nnAudio's `CQT2010v2`, and basic-pitch's port of it, never forward `window` to
+>    `create_cqt_kernels`, so they are always Hann. Here `WithWindow` is honoured. The fixtures
+>    for other windows rebuild the kernels with nnAudio's own builder.
+> 2. When an octave is no longer than `n_fft/2` samples, torch's reflection pad raises and
+>    nnAudio silently zero-pads that octave instead. This is mirrored and has its own fixture.
+> 3. `scipy.get_window` returns `[1]` for length 1, but `dsp/window` evaluates the window at its
+>    edge, so Hamming(1) gives 0.08. Firwin2 and the kernels special-case this.
+> 4. `dsp/window`'s Kaiser window uses the Abramowitz–Stegun polynomial for I0, with about
+>    1e-7 relative accuracy. A Kaiser-windowed firwin2 therefore matches scipy only to
+>    1.5e-10. That is a known limitation of `dsp/window`, left unchanged here.
+> 5. `librosa.cqt` differs from nnAudio by 32% (relative Frobenius norm), because it is a
+>    different algorithm. Its level still agrees: the median ratio is 1.001, and that ratio is
+>    what the test checks.
+>
+> Deliberate deviations from nnAudio:
+>
+> - Computation is float64 throughout.
+> - Output is frame-major (frames × bins).
+> - `New` rejects hops that are not divisible by 2^(octaves−1) after early downsampling. For
+>   those hops nnAudio's octaves disagree on the frame count and `torch.cat` fails.
+> - `New` rejects single-sample kernel frames.
+>
+> Firwin2 rejects the antisymmetric types III and IV, as planned.
 
 Exit criteria:
 
-- [ ] `go test -race ./dsp/cqt ./dsp/filter/design` passes; the basic-pitch configuration matches
+- [x] `go test -race ./dsp/cqt ./dsp/filter/design` passes; the basic-pitch configuration matches
       the nnAudio golden vectors to ≤1e-5 relative; `ProcessInto` reports 0 allocs/op.
 - [ ] A release is tagged with `just tag-release` and algo-transcribe consumes it.
 

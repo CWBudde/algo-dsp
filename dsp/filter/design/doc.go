@@ -1,4 +1,5 @@
-// Package design provides digital IIR filter coefficient designers.
+// Package design provides digital IIR filter coefficient designers and an FIR
+// frequency-sampling designer.
 //
 // The functions in this package produce biquad coefficients consumable by
 // dsp/filter/biquad for runtime processing. It includes both RBJ-style
@@ -9,6 +10,13 @@
 //
 // The sub-package design/band provides high-order graphic EQ band designers
 // (Butterworth, Chebyshev, Elliptic) returning cascaded biquad sections.
+//
+// The package also has one FIR designer: [Firwin2] designs a linear-phase FIR
+// filter from a piecewise-linear magnitude response by the windowed
+// frequency-sampling method. It matches scipy.signal.firwin2 (verified against
+// golden vectors from scipy) and, unlike the biquad designers below, returns
+// an explicit error wrapping [ErrInvalidFirwin2] for parameters it cannot
+// design for.
 //
 // # Undesignable filters are transparent, not silent
 //
