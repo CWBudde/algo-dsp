@@ -13,12 +13,15 @@ func ExampleNew() {
 
 	// Print the magnitude response at key frequencies.
 	for _, freq := range []float64{100, 1000, 4000, 10000} {
-		dB := chain.MagnitudeDB(freq, 48000)
+		// Round first and add +0 so a response of ±1e-15 dB prints as +0.0 on
+		// every architecture (arm64 fuses multiply-adds and lands on the other
+		// side of zero).
+		dB := math.Round(chain.MagnitudeDB(freq, 48000)*10)/10 + 0
 		fmt.Printf("%6.0f Hz: %+.1f dB\n", freq, dB)
 	}
 	// Output:
 	//    100 Hz: -19.2 dB
-	//   1000 Hz: -0.0 dB
+	//   1000 Hz: +0.0 dB
 	//   4000 Hz: +1.3 dB
 	//  10000 Hz: -1.9 dB
 }

@@ -20,5 +20,6 @@ func processBlock(c registry.Coefficients, d0, d1 float64, buf []float64) (newD0
 	if len(buf) == 0 {
 		return d0, d1
 	}
+
 	return processBlockNEON(buf, c.B0, c.B1, c.B2, c.A1, c.A2, d0, d1)
 }

@@ -169,7 +169,8 @@ func ExampleAccumulator() {
 	a, _ := NewAccumulator(4)
 	_ = a.Add32([]float32{.5, -.5, .5, -.5})
 	r := a.Result()
-	fmt.Printf("peak %.1f RMS %.1f DC %.1f crossings %d\n", r.Peak, r.RMS, r.DC, r.ZeroCrossings)
+	// Adding +0 turns a -0 DC (arm64 fuses the mean's multiply-add) into +0.
+	fmt.Printf("peak %.1f RMS %.1f DC %.1f crossings %d\n", r.Peak, r.RMS, math.Round(r.DC*10)/10+0, r.ZeroCrossings)
 	// Output: peak 0.5 RMS 0.5 DC 0.0 crossings 3
 }
 
