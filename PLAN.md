@@ -1648,7 +1648,88 @@ bounded-work stepper for per-step time budgets follows as a later item.
 
 - [ ] 46.4 `go-only-tests` — Replace the Python-generated golden data of `dsp/cqt` and `design.Firwin2` with Go-only tests, and delete `scripts/fixtures/cqt/`, `dsp/cqt/testdata/` and `dsp/filter/design/testdata/firwin2.json.gz`. Python is not run again: values that stay pinned are extracted once from the committed fixtures before they are deleted, and each pinned block carries a provenance comment (tool, version and call, for example scipy 1.18.1 `firwin2(6, [0, 0.5, 1], [0, 1, 0])` or nnAudio 0.3.4 float64), as `dsp/filter/weighting` does for IEC 61672. Firwin2: keep scipy's behaviour pinned with inline tap values for `type2_ramp`, `one_tap`, `two_taps`, `nfreqs_odd_len`, `step_repeated_freq`, `window_none`, `type1_multiband` and the 256-tap nnAudio low-pass (store symmetric taps once); check the broad cases against an independent Go reference (inverse real FFT via algo-fft, or the closed-form cosine series) to 1e-14; keep the existing property and validation tests. CQT: generate the test signal in Go (chirp, two tones, seeded noise; deterministic) and use two references of different strength. The exact oracle is a naive multirate reference written in the test with plain loops and none of the production primitives (`conv`, `vecmath`, `core` padding): it reproduces every stage (padding, the same `Firwin2` low-pass and decimation by 2 per octave, direct per-octave kernel correlation at the decimated rate, normalization) and must match `ProcessInto` to 1e-12 relative. A full-rate direct CQT (same kernels, no decimation) is not an oracle, because the multirate path also carries the low-pass passband ripple and residual aliasing in the lower octaves; use it only for property checks on pure tones placed well inside the passband (same peak bin, magnitude within a bound derived from the low-pass passband ripple and stated in the test comment), never as an elementwise comparison; pin about 50 nnAudio values per preset (`NNAudio()`, `BasicPitch()`) from the fixtures, covering kernels, the low-pass, a few output bins per configuration, the partial-octave placement and the short-signal fallback; keep the property tests (sine peak bin, linearity, scaling, zero allocations, NaN propagation). Remove the librosa level test or replace it with a Go-checked property of the same intent. Update the package docs, README, AGENTS.md and PLAN.md wherever they mention the fixtures, and record in the outcome notes what precision was given up (the 1e-13 match against nnAudio across eight configurations; bit-level basic-pitch parity is checked downstream in algo-transcribe against basic-pitch's own CQT output). Exit check: `git ls-files | grep -E '\.py$|uv\.lock|pyproject'` lists only `scripts/extract_irs.py`, and `dsp/cqt` coverage stays at about 99%.
 
-- [ ] 46.5 `cqt-music` — Feed the CQT into the music analysis packages. Add package `measure/music/chroma`: per-frame 12-bin chroma from a `dsp/cqt` transform whose bins per octave are a multiple of 12, folding bins to pitch classes with `pitch.FrequencyToMIDI` (`dsp/effects/pitch/note.go`), with options for the tuning reference (A4 Hz, default 440), the bin range (minimum/maximum frequency), the CQT configuration and the per-frame normalization (max, L1, L2, none); return `[12][]float64` plus the frame rate, which `harmony.Windows` takes directly. The other consumers need a different shape, so add the conversions next to it: an aggregate over a frame range (for example `chroma.Profile(c [12][]float64, start, end int) [12]float64`, the mean per pitch class) that feeds `harmony.EstimateKey`, and beat pooling (for example `chroma.BeatSync(c [12][]float64, frameRate float64, grid rhythm.Grid, beats int) [][12]float64`, the mean of the frames inside each beat from `grid.Origin()` in steps of `grid.BeatSeconds()`, zero for beats without frames) that feeds `motif.FindChromaMotifs`, whose transposition search stays inside motif. In `measure/music/melody`, add an option that takes salience and chroma from the CQT instead of the STFT (harmonic summation on the CQT grid); the defaults stay unchanged so the AudioVisualizer bit-parity tests keep passing untouched. Optionally add a CQT log-spectrogram to `measure/music/features` if it fits the existing `LogSpectrogram` shape cleanly; otherwise note why not. Tests: pitch classes of synthetic chords (triads in several keys and octaves), key estimation of synthetic C-major and A-minor cadences through chroma → `Profile` → `harmony.EstimateKey`, a repeated synthetic chord phrase found by `motif.FindChromaMotifs` through `BeatSync` (including a transposed repeat), `BeatSync` edge cases (frames straddling a beat boundary, beats before the first or after the last frame), tuning-offset handling, and on synthetic glides and low notes the CQT melody option is at least as accurate as the STFT default (record both errors); `Example`s; CHANGELOG entries under Unreleased.
+- [x] 46.5 `cqt-music` — Feed the CQT into the music analysis packages. Add package `measure/music/chroma`: per-frame 12-bin chroma from a `dsp/cqt` transform whose bins per octave are a multiple of 12, folding bins to pitch classes with `pitch.FrequencyToMIDI` (`dsp/effects/pitch/note.go`), with options for the tuning reference (A4 Hz, default 440), the bin range (minimum/maximum frequency), the CQT configuration and the per-frame normalization (max, L1, L2, none); return `[12][]float64` plus the frame rate, which `harmony.Windows` takes directly. The other consumers need a different shape, so add the conversions next to it: an aggregate over a frame range (for example `chroma.Profile(c [12][]float64, start, end int) [12]float64`, the mean per pitch class) that feeds `harmony.EstimateKey`, and beat pooling (for example `chroma.BeatSync(c [12][]float64, frameRate float64, grid rhythm.Grid, beats int) [][12]float64`, the mean of the frames inside each beat from `grid.Origin()` in steps of `grid.BeatSeconds()`, zero for beats without frames) that feeds `motif.FindChromaMotifs`, whose transposition search stays inside motif. In `measure/music/melody`, add an option that takes salience and chroma from the CQT instead of the STFT (harmonic summation on the CQT grid); the defaults stay unchanged so the AudioVisualizer bit-parity tests keep passing untouched. Optionally add a CQT log-spectrogram to `measure/music/features` if it fits the existing `LogSpectrogram` shape cleanly; otherwise note why not. Tests: pitch classes of synthetic chords (triads in several keys and octaves), key estimation of synthetic C-major and A-minor cadences through chroma → `Profile` → `harmony.EstimateKey`, a repeated synthetic chord phrase found by `motif.FindChromaMotifs` through `BeatSync` (including a transposed repeat), `BeatSync` edge cases (frames straddling a beat boundary, beats before the first or after the last frame), tuning-offset handling, and on synthetic glides and low notes the CQT melody option is at least as accurate as the STFT default (record both errors); `Example`s; CHANGELOG entries under Unreleased.
+
+> Outcome notes (46.5): new package `measure/music/chroma` and the option `melody.WithCQT`.
+> Coverage: chroma 100.0%, melody 99.0%; harmony, motif and melody's AudioVisualizer parity
+> tests pass unchanged.
+>
+> - **Chroma:** `Compute(x, sampleRate, opts...)` returns `[12][]float64` and the frame rate;
+>   `New`/`Process`/`Clone` reuse the transform. The CQT is derived from the options and placed
+>   on the tuned semitone grid: 36 bins per octave (multiples of 12 only), A4 440 Hz, band
+>   C1 − 50 cents to B7 + 50 cents, which at 440 Hz is 252 bins from C1 − 1/3 to B7 + 1/3
+>   semitone. The other settings are hop 512, L1 kernels with `NormalizationWrap` and zero
+>   padding; `WithCQT` options override them, and the output is always magnitude. With wrap
+>   normalization a sine of amplitude A reads ≈ A in its bin. librosa's normalization would
+>   tilt the bins by sqrt(kernel length).
+>
+>   Power is folded with `pitch.FrequencyToMIDI`. Bins exactly halfway between two semitones
+>   (24 or 48 bins per octave) split evenly. `NormNone` gives ≈ 1.51·A² per sine, because the
+>   two neighbour bins at ≈ A/2 fold into the same class. Chroma divides the early-downsampling
+>   factor back out, which `dsp/cqt` multiplies into wrap/convolutional output as nnAudio does,
+>   so values do not depend on the sample rate.
+>
+>   `Profile` clips the frame range and returns zeros when it is empty. `BeatSync` uses
+>   harmony.Windows' frame rule `ceil(start·fr) ≤ i < ceil(end·fr)`; a cross-test checks that.
+>   A frame exactly on a boundary goes to the later beat.
+>
+> - **Chroma results:**
+>   - Triads (C3, F♯4 minor, B♭2, a spread E minor, a D major inversion): the weakest chord
+>     tone is ≥ 17× the strongest other class.
+>   - Cadences through `Profile` → `EstimateKey`: C I–IV–V–I gives C major (r 0.970 vs 0.632);
+>     A minor i–iv–V–i gives A minor (r 0.854 vs A major 0.799, a margin of only 0.055 over
+>     the 0.05 tie margin).
+>   - Chord phrase (C–Am–F–G at 120 BPM, repeated, then +2 semitones): through `BeatSync`,
+>     `FindChromaMotifs` with default options finds one 8-beat motif with occurrences +0, +0
+>     and +2, similarity 1.000. Its default minimum is three occurrences, so the phrase needs
+>     an exact repeat besides the transposed one.
+>   - Tuning: an A major triad 60 cents flat folds to G♯/C/D♯ at 440 Hz and to A/C♯/E with
+>     `WithReferenceHz`; +20 cents is still correct at 440 Hz.
+> - **Melody:** `WithCQT(binsPerOctave, cqtOpts...)` takes salience, voicing and chroma from one
+>   CQT of the whole signal. Frames (ceil(n/hop)), candidates, gate, smoothing and notes are
+>   unchanged; the STFT path keeps its operation order. The CQT starts one bin below the lowest
+>   candidate and runs up to maxHz. Early downsampling is off (it fails the hop check for
+>   `BassPreset` at hop 240). The hop must be divisible by 2^(octaves−1): hop 240 allows 5
+>   octaves, which fits the default and bass ranges at 36 bins per octave.
+>
+>   Three changes were forced by measurements:
+>   - Salience interpolates with Lanczos-3, not linearly. Linear interpolation peaks at bin
+>     centres, and since harmonics are nearly equal-tempered they all snap to the grid
+>     together: 0.059 semitone mean error on a slow glide against the STFT's 0.034.
+>   - `WithCQT` sets the voicing threshold to 0.6 (`DefaultCQTVoicingThreshold`). With ±2
+>     CQT bins, white noise voiced 182 of 200 frames at 0.3 (the STFT: 0).
+>   - The recommended resolution is `DefaultCQTBinsPerOctave` = 36. 48 and 60 smear fast
+>     glides, and 12 needs 6 octaves for the default band.
+>
+>   Mean / p95 error in semitones, STFT default → CQT 36, all voiced, all notes correct:
+>
+>   | Case                     | STFT       | CQT 36     |
+>   | ------------------------ | ---------- | ---------- |
+>   | Glide A3→A4, 2 s         | 0.034/0.08 | 0.024/0.04 |
+>   | Glide A3→A4, 0.5 s       | 0.063/0.22 | 0.029/0.08 |
+>   | Glide E4→E5, 0.5 s       | 0.055/0.24 | 0.029/0.08 |
+>   | Low notes E2–C3          | 0.033/0.10 | 0.000/0.00 |
+>   | Low notes E2–C3, detuned | 0.025/0.04 | 0.025/0.04 |
+>   | Bass E1–E2, `BassPreset` | 0.000/0.00 | 0.000/0.00 |
+>   | Bass E1–E2, detuned      | 0.045/0.08 | 0.025/0.04 |
+>
+>   The detuned low-note case ties at the 0.1-semitone candidate floor. The test asserts
+>   CQT ≤ STFT with no slack. CQT mode costs about 3.8× the STFT (16.3 vs 4.2 ms per 2 s).
+>
+> - **Features:** no CQT log-spectrogram. `LogSpectrogram` carries a `*LogScale`, an
+>   energy-preserving FFT-bin mapping, and dBFS values calibrated by Parseval on the features
+>   frame grid (ceil(n/hop) frames). A CQT has none of those: n/hop+1 frames, no FFT bins to
+>   map, no Parseval calibration. It also cannot cover the AudioVisualizer range (64 bins,
+>   25 Hz–12 kHz, 8.9 octaves) at the default hop 240, which allows 5 octaves. Users who want
+>   one call `dsp/cqt` directly.
+>
+> Discovery (not fixed, `dsp/cqt`): the early-downsampling factor is capped by `nextpow2(hop)`
+> as in nnAudio, not by the factors of two the hop contains. At 24 kHz with hop 240 and 5
+> octaves it picks factor 2, leaving hop 120, which is not divisible by 16 → `ErrHop`, although
+> the same transform works with `WithEarlyDownsampling(false)`. Both consumers document the
+> workaround (melody turns early downsampling off). Counting the hop's factors of two would
+> fix it without changing power-of-two hops; it is left for a separate change because the
+> presets must keep nnAudio's choice.
 
 Exit criteria:
 
@@ -1660,7 +1741,7 @@ Exit criteria:
 - [x] 46.3: generic defaults place kernels at `Frequencies()`; `BasicPitch()` and `NNAudio()`
       reproduce the 46.1 output to the 46.1 tolerances.
 - [ ] 46.4: no Python project or generated fixture remains for `dsp/cqt` and `design.Firwin2`.
-- [ ] 46.5: CQT chroma drives `harmony` key estimation on synthetic cadences and `motif` chroma
+- [x] 46.5: CQT chroma drives `harmony` key estimation on synthetic cadences and `motif` chroma
       motifs through beat pooling; melody's defaults are unchanged.
 - [ ] v0.13.0 is tagged with `just tag-release` and algo-transcribe consumes it.
 

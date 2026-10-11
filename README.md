@@ -63,7 +63,8 @@ func main() {
 | `measure/music/features`  | Frame features for music analysis: RMS, peak, centroid, stereo width, spectral flux, band envelopes, energy-preserving log-frequency spectrogram, envelope normalizer, silence finder |
 | `measure/music/onset`     | Spectral-flux onset detection with attack refinement, heuristic kick/snare/hat classification                                                                                         |
 | `measure/music/rhythm`    | Novelty, autocorrelation tempo estimate with optional prior, beat phase and grid, downbeat                                                                                            |
-| `measure/music/melody`    | Predominant pitch (harmonic-sum salience), voicing, 12-bin chroma, note segmentation with onset snapping                                                                              |
+| `measure/music/melody`    | Predominant pitch (harmonic-sum salience on the STFT or a CQT), voicing, 12-bin chroma, note segmentation with onset snapping                                                         |
+| `measure/music/chroma`    | CQT chroma with tuning reference and frame normalization, frame-range profiles for key estimation, beat pooling for chroma motifs                                                     |
 | `measure/music/align`     | Alignment of a mix against the sum of separated parts: correlation, best lag, residual                                                                                                |
 | `measure/music/harmony`   | Krumhansl–Kessler key estimation, RMS-weighted chroma windows, template chord recognition with Viterbi smoothing                                                                      |
 | `measure/music/structure` | Weighted feature blocks, cosine self-similarity, Foote novelty, boundary peaks, A/A′/B phrase labels                                                                                  |
