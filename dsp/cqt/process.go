@@ -95,11 +95,7 @@ func (t *Transform) Process(x []float64) ([]float64, error) {
 	}
 
 	dst := make([]float64, t.OutputLen(len(x)))
-
-	err := process(t, dst, x)
-	if err != nil {
-		return nil, err
-	}
+	process(t, dst, x)
 
 	return dst, nil
 }
@@ -117,19 +113,22 @@ func (t *Transform) Process(x []float64) ([]float64, error) {
 // buffers have grown to the input length. dst may overlap x; x is then read
 // from a copy, because the lower octaves are decimated from x after the top
 // octave's results have been written.
+//
+// ProcessInto runs the same phases as a [Stepper] with an unlimited budget;
+// use a Stepper to spread one transform over several bounded steps.
 func (t *Transform) ProcessInto(dst, x []float64) error {
-	if core.Overlaps(dst, x) {
-		err := t.checkLengths(len(dst), len(x))
-		if err != nil {
-			return err
-		}
-
-		t.in64 = core.EnsureLen(t.in64, len(x))
-		copy(t.in64, x)
-		x = t.in64
+	err := t.checkLengths(len(dst), len(x))
+	if err != nil {
+		return err
 	}
 
-	return process(t, dst, x)
+	if core.Overlaps(dst, x) {
+		x = loadInput(&t.pass, x)
+	}
+
+	process(t, dst, x)
+
+	return nil
 }
 
 // ProcessInto32 is [Transform.ProcessInto] for float32 input and output. The
@@ -141,12 +140,9 @@ func (t *Transform) ProcessInto32(dst, x []float32) error {
 		return err
 	}
 
-	t.in64 = core.EnsureLen(t.in64, len(x))
-	for i, v := range x {
-		t.in64[i] = float64(v)
-	}
+	process(t, dst, loadInput(&t.pass, x))
 
-	return process(t, dst, t.in64)
+	return nil
 }
 
 func (t *Transform) tooShort(n int) error {
@@ -171,62 +167,256 @@ func (t *Transform) checkLengths(nDst, nx int) error {
 	return nil
 }
 
-// process follows nnAudio CQT2010v2.forward: optional early downsampling, the
-// top octave, then for each lower octave a 2:1 decimation and the same
-// kernels with half the hop.
-func process[T sample](t *Transform, dst []T, x []float64) error {
-	err := t.checkLengths(len(dst), len(x))
-	if err != nil {
-		return err
+// process runs the Transform's own pass over x with an unlimited budget.
+// The caller has validated the lengths.
+func process[T sample](t *Transform, dst []T, x []float64) {
+	t.pass.start(t, x)
+	advance(&t.pass, dst, math.MaxInt)
+}
+
+// Work returns the number of work units a transform of n input samples
+// takes, or 0 if n samples are too short to be processed. A work unit is one
+// multiply-accumulate: kernel taps times frames for each octave's kernel
+// correlation, and 256 low-pass taps times output samples for each
+// decimation (including early downsampling). Padding, the float32
+// conversion and the magnitude are not counted. Use it to size the budgets
+// passed to [Stepper.Step].
+func (t *Transform) Work(n int) int {
+	frames := t.FrameCount(n)
+	if frames == 0 {
+		return 0
 	}
 
-	frames := t.FrameCount(len(x))
-	cur, slot := x, 0
-
+	work, m := 0, n
 	if t.factor > 1 {
-		t.octave[0] = core.EnsureLen(t.octave[0], decimatedLength(len(x), lowpassTaps, t.factor))
-		decimate(t.octave[0], x, t.earlyLowpass, t.factor)
-		cur, slot = t.octave[0], 1
+		m = decimatedLength(m, lowpassTaps, t.factor)
+		work += lowpassTaps * m
 	}
-
-	hop := t.hop
-	// The stacked rows run from the lowest octave's first filter to the top
-	// octave's last; the lowest nOctaves*nFilters-nBins rows are dropped.
-	drop := t.nOctaves*t.nFilters - t.nBins
 
 	for o := range t.nOctaves {
 		if o > 0 {
-			hop /= 2
-			next := core.EnsureLen(t.octave[slot], decimatedLength(len(cur), lowpassTaps, 2))
-			decimate(next, cur, t.lowpass, 2)
-			t.octave[slot] = next
-			cur, slot = next, 1-slot
+			m = decimatedLength(m, lowpassTaps, 2)
+			work += lowpassTaps * m
 		}
 
-		binBase := (t.nOctaves-1-o)*t.nFilters - drop
-		convolve(t, dst, cur, hop, binBase, frames)
+		work += frames * t.frameTaps(o)
 	}
 
-	return nil
+	return work
 }
 
-// decimate is nnAudio's downsampling_by_n: torch conv1d (cross-correlation)
-// of x with h, zero padding (len(h)-1)/2 on both sides and stride factor.
-// dst must have decimatedLength(len(x), len(h), factor) elements and must not
-// overlap x or h.
-func decimate(dst, x, h []float64, factor int) {
-	// Cannot fail: factor >= 2, h is a non-empty filter and dst is a scratch
-	// buffer distinct from x and h.
-	_ = conv.CorrelateStridedInto(dst, x, h, -(len(h)-1)/2, factor)
+// binBase returns the output bin of filter 0 in octave o (0 is the top
+// octave). The stacked rows run from the lowest octave's first filter to the
+// top octave's last; the lowest nOctaves*nFilters-nBins rows are dropped, so
+// filters of the lowest octave may map below bin 0 and are skipped.
+func (t *Transform) binBase(o int) int {
+	drop := t.nOctaves*t.nFilters - t.nBins
+
+	return (t.nOctaves-1-o)*t.nFilters - drop
 }
 
-// convolve applies the kernels to one octave's signal x with stride hop and
-// writes filter f to output bin binBase+f; filters below bin 0 are skipped.
-func convolve[T sample](t *Transform, dst []T, x []float64, hop, binBase, frames int) {
+// frameTaps returns the work of one frame in octave o: the summed length of
+// the kernels that are not cropped.
+func (t *Transform) frameTaps(o int) int {
+	taps := 0
+	for f := max(0, -t.binBase(o)); f < t.nFilters; f++ {
+		taps += len(t.kernels[f].re)
+	}
+
+	return taps
+}
+
+// phase is a stage of a pass. Each phase except phasePad is divided into
+// indivisible units: one output sample of a decimation, one frame of a
+// kernel correlation.
+type phase uint8
+
+const (
+	phaseDone      phase = iota // the pass is complete (zero value)
+	phaseEarly                  // early downsampling of the input
+	phasePad                    // padding of the current octave, no work units
+	phaseCorrelate              // kernel correlation of the current octave
+	phaseDecimate               // 2:1 decimation to the next octave
+)
+
+// pass is one resumable run of a Transform over one signal: nnAudio
+// CQT2010v2.forward split into phases. Optional early downsampling comes
+// first; then each octave, from the top one down, is padded and correlated
+// with the kernels at its hop, and every octave but the lowest is low-passed
+// and decimated by 2 for the next with half the hop. A pass owns its scratch
+// buffers and only reads the Transform's immutable configuration, so
+// several passes may share one Transform.
+type pass struct {
+	t      *Transform
+	frames int
+	phase  phase
+	octave int       // current octave, 0 is the top one
+	pos    int       // next frame or decimated sample of the phase
+	hop    int       // hop of the current octave
+	cur    []float64 // signal of the current octave
+	next   []float64 // decimation target
+	slot   int       // octave buffer the next 2:1 decimation writes to
+	done   int       // work units performed
+	total  int       // work units of the whole pass
+
+	// Scratch, grown by start to the input length and reused.
+	bufs   [2][]float64 // ping-pong octave signals
+	padded []float64    // padded octave signal
+	in64   []float64    // copy of the input in float64
+}
+
+// loadInput converts x to float64 into the pass's input buffer and returns
+// it.
+func loadInput[T sample](p *pass, x []T) []float64 {
+	p.in64 = core.EnsureLen(p.in64, len(x))
+	for i, v := range x {
+		p.in64[i] = float64(v)
+	}
+
+	return p.in64
+}
+
+// start prepares the pass for x, whose length t has validated, and grows
+// every scratch buffer the pass needs, so that advance does not allocate. x
+// is read until the pass is done; it must not overlap the destination.
+func (p *pass) start(t *Transform, x []float64) {
+	p.t = t
+	p.frames = t.FrameCount(len(x))
+	p.total = t.Work(len(x))
+	p.done = 0
+	p.octave, p.pos, p.hop, p.slot = 0, 0, t.hop, 0
+
+	// The decimated signals alternate between the two octave buffers and
+	// shrink, so each buffer needs the length of the first signal written
+	// to it.
+	top, n := len(x), len(x)
+	if t.factor > 1 {
+		top = decimatedLength(n, lowpassTaps, t.factor)
+	}
+
+	var need [2]int
+
+	written, m := 0, top
+	if t.factor > 1 {
+		need[0], written = top, 1
+	}
+
+	for range t.nOctaves - 1 {
+		if written >= len(need) {
+			break
+		}
+
+		m = decimatedLength(m, lowpassTaps, 2)
+		need[written] = m
+		written++
+	}
+
+	for i := range need {
+		p.bufs[i] = core.EnsureLen(p.bufs[i], need[i])
+	}
+
+	p.padded = core.EnsureLen(p.padded, top+2*(t.nFFT/2))
+
+	p.cur, p.next, p.phase = x, nil, phasePad
+	if t.factor > 1 {
+		p.next, p.phase = p.bufs[0][:top], phaseEarly
+	}
+}
+
+// advance runs the pass until at least maxWork work units are done or the
+// pass is complete, and returns the units performed. The unit in progress
+// when the budget runs out is finished, so a call exceeds maxWork by less
+// than one unit; padding counts no work. maxWork must be at least 1.
+func advance[T sample](p *pass, dst []T, maxWork int) int {
+	t := p.t
+	work := 0
+
+	for work < maxWork && p.phase != phaseDone {
+		switch p.phase {
+		case phaseDone:
+		case phaseEarly:
+			work += p.decimate(t.earlyLowpass, t.factor, maxWork-work)
+			if p.pos == len(p.next) {
+				p.cur, p.next, p.slot = p.next, nil, 1
+				p.phase = phasePad
+			}
+		case phasePad:
+			p.pad()
+			p.pos = 0
+			p.phase = phaseCorrelate
+		case phaseCorrelate:
+			taps := t.frameTaps(p.octave)
+			k := min(p.frames-p.pos, units(maxWork-work, taps))
+			correlate(t, dst, p.padded, p.hop, t.binBase(p.octave), p.pos, p.pos+k)
+			p.pos += k
+			work += k * taps
+
+			if p.pos == p.frames {
+				p.endOctave()
+			}
+		case phaseDecimate:
+			work += p.decimate(t.lowpass, 2, maxWork-work)
+			if p.pos == len(p.next) {
+				p.cur, p.next, p.slot = p.next, nil, 1-p.slot
+				p.octave++
+				p.hop /= 2
+				p.phase = phasePad
+			}
+		}
+	}
+
+	p.done += work
+
+	return work
+}
+
+// endOctave follows the correlation of the current octave: the next phase
+// decimates it for the octave below, or the pass is complete.
+func (p *pass) endOctave() {
+	t := p.t
+	if p.octave == t.nOctaves-1 {
+		// Drop the references to the caller's input.
+		p.cur, p.next = nil, nil
+		p.phase = phaseDone
+
+		return
+	}
+
+	p.next = p.bufs[p.slot][:decimatedLength(len(p.cur), lowpassTaps, 2)]
+	p.pos = 0
+	p.phase = phaseDecimate
+}
+
+// units returns the number of units of size size that cover budget, at least
+// 1: ceil(budget/size) without overflow.
+func units(budget, size int) int {
+	k := budget / size
+	if budget%size != 0 {
+		k++
+	}
+
+	return max(k, 1)
+}
+
+// decimate computes the next decimated samples of p.cur into p.next, as many
+// as cover budget, and returns their work.
+func (p *pass) decimate(h []float64, factor, budget int) int {
+	k := min(len(p.next)-p.pos, units(budget, len(h)))
+	decimateRange(p.next, p.cur, h, factor, p.pos, p.pos+k)
+	p.pos += k
+
+	return k * len(h)
+}
+
+// pad extends the current octave's signal by nfft/2 samples on both sides
+// into p.padded.
+func (p *pass) pad() {
+	t := p.t
+	x := p.cur
 	pad := t.nFFT / 2
 	n := len(x)
-	xp := core.EnsureLen(t.padded, n+2*pad)
-	t.padded = xp
+	xp := p.padded[:n+2*pad]
+	p.padded = xp
 
 	if t.padding == PadReflect && pad < n {
 		// Cannot fail: pad < n, xp has n+2*pad elements and is a scratch
@@ -240,11 +430,28 @@ func convolve[T sample](t *Transform, dst []T, x []float64, hop, binBase, frames
 		copy(xp[pad:], x)
 		clear(xp[pad+n:])
 	}
+}
 
+// decimateRange is nnAudio's downsampling_by_n restricted to the output
+// samples [from, to): torch conv1d (cross-correlation) of x with h, zero
+// padding (len(h)-1)/2 on both sides and stride factor. dst must have
+// decimatedLength(len(x), len(h), factor) elements and must not overlap x or
+// h. Every output sample is computed from absolute positions, so splitting
+// the range does not change any value.
+func decimateRange(dst, x, h []float64, factor, from, to int) {
+	// Cannot fail: factor >= 2, h is a non-empty filter and dst is a scratch
+	// buffer distinct from x and h.
+	_ = conv.CorrelateStridedInto(dst[from:to], x, h, -(len(h)-1)/2+from*factor, factor)
+}
+
+// correlate applies the kernels to the frames [from, to) of one octave's
+// padded signal xp with stride hop and writes filter f to output bin
+// binBase+f; filters below bin 0 are skipped.
+func correlate[T sample](t *Transform, dst []T, xp []float64, hop, binBase, from, to int) {
 	fFirst := max(0, -binBase)
 	complexOut := t.output == OutputComplex
 
-	for fr := range frames {
+	for fr := from; fr < to; fr++ {
 		base := fr * hop
 		row := fr * t.nBins
 

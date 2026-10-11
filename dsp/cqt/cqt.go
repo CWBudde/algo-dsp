@@ -27,6 +27,11 @@ var (
 	ErrSignalTooShort = errors.New("cqt: signal too short")
 	// ErrShortDst reports a destination slice shorter than required.
 	ErrShortDst = errors.New("cqt: destination too short")
+	// ErrMaxWork reports a [Stepper.Step] budget below one work unit.
+	ErrMaxWork = errors.New("cqt: work budget must be at least 1")
+	// ErrStepperDone reports a [Stepper.Step] call after the stepper has
+	// finished its input; [Stepper.Reset] starts the next one.
+	ErrStepperDone = errors.New("cqt: stepper is done")
 )
 
 const (
@@ -71,10 +76,9 @@ type Transform struct {
 	lengths      []float64 // nBins kernel lengths
 	scale        []float64 // nBins output scale factors
 
-	// Scratch, grown lazily to the input length and reused.
-	octave [2][]float64 // ping-pong octave signals
-	padded []float64    // padded octave signal
-	in64   []float64    // float32 input converted to float64
+	// The pass of ProcessInto and ProcessInto32, whose scratch buffers grow
+	// to the input length and are reused.
+	pass pass
 }
 
 // New returns a constant-Q transform for signals sampled at sampleRate Hz.
@@ -417,9 +421,7 @@ func normalizeKernel(re, im []float64, norm Norm) {
 // t, so it must not run while t is processing on another goroutine.
 func (t *Transform) Clone() *Transform {
 	c := *t
-	c.octave = [2][]float64{}
-	c.padded = nil
-	c.in64 = nil
+	c.pass = pass{}
 
 	return &c
 }
