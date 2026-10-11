@@ -562,6 +562,71 @@ func TestSinePeak(t *testing.T) {
 	}
 }
 
+// TestScaling checks homogeneity: the transform of a*x is a times the
+// complex output and |a| times the magnitude output of x. A power-of-two
+// factor scales every intermediate result exactly, so the outputs match
+// bit for bit; other factors match to tolExact in the per-bin metric.
+func TestScaling(t *testing.T) {
+	t.Parallel()
+
+	for _, out := range []Output{OutputMagnitude, OutputComplex} {
+		for _, cfg := range []struct {
+			name string
+			opts []Option
+		}{
+			{"basic-pitch", BasicPitch()},
+			// Early downsampling by 8.
+			{"early downsampling", []Option{WithHopLength(1024), WithFMin(30), WithBins(48)}},
+		} {
+			tr, err := New(22050, append(slices.Clone(cfg.opts), WithOutput(out))...)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			x := testSignal(t)[:20000]
+
+			tx, err := tr.Process(x)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, a := range []float64{-4, 0.37, -2.5e3} {
+				ax := make([]float64, len(x))
+				for i, v := range x {
+					ax[i] = a * v
+				}
+
+				got, err := tr.Process(ax)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				want := make([]float64, len(tx))
+				for i, v := range tx {
+					if out == OutputComplex {
+						want[i] = a * v
+					} else {
+						want[i] = math.Abs(a) * v
+					}
+				}
+
+				if a == -4 {
+					if !slices.Equal(got, want) {
+						t.Errorf("%s, %v: T(%g*x) is not exactly %g*T(x)", cfg.name, out, a, a)
+					}
+
+					continue
+				}
+
+				e, bin := perBinError(got, want, tr.FrameCount(len(x)), tr.Bins(), out == OutputComplex)
+				if !(e <= tolExact) {
+					t.Errorf("%s, %v, a=%g: per-bin error %.3e at bin %d > %.0e", cfg.name, out, a, e, bin, tolExact)
+				}
+			}
+		}
+	}
+}
+
 // TestLinearity checks that complex output is linear in the input.
 func TestLinearity(t *testing.T) {
 	t.Parallel()
