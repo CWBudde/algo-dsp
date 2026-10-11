@@ -323,7 +323,7 @@ func checkTaps(t *testing.T, got, want []float64, tol float64) {
 	}
 
 	for i := range got {
-		if math.Abs(got[i]-want[i]) > tol {
+		if !(math.Abs(got[i]-want[i]) <= tol) {
 			t.Errorf("tap %d = %.17g, want %.17g", i, got[i], want[i])
 		}
 	}
@@ -648,13 +648,13 @@ func TestFirwin2Response(t *testing.T) {
 				sum += h
 			}
 
-			if math.Abs(sum-tc.gain[0]) > tc.tol {
+			if !(math.Abs(sum-tc.gain[0]) <= tc.tol) {
 				t.Errorf("DC gain (sum of taps) = %.6g, want %.6g", sum, tc.gain[0])
 			}
 
 			for i, w := range tc.check {
 				got := responseAt(taps, w)
-				if math.Abs(got-tc.want[i]) > tc.tol {
+				if !(math.Abs(got-tc.want[i]) <= tc.tol) {
 					t.Errorf("|H(%g)| = %.6g, want %.6g", w, got, tc.want[i])
 				}
 			}
