@@ -108,36 +108,6 @@ func perBinError(got, ref []float64, frames, bins int, complexOut bool) (float64
 	return worst, worstBin
 }
 
-// assertClose checks |got-want| <= tol*scale element-wise, where scale is
-// |want[i]| (relative) or max|want| (scaled by the largest value).
-func assertClose(t *testing.T, name string, got, want []float64, tol float64, relative bool) {
-	t.Helper()
-
-	if len(got) != len(want) {
-		t.Errorf("%s: length %d, want %d", name, len(got), len(want))
-
-		return
-	}
-
-	peak := 0.0
-	for _, v := range want {
-		peak = max(peak, math.Abs(v))
-	}
-
-	for i := range want {
-		scale := peak
-		if relative {
-			scale = math.Abs(want[i])
-		}
-
-		if d := math.Abs(got[i] - want[i]); !(d <= tol*scale) {
-			t.Errorf("%s[%d] = %.17g, want %.17g (diff %.3e, tol %.0e*%.3e)", name, i, got[i], want[i], d, tol, scale)
-
-			return
-		}
-	}
-}
-
 // refConfig is one of the eight configurations that 46.1 compared against
 // nnAudio CQT2010v2 (the deleted scripts/fixtures/cqt/gen.py), expressed as
 // options on top of [NNAudio]. length is the signal length that comparison

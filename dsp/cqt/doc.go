@@ -132,10 +132,12 @@
 //     fails when it concatenates them, or (for a hop decimated to 0) when it
 //     runs the convolution.
 //   - Arithmetic is float64 throughout, including kernels and filters, which
-//     nnAudio keeps in float32/complex64. Against nnAudio run in float64 the
-//     results agree to about 1e-13 relative to each bin's peak magnitude;
-//     against nnAudio as shipped (float32) the difference is about 1.3e-6, all
-//     of it nnAudio's float32 rounding.
+//     nnAudio keeps in float32/complex64. Compared over whole transforms in
+//     eight configurations, the results agreed with nnAudio run in float64 to
+//     about 1e-13 relative to each bin's peak magnitude, and with nnAudio as
+//     shipped (float32) to about 1.3e-6, all of it nnAudio's float32
+//     rounding. The tests keep a sample of those nnAudio values (kernels,
+//     filters and output bins) pinned.
 //   - A kernel of length 1 uses the window value 1, as scipy's get_window
 //     (which nnAudio calls) does, rather than dsp/window's value at the
 //     window edge. Configurations whose longest kernel has a single sample,
