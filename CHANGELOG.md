@@ -57,6 +57,29 @@ All notable changes to this project are documented in this file.
   `conv1d(x, h, stride=s, padding=p)` for `start = -p`. A stride below 1
   returns `ErrInvalidStride`, a `dst` that overlaps `x` or `h` returns
   `ErrAliasing`, an empty kernel returns `ErrEmptyKernel`.
+- New package `measure/music/chroma`: per-frame 12-bin chroma from a
+  `dsp/cqt` transform whose bins sit on the tuned semitone grid (bins per
+  octave a multiple of 12, default 36; A4 reference via `WithReferenceHz`,
+  default 440 Hz; folded band via `WithFrequencyRange`, default C1 − 50 cents
+  to B7 + 50 cents; further CQT options via `WithCQT`). Each bin's power goes
+  to the pitch class `pitch.FrequencyToMIDI` rounds it to (bins exactly
+  halfway between two semitones split evenly), and every frame is normalized
+  by `NormMax` (default), `NormL1`, `NormL2` or `NormNone`.
+  `Compute(x, sampleRate, opts...)` returns `[12][]float64` and the frame
+  rate, which `harmony.Windows` takes directly; `New`/`Process` reuse the
+  transform. `Profile(c, start, end)` averages a frame range for
+  `harmony.EstimateKey`, and `BeatSync(c, frameRate, grid, beats)` averages
+  the frames inside each grid beat (the frame rule of `harmony.Windows`,
+  zero for beats without frames) for `motif.FindChromaMotifs`.
+- `melody.WithCQT(binsPerOctave, cqtOpts...)` takes salience, voicing and
+  chroma from a `dsp/cqt` transform instead of the STFT: harmonic summation
+  on the CQT grid with Lanczos-3 interpolation, frames and note segmentation
+  unchanged. It sets the voicing threshold to `DefaultCQTVoicingThreshold`
+  (0.6), because ±2 constant-Q bins are wide at the upper harmonics and the
+  0.3 default voices white noise. `DefaultCQTBinsPerOctave` (36) is the
+  recommended resolution. On synthetic glides and low notes it is at least
+  as accurate as the STFT (fast glide: 0.029 vs 0.063 semitone mean error).
+  The defaults are unchanged and stay bit-identical to AudioVisualizer.
 
 ### Changed
 

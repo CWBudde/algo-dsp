@@ -74,6 +74,39 @@ func ExampleAnalyze_chroma() {
 	// C E A
 }
 
+func ExampleWithCQT() {
+	const sampleRate = 24000.0
+
+	// A low line, E2 G2 A2 C3 (82 to 131 Hz), below the default candidates.
+	x := make([]float64, int(2.2*sampleRate))
+
+	for i, midi := range []int{40, 43, 45, 48} {
+		start := 0.1 + 0.5*float64(i)
+		tone(x, sampleRate, midi, start, start+0.4)
+	}
+
+	// The candidates start at C2; the band ends at 2 kHz so that the CQT
+	// spans less than 5 octaves, which the default hop of 240 requires.
+	res, err := melody.Analyze(x, sampleRate,
+		melody.WithMIDIRange(36, 72),
+		melody.WithFrequencyRange(50, 2000),
+		melody.WithCQT(melody.DefaultCQTBinsPerOctave),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, n := range res.Notes {
+		fmt.Printf("%.2f-%.2f s: %s%d\n", n.Start, n.End, pitch.PitchClass(n.MIDI%12), n.MIDI/12-1)
+	}
+
+	// Output:
+	// 0.10-0.51 s: E2
+	// 0.60-1.01 s: G2
+	// 1.10-1.51 s: A2
+	// 1.60-2.01 s: C3
+}
+
 func ExampleSegmentNotes() {
 	// A hand-made pitch track at 100 frames/s, for example from a YIN
 	// detector converted with pitch.FrequencyToMIDI: 150 ms of a slightly

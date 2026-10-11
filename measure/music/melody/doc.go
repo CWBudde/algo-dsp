@@ -63,6 +63,38 @@
 // Chroma is independent of the pitch estimate and is the more robust feature
 // for harmony.
 //
+// # CQT front end
+//
+// [WithCQT] replaces steps 2–5's FFT magnitudes with those of a constant-Q
+// transform (dsp/cqt), computed once for the whole signal, with
+// [DefaultCQTBinsPerOctave] = 36 bins per octave recommended. Its bins
+// are geometrically spaced from one bin below the lowest candidate up to the
+// band's upper edge, so low notes are resolved as finely as high ones, and
+// the kernels are short at the upper harmonics, which carry most of the
+// harmonic sum. On the package's synthetic glides and low notes it is at
+// least as accurate as the STFT; on a glide of an octave in 0.5 s the mean
+// error drops from 0.063 to 0.029 semitone.
+//
+// What stays: the frame count and timing, the candidate grid and harmonic
+// weights, the RMS gate, smoothing and note segmentation. What changes:
+//
+//   - Salience interpolates the CQT magnitudes with a 6-tap Lanczos kernel
+//     at each harmonic's fractional CQT bin (a linear interpolation would
+//     snap the pitch to the CQT bins).
+//   - Voicing counts ±2 CQT bins around each harmonic, which are wider in Hz
+//     than ±2 FFT bins at the upper harmonics, so noise scores higher; WithCQT
+//     therefore sets the threshold to [DefaultCQTVoicingThreshold] (0.6).
+//     Voicing values of the two front ends are not comparable.
+//   - Chroma comes from the CQT bins inside the band, which start one bin
+//     below the lowest candidate: with the defaults, pitches between 100 and
+//     160 Hz no longer contribute.
+//   - The hop must be divisible by 2^(octaves−1). The default hop of 240
+//     allows 5 octaves, enough for the default range and [BassPreset];
+//     wider spans fail with an error wrapping cqt.ErrHop.
+//
+// Without WithCQT nothing changes, and the AudioVisualizer parity described
+// above holds.
+//
 // # Note cleanup and bass lines
 //
 // [Clean] turns the tracker notes into a monophonic note list on a

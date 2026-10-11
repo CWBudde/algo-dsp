@@ -17,6 +17,21 @@ func BenchmarkAnalyze(b *testing.B) {
 	}
 }
 
+func BenchmarkAnalyzeCQT(b *testing.B) {
+	x := sequenceSignal(testRate)[:2*int(testRate)]
+	onsets := []float64{0.2, 0.55, 0.8, 1.2, 1.7}
+
+	b.ReportAllocs()
+	b.SetBytes(int64(len(x) * 8))
+
+	for b.Loop() {
+		_, err := Analyze(x, testRate, WithOnsets(onsets), WithCQT(DefaultCQTBinsPerOctave))
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkSegmentNotes(b *testing.B) {
 	res, err := Analyze(sequenceSignal(testRate), testRate)
 	if err != nil {
