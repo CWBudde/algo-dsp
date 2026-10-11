@@ -1511,7 +1511,7 @@ bounded-work stepper for per-step time budgets follows as a later item.
 - [x] 46.1 `cqt` — Add package `dsp/cqt`, a multi-rate constant-Q transform compatible with nnAudio `CQT2010v2` (as ported in spotify/basic-pitch `basic_pitch/layers/nnaudio.py`, which is the reference to read line by line) and librosa normalization. Structure: one complex kernel set for the top octave placed in an `n_fft` frame (kernel length `ceil(Q*sr/f)` with `Q = filter_scale/(2^(1/bins_per_octave)-1)`, periodic window times complex exponential, divided by the length, then basis-normalized), applied per octave as a strided VALID convolution with stride equal to the current hop after padding by `n_fft/2`, with the hop halving per octave and the signal low-passed and decimated by 2 between octaves; octaves concatenated lowest-first and cropped to `n_bins`. Options: sample rate, hop length, fmin, n_bins, bins per octave, filter scale, window (via `dsp/window`, periodic), basis norm (L1, L2, none), padding (reflect, constant), early downsampling (implemented as nnAudio does, even though basic-pitch's configuration makes it a no-op), normalization (`librosa` multiplies by sqrt of the kernel length, `convolutional`, `wrap`), and output (magnitude, complex). API: `New(sampleRate float64, opts ...Option) (*Transform, error)`, `Process(x []float64)`, zero-allocation `ProcessInto` with `float32` and `float64` variants, `NumFrames(n int)`, `Frequencies()`, `Lengths()`, `Kernels()` and `Lowpass()` for inspection and cross-checks, and `Clone()`. Also add a public `design.Firwin2(numtaps int, freq, gain []float64, opts ...Option) ([]float64, error)` in `dsp/filter/design` with `scipy.signal.firwin2` parity (default `nfreqs`, Hamming window by default, window option; reject antisymmetric types for now) and use it for the CQT's anti-alias low-pass `firwin2(256, [0, 0.5/1.001, 0.5*1.001, 1], [1, 1, 0, 0])`. Tests: golden vectors from a pinned `uv` project in `scripts/fixtures/cqt/` (nnAudio, scipy, librosa, torch pinned exactly; fixtures committed, Go tests never run Python) covering the firwin2 cases, the kernels and full transforms for several configurations including basic-pitch's (22050 Hz, hop 256, fmin 27.5, 36 bins per octave, 309 bins, filter scale 1, L1, periodic Hann, reflect, librosa normalization) on a deterministic chirp-plus-noise signal of 43844 samples, matching to ≤1e-5 relative; table-driven option validation; zero allocations in `ProcessInto`; benchmarks for the basic-pitch configuration; runnable `Example`s; a CHANGELOG entry under Unreleased.
 
 > Outcome notes (46.1): `dsp/cqt` and `design.Firwin2` are in place. The golden vectors come
-> from `scripts/fixtures/cqt` (uv; nnAudio 0.3.4, torch 2.14.1, scipy 1.18.1, librosa 1.0.0,
+> from `scripts/fixtures/cqt` (deleted in 46.4; uv; nnAudio 0.3.4, torch 2.14.1, scipy 1.18.1, librosa 1.0.0,
 > numpy 2.5.3; regenerates byte-identically). They cover 17 firwin2 cases and 8 CQT
 > configurations:
 >
@@ -1646,7 +1646,88 @@ bounded-work stepper for per-step time budgets follows as a later item.
 > internal move to the shared primitives, a change between two unreleased states. It is left
 > for the release edit.
 
-- [ ] 46.4 `go-only-tests` — Replace the Python-generated golden data of `dsp/cqt` and `design.Firwin2` with Go-only tests, and delete `scripts/fixtures/cqt/`, `dsp/cqt/testdata/` and `dsp/filter/design/testdata/firwin2.json.gz`. Python is not run again: values that stay pinned are extracted once from the committed fixtures before they are deleted, and each pinned block carries a provenance comment (tool, version and call, for example scipy 1.18.1 `firwin2(6, [0, 0.5, 1], [0, 1, 0])` or nnAudio 0.3.4 float64), as `dsp/filter/weighting` does for IEC 61672. Firwin2: keep scipy's behaviour pinned with inline tap values for `type2_ramp`, `one_tap`, `two_taps`, `nfreqs_odd_len`, `step_repeated_freq`, `window_none`, `type1_multiband` and the 256-tap nnAudio low-pass (store symmetric taps once); check the broad cases against an independent Go reference (inverse real FFT via algo-fft, or the closed-form cosine series) to 1e-14; keep the existing property and validation tests. CQT: generate the test signal in Go (chirp, two tones, seeded noise; deterministic) and use two references of different strength. The exact oracle is a naive multirate reference written in the test with plain loops and none of the production primitives (`conv`, `vecmath`, `core` padding): it reproduces every stage (padding, the same `Firwin2` low-pass and decimation by 2 per octave, direct per-octave kernel correlation at the decimated rate, normalization) and must match `ProcessInto` to 1e-12 relative. A full-rate direct CQT (same kernels, no decimation) is not an oracle, because the multirate path also carries the low-pass passband ripple and residual aliasing in the lower octaves; use it only for property checks on pure tones placed well inside the passband (same peak bin, magnitude within a bound derived from the low-pass passband ripple and stated in the test comment), never as an elementwise comparison; pin about 50 nnAudio values per preset (`NNAudio()`, `BasicPitch()`) from the fixtures, covering kernels, the low-pass, a few output bins per configuration, the partial-octave placement and the short-signal fallback; keep the property tests (sine peak bin, linearity, scaling, zero allocations, NaN propagation). Remove the librosa level test or replace it with a Go-checked property of the same intent. Update the package docs, README, AGENTS.md and PLAN.md wherever they mention the fixtures, and record in the outcome notes what precision was given up (the 1e-13 match against nnAudio across eight configurations; bit-level basic-pitch parity is checked downstream in algo-transcribe against basic-pitch's own CQT output). Exit check: `git ls-files | grep -E '\.py$|uv\.lock|pyproject'` lists only `scripts/extract_irs.py`, and `dsp/cqt` coverage stays at about 99%.
+- [x] 46.4 `go-only-tests` — Replace the Python-generated golden data of `dsp/cqt` and `design.Firwin2` with Go-only tests, and delete `scripts/fixtures/cqt/`, `dsp/cqt/testdata/` and `dsp/filter/design/testdata/firwin2.json.gz`. Python is not run again: values that stay pinned are extracted once from the committed fixtures before they are deleted, and each pinned block carries a provenance comment (tool, version and call, for example scipy 1.18.1 `firwin2(6, [0, 0.5, 1], [0, 1, 0])` or nnAudio 0.3.4 float64), as `dsp/filter/weighting` does for IEC 61672. Firwin2: keep scipy's behaviour pinned with inline tap values for `type2_ramp`, `one_tap`, `two_taps`, `nfreqs_odd_len`, `step_repeated_freq`, `window_none`, `type1_multiband` and the 256-tap nnAudio low-pass (store symmetric taps once); check the broad cases against an independent Go reference (inverse real FFT via algo-fft, or the closed-form cosine series) to 1e-14; keep the existing property and validation tests. CQT: generate the test signal in Go (chirp, two tones, seeded noise; deterministic) and use two references of different strength. The exact oracle is a naive multirate reference written in the test with plain loops and none of the production primitives (`conv`, `vecmath`, `core` padding): it reproduces every stage (padding, the same `Firwin2` low-pass and decimation by 2 per octave, direct per-octave kernel correlation at the decimated rate, normalization) and must match `ProcessInto` to 1e-12 relative. A full-rate direct CQT (same kernels, no decimation) is not an oracle, because the multirate path also carries the low-pass passband ripple and residual aliasing in the lower octaves; use it only for property checks on pure tones placed well inside the passband (same peak bin, magnitude within a bound derived from the low-pass passband ripple and stated in the test comment), never as an elementwise comparison; pin about 50 nnAudio values per preset (`NNAudio()`, `BasicPitch()`) from the fixtures, covering kernels, the low-pass, a few output bins per configuration, the partial-octave placement and the short-signal fallback; keep the property tests (sine peak bin, linearity, scaling, zero allocations, NaN propagation). Remove the librosa level test or replace it with a Go-checked property of the same intent. Update the package docs, README, AGENTS.md and PLAN.md wherever they mention the fixtures, and record in the outcome notes what precision was given up (the 1e-13 match against nnAudio across eight configurations; bit-level basic-pitch parity is checked downstream in algo-transcribe against basic-pitch's own CQT output). Exit check: `git ls-files | grep -E '\.py$|uv\.lock|pyproject'` lists only `scripts/extract_irs.py`, and `dsp/cqt` coverage stays at about 99%.
+
+> Outcome notes (46.4): `dsp/cqt` and `design.Firwin2` are tested in Go only. `scripts/fixtures/cqt/`,
+> `dsp/cqt/testdata/` and `dsp/filter/design/testdata/firwin2.json.gz` are deleted, and
+> `git ls-files | grep -E '\.py$|uv\.lock|pyproject'` lists only `scripts/extract_irs.py`.
+> The pinned values were extracted once from the committed fixtures with throwaway Go programs
+> outside the repo; no Python ran.
+>
+> - **Firwin2:** the eight required cases pin scipy 1.18.1's taps inline, symmetric filters
+>   stored once, each block with its call as provenance. They match to 1.1e-16 on the stored
+>   half and 5.1e-15 mirrored: scipy's taps come from an FFT and are not bitwise symmetric,
+>   by up to 5.2e-15 (`type1_multiband`). All 17 former cases are also checked against an
+>   independent reference, an inverse real FFT via algo-fft with its own grid,
+>   repeated-frequency and window handling. That reference matched scipy to 2.2e-16
+>   (Kaiser 1.5e-10, the `dsp/window` I0 limit from 46.1) before the fixture was deleted, and
+>   matches `Firwin2` to 2.2e-16. Coverage: `firwin2.go` 100%.
+> - **Test signal:** generated in Go (`testSignal`: the same chirp, 440/55 Hz tones and
+>   noise recipe, PCG-seeded, float32-rounded). The eight 46.1 configurations live on as the
+>   option table `refConfigs()`.
+> - **Exact oracle:** a naive multi-rate CQT in `oracle_test.go`, plain loops, no `conv`,
+>   `vecmath` or `core`. It covers early downsampling, reflect, zero and the `NNAudio()`
+>   zero-pad fallback, the `Firwin2` low-pass (bit-equal to `Lowpass()`/`EarlyLowpass()`),
+>   2:1 decimation, per-octave correlation, normalization and cropping. `ProcessInto` matches
+>   it to 3.1e-14 per bin (limit 1e-12) in the eight reference and five generic
+>   configurations; `ProcessInto32` matches the oracle rounded to float32 to 1.5e-16.
+>   Repeating the edge sample in the reflect padding or dropping the imaginary negation fails
+>   it with errors of 0.3–2.5.
+> - **Full-rate direct CQT:** property checks only, on pure tones at bin centres in four
+>   octaves including the lowest. Both paths peak at the tone's bin. The magnitude ratio lies
+>   within (1±δ)^o times the kernels' negative-frequency image terms, δ being the measured
+>   passband ripple of `Lowpass()` up to the highest normalized tone frequency (basic-pitch:
+>   δ = 4.0e-4, worst |ratio−1| 4.7e-4 against a bound of 3.2e-3).
+> - **Level:** `TestNormalizationLevel` replaces the librosa test. A centred tone of
+>   amplitude A gives F·A/2 with convolutional normalization (F the early-downsampling
+>   factor), within the same ripple bound; wrap gives exactly twice that; librosa gives
+>   `sqrt(Lengths()[b])` times it to 4.5e-16. New `TestScaling`.
+> - **Pinned nnAudio values** (`nnaudio_test.go`, nnAudio 0.3.4 float64 unless marked
+>   float32):
+>   - `BasicPitch()`: about 75 values — 21 setup integers, 12 frequencies and lengths,
+>     20 kernel samples, 10 low-pass taps, 6 frame-0 magnitudes in float64 and 6 in float32.
+>   - `NNAudio()`: about 115 — 35 setup integers, 26 frequencies and lengths, 32 kernel
+>     samples, 10 low-pass taps, 8 frame-0 magnitudes, and 3 complex frame-0 bins of
+>     `const_l2_conv_complex`, which anchor the imaginary sign, zero padding and early
+>     downsampling by 2.
+>
+>   Output values depend on the Python signal, so the first 393 samples of it are pinned.
+>   Frame 0 of the top-octave bins depends on nothing else: the test computes each bin's
+>   span from `Kernels()` (through the early low-pass where there is one) and requires
+>   bit-identical values with two different tails. Measured errors: kernels 3.6e-15 of the
+>   peak sample, low-pass 4.6e-17, outputs 7.3e-16 of the dot-product rounding scale,
+>   float32 outputs 2.2e-8.
+>
+> - **Coverage and timing:** `dsp/cqt` 99.1%, `dsp/filter/design` 95.5% (unchanged).
+>   `go test -race ./dsp/cqt` takes about 5.5 s, up from 2.8 s, mostly from the full-rate
+>   tones on 163840-sample signals.
+>
+> Precision given up: 46.1 compared every frame and bin of eight configurations with nnAudio
+> float64 (1.3e-13) and basic-pitch's with nnAudio float32 (1.3e-6). Now only the pinned
+> values are compared with nnAudio, and the oracle checks the algorithm but not nnAudio's
+> conventions. Not pinned against nnAudio:
+>
+> - outputs of `blackman`, `early_ds8_complex` and `no_early_ds`, whose cheapest bins need
+>   1449, 537 and 410 input samples;
+> - lower octaves, whose values depend on most of the signal;
+> - the zero-padded octaves of `basic_pitch_short`, which depend on all 4000 samples (its
+>   frame count, nnAudio's fallback warning and its unaffected top octave are pinned);
+> - nnAudio's single-partial-octave kernel shift, which no fixture had.
+>
+> Bit-level basic-pitch parity is checked downstream in algo-transcribe against
+> basic-pitch's own CQT output.
+>
+> Discoveries:
+>
+> 1. scipy's `firwin2` taps are not exactly symmetric (up to 5.2e-15), so storing half of
+>    them costs that much against scipy.
+> 2. With early downsampling the level scales with the factor F: nnAudio multiplies by F
+>    while the kernels are L1-normalized at the decimated rate, and `Lengths()` (hence the
+>    librosa factor) is computed at that rate too. This is pinned as is.
+> 3. The 2:1 low-pass ripples by 2.5e-4 even at 0.18 of Nyquist. That ripple, not aliasing,
+>    limits how closely the multi-rate and full-rate transforms agree.
+>
+> Neither README nor AGENTS.md mentioned the fixtures, so both are unchanged.
 
 - [x] 46.5 `cqt-music` — Feed the CQT into the music analysis packages. Add package `measure/music/chroma`: per-frame 12-bin chroma from a `dsp/cqt` transform whose bins per octave are a multiple of 12, folding bins to pitch classes with `pitch.FrequencyToMIDI` (`dsp/effects/pitch/note.go`), with options for the tuning reference (A4 Hz, default 440), the bin range (minimum/maximum frequency), the CQT configuration and the per-frame normalization (max, L1, L2, none); return `[12][]float64` plus the frame rate, which `harmony.Windows` takes directly. The other consumers need a different shape, so add the conversions next to it: an aggregate over a frame range (for example `chroma.Profile(c [12][]float64, start, end int) [12]float64`, the mean per pitch class) that feeds `harmony.EstimateKey`, and beat pooling (for example `chroma.BeatSync(c [12][]float64, frameRate float64, grid rhythm.Grid, beats int) [][12]float64`, the mean of the frames inside each beat from `grid.Origin()` in steps of `grid.BeatSeconds()`, zero for beats without frames) that feeds `motif.FindChromaMotifs`, whose transposition search stays inside motif. In `measure/music/melody`, add an option that takes salience and chroma from the CQT instead of the STFT (harmonic summation on the CQT grid); the defaults stay unchanged so the AudioVisualizer bit-parity tests keep passing untouched. Optionally add a CQT log-spectrogram to `measure/music/features` if it fits the existing `LogSpectrogram` shape cleanly; otherwise note why not. Tests: pitch classes of synthetic chords (triads in several keys and octaves), key estimation of synthetic C-major and A-minor cadences through chroma → `Profile` → `harmony.EstimateKey`, a repeated synthetic chord phrase found by `motif.FindChromaMotifs` through `BeatSync` (including a transposed repeat), `BeatSync` edge cases (frames straddling a beat boundary, beats before the first or after the last frame), tuning-offset handling, and on synthetic glides and low notes the CQT melody option is at least as accurate as the STFT default (record both errors); `Example`s; CHANGELOG entries under Unreleased.
 
@@ -1740,7 +1821,7 @@ Exit criteria:
       keeps a fused loop, as 46.2 allows: the primitive was more than 5% slower.)
 - [x] 46.3: generic defaults place kernels at `Frequencies()`; `BasicPitch()` and `NNAudio()`
       reproduce the 46.1 output to the 46.1 tolerances.
-- [ ] 46.4: no Python project or generated fixture remains for `dsp/cqt` and `design.Firwin2`.
+- [x] 46.4: no Python project or generated fixture remains for `dsp/cqt` and `design.Firwin2`.
 - [x] 46.5: CQT chroma drives `harmony` key estimation on synthetic cadences and `motif` chroma
       motifs through beat pooling; melody's defaults are unchanged.
 - [ ] v0.13.0 is tagged with `just tag-release` and algo-transcribe consumes it.

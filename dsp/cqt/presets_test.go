@@ -462,9 +462,9 @@ func TestBasicPitchPreset(t *testing.T) {
 // relative, kernel samples 3.5e-14 relative to the largest sample (the
 // frequency rounding is multiplied by the phase index, up to half the kernel
 // length), and generic+reflect against NNAudio() on the 43844-sample
-// test signal 6.2e-14 in the per-bin metric of the golden tests (basic-pitch).
-// The bounds are 1e-14, 1e-12 and tolF64: generic and nnAudio placement
-// differ by less than the golden tolerance against nnAudio itself.
+// test signal 6.2e-14 in the per-bin metric of perBinError (basic-pitch).
+// The bounds are 1e-14, 1e-12 and tolExact: generic and nnAudio placement
+// differ only by rounding.
 func TestGenericMatchesNNAudioWholeOctaves(t *testing.T) {
 	t.Parallel()
 
@@ -516,9 +516,9 @@ func TestGenericMatchesNNAudioWholeOctaves(t *testing.T) {
 			outErr, bin := perBinError(yg, yn, nn.FrameCount(len(x)), nn.Bins(), false)
 			t.Logf("kernel frequencies %.2e, kernels %.2e, output %.2e (bin %d)", freqErr, kernelErr, outErr, bin)
 
-			if !(freqErr <= 1e-14) || !(kernelErr <= 1e-12) || !(outErr <= tolF64) {
+			if !(freqErr <= 1e-14) || !(kernelErr <= 1e-12) || !(outErr <= tolExact) {
 				t.Errorf("generic vs NNAudio: kernel frequencies %.2e (> 1e-14?), kernels %.2e (> 1e-12?), "+
-					"output %.2e at bin %d (> %.0e?)", freqErr, kernelErr, outErr, bin, tolF64)
+					"output %.2e at bin %d (> %.0e?)", freqErr, kernelErr, outErr, bin, tolExact)
 			}
 		})
 	}
