@@ -40,6 +40,11 @@ import (
 // stored half.
 const firwin2ScipyTol = 1e-14
 
+// firwin2StoredTol is the absolute tolerance on the stored, unmirrored half of
+// the pinned scipy taps, where both Firwin2 and firwin2Reference measured
+// <= 2.2e-16. It catches regressions that firwin2ScipyTol would let through.
+const firwin2StoredTol = 1e-15
+
 // firwin2RefTol is the absolute tolerance between Firwin2 and
 // firwin2Reference. Measured on all 17 cases: <= 2.2e-16.
 const firwin2RefTol = 1e-14
@@ -346,13 +351,17 @@ func TestFirwin2Scipy(t *testing.T) {
 				t.Fatalf("Firwin2: %v", err)
 			}
 
+			stored := len(tc.scipyHalf)
+
 			checkTaps(t, got, want, firwin2ScipyTol)
+			checkTaps(t, got[:stored], want[:stored], firwin2StoredTol)
 			t.Logf("Firwin2 max abs error vs scipy %.3g (tol %.0e)", maxAbsDiff(got, want), firwin2ScipyTol)
 
 			// The reference must reproduce scipy too, or agreeing with it
 			// would prove nothing.
 			ref := firwin2Reference(t, tc)
 			checkTaps(t, ref, want, firwin2ScipyTol)
+			checkTaps(t, ref[:stored], want[:stored], firwin2StoredTol)
 			t.Logf("reference max abs error vs scipy %.3g", maxAbsDiff(ref, want))
 		})
 	}
