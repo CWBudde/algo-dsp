@@ -465,8 +465,10 @@ func TestOracle(t *testing.T) {
 func TestOracleFrameCount(t *testing.T) {
 	t.Parallel()
 
-	lengths := []int{0, 1, 2, 3, 127, 128, 129, 255, 256, 257, 511, 512, 513, 1000, 1031, 1032,
-		4000, 8249, 8250, 33023, 33024, 43844, 44100}
+	lengths := []int{
+		0, 1, 2, 3, 127, 128, 129, 255, 256, 257, 511, 512, 513, 1000, 1031, 1032,
+		4000, 8249, 8250, 33023, 33024, 43844, 44100,
+	}
 
 	for _, tc := range oracleCases() {
 		tr, err := New(tc.sr, tc.opts...)

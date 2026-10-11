@@ -1697,6 +1697,7 @@ bounded-work stepper for per-step time budgets follows as a later item.
 >   bit-identical values with two different tails. Measured errors: kernels 3.6e-15 of the
 >   peak sample, low-pass 4.6e-17, outputs 7.3e-16 of the dot-product rounding scale,
 >   float32 outputs 2.2e-8.
+>
 > - **Coverage and timing:** `dsp/cqt` 99.1%, `dsp/filter/design` 95.5% (unchanged).
 >   `go test -race ./dsp/cqt` takes about 5.5 s, up from 2.8 s, mostly from the full-rate
 >   tones on 163840-sample signals.

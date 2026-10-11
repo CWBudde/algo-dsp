@@ -8,10 +8,9 @@ import (
 	"slices"
 	"testing"
 
-	algofft "github.com/cwbudde/algo-fft"
-
 	"github.com/cwbudde/algo-dsp/dsp/filter/design"
 	"github.com/cwbudde/algo-dsp/dsp/window"
+	algofft "github.com/cwbudde/algo-fft"
 )
 
 // Firwin2 is checked two ways, without any test data files:
@@ -551,6 +550,7 @@ func TestFirwin2Symmetric(t *testing.T) {
 		})
 	}
 }
+
 func TestFirwin2DoesNotModifyInputs(t *testing.T) {
 	tests := []struct {
 		name    string
