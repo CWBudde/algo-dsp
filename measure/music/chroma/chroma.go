@@ -195,7 +195,9 @@ func (c *Chromagram) Clone() *Chromagram {
 
 // FrameRate returns the number of frames per second: the sample rate divided
 // by the hop size given to the transform (before early downsampling).
-// Frame i is centred on time i/FrameRate().
+// With the default centring ([cqt.PadZero]), frame i is centred on time
+// i/FrameRate(); a [cqt.WithCenter] override passed through [WithCQT]
+// changes that.
 func (c *Chromagram) FrameRate() float64 { return c.tr.SampleRate() / float64(c.tr.Hop()) }
 
 // FrameCount returns the number of frames [Chromagram.Process] returns for n

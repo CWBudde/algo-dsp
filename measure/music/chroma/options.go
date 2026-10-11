@@ -155,7 +155,8 @@ func WithCQT(opts ...cqt.Option) Option {
 }
 
 // WithNormalization selects the per-frame normalization (default
-// [NormMax]).
+// [NormMax]). Under every normalization, including [NormNone], a frame whose
+// in-band CQT power is below 1e-12 (about -120 dB) is returned as all zeros.
 func WithNormalization(n Normalization) Option {
 	return func(cfg *config) error {
 		if !n.valid() {
