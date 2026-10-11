@@ -28,9 +28,12 @@ All notable changes to this project are documented in this file.
   nnAudio quirks the generic transform does not have: kernels of a single
   partial octave shifted below their nominal frequencies, and octaves too
   short to reflect zero-padded instead of rejected. Options after a preset
-  override its parameters. Golden tests run through the presets against
-  nnAudio 0.3.4 in eight configurations; basic-pitch's matches nnAudio as
-  shipped (float32) to within 1e-5 of each bin's peak. Unlike nnAudio, which
+  override its parameters. Through the presets the transform matched nnAudio
+  0.3.4 run in float64 to about 1e-13 in eight configurations, and
+  basic-pitch's configuration matched nnAudio as shipped (float32) to within
+  1e-5 of each bin's peak; the tests pin a sample of those nnAudio values and
+  check the whole transform against a naive multi-rate reference in Go, with
+  no Python involved. Unlike nnAudio, which
   ignores its `window` argument, `WithWindow` is honoured, and hop lengths
   the octaves cannot share are rejected instead of failing inside the
   transform.
