@@ -13,8 +13,9 @@
 //
 // The package also has one FIR designer: [Firwin2] designs a linear-phase FIR
 // filter from a piecewise-linear magnitude response by the windowed
-// frequency-sampling method. It matches scipy.signal.firwin2 (verified against
-// golden vectors from scipy) and, unlike the biquad designers below, returns
+// frequency-sampling method. It matches scipy.signal.firwin2 (the tests pin
+// scipy's taps for selected cases and check the rest against an independent
+// frequency-sampling reference) and, unlike the biquad designers below, returns
 // an explicit error wrapping [ErrInvalidFirwin2] for parameters it cannot
 // design for.
 //
