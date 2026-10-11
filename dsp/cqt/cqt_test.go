@@ -174,14 +174,16 @@ func octaveLengths(tr *Transform, n int) []int {
 	return out
 }
 
-// TestReflectFallback checks that the fixtures flagged reflect_fallback are
-// exactly those where an octave is not longer than nfft/2 samples, the case
-// in which torch's reflection pad raises and nnAudio zero pads instead.
+// TestReflectFallback checks that the reference configurations flagged
+// fallback are exactly those where an octave is not longer than nfft/2
+// samples, the case in which torch's reflection pad raises and nnAudio zero
+// pads instead. nnAudio warned about the fallback only for basic_pitch_short
+// (46.1).
 func TestReflectFallback(t *testing.T) {
 	t.Parallel()
 
-	for _, fx := range loadFixtures(t) {
-		tr, err := New(fx.Config.SR, fx.Config.options(t)...)
+	for _, rc := range refConfigs() {
+		tr, err := New(rc.sr, rc.opts...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -189,13 +191,13 @@ func TestReflectFallback(t *testing.T) {
 		fallback := false
 
 		if tr.padding == PadReflect {
-			for _, n := range octaveLengths(tr, fx.Length) {
+			for _, n := range octaveLengths(tr, rc.length) {
 				fallback = fallback || n <= tr.NFFT()/2
 			}
 		}
 
-		if fallback != fx.ReflectFallback {
-			t.Errorf("%s: fallback = %v, fixture says %v", fx.Name, fallback, fx.ReflectFallback)
+		if fallback != rc.fallback {
+			t.Errorf("%s: fallback = %v, want %v", rc.name, fallback, rc.fallback)
 		}
 	}
 }
