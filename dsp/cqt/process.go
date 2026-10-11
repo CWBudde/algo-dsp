@@ -3,9 +3,9 @@ package cqt
 import (
 	"fmt"
 	"math"
-	"unsafe"
 
-	"github.com/cwbudde/algo-vecmath"
+	"github.com/cwbudde/algo-dsp/dsp/conv"
+	"github.com/cwbudde/algo-dsp/dsp/core"
 )
 
 // sample is the element type of the output slices.
@@ -104,31 +104,18 @@ func (t *Transform) Process(x []float64) ([]float64, error) {
 // from a copy, because the lower octaves are decimated from x after the top
 // octave's results have been written.
 func (t *Transform) ProcessInto(dst, x []float64) error {
-	if overlaps(dst, x) {
+	if core.Overlaps(dst, x) {
 		err := t.checkLengths(len(dst), len(x))
 		if err != nil {
 			return err
 		}
 
-		t.in64 = grow(t.in64, len(x))
+		t.in64 = core.EnsureLen(t.in64, len(x))
 		copy(t.in64, x)
 		x = t.in64
 	}
 
 	return process(t, dst, x)
-}
-
-// overlaps reports whether a and b share any element.
-func overlaps(a, b []float64) bool {
-	if len(a) == 0 || len(b) == 0 {
-		return false
-	}
-
-	a0 := uintptr(unsafe.Pointer(unsafe.SliceData(a)))
-	b0 := uintptr(unsafe.Pointer(unsafe.SliceData(b)))
-	size := unsafe.Sizeof(a[0])
-
-	return a0 < b0+uintptr(len(b))*size && b0 < a0+uintptr(len(a))*size
 }
 
 // ProcessInto32 is [Transform.ProcessInto] for float32 input and output. The
@@ -140,7 +127,7 @@ func (t *Transform) ProcessInto32(dst, x []float32) error {
 		return err
 	}
 
-	t.in64 = grow(t.in64, len(x))
+	t.in64 = core.EnsureLen(t.in64, len(x))
 	for i, v := range x {
 		t.in64[i] = float64(v)
 	}
@@ -178,7 +165,7 @@ func process[T sample](t *Transform, dst []T, x []float64) error {
 	cur, slot := x, 0
 
 	if t.factor > 1 {
-		t.octave[0] = grow(t.octave[0], decimatedLength(len(x), lowpassTaps, t.factor))
+		t.octave[0] = core.EnsureLen(t.octave[0], decimatedLength(len(x), lowpassTaps, t.factor))
 		decimate(t.octave[0], x, t.earlyLowpass, t.factor)
 		cur, slot = t.octave[0], 1
 	}
@@ -191,7 +178,7 @@ func process[T sample](t *Transform, dst []T, x []float64) error {
 	for o := range t.nOctaves {
 		if o > 0 {
 			hop /= 2
-			next := grow(t.octave[slot], decimatedLength(len(cur), lowpassTaps, 2))
+			next := core.EnsureLen(t.octave[slot], decimatedLength(len(cur), lowpassTaps, 2))
 			decimate(next, cur, t.lowpass, 2)
 			t.octave[slot] = next
 			cur, slot = next, 1-slot
@@ -206,21 +193,12 @@ func process[T sample](t *Transform, dst []T, x []float64) error {
 
 // decimate is nnAudio's downsampling_by_n: torch conv1d (cross-correlation)
 // of x with h, zero padding (len(h)-1)/2 on both sides and stride factor.
-// dst must have decimatedLength(len(x), len(h), factor) elements. Every
-// output window overlaps the signal, so the taps on the zero padding are
-// simply skipped.
+// dst must have decimatedLength(len(x), len(h), factor) elements and must not
+// overlap x or h.
 func decimate(dst, x, h []float64, factor int) {
-	pad := (len(h) - 1) / 2
-
-	for i := range dst {
-		// Output i reads padded samples [i*factor, i*factor+len(h)), that is
-		// x[i*factor-pad+k] for the taps k inside the signal.
-		off := i*factor - pad
-		kLo := max(0, -off)
-		kHi := min(len(h), len(x)-off)
-
-		dst[i] = vecmath.DotProduct(x[off+kLo:off+kHi], h[kLo:kHi])
-	}
+	// Cannot fail: factor >= 2, h is a non-empty filter and dst is a scratch
+	// buffer distinct from x and h.
+	_ = conv.CorrelateStridedInto(dst, x, h, -(len(h)-1)/2, factor)
 }
 
 // convolve applies the kernels to one octave's signal x with stride hop and
@@ -228,20 +206,18 @@ func decimate(dst, x, h []float64, factor int) {
 func convolve[T sample](t *Transform, dst []T, x []float64, hop, binBase, frames int) {
 	pad := t.nFFT / 2
 	n := len(x)
-	xp := grow(t.padded, n+2*pad)
+	xp := core.EnsureLen(t.padded, n+2*pad)
 	t.padded = xp
 
-	copy(xp[pad:], x)
-
 	if t.padding == PadReflect && pad < n {
-		for i := range pad {
-			xp[pad-1-i] = x[i+1]
-			xp[pad+n+i] = x[n-2-i]
-		}
+		// Cannot fail: pad < n, xp has n+2*pad elements and is a scratch
+		// buffer distinct from x.
+		_ = core.PadReflect(xp, x, pad, pad)
 	} else {
 		// Constant padding, or torch's reflection pad rejected the octave
 		// (pad >= n) and nnAudio fell back to zeros.
 		clear(xp[:pad])
+		copy(xp[pad:], x)
 		clear(xp[pad+n:])
 	}
 
@@ -272,7 +248,14 @@ func convolve[T sample](t *Transform, dst []T, x []float64, hop, binBase, frames
 }
 
 // dot2 returns the dot products of x[:len(a)] with a and with b in one pass.
-// It measured faster than two vecmath.DotProduct calls, which read x twice.
+//
+// The kernel correlation deliberately does not use conv.CorrelateStridedInto,
+// unlike decimate. On the basic-pitch benchmark (BenchmarkProcessIntoBasicPitch,
+// Apple M5 Pro, 46.2) computing each filter's real and imaginary rows with two
+// CorrelateStridedInto calls and scattering them into the frame-major output
+// was 8-14% slower than this fused loop, and two vecmath.DotProduct calls per
+// window (which read x twice) were 10% slower. Both exceed the 5% budget, so
+// the fused real+imaginary loop stays.
 func dot2(x, a, b []float64) (float64, float64) {
 	n := len(a)
 	x = x[:n]
@@ -299,14 +282,4 @@ func dot2(x, a, b []float64) (float64, float64) {
 	}
 
 	return (r0 + r1) + (r2 + r3), (i0 + i1) + (i2 + i3)
-}
-
-// grow returns buf resliced to n elements, reallocating only if its capacity
-// is too small.
-func grow(buf []float64, n int) []float64 {
-	if cap(buf) < n {
-		return make([]float64, n)
-	}
-
-	return buf[:n]
 }

@@ -308,3 +308,75 @@ func checkGolden(t *testing.T, got, want []float64, tol float64) {
 func almostEqual(a, b, tol float64) bool {
 	return math.Abs(a-b) <= tol
 }
+
+func TestTypeValid(t *testing.T) {
+	for typ := TypeRectangular; typ <= TypeFreeCosine; typ++ {
+		if !typ.Valid() {
+			t.Errorf("Type(%d).Valid() = false, want true", int(typ))
+		}
+	}
+
+	for _, typ := range []Type{-1, -1000, TypeFreeCosine + 1, 999, Type(math.MaxInt32)} {
+		if typ.Valid() {
+			t.Errorf("Type(%d).Valid() = true, want false", int(typ))
+		}
+	}
+}
+
+func TestTypeString(t *testing.T) {
+	seen := make(map[string]Type)
+
+	for typ := TypeRectangular; typ <= TypeFreeCosine; typ++ {
+		name := typ.String()
+		if name == "" {
+			t.Errorf("Type(%d).String() is empty", int(typ))
+
+			continue
+		}
+
+		if prev, dup := seen[name]; dup {
+			t.Errorf("Type(%d) and Type(%d) share the name %q", int(prev), int(typ), name)
+		}
+
+		seen[name] = typ
+
+		if info := Info(typ).Name; info != "" && info != name {
+			t.Errorf("Type(%d).String() = %q, want Info name %q", int(typ), name, info)
+		}
+	}
+
+	tests := []struct {
+		typ  Type
+		want string
+	}{
+		{TypeHann, "Hann"},
+		{TypeBlackmanHarris4Term, "Blackman-Harris 4T"},
+		{TypeLawrey5Term, "Lawrey 5T"},
+		{TypeBurgessOptimized59dB, "Burgess Optimized 59dB"},
+		{TypeAlbrecht11Term, "Albrecht 11T"},
+		{-1, "Type(-1)"},
+		{TypeFreeCosine + 1, "Type(33)"},
+		{999, "Type(999)"},
+	}
+
+	for _, tc := range tests {
+		if got := tc.typ.String(); got != tc.want {
+			t.Errorf("Type(%d).String() = %q, want %q", int(tc.typ), got, tc.want)
+		}
+	}
+}
+
+func TestGenerateInvalidTypeIsRectangular(t *testing.T) {
+	for _, typ := range []Type{-1, TypeFreeCosine + 1, 999} {
+		w := Generate(typ, 16)
+		if len(w) != 16 {
+			t.Fatalf("Type(%d): len=%d, want 16", int(typ), len(w))
+		}
+
+		for i, v := range w {
+			if v != 1 {
+				t.Fatalf("Type(%d): coefficient[%d]=%v, want 1", int(typ), i, v)
+			}
+		}
+	}
+}

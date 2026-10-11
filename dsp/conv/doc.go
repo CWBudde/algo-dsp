@@ -39,6 +39,12 @@
 //	peakIdx, peakVal := conv.FindPeak(corr)
 //	lag := conv.LagFromIndex(peakIdx, len(template))
 //
+// [CorrelateStridedInto] evaluates a strided correlation into a caller-owned
+// buffer without allocating, with zeros outside x (torch conv1d with padding p
+// is start = -p):
+//
+//	err := conv.CorrelateStridedInto(dst, x, h, -p, stride)
+//
 // Auto-correlation is useful for detecting periodicity:
 //
 //	acf, err := conv.AutoCorrelateNormalized(signal)

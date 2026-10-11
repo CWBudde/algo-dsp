@@ -24,6 +24,37 @@ All notable changes to this project are documented in this file.
   design with `scipy.signal.firwin2` parity (default `nfreqs`, Hamming window,
   `WithNFreqs`, `WithSampleRate`, `WithWindow`, `WithoutWindow`). The
   antisymmetric types III and IV are not supported yet.
+- `window.Type.Valid` reports whether a value is one of the declared window
+  types, and `window.Type.String` returns its display name: `Info(t).Name`
+  where metadata exists, names such as "Lawrey 5T" or "Albrecht 4T" for the
+  types without metadata, and "Type(N)" for unknown values. `window.Generate`
+  now documents that an unknown type is treated as rectangular (all ones).
+- `core.PadReflect(dst, x, left, right)`: zero-allocation reflect padding
+  matching numpy.pad / torch `F.pad` `mode="reflect"` (edge sample not
+  repeated: `[1 2 3 4]` padded by 2 → `[3 2 1 2 3 4 3 2]`). A pad that is not
+  shorter than the input returns `ErrPadTooLong`; negative pads, a short or
+  aliasing `dst` return `ErrNegativePad`, `ErrShortBuffer` and `ErrOverlap`.
+  This differs from the scipy-style reflect (edge repeated) that
+  `dsp/separate`'s median filters use. `core.Overlaps(a, b)` reports whether
+  two slices share an element (length-based, not capacity-based).
+- `conv.CorrelateStridedInto(dst, x, h, start, stride)`: zero-allocation
+  strided cross-correlation, `dst[i] = Σ h[k]·x[start+i·stride+k]`, with
+  samples outside `x` taken as zero. It equals torch
+  `conv1d(x, h, stride=s, padding=p)` for `start = -p`. A stride below 1
+  returns `ErrInvalidStride`, a `dst` that overlaps `x` or `h` returns
+  `ErrAliasing`, an empty kernel returns `ErrEmptyKernel`.
+
+### Changed
+
+- `dsp/cqt` pads its octaves with `core.PadReflect` and decimates them with
+  `conv.CorrelateStridedInto` instead of private copies; its output is
+  bit-identical. The kernel correlation keeps a fused real+imaginary loop,
+  because the strided primitive measured 8–14% slower on basic-pitch's
+  configuration. `cqt.WithWindow` and `design.WithWindow` check
+  `window.Type.Valid`, so their error messages now name the type
+  (`unknown window type Type(99)`).
+- `stft.WithWindow` now rejects unknown window types with `ErrInvalidWindow`
+  (previously they silently produced a rectangular window).
 
 ## [v0.12.4] - 2026-10-07
 

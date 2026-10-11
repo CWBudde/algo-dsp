@@ -45,6 +45,12 @@ const (
 	TypeFreeCosine
 )
 
+// Valid reports whether t is one of the declared window types,
+// TypeRectangular through TypeFreeCosine.
+func (t Type) Valid() bool {
+	return t >= TypeRectangular && t <= TypeFreeCosine
+}
+
 // Slope controls which edge(s) of the window are tapered.
 type Slope int
 
@@ -137,6 +143,10 @@ func WithCustomCoeffs(coeffs []float64) Option {
 }
 
 // Generate returns window coefficients of the given length.
+//
+// An unknown window type (one for which [Type.Valid] reports false) is
+// treated as rectangular: every coefficient is 1. Callers that accept a
+// window type from outside should check [Type.Valid] first.
 func Generate(t Type, length int, opts ...Option) []float64 {
 	if length <= 0 {
 		return nil
@@ -161,7 +171,8 @@ func Generate(t Type, length int, opts ...Option) []float64 {
 	return out
 }
 
-// Apply multiplies buf in-place by the selected window.
+// Apply multiplies buf in-place by the selected window. Like [Generate], it
+// treats an unknown window type as rectangular.
 func Apply(t Type, buf []float64, opts ...Option) {
 	if len(buf) == 0 {
 		return
@@ -175,7 +186,10 @@ func Apply(t Type, buf []float64, opts ...Option) {
 	vecmath.MulBlockInPlace(buf, coeffs)
 }
 
-// Info returns static metadata for a window type.
+// Info returns static metadata for a window type. It returns the zero
+// Metadata for unknown types and for the Lawrey, Burgess and Albrecht
+// windows, whose spectral properties are not tabulated; use [Type.String]
+// for a name that is defined for every valid type.
 func Info(t Type) Metadata {
 	if m, ok := metadataByType[t]; ok {
 		return m

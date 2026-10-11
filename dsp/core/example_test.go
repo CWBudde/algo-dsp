@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cwbudde/algo-dsp/dsp/core"
@@ -50,4 +51,40 @@ func ExampleLinearPowerToDBFloor() {
 
 	// Output:
 	// -120.0
+}
+
+func ExamplePadReflect() {
+	x := []float64{1, 2, 3, 4}
+	dst := make([]float64, len(x)+4)
+
+	if err := core.PadReflect(dst, x, 2, 2); err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(dst)
+
+	// A reflect pad must be shorter than the input.
+	err := core.PadReflect(make([]float64, 9), x, 4, 1)
+	fmt.Println(err)
+	fmt.Println(errors.Is(err, core.ErrPadTooLong))
+
+	// Output:
+	// [3 2 1 2 3 4 3 2]
+	// core: reflect pad must be shorter than the input: left 4, right 1 for 4 samples
+	// true
+}
+
+func ExampleOverlaps() {
+	buf := make([]float64, 4, 8)
+
+	fmt.Println(core.Overlaps(buf[:3], buf[2:]))
+	fmt.Println(core.Overlaps(buf[:2], buf[2:4]))
+	fmt.Println(core.Overlaps(buf[:4], buf[4:8])) // shares only capacity
+	fmt.Println(core.Overlaps(buf, nil))
+
+	// Output:
+	// true
+	// false
+	// false
+	// false
 }
