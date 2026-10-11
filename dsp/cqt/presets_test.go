@@ -541,8 +541,11 @@ func TestReflectThreshold(t *testing.T) {
 		wantFrames int // FrameCount(minLen)
 	}{
 		// One octave, nfft 256, hop 1: minLen = 128+1, 129/1+1 frames.
-		{"single octave", 8000,
-			[]Option{WithFMin(1000), WithBins(12), WithHopLength(1), WithEarlyDownsampling(false)}, 129, 130},
+		{
+			"single octave", 8000,
+			[]Option{WithFMin(1000), WithBins(12), WithHopLength(1), WithEarlyDownsampling(false)},
+			129, 130,
+		},
 		// basic-pitch's numbers: 9 octaves, nfft 256, hop 256:
 		// minLen = (128+1)*2^8 = 33024, 33024/256+1 frames.
 		{"basic-pitch", BasicPitchSampleRate, []Option{
