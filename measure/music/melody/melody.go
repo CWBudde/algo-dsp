@@ -117,7 +117,7 @@ func Analyze(mono []float64, sampleRate float64, opts ...Option) (*Result, error
 		return nil, err
 	}
 
-	count := a.st.FrameCount(len(mono))
+	count := a.frameCount(len(mono))
 	res := &Result{
 		Pitch:     make([]float64, count),
 		Voicing:   make([]float64, count),
@@ -126,6 +126,13 @@ func Analyze(mono []float64, sampleRate float64, opts ...Option) (*Result, error
 
 	for c := range res.Chroma {
 		res.Chroma[c] = make([]float64, count)
+	}
+
+	if a.cq != nil {
+		err := a.cq.process(mono)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	gate := math.Pow(10, cfg.gateDB/20)
@@ -166,9 +173,9 @@ type candidate struct {
 	first, count int
 }
 
-// harmonic is a precomputed linear interpolation of the magnitude spectrum at
-// a fractional bin: mag[idx]*(1-frac) + mag[idx+1]*frac, or 0 when idx+1 is
-// past the last bin.
+// harmonic is a precomputed linear interpolation of the FFT magnitude
+// spectrum at a fractional bin: mag[idx]*(1-frac) + mag[idx+1]*frac, or 0
+// when idx+1 is past the last bin.
 type harmonic struct {
 	weight   float64
 	idx      int
@@ -177,10 +184,14 @@ type harmonic struct {
 	pastEnd  bool
 }
 
-// analyzer holds the per-call spectral state of [Analyze].
+// analyzer holds the per-call spectral state of [Analyze]. Exactly one front
+// end is set: st (STFT, the default) or cq (CQT, [WithCQT]). Both fill
+// mag[lo..hi] per frame; chroma and voicing are shared, salience
+// interpolates per front end.
 type analyzer struct {
 	cfg        *config
 	st         *stft.STFT
+	cq         *cqtFront
 	binsPerHz  float64
 	lo, hi     int
 	spec       []complex128
@@ -192,74 +203,159 @@ type analyzer struct {
 }
 
 func newAnalyzer(cfg *config, sampleRate float64) (*analyzer, error) {
-	st, err := stft.New(cfg.fftSize, cfg.hop)
+	a := &analyzer{cfg: cfg}
+
+	var err error
+	if cfg.cqt != nil {
+		err = a.initCQT(sampleRate)
+	} else {
+		err = a.initSTFT(sampleRate)
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("melody: %w", err)
-	}
-
-	bins := st.Bins()
-	binsPerHz := float64(cfg.fftSize) / sampleRate
-	a := &analyzer{
-		cfg:        cfg,
-		st:         st,
-		binsPerHz:  binsPerHz,
-		lo:         max(1, int(cfg.minHz*binsPerHz)),
-		hi:         min(bins-1, int(cfg.maxHz*binsPerHz)),
-		spec:       make([]complex128, bins),
-		mag:        make([]float64, bins),
-		used:       make([]bool, bins),
-		pitchClass: make([]int, bins),
-	}
-
-	for k := 1; k < bins; k++ {
-		hz := float64(k) / binsPerHz
-		a.pitchClass[k] = ((int(math.Round(12*math.Log2(hz/cfg.referenceHz)))+69)%12 + 12) % 12
+		return nil, err
 	}
 
 	// The candidate grid is accumulated, not multiplied, so its values
 	// match a loop that steps midi += 0.1.
 	for midi := cfg.minMIDI; midi <= cfg.maxMIDI; midi += pitchStep {
 		f0 := pitch.MIDIToFrequency(midi, cfg.referenceHz)
-		c := candidate{midi: midi, first: len(a.harmonics)}
+		c := candidate{midi: midi, first: a.harmonicCount()}
 		weight := 1.0
 
 		for h := 1; h <= cfg.harmonics && f0*float64(h) < cfg.maxHz; h++ {
-			a.harmonics = append(a.harmonics, a.newHarmonic(f0*float64(h)*binsPerHz, weight))
+			a.addHarmonic(a.binOf(f0*float64(h)), weight)
 			weight *= cfg.harmonicDecay
 		}
 
-		c.count = len(a.harmonics) - c.first
+		c.count = a.harmonicCount() - c.first
 		a.cands = append(a.cands, c)
 	}
 
 	return a, nil
 }
 
-func (a *analyzer) newHarmonic(bin, weight float64) harmonic {
+// initSTFT sets up the default STFT front end: FFT bins k*sampleRate/fftSize,
+// the band [minHz, maxHz] mapped to bins lo..hi (bin 0 excluded).
+func (a *analyzer) initSTFT(sampleRate float64) error {
+	cfg := a.cfg
+
+	st, err := stft.New(cfg.fftSize, cfg.hop)
+	if err != nil {
+		return fmt.Errorf("melody: %w", err)
+	}
+
+	bins := st.Bins()
+	binsPerHz := float64(cfg.fftSize) / sampleRate
+	a.st = st
+	a.binsPerHz = binsPerHz
+	a.lo = max(1, int(cfg.minHz*binsPerHz))
+	a.hi = min(bins-1, int(cfg.maxHz*binsPerHz))
+	a.spec = make([]complex128, bins)
+	a.allocBins(bins)
+
+	for k := 1; k < bins; k++ {
+		a.pitchClass[k] = pitchClassOf(float64(k)/binsPerHz, cfg.referenceHz)
+	}
+
+	return nil
+}
+
+func (a *analyzer) allocBins(bins int) {
+	a.mag = make([]float64, bins)
+	a.used = make([]bool, bins)
+	a.pitchClass = make([]int, bins)
+}
+
+// pitchClassOf returns the pitch class (0 = C) of the equal-tempered note
+// nearest to hz.
+func pitchClassOf(hz, referenceHz float64) int {
+	return ((int(math.Round(12*math.Log2(hz/referenceHz)))+69)%12 + 12) % 12
+}
+
+// binOf returns the fractional bin position of a frequency: hz*fftSize/
+// sampleRate for the STFT, binsPerOctave*log2(hz/f_0) for the CQT, f_0 being
+// the centre of CQT bin 0.
+func (a *analyzer) binOf(hz float64) float64 {
+	if a.cq != nil {
+		return a.cq.binsPerOctave * math.Log2(hz/a.cq.fmin)
+	}
+
+	return hz * a.binsPerHz
+}
+
+// frameCount returns the number of analysis frames for n samples:
+// ceil(n/hop) for both front ends.
+func (a *analyzer) frameCount(n int) int {
+	if a.cq != nil {
+		return (n + a.cfg.hop - 1) / a.cfg.hop
+	}
+
+	return a.st.FrameCount(n)
+}
+
+// addHarmonic appends the interpolation of the magnitude at a fractional bin
+// to the front end's harmonic list.
+func (a *analyzer) addHarmonic(bin, weight float64) {
+	if a.cq != nil {
+		a.cq.addHarmonic(bin, weight)
+
+		return
+	}
+
 	i := int(bin)
 	f := bin - float64(i)
 
-	return harmonic{
+	a.harmonics = append(a.harmonics, harmonic{
 		weight:   weight,
 		idx:      i,
 		oneMinus: 1 - f,
 		frac:     f,
 		pastEnd:  i+1 >= len(a.mag),
+	})
+}
+
+func (a *analyzer) harmonicCount() int {
+	if a.cq != nil {
+		return len(a.cq.harmonics)
 	}
+
+	return len(a.harmonics)
+}
+
+// fill writes the magnitudes of the band bins lo..hi of one frame to a.mag.
+// Bins outside the band are never written and stay 0.
+func (a *analyzer) fill(mono []float64, frame int) error {
+	if a.cq != nil {
+		row := a.cq.row(frame)
+		copy(a.mag[a.lo:a.hi+1], row[a.lo:a.hi+1])
+
+		return nil
+	}
+
+	err := a.st.FrameInto(a.spec, mono, frame)
+	if err != nil {
+		return fmt.Errorf("melody: frame %d: %w", frame, err)
+	}
+
+	for k := a.lo; k <= a.hi; k++ {
+		a.mag[k] = math.Hypot(real(a.spec[k]), imag(a.spec[k]))
+	}
+
+	return nil
 }
 
 // frame analyses one frame that passed the RMS gate.
 func (a *analyzer) frame(res *Result, mono []float64, frame int) error {
-	err := a.st.FrameInto(a.spec, mono, frame)
+	err := a.fill(mono, frame)
 	if err != nil {
-		return fmt.Errorf("melody: frame %d: %w", frame, err)
+		return err
 	}
 
 	mag := a.mag
 	total, chroma := 0.0, [12]float64{}
 
 	for k := a.lo; k <= a.hi; k++ {
-		mag[k] = math.Hypot(real(a.spec[k]), imag(a.spec[k]))
 		p := mag[k] * mag[k]
 		total += p
 		chroma[a.pitchClass[k]] += p
@@ -292,6 +388,10 @@ func (a *analyzer) frame(res *Result, mono []float64, frame int) error {
 // salience returns the candidate with the largest weighted harmonic sum, or
 // 0 if no candidate has a positive sum.
 func (a *analyzer) salience() float64 {
+	if a.cq != nil {
+		return a.cq.salience(a.cands)
+	}
+
 	best, bestMIDI := 0.0, 0.0
 
 	for _, c := range a.cands {
@@ -326,7 +426,7 @@ func (a *analyzer) explained(midi float64) float64 {
 	f0 := pitch.MIDIToFrequency(midi, a.cfg.referenceHz)
 
 	for h := 1; h <= a.cfg.harmonics && f0*float64(h) < a.cfg.maxHz; h++ {
-		k := int(math.Round(f0 * float64(h) * a.binsPerHz))
+		k := int(math.Round(a.binOf(f0 * float64(h))))
 		for j := max(a.lo, k-2); j <= min(a.hi, k+2); j++ {
 			if !a.used[j] {
 				a.used[j] = true

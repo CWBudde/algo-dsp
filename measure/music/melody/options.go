@@ -77,6 +77,7 @@ type config struct {
 	smoothing     float64
 	onsets        []float64
 	notes         noteConfig
+	cqt           *cqtConfig // nil: STFT front end
 }
 
 // noteConfig holds the note segmentation parameters in seconds.
@@ -147,7 +148,8 @@ func WithHop(hop int) Option {
 }
 
 // WithFFTSize sets the FFT size in samples (default [DefaultFFTSize]). The
-// frames are windowed with a periodic Hann window of this length.
+// frames are windowed with a periodic Hann window of this length. It has no
+// effect with [WithCQT].
 func WithFFTSize(n int) Option {
 	return func(cfg *config) error {
 		if n < 2 {
@@ -197,8 +199,9 @@ func WithHarmonics(count int, decay float64) Option {
 
 // WithFrequencyRange sets the analysis band in Hz (default
 // [DefaultMinHz]..[DefaultMaxHz]). Chroma and the voicing denominator use
-// only the FFT bins inside it, and harmonics at or above maxHz are not
-// summed. A maxHz above Nyquist is limited to the last FFT bin.
+// only the FFT bins (or CQT bins, see [WithCQT]) inside it, and harmonics at
+// or above maxHz are not summed. A maxHz above Nyquist is limited to the
+// last FFT bin.
 func WithFrequencyRange(minHz, maxHz float64) Option {
 	return func(cfg *config) error {
 		if !finite(minHz) || !finite(maxHz) || minHz <= 0 || minHz >= maxHz {
@@ -213,7 +216,7 @@ func WithFrequencyRange(minHz, maxHz float64) Option {
 
 // WithVoicingThreshold sets the share of band power, in [0, 1], that the
 // chosen harmonic series must explain for a frame to be voiced (default
-// [DefaultVoicingThreshold]).
+// [DefaultVoicingThreshold]; [WithCQT] sets [DefaultCQTVoicingThreshold]).
 func WithVoicingThreshold(threshold float64) Option {
 	return func(cfg *config) error {
 		if !(threshold >= 0 && threshold <= 1) {
