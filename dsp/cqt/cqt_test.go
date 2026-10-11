@@ -3,7 +3,6 @@ package cqt
 import (
 	"errors"
 	"math"
-	"math/cmplx"
 	"slices"
 	"sync"
 	"testing"
@@ -11,15 +10,10 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/window"
 )
 
-// basicPitchOptions is the configuration of basic-pitch's CQT front end.
-func basicPitchOptions() []Option {
-	return []Option{WithHopLength(256), WithFMin(27.5), WithBins(309), WithBinsPerOctave(36)}
-}
-
 func newBasicPitch(tb testing.TB) *Transform {
 	tb.Helper()
 
-	tr, err := New(22050, basicPitchOptions()...)
+	tr, err := New(BasicPitchSampleRate, BasicPitch()...)
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -71,7 +65,10 @@ func TestNewErrors(t *testing.T) {
 			ErrInvalidOption,
 		},
 		{"basis norm", 22050, []Option{WithBasisNorm(Norm(3))}, ErrInvalidOption},
-		{"padding", 22050, []Option{WithPadding(Padding(2))}, ErrInvalidOption},
+		// Padding(0) is not a valid value: there is no counterpart of stft's
+		// PadNone (see the Padding doc comment).
+		{"padding 0", 22050, []Option{WithCenter(Padding(0))}, ErrInvalidOption},
+		{"padding unknown", 22050, []Option{WithCenter(Padding(3))}, ErrInvalidOption},
 		{"normalization", 22050, []Option{WithNormalization(Normalization(3))}, ErrInvalidOption},
 		{"output", 22050, []Option{WithOutput(Output(2))}, ErrInvalidOption},
 		{"kernel too long", 22050, []Option{WithFilterScale(1e9)}, ErrInvalidOption},
@@ -108,13 +105,26 @@ func TestDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if tr.NumBins() != 84 || tr.Octaves() != 7 || tr.Hop() != 512 || tr.DownsampleFactor() != 1 {
+	if tr.Bins() != 84 || tr.Octaves() != 7 || tr.Hop() != 512 || tr.DownsampleFactor() != 1 {
 		t.Errorf("defaults: bins %d octaves %d hop %d factor %d, want 84 7 512 1",
-			tr.NumBins(), tr.Octaves(), tr.Hop(), tr.DownsampleFactor())
+			tr.Bins(), tr.Octaves(), tr.Hop(), tr.DownsampleFactor())
 	}
 
 	if f := tr.Frequencies(); f[0] != 32.70 {
 		t.Errorf("Frequencies()[0] = %g, want 32.70", f[0])
+	}
+
+	// The generic defaults zero pad, unlike nnAudio (and NNAudio()), which
+	// reflects.
+	if tr.Padding() != PadZero || tr.NFFT() != 256 {
+		t.Errorf("Padding %v NFFT %d, want zero 256", tr.Padding(), tr.NFFT())
+	}
+
+	// Neither nnAudio quirk is on without a preset; TestPresetQuirks checks
+	// the corresponding behaviour.
+	if cfg := defaultConfig(); cfg.nnAudioKernelPlacement || cfg.nnAudioShortOctaves || tr.zeroPadShort {
+		t.Errorf("generic defaults carry nnAudio quirks: placement %v, short octaves %v/%v",
+			cfg.nnAudioKernelPlacement, cfg.nnAudioShortOctaves, tr.zeroPadShort)
 	}
 }
 
@@ -129,7 +139,8 @@ func TestEnumStrings(t *testing.T) {
 		{NormL2.String(), "l2"},
 		{Norm(7).String(), "Norm(7)"},
 		{PadReflect.String(), "reflect"},
-		{PadConstant.String(), "constant"},
+		{PadZero.String(), "zero"},
+		{Padding(0).String(), "Padding(0)"},
 		{Padding(7).String(), "Padding(7)"},
 		{NormalizationLibrosa.String(), "librosa"},
 		{NormalizationConvolutional.String(), "convolutional"},
@@ -195,12 +206,12 @@ func TestFrameCountsAgree(t *testing.T) {
 	tr := newBasicPitch(t)
 
 	for _, n := range []int{2048, 4000, 22050, 43844, 44100, 100000} {
-		frames := tr.NumFrames(n)
+		frames := tr.FrameCount(n)
 		hop := tr.Hop()
 
 		for o, l := range octaveLengths(tr, n) {
 			if got := (l+2*(tr.NFFT()/2)-tr.NFFT())/hop + 1; got != frames {
-				t.Errorf("n=%d octave %d: %d frames, NumFrames %d", n, o, got, frames)
+				t.Errorf("n=%d octave %d: %d frames, FrameCount %d", n, o, got, frames)
 			}
 
 			hop /= 2
@@ -215,13 +226,13 @@ func TestSignalTooShort(t *testing.T) {
 
 	// Find the shortest length that can be processed.
 	minLen := 1
-	for tr.NumFrames(minLen) == 0 {
+	for tr.FrameCount(minLen) == 0 {
 		minLen++
 	}
 
 	for _, n := range []int{0, 1, minLen - 1} {
-		if tr.NumFrames(n) != 0 || tr.OutputLen(n) != 0 {
-			t.Errorf("n=%d: NumFrames %d OutputLen %d, want 0", n, tr.NumFrames(n), tr.OutputLen(n))
+		if tr.FrameCount(n) != 0 || tr.OutputLen(n) != 0 {
+			t.Errorf("n=%d: FrameCount %d OutputLen %d, want 0", n, tr.FrameCount(n), tr.OutputLen(n))
 		}
 
 		x := make([]float64, n)
@@ -249,13 +260,20 @@ func TestSignalTooShort(t *testing.T) {
 }
 
 // TestSingleSample runs a single-octave transform without early downsampling
-// on one sample: reflect padding falls back to zeros.
+// on one sample. Under NNAudio() reflect padding falls back to zeros, as
+// nnAudio does; the generic transform rejects the signal instead.
 func TestSingleSample(t *testing.T) {
 	t.Parallel()
 
-	tr, err := New(8000, WithFMin(1000), WithBins(12), WithHopLength(1), WithEarlyDownsampling(false))
+	opts := []Option{WithFMin(1000), WithBins(12), WithHopLength(1), WithEarlyDownsampling(false)}
+
+	tr, err := New(8000, append(NNAudio(), opts...)...)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if tr.Padding() != PadReflect {
+		t.Fatalf("Padding = %v, want reflect", tr.Padding())
 	}
 
 	got, err := tr.Process([]float64{1})
@@ -264,12 +282,11 @@ func TestSingleSample(t *testing.T) {
 	}
 
 	// One sample at hop 1 gives 1/1+1 = 2 frames of 12 magnitudes.
-	if tr.NumFrames(1) != 2 || len(got) != 2*12 {
-		t.Fatalf("got %d frames, %d values, want 2 frames, 24 values", tr.NumFrames(1), len(got))
+	if tr.FrameCount(1) != 2 || len(got) != 2*12 {
+		t.Fatalf("got %d frames, %d values, want 2 frames, 24 values", tr.FrameCount(1), len(got))
 	}
 
-	c, err := New(8000, WithFMin(1000), WithBins(12), WithHopLength(1), WithEarlyDownsampling(false),
-		WithPadding(PadConstant))
+	c, err := New(8000, append(append(NNAudio(), opts...), WithCenter(PadZero))...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,42 +297,32 @@ func TestSingleSample(t *testing.T) {
 	}
 
 	if !slices.Equal(got, want) {
-		t.Errorf("reflect fallback %v differs from constant padding %v", got, want)
+		t.Errorf("reflect fallback %v differs from zero padding %v", got, want)
 	}
-}
 
-// TestPartialOctaveKernels pins nnAudio's placement of the kernels when
-// bins < binsPerOctave: they start a full octave minus one bin below the top
-// bin, not at fmin, while Frequencies() reports the nominal centres.
-func TestPartialOctaveKernels(t *testing.T) {
-	t.Parallel()
-
-	const (
-		fs, fmin   = 8000.0, 1000.0
-		bins, bpo  = 3, 12
-		relTol     = 1e-12
-		wantFirstK = float64(bins)/bpo - 1 // log2(kernel 0 / fmin)
-	)
-
-	tr, err := New(fs, WithFMin(fmin), WithBins(bins), WithBinsPerOctave(bpo), WithEarlyDownsampling(false))
+	// Generic reflect padding needs the octave to be longer than nfft/2.
+	g, err := New(8000, append(opts, WithCenter(PadReflect))...)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if f := tr.Frequencies()[0]; f != fmin {
-		t.Errorf("Frequencies()[0] = %g, want %g", f, fmin)
+	if g.FrameCount(1) != 0 {
+		t.Errorf("generic reflect: FrameCount(1) = %d, want 0", g.FrameCount(1))
 	}
 
-	for k, row := range tr.Kernels() {
-		// Adjacent kernel samples differ in phase by 2*pi*f/fs.
-		mid := len(row) / 2
+	_, err = g.Process([]float64{1})
+	if !errors.Is(err, ErrSignalTooShort) {
+		t.Errorf("generic reflect: Process error = %v, want ErrSignalTooShort", err)
+	}
 
-		got := cmplx.Phase(row[mid+1]/row[mid]) * fs / (2 * math.Pi)
-		want := fmin * math.Pow(2, wantFirstK+float64(k)/bpo)
+	// The generic default, zero padding, processes the sample.
+	z, err := New(8000, opts...)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-		if math.Abs(got-want) > relTol*want {
-			t.Errorf("kernel %d centred on %.9g Hz, want %.9g Hz", k, got, want)
-		}
+	if y, err := z.Process([]float64{1}); err != nil || len(y) != 2*12 {
+		t.Errorf("generic zero padding: %d values, %v, want 24 values", len(y), err)
 	}
 }
 
@@ -323,7 +330,7 @@ func TestShortDst(t *testing.T) {
 	t.Parallel()
 
 	for _, out := range []Output{OutputMagnitude, OutputComplex} {
-		tr, err := New(22050, append(basicPitchOptions(), WithOutput(out))...)
+		tr, err := New(BasicPitchSampleRate, append(BasicPitch(), WithOutput(out))...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -371,7 +378,7 @@ func TestOverlappingBuffers(t *testing.T) {
 	t.Parallel()
 
 	for _, out := range []Output{OutputMagnitude, OutputComplex} {
-		tr, err := New(22050, append(basicPitchOptions(), WithOutput(out))...)
+		tr, err := New(BasicPitchSampleRate, append(BasicPitch(), WithOutput(out))...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -527,7 +534,7 @@ func TestSinePeak(t *testing.T) {
 
 	tr := newBasicPitch(t)
 	freqs := tr.Frequencies()
-	bins := tr.NumBins()
+	bins := tr.Bins()
 
 	for _, b := range []int{40, 75, 120, 160, 200, 250, 300} {
 		x := sine(43844, freqs[b], 22050)
@@ -537,7 +544,7 @@ func TestSinePeak(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		mid := tr.NumFrames(len(x)) / 2
+		mid := tr.FrameCount(len(x)) / 2
 		row := got[mid*bins : (mid+1)*bins]
 
 		peak := 0
@@ -557,7 +564,7 @@ func TestSinePeak(t *testing.T) {
 func TestLinearity(t *testing.T) {
 	t.Parallel()
 
-	tr, err := New(22050, append(basicPitchOptions(), WithOutput(OutputComplex))...)
+	tr, err := New(BasicPitchSampleRate, append(BasicPitch(), WithOutput(OutputComplex))...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -619,7 +626,7 @@ func BenchmarkNewBasicPitch(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, err := New(22050, basicPitchOptions()...)
+		_, err := New(BasicPitchSampleRate, BasicPitch()...)
 		if err != nil {
 			b.Fatal(err)
 		}

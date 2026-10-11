@@ -12,8 +12,10 @@ import (
 type sample interface{ ~float32 | ~float64 }
 
 // topLength returns the length of the top octave's signal for n input
-// samples, or false if the signal is empty or too short to be decimated down
-// to the lowest octave (every decimation needs at least 2 input samples).
+// samples, or false if the signal cannot be processed: it is empty, too short
+// to be decimated down to the lowest octave (every decimation needs at least
+// 2 input samples), or, with [PadReflect] outside the [NNAudio] preset, its
+// lowest octave is not longer than nfft/2 samples and cannot be reflected.
 func (t *Transform) topLength(n int) (int, bool) {
 	if n < 1 {
 		return 0, false
@@ -34,6 +36,11 @@ func (t *Transform) topLength(n int) (int, bool) {
 		}
 	}
 
+	// The octaves shrink monotonically, so the lowest one decides.
+	if t.padding == PadReflect && !t.zeroPadShort && m <= t.nFFT/2 {
+		return 0, false
+	}
+
 	return n, true
 }
 
@@ -49,11 +56,18 @@ func decimatedLength(n, taps, factor int) int {
 	return (padded-taps)/factor + 1
 }
 
-// NumFrames returns the number of frames the transform produces for n input
-// samples, or 0 if n samples are too short to be processed. All octaves
-// yield the same number of frames, (L+2*(nfft/2)-nfft)/hop + 1 = L/hop + 1
-// for a top-octave signal of L samples.
-func (t *Transform) NumFrames(n int) int {
+// FrameCount returns the number of frames the transform produces for n input
+// samples, or 0 if n samples are too short to be processed (see
+// [ErrSignalTooShort]). All octaves yield the same number of frames,
+// (L+2*(nfft/2)-nfft)/hop + 1 = L/hop + 1 for a top-octave signal of L
+// samples, so without early downsampling the count is n/Hop()+1 (integer
+// division).
+//
+// This is torch.stft(center=True)'s convention, which nnAudio inherits. It
+// differs from stft.Transform.FrameCount, which returns ceil(n/hop) for
+// centred framing: one frame fewer when hop divides n, the same count
+// otherwise.
+func (t *Transform) FrameCount(n int) int {
 	top, ok := t.topLength(n)
 	if !ok {
 		return 0
@@ -63,9 +77,9 @@ func (t *Transform) NumFrames(n int) int {
 }
 
 // OutputLen returns the number of output values for n input samples:
-// NumFrames(n)*NumBins(), times 2 for complex output.
+// FrameCount(n)*Bins(), times 2 for complex output.
 func (t *Transform) OutputLen(n int) int {
-	l := t.NumFrames(n) * t.nBins
+	l := t.FrameCount(n) * t.nBins
 	if t.output == OutputComplex {
 		l *= 2
 	}
@@ -76,7 +90,7 @@ func (t *Transform) OutputLen(n int) int {
 // Process returns the constant-Q transform of x in a newly allocated slice
 // of OutputLen(len(x)) values. See [Transform.ProcessInto] for the layout.
 func (t *Transform) Process(x []float64) ([]float64, error) {
-	if t.NumFrames(len(x)) == 0 {
+	if t.FrameCount(len(x)) == 0 {
 		return nil, t.tooShort(len(x))
 	}
 
@@ -93,12 +107,12 @@ func (t *Transform) Process(x []float64) ([]float64, error) {
 // ProcessInto writes the constant-Q transform of x to dst[:OutputLen(len(x))]
 // and leaves the rest of dst untouched.
 //
-// The layout is frame-major. With [OutputMagnitude], dst[frame*NumBins()+bin]
+// The layout is frame-major. With [OutputMagnitude], dst[frame*Bins()+bin]
 // is the magnitude of bin bin in frame frame. With [OutputComplex],
-// dst[2*(frame*NumBins()+bin)] is the real part and the following element
+// dst[2*(frame*Bins()+bin)] is the real part and the following element
 // the imaginary part. Bins are ordered by frequency, lowest first.
 //
-// ProcessInto returns [ErrSignalTooShort] if NumFrames(len(x)) is 0 and
+// ProcessInto returns [ErrSignalTooShort] if FrameCount(len(x)) is 0 and
 // [ErrShortDst] if dst is too short. It does not allocate once its scratch
 // buffers have grown to the input length. dst may overlap x; x is then read
 // from a copy, because the lower octaves are decimated from x after the top
@@ -136,12 +150,17 @@ func (t *Transform) ProcessInto32(dst, x []float32) error {
 }
 
 func (t *Transform) tooShort(n int) error {
-	return fmt.Errorf("%w: %d samples for %d octaves (early downsampling factor %d)",
-		ErrSignalTooShort, n, t.nOctaves, t.factor)
+	reflect := ""
+	if t.padding == PadReflect && !t.zeroPadShort {
+		reflect = fmt.Sprintf(", reflect padding needs the lowest octave longer than %d samples", t.nFFT/2)
+	}
+
+	return fmt.Errorf("%w: %d samples for %d octaves (early downsampling factor %d%s)",
+		ErrSignalTooShort, n, t.nOctaves, t.factor, reflect)
 }
 
 func (t *Transform) checkLengths(nDst, nx int) error {
-	if t.NumFrames(nx) == 0 {
+	if t.FrameCount(nx) == 0 {
 		return t.tooShort(nx)
 	}
 
@@ -152,7 +171,7 @@ func (t *Transform) checkLengths(nDst, nx int) error {
 	return nil
 }
 
-// process runs nnAudio CQT2010v2.forward: optional early downsampling, the
+// process follows nnAudio CQT2010v2.forward: optional early downsampling, the
 // top octave, then for each lower octave a 2:1 decimation and the same
 // kernels with half the hop.
 func process[T sample](t *Transform, dst []T, x []float64) error {
@@ -161,7 +180,7 @@ func process[T sample](t *Transform, dst []T, x []float64) error {
 		return err
 	}
 
-	frames := t.NumFrames(len(x))
+	frames := t.FrameCount(len(x))
 	cur, slot := x, 0
 
 	if t.factor > 1 {
@@ -214,8 +233,9 @@ func convolve[T sample](t *Transform, dst []T, x []float64, hop, binBase, frames
 		// buffer distinct from x.
 		_ = core.PadReflect(xp, x, pad, pad)
 	} else {
-		// Constant padding, or torch's reflection pad rejected the octave
-		// (pad >= n) and nnAudio fell back to zeros.
+		// Zero padding, or under the NNAudio preset an octave that torch's
+		// reflection pad rejects (pad >= n), which nnAudio zero pads.
+		// Without the preset topLength has already rejected such signals.
 		clear(xp[:pad])
 		copy(xp[pad:], x)
 		clear(xp[pad+n:])

@@ -46,7 +46,7 @@ func TestLibrosaSanity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	frames, bins := tr.NumFrames(len(x)), tr.NumBins()
+	frames, bins := tr.FrameCount(len(x)), tr.Bins()
 	lo, hi := frames/10, frames-frames/10
 	bpo := fx.Config.BinsPerOctave
 
