@@ -141,7 +141,8 @@ func loadFixture(tb testing.TB, name string) fixture {
 	return fx
 }
 
-// options translates a fixture configuration into Options.
+// options translates a fixture configuration into Options. Every fixture is
+// nnAudio output, so the options start from the [NNAudio] preset.
 func (c fixtureConfig) options(tb testing.TB) []Option {
 	tb.Helper()
 
@@ -150,7 +151,7 @@ func (c fixtureConfig) options(tb testing.TB) []Option {
 		"hamming":  window.TypeHamming,
 		"blackman": window.TypeBlackman,
 	}
-	pads := map[string]Padding{"reflect": PadReflect, "constant": PadConstant}
+	pads := map[string]Padding{"reflect": PadReflect, "constant": PadZero}
 	norms := map[string]Normalization{
 		"librosa":       NormalizationLibrosa,
 		"convolutional": NormalizationConvolutional,
@@ -167,7 +168,7 @@ func (c fixtureConfig) options(tb testing.TB) []Option {
 		tb.Fatalf("unsupported fixture config %+v", c)
 	}
 
-	return []Option{
+	return append(NNAudio(),
 		WithHopLength(c.Hop),
 		WithFMin(c.FMin),
 		WithBins(c.NBins),
@@ -175,9 +176,9 @@ func (c fixtureConfig) options(tb testing.TB) []Option {
 		WithFilterScale(c.FilterScale),
 		WithBasisNorm(Norm(c.BasisNorm)),
 		WithWindow(w),
-		WithPadding(p),
+		WithCenter(p),
 		WithEarlyDownsampling(c.EarlyDownsampl),
 		WithNormalization(n),
 		WithOutput(o),
-	}
+	)
 }

@@ -45,8 +45,9 @@ type kernel struct {
 	im    []float64
 }
 
-// Transform computes a multi-rate constant-Q transform compatible with
-// nnAudio's CQT2010v2. Create it with [New].
+// Transform computes a multi-rate constant-Q transform. Create it with
+// [New]; the [NNAudio] and [BasicPitch] presets make it reproduce nnAudio's
+// CQT2010v2.
 //
 // A Transform holds scratch buffers and is not safe for concurrent use; see
 // [Transform.Clone].
@@ -59,6 +60,7 @@ type Transform struct {
 	nFFT          int
 	factor        int // early downsampling factor
 	padding       Padding
+	zeroPadShort  bool // nnAudio quirk: zero pad octaves too short to reflect
 	output        Output
 	normalization Normalization
 
@@ -76,12 +78,15 @@ type Transform struct {
 }
 
 // New returns a constant-Q transform for signals sampled at sampleRate Hz.
-// Without options it uses nnAudio CQT2010v2's defaults: hop 512, fmin 32.70
-// Hz, 84 bins, 12 bins per octave, filter scale 1, Hann kernels with L1
-// normalization, reflect padding, early downsampling, librosa normalization
-// and magnitude output.
+// Without options it uses the generic defaults: hop 512, fmin 32.70 Hz, 84
+// bins, 12 bins per octave, filter scale 1, periodic Hann kernels with L1
+// normalization, zero padding ([PadZero]), early downsampling, librosa
+// normalization and magnitude output. Every kernel is centred on the
+// frequency [Transform.Frequencies] reports. [NNAudio] and [BasicPitch]
+// return presets that reproduce nnAudio's CQT2010v2 and basic-pitch's front
+// end exactly.
 //
-// New mirrors nnAudio's setup: the top octave's kernels are built at the
+// New follows nnAudio's setup: the top octave's kernels are built at the
 // (possibly early-downsampled) sample rate, the top bin must not exceed the
 // Nyquist frequency ([ErrNyquist]), and early downsampling is applied when
 // nnAudio would apply it. In addition, New requires the effective hop size to
@@ -109,7 +114,8 @@ func New(sampleRate float64, opts ...Option) (*Transform, error) {
 	return build(sampleRate, cfg)
 }
 
-// build is a transcription of nnAudio CQT2010v2.__init__.
+// build follows nnAudio CQT2010v2.__init__; the nnAudio quirks are applied
+// only when the [NNAudio] options set them.
 func build(sr float64, cfg config) (*Transform, error) {
 	bpo := cfg.binsPerOctave
 	q := cfg.filterScale / (math.Pow(2, 1/float64(bpo)) - 1)
@@ -127,23 +133,14 @@ func build(sr float64, cfg config) (*Transform, error) {
 	nFilters := min(bpo, cfg.nBins)
 	nOctaves := (cfg.nBins + bpo - 1) / bpo
 
-	// Top-octave frequency range.
-	fminT := cfg.fmin * math.Pow(2, float64(nOctaves-1))
-
-	var fmaxT float64
-	if rem := cfg.nBins % bpo; rem == 0 {
-		fmaxT = fminT * math.Pow(2, float64(bpo-1)/float64(bpo))
-	} else {
-		fmaxT = fminT * math.Pow(2, float64(rem-1)/float64(bpo))
-	}
-
-	// nnAudio places fminT a full octave (minus one bin) below fmaxT even
-	// when nBins < bpo and only nFilters = nBins kernels are built. Those
-	// kernels then cover fmaxT/2^(1-1/bpo) upwards, so the single partial
-	// octave is analysed (bpo-nBins)/bpo octaves below Frequencies(). This
-	// is kept deliberately for nnAudio parity; see "Differences from
-	// nnAudio" in the package documentation.
-	fminT = fmaxT / math.Pow(2, 1-1/float64(bpo))
+	// The top octave's kernels analyse the highest nFilters bins; every
+	// lower octave reuses them at half the sample rate, and the surplus
+	// kernels of the lowest octave are cropped. With fewer bins than one
+	// octave the single octave is cropped at the top instead: its kernels
+	// start at fmin, as if the full octave had been built and its upper
+	// kernels dropped (without building them, since they may lie above the
+	// Nyquist frequency).
+	fminT, fmaxT := topOctaveRange(cfg, nFilters, nOctaves)
 
 	if fmaxT > sr/2 {
 		return nil, fmt.Errorf("%w: top bin %g Hz > %g Hz", ErrNyquist, fmaxT, sr/2)
@@ -171,7 +168,7 @@ func build(sr float64, cfg config) (*Transform, error) {
 			ErrHop, hop, cfg.hop, factor, nOctaves)
 	}
 
-	kernels, nFFT, err := buildKernels(cfg, q, srEff, fminT, nFilters)
+	kernels, nFFT, err := buildKernels(cfg, q, srEff, kernelFrequencies(cfg, fminT, nFilters))
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +182,7 @@ func build(sr float64, cfg config) (*Transform, error) {
 		nFFT:          nFFT,
 		factor:        factor,
 		padding:       cfg.padding,
+		zeroPadShort:  cfg.nnAudioShortOctaves,
 		output:        cfg.output,
 		normalization: cfg.normalization,
 		kernels:       kernels,
@@ -196,7 +194,7 @@ func build(sr float64, cfg config) (*Transform, error) {
 	}
 
 	for b := range cfg.nBins {
-		f := cfg.fmin * math.Pow(2, float64(b)/float64(bpo))
+		f := binFrequency(cfg, b)
 		t.freqs[b] = f
 		t.lengths[b] = math.Ceil(q * srEff / f)
 
@@ -248,16 +246,63 @@ func earlyDownsampleFactor(sr float64, hop int, fmaxT, q float64, nOctaves int) 
 	return 1 << min(count1, count2)
 }
 
-// buildKernels is nnAudio's create_cqt_kernels for the top octave: nFilters
-// windowed complex exponentials, each centred in an nfft frame.
-func buildKernels(cfg config, q, fs, fmin float64, nFilters int) ([]kernel, int, error) {
+// topOctaveRange returns the frequencies of the lowest and highest kernel of
+// the top octave, which covers the highest nFilters bins.
+//
+// The generic placement takes them from the bin frequencies. nnAudio instead
+// starts the top octave a full octave minus one bin below the top bin, which
+// is the same for bins >= binsPerOctave but shifts the kernels of a single
+// partial octave (bins < binsPerOctave) below Frequencies(); see [NNAudio].
+func topOctaveRange(cfg config, nFilters, nOctaves int) (float64, float64) {
+	bpo := cfg.binsPerOctave
+
+	if !cfg.nnAudioKernelPlacement {
+		return binFrequency(cfg, cfg.nBins-nFilters), binFrequency(cfg, cfg.nBins-1)
+	}
+
+	fminT := cfg.fmin * math.Pow(2, float64(nOctaves-1))
+
+	var fmaxT float64
+	if rem := cfg.nBins % bpo; rem == 0 {
+		fmaxT = fminT * math.Pow(2, float64(bpo-1)/float64(bpo))
+	} else {
+		fmaxT = fminT * math.Pow(2, float64(rem-1)/float64(bpo))
+	}
+
+	return fmaxT / math.Pow(2, 1-1/float64(bpo)), fmaxT
+}
+
+// binFrequency returns the centre frequency of bin b, fmin*2^(b/bpo).
+func binFrequency(cfg config, b int) float64 {
+	return cfg.fmin * math.Pow(2, float64(b)/float64(cfg.binsPerOctave))
+}
+
+// kernelFrequencies returns the frequencies of the nFilters top-octave
+// kernels. The generic placement uses the bin frequencies themselves, so the
+// top octave's kernels sit exactly at Frequencies(); nnAudio steps up from
+// fminT.
+func kernelFrequencies(cfg config, fminT float64, nFilters int) []float64 {
 	freqs := make([]float64, nFilters)
-	lengths := make([]float64, nFilters)
+
+	for k := range freqs {
+		if cfg.nnAudioKernelPlacement {
+			freqs[k] = fminT * math.Pow(2, float64(k)/float64(cfg.binsPerOctave))
+		} else {
+			freqs[k] = binFrequency(cfg, cfg.nBins-nFilters+k)
+		}
+	}
+
+	return freqs
+}
+
+// buildKernels is nnAudio's create_cqt_kernels for the top octave: one
+// windowed complex exponential per frequency, each centred in an nfft frame.
+func buildKernels(cfg config, q, fs float64, freqs []float64) ([]kernel, int, error) {
+	lengths := make([]float64, len(freqs))
 	maxLen := 0.0
 
-	for k := range nFilters {
-		freqs[k] = fmin * math.Pow(2, float64(k)/float64(cfg.binsPerOctave))
-		lengths[k] = math.Ceil(q * fs / freqs[k])
+	for k, f := range freqs {
+		lengths[k] = math.Ceil(q * fs / f)
 		maxLen = max(maxLen, lengths[k])
 	}
 
@@ -277,7 +322,7 @@ func buildKernels(cfg config, q, fs, fmin float64, nFilters int) ([]kernel, int,
 	winOpts = append(winOpts, cfg.windowOpts...)
 	winOpts = append(winOpts, window.WithPeriodic())
 
-	kernels := make([]kernel, nFilters)
+	kernels := make([]kernel, len(freqs))
 
 	for k := range kernels {
 		freq, l := freqs[k], lengths[k]
@@ -379,8 +424,11 @@ func (t *Transform) Clone() *Transform {
 	return &c
 }
 
-// NumBins returns the number of frequency bins per frame.
-func (t *Transform) NumBins() int { return t.nBins }
+// Bins returns the number of frequency bins per frame.
+func (t *Transform) Bins() int { return t.nBins }
+
+// Padding returns the padding mode of the octaves.
+func (t *Transform) Padding() Padding { return t.padding }
 
 // NFFT returns the frame length of the top-octave kernels, a power of two.
 func (t *Transform) NFFT() int { return t.nFFT }

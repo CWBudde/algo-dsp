@@ -68,6 +68,8 @@ func perBinError(got, ref []float64, frames, bins int, complexOut bool) (float64
 	return worst, worstBin
 }
 
+// TestGolden runs every fixture through NNAudio() followed by the options
+// that describe the fixture's configuration.
 func TestGolden(t *testing.T) {
 	t.Parallel()
 
@@ -77,27 +79,65 @@ func TestGolden(t *testing.T) {
 		t.Run(fx.Name, func(t *testing.T) {
 			t.Parallel()
 
-			checkGolden(t, fx, signal[:fx.Length])
+			checkGolden(t, fx, signal[:fx.Length], fx.Config.SR, fx.Config.options(t))
 		})
 	}
 }
 
-func checkGolden(t *testing.T, fx fixture, x []float64) {
+// TestGoldenPresets runs the fixtures of the preset configurations through
+// the preset alone, without any option derived from the fixture: BasicPitch()
+// must reproduce basic-pitch's front end (including the short signal, which
+// needs the zero-pad fallback of short octaves) and NNAudio() nnAudio's
+// defaults, at the same tolerances as TestGolden.
+func TestGoldenPresets(t *testing.T) {
+	t.Parallel()
+
+	signal := testSignal(t)
+
+	tests := []struct {
+		fixture string
+		sr      float64
+		opts    []Option
+	}{
+		{"basic_pitch", BasicPitchSampleRate, BasicPitch()},
+		{"basic_pitch_short", BasicPitchSampleRate, BasicPitch()},
+		// A preset cannot set the sample rate; nnAudio's default is 22050 Hz.
+		{"nnaudio_defaults", 22050, NNAudio()},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.fixture, func(t *testing.T) {
+			t.Parallel()
+
+			fx := loadFixture(t, tc.fixture)
+			if fx.Config.SR != tc.sr {
+				t.Fatalf("fixture sample rate %g, want %g", fx.Config.SR, tc.sr)
+			}
+
+			checkGolden(t, fx, signal[:fx.Length], tc.sr, tc.opts)
+		})
+	}
+}
+
+func checkGolden(t *testing.T, fx fixture, x []float64, sr float64, opts []Option) {
 	t.Helper()
 
-	tr, err := New(fx.Config.SR, fx.Config.options(t)...)
+	tr, err := New(sr, opts...)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 
 	checkSetup(t, tr, fx)
 
-	frames := tr.NumFrames(len(x))
+	frames := tr.FrameCount(len(x))
 	if frames != fx.Frames {
-		t.Fatalf("NumFrames = %d, want %d", frames, fx.Frames)
+		t.Fatalf("FrameCount = %d, want %d", frames, fx.Frames)
 	}
 
 	complexOut := fx.Config.Output == "complex"
+	if complexOut != (tr.output == OutputComplex) {
+		t.Fatalf("output %v, fixture output %q", tr.output, fx.Config.Output)
+	}
 
 	got, err := tr.Process(x)
 	if err != nil {
@@ -108,7 +148,7 @@ func checkGolden(t *testing.T, fx fixture, x []float64) {
 		t.Fatalf("output length %d, OutputLen %d, want %d", len(got), tr.OutputLen(len(x)), len(fx.F64))
 	}
 
-	e64, bin := perBinError(got, fx.F64, frames, tr.NumBins(), complexOut)
+	e64, bin := perBinError(got, fx.F64, frames, tr.Bins(), complexOut)
 	t.Logf("vs nnAudio float64: max per-bin error %.3e (bin %d)", e64, bin)
 
 	if !(e64 <= tolF64) {
@@ -134,8 +174,12 @@ func checkSetup(t *testing.T, tr *Transform, fx fixture) {
 		t.Errorf("SampleRate = %g, want %g", tr.SampleRate(), want)
 	}
 
-	if got := tr.NumBins(); got != fx.Config.NBins {
-		t.Errorf("NumBins = %d, want %d", got, fx.Config.NBins)
+	if got := tr.Bins(); got != fx.Config.NBins {
+		t.Errorf("Bins = %d, want %d", got, fx.Config.NBins)
+	}
+
+	if want := map[string]Padding{"reflect": PadReflect, "constant": PadZero}[fx.Config.PadMode]; tr.Padding() != want {
+		t.Errorf("Padding = %v, want %v (%q)", tr.Padding(), want, fx.Config.PadMode)
 	}
 
 	// Frequencies go through math.Pow, which may differ from numpy's pow in
@@ -181,7 +225,7 @@ func checkSetup(t *testing.T, tr *Transform, fx fixture) {
 func checkF32(t *testing.T, tr *Transform, fx fixture, x, got64 []float64) {
 	t.Helper()
 
-	frames, bins := tr.NumFrames(len(x)), tr.NumBins()
+	frames, bins := tr.FrameCount(len(x)), tr.Bins()
 	complexOut := fx.Config.Output == "complex"
 
 	e, bin := perBinError(got64, fx.F32, frames, bins, complexOut)

@@ -39,32 +39,40 @@ func (n Norm) String() string {
 func (n Norm) valid() bool { return n == NormNone || n == NormL1 || n == NormL2 }
 
 // Padding selects how each octave's signal is extended by nfft/2 samples on
-// both sides before the kernels are applied (nnAudio's pad_mode).
+// both sides before the kernels are applied, so that frame i of every octave
+// is centred on input sample i*hop (nnAudio's pad_mode).
+//
+// The names and numeric values match dsp/stft's Padding, but the type is not
+// shared: the multi-rate transform needs centred frames in every octave, so
+// stft's PadNone (uncentred frames) has no counterpart here. Padding(0) is
+// therefore not a valid value.
 type Padding int
 
 const (
+	// PadZero treats samples outside the signal as zero (nnAudio's
+	// "constant"). This is the default.
+	PadZero Padding = iota + 1
 	// PadReflect mirrors the signal at its edges without repeating the edge
-	// sample (numpy/torch "reflect"). This is the default. An octave whose
-	// signal is not longer than nfft/2 samples is zero padded instead, as
-	// nnAudio does when torch's reflection pad rejects it.
-	PadReflect Padding = iota
-	// PadConstant pads with zeros.
-	PadConstant
+	// sample (numpy/torch "reflect"). Like stft's PadReflect it needs every
+	// octave's signal to be longer than nfft/2 samples; shorter signals give
+	// [ErrSignalTooShort] (and [Transform.FrameCount] returns 0), except
+	// under [NNAudio], which zero pads such octaves as nnAudio does.
+	PadReflect
 )
 
 // String returns the name of the padding mode.
 func (p Padding) String() string {
 	switch p {
+	case PadZero:
+		return "zero"
 	case PadReflect:
 		return "reflect"
-	case PadConstant:
-		return "constant"
 	default:
 		return fmt.Sprintf("Padding(%d)", int(p))
 	}
 }
 
-func (p Padding) valid() bool { return p == PadReflect || p == PadConstant }
+func (p Padding) valid() bool { return p == PadZero || p == PadReflect }
 
 // Normalization selects the final per-bin scaling (nnAudio's
 // normalization_type). Every variant also multiplies by the early
@@ -141,9 +149,16 @@ type config struct {
 	earlyDownsample bool
 	normalization   Normalization
 	output          Output
+
+	// nnAudio quirks, set only by [NNAudio]; see withNNAudioKernelPlacement
+	// and withNNAudioShortOctaves.
+	nnAudioKernelPlacement bool
+	nnAudioShortOctaves    bool
 }
 
-// defaultConfig returns nnAudio CQT2010v2's defaults.
+// defaultConfig returns the generic defaults. Apart from the padding
+// (nnAudio reflects) and the two quirks they equal nnAudio CQT2010v2's
+// defaults.
 func defaultConfig() config {
 	return config{
 		hop:             512,
@@ -153,7 +168,7 @@ func defaultConfig() config {
 		filterScale:     1,
 		windowType:      window.TypeHann,
 		basisNorm:       NormL1,
-		padding:         PadReflect,
+		padding:         PadZero,
 		earlyDownsample: true,
 		normalization:   NormalizationLibrosa,
 		output:          OutputMagnitude,
@@ -271,8 +286,10 @@ func WithBasisNorm(n Norm) Option {
 	}
 }
 
-// WithPadding selects the padding mode (default [PadReflect]).
-func WithPadding(p Padding) Option {
+// WithCenter selects how each octave is padded (default [PadZero]). Frames
+// are always centred; the option is named after stft.WithCenter, which
+// selects the same padding modes.
+func WithCenter(p Padding) Option {
 	return func(cfg *config) error {
 		if !p.valid() {
 			return fmt.Errorf("%w: padding %v", ErrInvalidOption, p)

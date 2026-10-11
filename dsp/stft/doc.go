@@ -31,7 +31,9 @@
 // count used by the AudioVisualizer analysis. torch.stft(center=True) returns
 // n/hop+1 (integer division) frames, which is one more frame when hop divides
 // n; [Transform.FrameInto] accepts that extra trailing frame as well. With
-// PadNone the count is 1+(n-nfft)/hop for n >= nfft and 0 otherwise.
+// PadNone the count is 1+(n-nfft)/hop for n >= nfft and 0 otherwise. The
+// constant-Q transform in dsp/cqt follows torch's n/hop+1 convention instead
+// (see its Framing section).
 //
 // # Inverse
 //

@@ -1597,7 +1597,54 @@ bounded-work stepper for per-step time budgets follows as a later item.
 > `ErrInvalidWindow`; it used to fall back to a rectangular window silently. The
 > `cqt`/`design` `WithWindow` errors now name the type ("unknown window type Type(99)").
 
-- [ ] 46.3 `generic-cqt` — Make `dsp/cqt` a generic constant-Q transform with reference presets, and align its API with `dsp/stft`. Generic defaults: every kernel sits at exactly the frequency `Frequencies()` reports, including when the bin count is not a whole number of octaves (build the full top-octave kernel set and crop, instead of nnAudio's shifted partial octave). Presets, following `melody.BassPreset`: `cqt.NNAudio() []Option` reproduces nnAudio `CQT2010v2` exactly, including its partial-octave kernel placement and zero-padding of octaves too short to reflect (a private option may carry each quirk); `cqt.BasicPitch() []Option` is `NNAudio()` plus basic-pitch's configuration (hop 256, fmin 27.5 Hz, 36 bins per octave, 309 bins, filter scale 1, L1 basis norm, periodic Hann, reflect padding, librosa normalization, magnitude output). Later options override a preset. Align naming with `dsp/stft` where the concepts match: `FrameCount`/`Bins` instead of `NumFrames`/`NumBins`, the same padding option name and enum style (check whether `stft.Padding` itself can be shared; if not, document the difference), and the same float32 approach as `stft` if that is reasonable for a float64-internal transform (otherwise keep `ProcessInto32` and say why). Document the frame-count convention next to stft's. Update `doc.go` (replace "Differences from nnAudio" with a section on presets and what each quirk does), all `Example`s (at least one generic and one `BasicPitch()`), and the CHANGELOG entry from 46.1 so it describes the released API. The golden tests run through the presets and must stay at their current tolerances; add tests that generic kernels are centred on `Frequencies()` for partial octaves and that each preset's quirk is active only in that preset. The API is unreleased, so rename freely; no deprecated aliases.
+- [x] 46.3 `generic-cqt` — Make `dsp/cqt` a generic constant-Q transform with reference presets, and align its API with `dsp/stft`. Generic defaults: every kernel sits at exactly the frequency `Frequencies()` reports, including when the bin count is not a whole number of octaves (build the full top-octave kernel set and crop, instead of nnAudio's shifted partial octave). Presets, following `melody.BassPreset`: `cqt.NNAudio() []Option` reproduces nnAudio `CQT2010v2` exactly, including its partial-octave kernel placement and zero-padding of octaves too short to reflect (a private option may carry each quirk); `cqt.BasicPitch() []Option` is `NNAudio()` plus basic-pitch's configuration (hop 256, fmin 27.5 Hz, 36 bins per octave, 309 bins, filter scale 1, L1 basis norm, periodic Hann, reflect padding, librosa normalization, magnitude output). Later options override a preset. Align naming with `dsp/stft` where the concepts match: `FrameCount`/`Bins` instead of `NumFrames`/`NumBins`, the same padding option name and enum style (check whether `stft.Padding` itself can be shared; if not, document the difference), and the same float32 approach as `stft` if that is reasonable for a float64-internal transform (otherwise keep `ProcessInto32` and say why). Document the frame-count convention next to stft's. Update `doc.go` (replace "Differences from nnAudio" with a section on presets and what each quirk does), all `Example`s (at least one generic and one `BasicPitch()`), and the CHANGELOG entry from 46.1 so it describes the released API. The golden tests run through the presets and must stay at their current tolerances; add tests that generic kernels are centred on `Frequencies()` for partial octaves and that each preset's quirk is active only in that preset. The API is unreleased, so rename freely; no deprecated aliases.
+
+> Outcome notes (46.3): `dsp/cqt` is a generic CQT with the presets `NNAudio()` and
+> `BasicPitch()` (plus `NNAudioHopLength`… and `BasicPitchSampleRate`… constants, following
+> `melody.BassPreset`). `NNAudio()` lists every nnAudio default explicitly and adds two
+> private quirk options; `BasicPitch()` is `NNAudio()` plus basic-pitch's values. Through the
+> presets the output is bit-identical to 46.1/46.2: the SHA-256 of `Process` matches `main`
+> for basic-pitch, nnAudio's defaults, constant padding with complex output, and a 5-bin
+> partial octave, at 43844 and 3000 samples. The golden tests run through the presets at
+> unchanged tolerances (worst float64 error still 1.3e-13, float32 1.3e-6); new tests run
+> `basic_pitch*` through `BasicPitch()` alone and `nnaudio_defaults` through `NNAudio()` alone.
+>
+> - **API alignment with `dsp/stft`:** `NumFrames`→`FrameCount`, `NumBins`→`Bins`,
+>   `WithPadding`→`WithCenter`, `PadConstant`→`PadZero`, new `Padding()` getter.
+>   `cqt.Padding` has stft's names and numeric values (`PadZero` = 1, `PadReflect` = 2) but
+>   is not shared: the multi-rate transform needs centred frames in every octave, so stft's
+>   `PadNone` has no counterpart. `ProcessInto32` stays: the transform is float64
+>   throughout, so stft's generic `New`/`New32` would only change the I/O type and double
+>   the type surface. The frame count stays torch's `n/hop+1`; the docs of both packages now
+>   contrast it with stft's `ceil(n/hop)`.
+> - **Generic defaults:** as nnAudio's, except zero padding (stft's default, librosa ≥0.10)
+>   and no quirks. Generic `PadReflect` rejects signals whose lowest octave is not longer
+>   than nfft/2 (`FrameCount` 0, `ErrSignalTooShort`), like stft's `PadReflect`; the
+>   `NNAudio()` quirk zero pads those octaves instead.
+> - **Tests:** every bin's measured kernel frequency equals `Frequencies()` to 7.7e-16 for
+>   3/12, 20/36, 30/12, 309/36, 84/12 and 72/36 bins; tones at `Frequencies()` peak at their
+>   own bin. Under `NNAudio()` the shifted placement is pinned (3/12: 0.75 octaves low;
+>   20/36: a tone at bin b < 4 peaks at b+16). Both quirks are off in the generic transform,
+>   on in both presets. They also stay on when every public option is given after the preset.
+>   That is the documented behaviour: later options override parameters, not quirks. The
+>   reflect threshold is pinned exactly (basic-pitch: 33023 samples → 0 frames, 33024 →
+>   130). Coverage 99.1%.
+> - **Benchmark** (basic-pitch window, M5 Pro, 6 interleaved runs against `main`):
+>   `ProcessInto` 3.63 → 3.70 ms, `ProcessInto32` 3.65 → 3.68 ms, within noise; 0 allocs/op.
+>
+> Discovery: nnAudio's kernel shift affects only configurations with fewer bins than one
+> octave. When the bin count is not a whole number of octaves but at least one, nnAudio's
+> top octave covers the highest `binsPerOctave` bins and the cropped partial octave is the
+> lowest one, so every kernel is already at its bin (basic-pitch's 309/36 included). The
+> generic placement therefore differs from nnAudio only for bins < binsPerOctave. For
+> whole-octave configurations it differs only by last-bit rounding of the kernel frequencies
+> (generic takes them from the bin formula, nnAudio steps up from `fmax_t/2^(1-1/bpo)`):
+> 3.5e-14 in the kernel samples and 6.2e-14 in basic-pitch's output. The presets keep
+> nnAudio's formula.
+>
+> Residual gap: the 46.2 `### Changed` CHANGELOG bullet still describes `dsp/cqt`'s
+> internal move to the shared primitives, a change between two unreleased states. It is left
+> for the release edit.
 
 - [ ] 46.4 `go-only-tests` — Replace the Python-generated golden data of `dsp/cqt` and `design.Firwin2` with Go-only tests, and delete `scripts/fixtures/cqt/`, `dsp/cqt/testdata/` and `dsp/filter/design/testdata/firwin2.json.gz`. Python is not run again: values that stay pinned are extracted once from the committed fixtures before they are deleted, and each pinned block carries a provenance comment (tool, version and call, for example scipy 1.18.1 `firwin2(6, [0, 0.5, 1], [0, 1, 0])` or nnAudio 0.3.4 float64), as `dsp/filter/weighting` does for IEC 61672. Firwin2: keep scipy's behaviour pinned with inline tap values for `type2_ramp`, `one_tap`, `two_taps`, `nfreqs_odd_len`, `step_repeated_freq`, `window_none`, `type1_multiband` and the 256-tap nnAudio low-pass (store symmetric taps once); check the broad cases against an independent Go reference (inverse real FFT via algo-fft, or the closed-form cosine series) to 1e-14; keep the existing property and validation tests. CQT: generate the test signal in Go (chirp, two tones, seeded noise; deterministic) and use two references of different strength. The exact oracle is a naive multirate reference written in the test with plain loops and none of the production primitives (`conv`, `vecmath`, `core` padding): it reproduces every stage (padding, the same `Firwin2` low-pass and decimation by 2 per octave, direct per-octave kernel correlation at the decimated rate, normalization) and must match `ProcessInto` to 1e-12 relative. A full-rate direct CQT (same kernels, no decimation) is not an oracle, because the multirate path also carries the low-pass passband ripple and residual aliasing in the lower octaves; use it only for property checks on pure tones placed well inside the passband (same peak bin, magnitude within a bound derived from the low-pass passband ripple and stated in the test comment), never as an elementwise comparison; pin about 50 nnAudio values per preset (`NNAudio()`, `BasicPitch()`) from the fixtures, covering kernels, the low-pass, a few output bins per configuration, the partial-octave placement and the short-signal fallback; keep the property tests (sine peak bin, linearity, scaling, zero allocations, NaN propagation). Remove the librosa level test or replace it with a Go-checked property of the same intent. Update the package docs, README, AGENTS.md and PLAN.md wherever they mention the fixtures, and record in the outcome notes what precision was given up (the 1e-13 match against nnAudio across eight configurations; bit-level basic-pitch parity is checked downstream in algo-transcribe against basic-pitch's own CQT output). Exit check: `git ls-files | grep -E '\.py$|uv\.lock|pyproject'` lists only `scripts/extract_irs.py`, and `dsp/cqt` coverage stays at about 99%.
 
@@ -1610,7 +1657,7 @@ Exit criteria:
 - [x] 46.2: `dsp/cqt` uses only public primitives for padding, decimation and strided
       correlation; its existing tests pass unchanged at 0 allocs/op. (The kernel correlation
       keeps a fused loop, as 46.2 allows: the primitive was more than 5% slower.)
-- [ ] 46.3: generic defaults place kernels at `Frequencies()`; `BasicPitch()` and `NNAudio()`
+- [x] 46.3: generic defaults place kernels at `Frequencies()`; `BasicPitch()` and `NNAudio()`
       reproduce the 46.1 output to the 46.1 tolerances.
 - [ ] 46.4: no Python project or generated fixture remains for `dsp/cqt` and `design.Firwin2`.
 - [ ] 46.5: CQT chroma drives `harmony` key estimation on synthetic cadences and `motif` chroma
