@@ -224,6 +224,11 @@ Both overheads are within noise (benchstat `p>0.5`); the worst js/wasm step over
 not slow it: base commit `ed24ea5` vs. this change, 10 interleaved runs, `3.639 ms` → `3.630 ms`
 (`~`, `p=0.315`); `ProcessInto32` `3.634 ms` → `3.650 ms` (`~`, `p=0.310`, n=6).
 
+The table predates counting the padding as work (PR #41 review): padding is now resumable, one
+unit per padded sample, so the window is 19,540,387 units and 387 steps of 50,000. Remeasured
+natively on 2026-10-12, 6 interleaved runs against the version above, `ProcessInto`,
+`ProcessInto32` and the stepper total are unchanged (`~`, `p≥0.59`) with 0 allocations.
+
 ## SIMD vs Scalar (internal/vecmath, n=4096)
 
 Command:

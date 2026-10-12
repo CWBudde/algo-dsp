@@ -157,11 +157,11 @@
 // [Stepper.Step] advances them by at least maxWork work units and finishes
 // the unit in progress; ProcessInto runs the same phases with an unlimited
 // budget, so the stepped output is bit-identical for every budget. A work
-// unit is one multiply-accumulate, and [Transform.Work] returns the total
-// for an input length. The indivisible units are one frame of one octave
-// (the summed kernel lengths: 5658 for [BasicPitch]) and one decimated
-// sample (256); padding counts no work. basic-pitch's 43844-sample window
-// takes 19,450,568 units, 385 steps of 50,000.
+// unit is one multiply-accumulate or one padded sample, and [Transform.Work]
+// returns the total for an input length. The indivisible units are one
+// frame of one octave (the summed kernel lengths: 5658 for [BasicPitch]),
+// one decimated sample (256) and one padded sample (1). basic-pitch's 43844-sample window
+// takes 19,540,387 units, 387 steps of 50,000.
 //
 // # Performance and concurrency
 //

@@ -6,12 +6,14 @@ import (
 	"slices"
 	"sync"
 	"testing"
+
+	"github.com/cwbudde/algo-dsp/dsp/core"
 )
 
 // stepBudgets are the maxWork values every configuration is stepped with:
 // one unit per step, a prime that never lines up with a unit boundary, the
 // budget the basic-pitch benchmarks use, and a single unlimited step.
-var stepBudgets = []int{1, 997, 50_000, math.MaxInt}
+var stepBudgets = []int64{1, 997, 50_000, math.MaxInt64}
 
 // bitsEqual reports whether a and b have the same length and the same bit
 // pattern element by element, so that -0 differs from +0 and NaN equals an
@@ -40,10 +42,10 @@ func toFloat32(x []float64) []float32 {
 
 // maxUnit returns the largest indivisible unit of tr's passes: one frame of
 // the costliest octave or one decimated sample.
-func maxUnit(tr *Transform) int {
-	unit := lowpassTaps
+func maxUnit(tr *Transform) int64 {
+	unit := int64(lowpassTaps)
 	for o := range tr.nOctaves {
-		unit = max(unit, tr.frameTaps(o))
+		unit = max(unit, int64(tr.frameTaps(o)))
 	}
 
 	return unit
@@ -52,15 +54,15 @@ func maxUnit(tr *Transform) int {
 // stepStats summarizes one stepped run.
 type stepStats struct {
 	steps     int
-	work      int // summed work of all steps
-	overshoot int // largest work-maxWork of a non-final step
+	work      int64 // summed work of all steps
+	overshoot int64 // largest work-maxWork of a non-final step
 }
 
 // checkSteps steps s with maxWork until it is done and checks every step:
 // a non-final step does at least maxWork and less than maxWork+maxUnit(tr)
 // units, the final one at least 1; Progress starts at 0, increases strictly,
 // stays below 1 until done and is exactly 1 at done.
-func checkSteps[T float32 | float64](tb testing.TB, tr *Transform, s *Stepper[T], maxWork int) stepStats {
+func checkSteps[T float32 | float64](tb testing.TB, tr *Transform, s *Stepper[T], maxWork int64) stepStats {
 	tb.Helper()
 
 	unit := maxUnit(tr)
@@ -109,7 +111,7 @@ func checkSteps[T float32 | float64](tb testing.TB, tr *Transform, s *Stepper[T]
 		}
 
 		// work-maxWork instead of work against maxWork+unit, which would
-		// overflow for math.MaxInt (that budget never takes a non-final step).
+		// overflow for math.MaxInt64 (that budget never takes a non-final step).
 		if work < maxWork || work-maxWork >= unit {
 			tb.Fatalf("step %d did %d work units for maxWork %d (largest unit %d)",
 				st.steps, work, maxWork, unit)
@@ -123,7 +125,7 @@ func checkSteps[T float32 | float64](tb testing.TB, tr *Transform, s *Stepper[T]
 
 		prev = p
 
-		if st.steps > total {
+		if int64(st.steps) > total {
 			tb.Fatalf("not done after %d steps for %d work units", st.steps, total)
 		}
 	}
@@ -217,7 +219,7 @@ func TestStepperBitIdentical(t *testing.T) {
 					}
 				}
 
-				if maxWork != math.MaxInt {
+				if maxWork != math.MaxInt64 {
 					t.Logf("maxWork %d: %d steps, max overshoot %d (largest unit %d, Work %d)",
 						maxWork, st.steps, st.overshoot, maxUnit(tr), work)
 				}
@@ -254,7 +256,7 @@ func TestStepperUnitLimit(t *testing.T) {
 			t.Errorf("%s: low-pass lengths %d, %d, want %d", tc.name, len(tr.lowpass), len(tr.earlyLowpass), lowpassTaps)
 		}
 
-		if unit := maxUnit(tr); unit > max(kernelSet, 1024*lowpassTaps) {
+		if unit := maxUnit(tr); unit > int64(max(kernelSet, 1024*lowpassTaps)) {
 			t.Errorf("%s: largest unit %d exceeds the spec's limit", tc.name, unit)
 		}
 	}
@@ -264,8 +266,9 @@ func TestStepperUnitLimit(t *testing.T) {
 // lengths and the frame count come from the oracle's own length arithmetic,
 // the kernel supports from the Kernels() rows, and the lowest octave drops
 // its surplus filters below bin 0. Every decimation (including early
-// downsampling) costs 256 units per output sample. Work(n) is 0 exactly when
-// FrameCount(n) is 0.
+// downsampling) costs 256 units per output sample, and every octave's
+// padding one unit per padded sample, its length plus nfft/2 on each side.
+// Work(n) is 0 exactly when FrameCount(n) is 0.
 func TestStepperWork(t *testing.T) {
 	t.Parallel()
 
@@ -318,15 +321,17 @@ func TestStepperWork(t *testing.T) {
 				continue
 			}
 
-			want := 0
+			var want int64
 			if tr.DownsampleFactor() > 1 {
-				want += oracleTaps * lens[0]
+				want += int64(oracleTaps * lens[0])
 			}
 
 			for o := range octaves {
 				if o > 0 {
-					want += oracleTaps * lens[o]
+					want += int64(oracleTaps * lens[o])
 				}
+
+				want += int64(lens[o] + 2*(tr.NFFT()/2))
 
 				first := 0
 				if o == octaves-1 {
@@ -334,7 +339,7 @@ func TestStepperWork(t *testing.T) {
 				}
 
 				for f := first; f < filters; f++ {
-					want += frames * taps[f]
+					want += int64(frames * taps[f])
 				}
 			}
 
@@ -342,6 +347,78 @@ func TestStepperWork(t *testing.T) {
 				t.Errorf("%s: Work(%d) = %d, recount %d", tc.name, n, got, want)
 			}
 		}
+	}
+}
+
+// TestStepperPadRange pads octaves of several lengths in ranges of every
+// size from 1 to 7 and compares the result with core.PadReflect (or zero
+// padding) in one call. With PadReflect, the octaves not longer than nfft/2
+// are zero padded, as under the NNAudio preset.
+func TestStepperPadRange(t *testing.T) {
+	t.Parallel()
+
+	for _, padding := range []Padding{PadZero, PadReflect} {
+		tr := &Transform{nFFT: 16, padding: padding}
+		pad := tr.nFFT / 2
+
+		for _, n := range []int{1, 2, 7, 8, 9, 10, 33} {
+			x := make([]float64, n)
+			for i := range x {
+				x[i] = float64(i + 1)
+			}
+
+			want := make([]float64, n+2*pad)
+			if padding == PadReflect && pad < n {
+				err := core.PadReflect(want, x, pad, pad)
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				copy(want[pad:], x)
+			}
+
+			for size := 1; size <= 7; size++ {
+				p := pass{t: tr, cur: x, padded: make([]float64, len(want))}
+				for i := range p.padded {
+					p.padded[i] = math.NaN()
+				}
+
+				p.beginPad()
+
+				for from := 0; from < len(p.padded); from += size {
+					p.padRange(from, min(from+size, len(p.padded)))
+				}
+
+				if !bitsEqual(p.padded, want) {
+					t.Errorf("padding %v, n %d, ranges of %d: %v, want %v", padding, n, size, p.padded, want)
+				}
+			}
+		}
+	}
+}
+
+// TestStepperWorkLarge checks Work beyond math.MaxInt32, where an int
+// accumulator would overflow on 32-bit platforms: basic-pitch on 2^28
+// samples (about 3.4 hours) takes more than 2^31 units. The work grows
+// almost linearly with the length, so halving the input must roughly halve
+// it.
+func TestStepperWorkLarge(t *testing.T) {
+	t.Parallel()
+
+	tr, err := New(BasicPitchSampleRate, BasicPitch()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const n = 1 << 28
+
+	w, half := tr.Work(n), tr.Work(n/2)
+	if w <= math.MaxInt32 {
+		t.Fatalf("Work(%d) = %d, want more than %d", n, w, math.MaxInt32)
+	}
+
+	if r := float64(w) / float64(half); r < 1.99 || r > 2.01 {
+		t.Errorf("Work(%d)/Work(%d) = %d/%d = %v, want about 2", n, n/2, w, half, r)
 	}
 }
 
@@ -737,7 +814,7 @@ func TestStepperErrors(t *testing.T) {
 	// A rejected budget changes nothing.
 	progress, done, phase, pos := s.Progress(), s.p.done, s.p.phase, s.p.pos
 
-	for _, maxWork := range []int{0, -1, math.MinInt} {
+	for _, maxWork := range []int64{0, -1, math.MinInt64} {
 		finished, err := s.Step(maxWork)
 		if !errors.Is(err, ErrMaxWork) || finished {
 			t.Errorf("Step(%d) = %v, %v; want false, ErrMaxWork", maxWork, finished, err)
@@ -748,13 +825,13 @@ func TestStepperErrors(t *testing.T) {
 		}
 	}
 
-	if finished, err := s.Step(math.MaxInt); err != nil || !finished {
+	if finished, err := s.Step(math.MaxInt64); err != nil || !finished {
 		t.Fatalf("Step(MaxInt) = %v, %v; want true, nil", finished, err)
 	}
 
 	out := slices.Clone(dst)
 
-	for _, maxWork := range []int{1, math.MaxInt} {
+	for _, maxWork := range []int64{1, math.MaxInt64} {
 		finished, err := s.Step(maxWork)
 		if !errors.Is(err, ErrStepperDone) || !finished {
 			t.Errorf("Step(%d) after done = %v, %v; want true, ErrStepperDone", maxWork, finished, err)
@@ -874,7 +951,7 @@ func TestStepperConcurrent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	budgets := []int{997, 50_000}
+	budgets := []int64{997, 50_000}
 	results := make([][]float64, len(budgets))
 	errs := make([]error, len(budgets))
 	steppers := make([]*Stepper[float64], len(budgets))

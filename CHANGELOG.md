@@ -9,13 +9,13 @@ All notable changes to this project are documented in this file.
 - `dsp/cqt`: bounded-work stepping. `(*Transform).NewStepper(dst, x)` and
   `NewStepper32(dst, x)` return a `*Stepper[float64]` / `*Stepper[float32]`
   that computes the transform of x in steps: `Step(maxWork)` performs at
-  least `maxWork` work units (one unit is one multiply-accumulate; a step
-  finishes the frame or decimated sample in progress) and reports whether
+  least `maxWork` work units (one unit is one multiply-accumulate or one
+  padded sample; a step finishes the frame or decimated sample in progress) and reports whether
   the transform is complete, `Progress()` returns the fraction done (exactly
   1 at the end), and `Reset(dst, x)` starts the next window without
   allocating. `(*Transform).Work(n)` returns the total units for an input
   length, so callers can size steps: basic-pitch's 43844-sample window is
-  19,450,568 units, 385 steps of 50,000. The stepped output is bit-identical
+  19,540,387 units, 387 steps of 50,000. The stepped output is bit-identical
   to `ProcessInto`/`ProcessInto32` for every budget, which now run the same
   phases with an unlimited budget. The stepper copies x and owns its scratch
   buffers, so several steppers may share one Transform. New sentinel errors

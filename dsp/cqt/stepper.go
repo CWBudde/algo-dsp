@@ -77,13 +77,13 @@ func (s *Stepper[T]) Reset(dst, x []T) error {
 // unit in progress when the budget is used up is finished, so a step
 // exceeds maxWork by less than one unit. A unit is one frame of one octave's
 // kernel correlation (the summed kernel lengths, a few thousand work units
-// for typical configurations) or one decimated sample (256). A step also
-// pads the octaves it starts, which counts no work.
+// for typical configurations), one decimated sample (256) or one padded
+// sample (1).
 //
 // Step returns [ErrMaxWork] if maxWork is less than 1 and [ErrStepperDone]
 // once the transform is complete; neither changes the Stepper. Pass
-// [math.MaxInt] to finish in one step.
-func (s *Stepper[T]) Step(maxWork int) (bool, error) {
+// [math.MaxInt64] to finish in one step.
+func (s *Stepper[T]) Step(maxWork int64) (bool, error) {
 	if maxWork < 1 {
 		return false, fmt.Errorf("%w: %d", ErrMaxWork, maxWork)
 	}

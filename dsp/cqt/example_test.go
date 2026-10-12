@@ -150,8 +150,8 @@ func ExampleTransform_NewStepper() {
 	fmt.Printf("after Reset: %.0f%%\n", 100*s.Progress())
 	// Output:
 	// after 100 steps: 26%
-	// work units: 19450568
-	// steps: 385, progress 100%, same as ProcessInto: true
+	// work units: 19540387
+	// steps: 387, progress 100%, same as ProcessInto: true
 	// after Reset: 0%
 }
 

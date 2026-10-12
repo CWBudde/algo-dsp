@@ -167,39 +167,49 @@ func (t *Transform) checkLengths(nDst, nx int) error {
 	return nil
 }
 
-// process runs the Transform's own pass over x with an unlimited budget.
-// The caller has validated the lengths.
+// process runs the Transform's own pass over x to completion. The caller
+// has validated the lengths.
 func process[T sample](t *Transform, dst []T, x []float64) {
 	t.pass.start(t, x)
-	advance(&t.pass, dst, math.MaxInt)
+
+	// One call covers any pass Work can count; the loop only makes
+	// completion independent of the budget.
+	for t.pass.phase != phaseDone {
+		advance(&t.pass, dst, math.MaxInt64)
+	}
 }
 
 // Work returns the number of work units a transform of n input samples
 // takes, or 0 if n samples are too short to be processed. A work unit is one
-// multiply-accumulate: kernel taps times frames for each octave's kernel
-// correlation, and 256 low-pass taps times output samples for each
-// decimation (including early downsampling). Padding, the float32
-// conversion and the magnitude are not counted. Use it to size the budgets
-// passed to [Stepper.Step].
-func (t *Transform) Work(n int) int {
+// multiply-accumulate or one padded sample: kernel taps times frames for
+// each octave's kernel correlation, 256 low-pass taps times output samples
+// for each decimation (including early downsampling), and the octave's
+// length plus nfft/2 on each side for each octave's padding. The float32 conversion and the
+// magnitude are not counted. Work is an int64 so that it cannot overflow on
+// 32-bit platforms. Use it to size the budgets passed to [Stepper.Step].
+func (t *Transform) Work(n int) int64 {
 	frames := t.FrameCount(n)
 	if frames == 0 {
 		return 0
 	}
 
-	work, m := 0, n
+	pad := int64(2 * (t.nFFT / 2))
+
+	var work int64
+
+	m := n
 	if t.factor > 1 {
 		m = decimatedLength(m, lowpassTaps, t.factor)
-		work += lowpassTaps * m
+		work += lowpassTaps * int64(m)
 	}
 
 	for o := range t.nOctaves {
 		if o > 0 {
 			m = decimatedLength(m, lowpassTaps, 2)
-			work += lowpassTaps * m
+			work += lowpassTaps * int64(m)
 		}
 
-		work += frames * t.frameTaps(o)
+		work += int64(m) + pad + int64(frames)*int64(t.frameTaps(o))
 	}
 
 	return work
@@ -226,15 +236,15 @@ func (t *Transform) frameTaps(o int) int {
 	return taps
 }
 
-// phase is a stage of a pass. Each phase except phasePad is divided into
-// indivisible units: one output sample of a decimation, one frame of a
+// phase is a stage of a pass. Each phase is divided into indivisible units:
+// one output sample of a decimation, one padded sample, one frame of a
 // kernel correlation.
 type phase uint8
 
 const (
 	phaseDone      phase = iota // the pass is complete (zero value)
 	phaseEarly                  // early downsampling of the input
-	phasePad                    // padding of the current octave, no work units
+	phasePad                    // padding of the current octave
 	phaseCorrelate              // kernel correlation of the current octave
 	phaseDecimate               // 2:1 decimation to the next octave
 )
@@ -251,13 +261,13 @@ type pass struct {
 	frames int
 	phase  phase
 	octave int       // current octave, 0 is the top one
-	pos    int       // next frame or decimated sample of the phase
+	pos    int       // next frame, padded or decimated sample of the phase
 	hop    int       // hop of the current octave
 	cur    []float64 // signal of the current octave
 	next   []float64 // decimation target
 	slot   int       // octave buffer the next 2:1 decimation writes to
-	done   int       // work units performed
-	total  int       // work units of the whole pass
+	done   int64     // work units performed
+	total  int64     // work units of the whole pass
 
 	// Scratch, grown by start to the input length and reused.
 	bufs   [2][]float64 // ping-pong octave signals
@@ -317,19 +327,22 @@ func (p *pass) start(t *Transform, x []float64) {
 
 	p.padded = core.EnsureLen(p.padded, top+2*(t.nFFT/2))
 
-	p.cur, p.next, p.phase = x, nil, phasePad
+	p.cur, p.next = x, nil
 	if t.factor > 1 {
 		p.next, p.phase = p.bufs[0][:top], phaseEarly
+	} else {
+		p.beginPad()
 	}
 }
 
 // advance runs the pass until at least maxWork work units are done or the
 // pass is complete, and returns the units performed. The unit in progress
 // when the budget runs out is finished, so a call exceeds maxWork by less
-// than one unit; padding counts no work. maxWork must be at least 1.
-func advance[T sample](p *pass, dst []T, maxWork int) int {
+// than one unit. maxWork must be at least 1.
+func advance[T sample](p *pass, dst []T, maxWork int64) int64 {
 	t := p.t
-	work := 0
+
+	var work int64
 
 	for work < maxWork && p.phase != phaseDone {
 		switch p.phase {
@@ -338,18 +351,24 @@ func advance[T sample](p *pass, dst []T, maxWork int) int {
 			work += p.decimate(t.earlyLowpass, t.factor, maxWork-work)
 			if p.pos == len(p.next) {
 				p.cur, p.next, p.slot = p.next, nil, 1
-				p.phase = phasePad
+				p.beginPad()
 			}
 		case phasePad:
-			p.pad()
-			p.pos = 0
-			p.phase = phaseCorrelate
+			k := units(maxWork-work, 1, len(p.padded)-p.pos)
+			p.padRange(p.pos, p.pos+k)
+			p.pos += k
+			work += int64(k)
+
+			if p.pos == len(p.padded) {
+				p.pos = 0
+				p.phase = phaseCorrelate
+			}
 		case phaseCorrelate:
 			taps := t.frameTaps(p.octave)
-			k := min(p.frames-p.pos, units(maxWork-work, taps))
+			k := units(maxWork-work, taps, p.frames-p.pos)
 			correlate(t, dst, p.padded, p.hop, t.binBase(p.octave), p.pos, p.pos+k)
 			p.pos += k
-			work += k * taps
+			work += int64(k) * int64(taps)
 
 			if p.pos == p.frames {
 				p.endOctave()
@@ -360,7 +379,7 @@ func advance[T sample](p *pass, dst []T, maxWork int) int {
 				p.cur, p.next, p.slot = p.next, nil, 1-p.slot
 				p.octave++
 				p.hop /= 2
-				p.phase = phasePad
+				p.beginPad()
 			}
 		}
 	}
@@ -387,48 +406,73 @@ func (p *pass) endOctave() {
 	p.phase = phaseDecimate
 }
 
-// units returns the number of units of size size that cover budget, at least
-// 1: ceil(budget/size) without overflow.
-func units(budget, size int) int {
-	k := budget / size
-	if budget%size != 0 {
+// units returns the number of units of size size that cover budget,
+// ceil(budget/size) without overflow, clamped to [1, left].
+func units(budget int64, size, left int) int {
+	k := budget / int64(size)
+	if budget%int64(size) != 0 {
 		k++
 	}
 
-	return max(k, 1)
+	return int(min(max(k, 1), int64(left)))
 }
 
 // decimate computes the next decimated samples of p.cur into p.next, as many
 // as cover budget, and returns their work.
-func (p *pass) decimate(h []float64, factor, budget int) int {
-	k := min(len(p.next)-p.pos, units(budget, len(h)))
+func (p *pass) decimate(h []float64, factor int, budget int64) int64 {
+	k := units(budget, len(h), len(p.next)-p.pos)
 	decimateRange(p.next, p.cur, h, factor, p.pos, p.pos+k)
 	p.pos += k
 
-	return k * len(h)
+	return int64(k) * int64(len(h))
 }
 
-// pad extends the current octave's signal by nfft/2 samples on both sides
-// into p.padded.
-func (p *pass) pad() {
-	t := p.t
-	x := p.cur
-	pad := t.nFFT / 2
-	n := len(x)
-	xp := p.padded[:n+2*pad]
-	p.padded = xp
+// beginPad starts the padding of the current octave's signal p.cur, which
+// is extended by nfft/2 samples on both sides into p.padded.
+func (p *pass) beginPad() {
+	p.padded = p.padded[:len(p.cur)+2*(p.t.nFFT/2)]
+	p.pos = 0
+	p.phase = phasePad
+}
 
-	if t.padding == PadReflect && pad < n {
-		// Cannot fail: pad < n, xp has n+2*pad elements and is a scratch
-		// buffer distinct from x.
-		_ = core.PadReflect(xp, x, pad, pad)
-	} else {
-		// Zero padding, or under the NNAudio preset an octave that torch's
-		// reflection pad rejects (pad >= n), which nnAudio zero pads.
-		// Without the preset topLength has already rejected such signals.
-		clear(xp[:pad])
-		copy(xp[pad:], x)
-		clear(xp[pad+n:])
+// padRange writes the padded samples [from, to) of the current octave: the
+// left padding, the signal and the right padding, as [core.PadReflect] or
+// zero padding would. Padding in ranges keeps a step bounded for long
+// signals and large nfft.
+func (p *pass) padRange(from, to int) {
+	t := p.t
+	x, xp := p.cur, p.padded
+	pad, n := t.nFFT/2, len(p.cur)
+
+	// Zero padding, or under the NNAudio preset an octave that torch's
+	// reflection pad rejects (pad >= n), which nnAudio zero pads. Without
+	// the preset topLength has already rejected such signals.
+	reflect := t.padding == PadReflect && pad < n
+
+	for i := from; i < to; {
+		switch {
+		case i < pad:
+			end := min(to, pad)
+			for ; i < end; i++ {
+				if reflect {
+					xp[i] = x[pad-i]
+				} else {
+					xp[i] = 0
+				}
+			}
+		case i < pad+n:
+			end := min(to, pad+n)
+			copy(xp[i:end], x[i-pad:end-pad])
+			i = end
+		default:
+			for ; i < to; i++ {
+				if reflect {
+					xp[i] = x[n-2-(i-pad-n)]
+				} else {
+					xp[i] = 0
+				}
+			}
+		}
 	}
 }
 

@@ -1834,9 +1834,11 @@ bounded-work stepper for per-step time budgets follows as a later item.
 >   (basic-pitch 5658, nnAudio defaults 1584, at most 16915 for `blackman`); a decimated sample
 >   is 256. The plan allowed 1024 decimated samples (262144 units), five times a 50,000 budget.
 >   A step decimates exactly as many samples as its budget covers with one
->   `CorrelateStridedInto` call. Padding and the float32 conversion count no work. basic-pitch:
->   `Work` 19,450,568, 385 steps of 50,000, largest overshoot 5322 (< one frame); at budget 1
->   every configuration's overshoot is exactly its largest unit − 1.
+>   `CorrelateStridedInto` call. Padding counts one unit per padded sample and is resumable, so a
+>   step stays bounded for long signals and large nfft (PR #41 review); the float32 conversion
+>   counts no work. `Work` and `Step`'s budget are `int64`, so they cannot overflow on 32-bit
+>   platforms. basic-pitch: `Work` 19,540,387, 387 steps of 50,000, largest overshoot 5616
+>   (< one frame); at budget 1 every configuration's overshoot is exactly its largest unit − 1.
 > - **Scratch:** the stepper copies x (converting float32), so the caller may reuse x at once
 >   and dst may overlap it. It owns its buffers and only reads the Transform, so `ProcessInto`
 >   may run between steps and several steppers may share a Transform (tested under -race).
