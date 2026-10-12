@@ -146,6 +146,23 @@
 //
 // NaN or Inf samples propagate into the frames that cover them.
 //
+// # Bounded steps
+//
+// [Transform.NewStepper] and [Transform.NewStepper32] return a [Stepper],
+// which computes the same transform in steps of a bounded amount of work,
+// for callers with a time budget per step (a cooperative scheduler, a
+// js/wasm main thread). The transform runs in phases: early downsampling,
+// then for each octave the padding, the kernel correlation over a range of
+// frames and the 2:1 decimation over a range of output samples.
+// [Stepper.Step] advances them by at least maxWork work units and finishes
+// the unit in progress; ProcessInto runs the same phases with an unlimited
+// budget, so the stepped output is bit-identical for every budget. A work
+// unit is one multiply-accumulate or one padded sample, and [Transform.Work]
+// returns the total for an input length. The indivisible units are one
+// frame of one octave (the summed kernel lengths: 5658 for [BasicPitch]),
+// one decimated sample (256) and one padded sample (1). basic-pitch's 43844-sample window
+// takes 19,540,387 units, 387 steps of 50,000.
+//
 // # Performance and concurrency
 //
 // The kernels are stored by their non-zero support and evaluated as direct
@@ -153,7 +170,10 @@
 // reflect-padded with [core.PadReflect] and decimated with
 // [conv.CorrelateStridedInto]. [Transform.ProcessInto] and
 // [Transform.ProcessInto32] grow their scratch buffers to the input length
-// once and do not allocate after that. A Transform is not safe for
-// concurrent use; [Transform.Clone] returns an independent Transform that
-// shares the immutable kernels and filters.
+// once and do not allocate after that; a Stepper allocates its own scratch
+// buffers in NewStepper, and neither Step nor Reset (for an input no longer
+// than before) allocates. A Transform is not safe for concurrent use;
+// [Transform.Clone] returns an independent Transform that shares the
+// immutable kernels and filters. Steppers only read their Transform, so
+// several may run concurrently on one Transform.
 package cqt

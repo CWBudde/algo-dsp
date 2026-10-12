@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/cmplx"
+	"slices"
 
 	"github.com/cwbudde/algo-dsp/dsp/cqt"
 	"github.com/cwbudde/algo-dsp/dsp/stft"
@@ -87,6 +88,71 @@ func ExampleBasicPitch() {
 	// Output:
 	// frames=172 bins=309 octaves=9 nfft=256 hop=256 padding=reflect
 	// peak: bin 144 at 440.0 Hz
+}
+
+// A Stepper spreads one transform over many short steps, for a scheduler
+// that gives each job a fixed time budget. Work counts multiply-accumulates,
+// so a budget in work units is a budget in time; the result is
+// bit-identical to ProcessInto's.
+func ExampleTransform_NewStepper() {
+	tr, err := cqt.New(cqt.BasicPitchSampleRate, cqt.BasicPitch()...)
+	if err != nil {
+		panic(err)
+	}
+
+	x := make([]float64, 43844)
+	for i := range x {
+		x[i] = math.Sin(2 * math.Pi * 440 * float64(i) / cqt.BasicPitchSampleRate)
+	}
+
+	dst := make([]float64, tr.OutputLen(len(x)))
+
+	s, err := tr.NewStepper(dst, x)
+	if err != nil {
+		panic(err)
+	}
+
+	// Each step returns to the caller, which can yield before the next one.
+	const budget = 50_000
+
+	steps := 0
+
+	for {
+		done, err := s.Step(budget)
+		if err != nil {
+			panic(err)
+		}
+
+		steps++
+		if steps == 100 {
+			fmt.Printf("after 100 steps: %.0f%%\n", 100*s.Progress())
+		}
+
+		if done {
+			break
+		}
+	}
+
+	want := make([]float64, len(dst))
+	if err := tr.ProcessInto(want, x); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("work units: %d\n", tr.Work(len(x)))
+	fmt.Printf("steps: %d, progress %.0f%%, same as ProcessInto: %v\n",
+		steps, 100*s.Progress(), slices.Equal(dst, want))
+
+	// Reset reuses the Stepper and its buffers for the next window.
+	if err := s.Reset(dst, x); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("after Reset: %.0f%%\n", 100*s.Progress())
+	// Output:
+	// after 100 steps: 26%
+	// work units: 19540387
+	// steps: 387, progress 100%, same as ProcessInto: true
+	// after Reset: 0%
 }
 
 // With fewer bins than one octave, nnAudio places its kernels below the

@@ -1814,7 +1814,69 @@ bounded-work stepper for per-step time budgets follows as a later item.
 > fix it without changing power-of-two hops; it is left for a separate change because the
 > presets must keep nnAudio's choice.
 
-- [ ] 46.6 `cqt-stepper` — Add a resumable, bounded-work way to run a `dsp/cqt` transform, so that callers with a per-step time budget can compute one window across many short steps. The algo-audio-editor kernel gives analysis jobs about 2 ms per step under js/wasm, and algo-transcribe's front end (its item 2.1) must keep every unit within that budget, while one basic-pitch window (43,844 samples, `cqt.New(cqt.BasicPitchSampleRate, cqt.BasicPitch()...)`) takes about 6 ms native in one `ProcessInto` call. API: `(*Transform).NewStepper(dst, x []float64) (*Stepper, error)` and `NewStepper32(dst, x []float32)` mirroring `ProcessInto`/`ProcessInto32` (same length validation and errors, float32 I/O with float64 computation), `(*Stepper).Step(maxWork int) (done bool, err error)`, `Progress() float64`, `Reset(dst, x)` to reuse the stepper and its scratch buffers for the next window of the same length without allocating, and `(*Transform).Work(n int) int`, the total work units for an input length, so callers can size steps. A work unit is one multiply-accumulate (kernel taps × frames for the strided correlation, low-pass taps × output samples for decimation); a step finishes the unit in progress when it crosses `maxWork`, and no indivisible unit may exceed one frame of one octave's kernel set or one block of 1,024 decimated samples. Split the existing `process` pipeline into resumable phases (padding and early downsampling; then per octave the strided kernel correlation over a frame range and the low-pass decimation over a sample range) and make `ProcessInto` a loop over the same phases with unlimited work, so there is one code path. Tests: for the `BasicPitch()` and `NNAudio()` presets and the generic configurations the oracle tests cover (including a partial octave, `PadReflect` and the short-signal zero-pad quirk), stepping with `maxWork` of 1, a prime such as 997, 50,000 and unlimited is bit-identical to `ProcessInto` in float64 and float32; `Reset` reuse across two different signals is bit-identical; `Step` and `Reset` do 0 allocs after `NewStepper`; `Progress` is monotonic and reaches 1 exactly at `done`; errors for wrong lengths and for `Step` after done; `Work` equals the sum of the units actually performed. Benchmarks for the basic-pitch configuration: total time with steps of 50,000 units versus `ProcessInto` (overhead under 5%), and the longest single step for that budget natively and under `GOOS=js GOARCH=wasm` in Node, recorded in BENCHMARKS.md with date and machine. Add an `Example` and a CHANGELOG entry under Unreleased; this is additive, so it ships as v0.13.1.
+- [x] 46.6 `cqt-stepper` — Add a resumable, bounded-work way to run a `dsp/cqt` transform, so that callers with a per-step time budget can compute one window across many short steps. The algo-audio-editor kernel gives analysis jobs about 2 ms per step under js/wasm, and algo-transcribe's front end (its item 2.1) must keep every unit within that budget, while one basic-pitch window (43,844 samples, `cqt.New(cqt.BasicPitchSampleRate, cqt.BasicPitch()...)`) takes about 6 ms native in one `ProcessInto` call. API: `(*Transform).NewStepper(dst, x []float64) (*Stepper, error)` and `NewStepper32(dst, x []float32)` mirroring `ProcessInto`/`ProcessInto32` (same length validation and errors, float32 I/O with float64 computation), `(*Stepper).Step(maxWork int) (done bool, err error)`, `Progress() float64`, `Reset(dst, x)` to reuse the stepper and its scratch buffers for the next window of the same length without allocating, and `(*Transform).Work(n int) int`, the total work units for an input length, so callers can size steps. A work unit is one multiply-accumulate (kernel taps × frames for the strided correlation, low-pass taps × output samples for decimation); a step finishes the unit in progress when it crosses `maxWork`, and no indivisible unit may exceed one frame of one octave's kernel set or one block of 1,024 decimated samples. Split the existing `process` pipeline into resumable phases (padding and early downsampling; then per octave the strided kernel correlation over a frame range and the low-pass decimation over a sample range) and make `ProcessInto` a loop over the same phases with unlimited work, so there is one code path. Tests: for the `BasicPitch()` and `NNAudio()` presets and the generic configurations the oracle tests cover (including a partial octave, `PadReflect` and the short-signal zero-pad quirk), stepping with `maxWork` of 1, a prime such as 997, 50,000 and unlimited is bit-identical to `ProcessInto` in float64 and float32; `Reset` reuse across two different signals is bit-identical; `Step` and `Reset` do 0 allocs after `NewStepper`; `Progress` is monotonic and reaches 1 exactly at `done`; errors for wrong lengths and for `Step` after done; `Work` equals the sum of the units actually performed. Benchmarks for the basic-pitch configuration: total time with steps of 50,000 units versus `ProcessInto` (overhead under 5%), and the longest single step for that budget natively and under `GOOS=js GOARCH=wasm` in Node, recorded in BENCHMARKS.md with date and machine. Add an `Example` and a CHANGELOG entry under Unreleased; this is additive, so it ships as v0.13.1.
+
+> Outcome notes (46.6): `cqt.Stepper[T float32 | float64]` (generic like `stft.Transform`, so
+> one `Reset(dst, x []T)` serves both `NewStepper` and `NewStepper32`), `Transform.Work`, and the
+> sentinels `ErrMaxWork` (budget < 1, as `loudness.FinishStep` rejects it) and `ErrStepperDone`
+> (`Step` after done returns `true` with it; a zero `Stepper` is done).
+>
+> - **One code path:** `process.go` now runs a private `pass` through phases (early downsampling,
+>   then per octave padding, kernel correlation over a frame range and 2:1 decimation over a
+>   sample range), and `ProcessInto`/`ProcessInto32` call `advance` with `math.MaxInt`. A
+>   decimated range is `conv.CorrelateStridedInto` on `dst[from:to]` with the start shifted by
+>   `from*factor`, so every sample sees the same span and `vecmath.DotProduct` slices.
+>   Splitting is therefore exact by construction. `ProcessInto` is bit-identical to `ed24ea5`
+>   (SHA-256 of `Process` and `ProcessInto32` for basic-pitch, nnAudio defaults, generic,
+>   complex reflect, a 5-bin partial octave and early downsampling by 32 and 64, at 43844
+>   and 4000 samples), and the existing tests pass unchanged.
+> - **Units:** smaller than the plan's limit. A frame of one octave is the summed kernel length
+>   (basic-pitch 5658, nnAudio defaults 1584, at most 16915 for `blackman`); a decimated sample
+>   is 256. The plan allowed 1024 decimated samples (262144 units), five times a 50,000 budget.
+>   A step decimates exactly as many samples as its budget covers with one
+>   `CorrelateStridedInto` call. Padding counts one unit per padded sample and is resumable, so a
+>   step stays bounded for long signals and large nfft (PR #41 review); the float32 conversion
+>   counts no work. `Work` and `Step`'s budget are `int64`, so they cannot overflow on 32-bit
+>   platforms. basic-pitch: `Work` 19,540,387, 387 steps of 50,000, largest overshoot 5616
+>   (< one frame); at budget 1 every configuration's overshoot is exactly its largest unit − 1.
+> - **Scratch:** the stepper copies x (converting float32), so the caller may reuse x at once
+>   and dst may overlap it. It owns its buffers and only reads the Transform, so `ProcessInto`
+>   may run between steps and several steppers may share a Transform (tested under -race).
+>   `NewStepper` sizes every buffer; `Step` and `Reset` (to an input no longer than before) do
+>   0 allocs.
+> - **Tests** (`stepper_test.go`): all 13 oracle configurations × budgets 1, 997, 50,000 and
+>   MaxInt are bit-identical to `ProcessInto` (float64) and `ProcessInto32` (float32), with dst
+>   prefilled with NaN and its tail checked untouched. Every step is checked for bounded work
+>   (≥ maxWork unless final, < maxWork + largest unit). Progress starts at 0, rises strictly
+>   and is exactly 1 at done, and the summed step work equals `Work(n)`. `Work` is also
+>   recounted independently from the oracle's octave lengths and `Kernels()` supports.
+>   Further tests cover Reset across two signals, mid-run Reset, rejected Resets (stepper
+>   unchanged), a longer input, overlap, 0 allocs, the errors, the zero `Stepper`, and
+>   independence and concurrency. Coverage 99.6% (`stepper.go` and `process.go` 100%).
+> - **Benchmarks** (BENCHMARKS.md; M5 Pro, load ≈ 2, medians of interleaved runs): with steps
+>   of 50,000 units the whole window takes 3.672 ms against `ProcessInto`'s 3.655 ms
+>   natively (+0.5%), and 12.56 ms against 12.51 ms under js/wasm in Node 24 (+0.4%), both
+>   within noise. The longest step is 42–117 µs natively (p99 15–17 µs, mean 9.5 µs) and
+>   60–613 µs under js/wasm over 18 runs (p99 37–47 µs, mean 32.6 µs), against the 2 ms budget.
+>   `ProcessInto` before and after the refactor: 3.639 → 3.630 ms (p = 0.32).
+>
+> Discoveries:
+>
+> 1. `go test -exec go_js_wasm_exec` fails with a large shell environment ("total length of
+>    command line and environment variables exceeds limit"), because the wrapper passes the
+>    environment into the wasm program. BENCHMARKS.md runs the compiled test binary under
+>    `env -i` instead.
+> 2. A max-step benchmark that recorded every step time in a 2 MB slice saw ~1.7 ms js/wasm
+>    steps: the allocation started a Go GC cycle that stayed in its mark phase for the whole
+>    run. A fixed histogram removed them. GC assists can land in any step, so a caller's
+>    budget should keep headroom; the p99 is reported next to the max for that reason.
+> 3. The `dsp/cqt` figures recorded in 46.1 are stale: `ProcessInto` is now about 3.6 ms on the
+>    same machine, not 6.07 ms (measured under load), and `BenchmarkNewBasicPitch` makes 184
+>    allocations on `ed24ea5` too, not 166. Left as recorded.
+>
+> Residual gap: the v0.13.1 tag. The CHANGELOG entry is under Unreleased; tag with
+> `just tag-release v0.13.1` after v0.13.0 (still pending) and this merge, then tick the exit
+> criterion below.
 
 Exit criteria:
 

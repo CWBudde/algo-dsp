@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cwbudde/algo-dsp/dsp/window"
 )
@@ -748,4 +749,128 @@ func BenchmarkProcessInto32BasicPitch(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+}
+
+// benchStepBudget is the work budget per Step in the stepper benchmarks:
+// about 1/390 of a basic-pitch window, the step size algo-transcribe plans
+// for a 2 ms per-step budget under js/wasm.
+const benchStepBudget = 50_000
+
+// runStepper resets s to x and steps it to completion with benchStepBudget.
+func runStepper(b *testing.B, s *Stepper[float64], dst, x []float64) {
+	b.Helper()
+
+	err := s.Reset(dst, x)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for {
+		done, err := s.Step(benchStepBudget)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if done {
+			return
+		}
+	}
+}
+
+// BenchmarkStepperBasicPitch is the total time of one basic-pitch window
+// computed in steps of benchStepBudget work units, to compare with
+// BenchmarkProcessIntoBasicPitch.
+func BenchmarkStepperBasicPitch(b *testing.B) {
+	tr := newBasicPitch(b)
+	x := testSignal(b)
+	dst := make([]float64, tr.OutputLen(len(x)))
+
+	s, err := tr.NewStepper(dst, x)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// Warm up the scratch buffers and caches before measuring.
+	runStepper(b, s, dst, x)
+
+	b.ReportAllocs()
+	b.SetBytes(int64(8 * len(x)))
+
+	for b.Loop() {
+		runStepper(b, s, dst, x)
+	}
+}
+
+// BenchmarkStepperMaxStepBasicPitch times every single Step of budget
+// benchStepBudget over all iterations and reports the longest step
+// (max-step-ns), the 99th percentile (p99-step-ns, the upper edge of its
+// 1 µs histogram bucket; less sensitive to GC and scheduler pauses than the
+// maximum), the mean (step-ns) and the number of steps per window
+// (steps/op). The step times go to a fixed histogram so that recording them
+// does not allocate or start a garbage collection. ns/op includes the timer
+// overhead, so use BenchmarkStepperBasicPitch for the total time.
+func BenchmarkStepperMaxStepBasicPitch(b *testing.B) {
+	const (
+		bucketWidth = time.Microsecond
+		numBuckets  = 10_000 // 10 ms; longer steps count in the last bucket
+	)
+
+	tr := newBasicPitch(b)
+	x := testSignal(b)
+	dst := make([]float64, tr.OutputLen(len(x)))
+
+	s, err := tr.NewStepper(dst, x)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	runStepper(b, s, dst, x)
+
+	var (
+		hist    [numBuckets]int
+		maxStep time.Duration
+		sum     time.Duration
+		steps   int
+		windows int
+	)
+
+	for b.Loop() {
+		err := s.Reset(dst, x)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		for done := false; !done; {
+			start := time.Now()
+			done, err = s.Step(benchStepBudget)
+			elapsed := time.Since(start)
+
+			hist[min(int(elapsed/bucketWidth), numBuckets-1)]++
+			maxStep = max(maxStep, elapsed)
+			sum += elapsed
+			steps++
+
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		windows++
+	}
+
+	p99 := maxStep
+
+	for i, seen := 0, 0; i < numBuckets-1; i++ {
+		seen += hist[i]
+		if 100*seen >= 99*steps {
+			p99 = min(time.Duration(i+1)*bucketWidth, maxStep)
+
+			break
+		}
+	}
+
+	b.ReportMetric(float64(maxStep), "max-step-ns")
+	b.ReportMetric(float64(p99), "p99-step-ns")
+	b.ReportMetric(float64(sum)/float64(steps), "step-ns")
+	b.ReportMetric(float64(steps)/float64(windows), "steps/op")
 }

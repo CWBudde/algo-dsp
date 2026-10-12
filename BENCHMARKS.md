@@ -197,6 +197,38 @@ machine under load, so expect lower numbers on an idle one). Input: one basic-pi
 - `BenchmarkNewBasicPitch`: `243699 ns/op`, `166 allocs/op`
 - `BenchmarkFirwin2` (256 taps): `78701 ns/op`, `9 allocs/op`
 
+#### `cqt.Stepper` (46.6)
+
+Date: 2026-10-11. Machine: Apple M5 Pro (15 cores), `go1.27.1 darwin/arm64`, Node v24.12.0;
+load average about 2 during the runs. Input: the basic-pitch window above, `Work` = 19,450,568
+units, stepped with `Step(50_000)`: 385 steps per window. Values are medians over interleaved
+runs; `max`/`p99`/`mean` are single `Step` wall times (`BenchmarkStepperMaxStepBasicPitch`,
+p99 rounded up to 1 µs), with the range over runs for the max.
+
+```bash
+go test -run '^$' -bench 'BasicPitch' -benchmem -count 6 ./dsp/cqt
+# js/wasm: the go_js_wasm_exec wrapper fails with "total length of command line and
+# environment variables exceeds limit" under a large environment, so build and run directly.
+GOOS=js GOARCH=wasm go test -c -o /tmp/cqt.wasm ./dsp/cqt
+env -i PATH="$(dirname "$(which node)"):/bin:/usr/bin" "$(go env GOROOT)/lib/wasm/go_js_wasm_exec" \
+  /tmp/cqt.wasm -test.run '^$' -test.bench 'BasicPitch' -test.benchmem -test.count 1  # × 6
+```
+
+| Target           | `ProcessInto` | Stepper total | Overhead | max step       | p99 step | mean step | allocs |
+| ---------------- | ------------- | ------------- | -------- | -------------- | -------- | --------- | ------ |
+| native (n=6)     | 3.655 ms      | 3.672 ms      | +0.5 %   | 42–117 µs      | 15–17 µs | 9.5 µs    | 0      |
+| js/wasm Node (6) | 12.51 ms      | 12.56 ms      | +0.4 %   | 60–613 µs (18) | 37–47 µs | 32.6 µs   | 0      |
+
+Both overheads are within noise (benchstat `p>0.5`); the worst js/wasm step over 18 runs is
+0.61 ms against the 2 ms per-step budget. Refactoring `ProcessInto` into the phased pass did
+not slow it: base commit `ed24ea5` vs. this change, 10 interleaved runs, `3.639 ms` → `3.630 ms`
+(`~`, `p=0.315`); `ProcessInto32` `3.634 ms` → `3.650 ms` (`~`, `p=0.310`, n=6).
+
+The table predates counting the padding as work (PR #41 review): padding is now resumable, one
+unit per padded sample, so the window is 19,540,387 units and 387 steps of 50,000. Remeasured
+natively on 2026-10-12, 6 interleaved runs against the version above, `ProcessInto`,
+`ProcessInto32` and the stepper total are unchanged (`~`, `p≥0.59`) with 0 allocations.
+
 ## SIMD vs Scalar (internal/vecmath, n=4096)
 
 Command:
