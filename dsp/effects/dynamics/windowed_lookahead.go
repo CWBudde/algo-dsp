@@ -54,7 +54,8 @@ func NewWindowedLookahead(maxSamples int) (*WindowedLookahead, error) {
 
 // Configure sets the detector and output gain, release half-life in
 // milliseconds, and attack window. Changing the lookahead length clears the
-// delay and detector history. Successful calls reuse the reserved storage.
+// delay and detector history; changing only the attack shape resettles the
+// attack windows on the held peak. Successful calls reuse the reserved storage.
 func (l *WindowedLookahead) Configure(sampleRate float64, samples int, inputDB, outputDB, releaseMS float64, shape LookaheadAttack) error {
 	if err := validateSampleRate(sampleRate); err != nil {
 		return err
@@ -72,13 +73,17 @@ func (l *WindowedLookahead) Configure(sampleRate float64, samples int, inputDB, 
 		return fmt.Errorf("unknown lookahead attack: %d", shape)
 	}
 
-	if l.samples != samples {
+	switch {
+	case l.samples != samples:
 		l.samples = samples
 		l.inverseLength = 1 / float64(samples)
+		l.shape = shape
 		l.Reset()
+	case l.shape != shape:
+		l.shape = shape
+		l.primeSmoothing()
 	}
 
-	l.shape = shape
 	l.inputFactor = float64(float32(math.Pow(10, inputDB/20)))
 	l.outputFactor = float64(float32(math.Pow(10, outputDB/20)))
 	l.releaseFactor = math.Exp2(-1 / (releaseMS * 0.001 * sampleRate))
@@ -125,6 +130,28 @@ func (l *WindowedLookahead) ProcessSample(input float32) (delayed, gain float32)
 	return delayed, gain
 }
 
+// primeSmoothing rebuilds the attack windows as the settled state of the
+// current shape for the current peak. The two shapes keep incompatible
+// accumulators, so a shape change must not carry them over; settling on the
+// held peak keeps the reduction continuous and never below what the delayed
+// audio needs.
+func (l *WindowedLookahead) primeSmoothing() {
+	half := l.samples / 2
+	for i := range half {
+		l.windows[0][i] = l.peak
+		l.windows[1][i] = l.peak
+	}
+
+	l.windowPosition = 0
+
+	if l.shape == LookaheadLinear {
+		l.sums = [2]float64{0, float64(l.samples) * float64(l.peak)}
+	} else {
+		sum := float64(half) * float64(l.peak)
+		l.sums = [2]float64{sum, sum}
+	}
+}
+
 func (l *WindowedLookahead) trackPeak(magnitude float32) {
 	switch {
 	case magnitude >= l.holdValue:
@@ -140,7 +167,7 @@ func (l *WindowedLookahead) trackPeak(magnitude float32) {
 			candidate := float32(math.Abs(float64(l.history[i])))
 			if candidate > l.holdValue {
 				l.holdValue = candidate
-				next = i + 1
+				next = i
 			}
 		}
 
