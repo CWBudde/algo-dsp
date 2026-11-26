@@ -21,6 +21,18 @@ func NewTimeHermite32(maxSamples int) *TimeHermite32 {
 	return &TimeHermite32{buffer: make([]float32, max(1, maxSamples)), activeSize: 1}
 }
 
+// ReserveSamples increases the maximum delay without altering the active
+// tap or history. Call it during setup, since a larger buffer allocates.
+func (d *TimeHermite32) ReserveSamples(maxSamples int) {
+	if maxSamples <= len(d.buffer) {
+		return
+	}
+
+	buffer := make([]float32, maxSamples)
+	copy(buffer, d.buffer)
+	d.buffer = buffer
+}
+
 // SetSamples changes the delay without allocating. Changing the integer part
 // discards the old ring contents and keeps the four interpolation taps.
 func (d *TimeHermite32) SetSamples(samples float64) {

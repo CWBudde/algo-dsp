@@ -35,3 +35,17 @@ func TestTimeHermite32ImpulseAndResize(t *testing.T) {
 		t.Errorf("delay resize allocated %g times", got)
 	}
 }
+
+func TestTimeHermite32ReserveRetainsTap(t *testing.T) {
+	d := NewTimeHermite32(5)
+	d.SetSamples(5)
+	d.ProcessSample(1)
+	d.ProcessSample(0)
+	d.ReserveSamples(16)
+
+	for index, want := range []float32{0, 0, 1, 0} {
+		if got := d.ProcessSample(0); got != want {
+			t.Errorf("frame %d got %g, want %g", index+2, got, want)
+		}
+	}
+}
