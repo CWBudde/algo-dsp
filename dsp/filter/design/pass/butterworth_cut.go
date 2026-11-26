@@ -85,7 +85,12 @@ func (f *ButterworthCut) Configure(cutoff, sampleRate float64, order int, highpa
 // ProcessSample applies the x87 path's reverse order for the pole pairs,
 // followed by the first-order stage when the order is odd.
 func (f *ButterworthCut) ProcessSample(input float32) float32 {
-	x := f.gain * float64(input)
+	return float32(f.ProcessSample64(float64(input)))
+}
+
+// ProcessSample64 applies the same filter and shares its state with ProcessSample.
+func (f *ButterworthCut) ProcessSample64(input float64) float64 {
+	x := f.gain * input
 	for i := f.order/2 - 1; i >= 0; i-- {
 		x = f.pairs[i].ProcessSample(x)
 	}
@@ -100,5 +105,5 @@ func (f *ButterworthCut) ProcessSample(input float32) float32 {
 		x = y
 	}
 
-	return float32(x)
+	return x
 }
