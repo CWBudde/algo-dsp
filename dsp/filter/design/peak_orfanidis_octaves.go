@@ -23,7 +23,7 @@ func PeakOrfanidisOctaves(frequency, gain, bandwidth, sampleRate float64) (biqua
 	}
 
 	w := 2 * math.Pi * (frequency / sampleRate)
-	if math.Mod(w, math.Pi) == 0 {
+	if nearMultipleOfPi(w) {
 		return biquad.Identity(), ErrInvalidPeakParams
 	}
 
@@ -61,8 +61,17 @@ func PeakOrfanidisOctaves(frequency, gain, bandwidth, sampleRate float64) (biqua
 		2*centerSquared*(math.Abs(edgeSquared-nyquistGain)-math.Sqrt(edgeToDC*edgeToNyquist))
 	d := 2 * centerSquared * (math.Abs(gainSquared-nyquistGain) - math.Sqrt(peakToDC*peakToNyquist))
 
-	a := math.Sqrt(math.Abs((c + d) / peakToEdge))
-	b := math.Sqrt(math.Abs((gainSquared*c + edgeSquared*d) / peakToEdge))
+	// Negative radicands mean the requested peak gain cannot be met; taking
+	// their magnitude would silently design a section with the wrong gain.
+	poleRadicand := (c + d) / peakToEdge
+	zeroRadicand := (gainSquared*c + edgeSquared*d) / peakToEdge
+
+	if !(poleRadicand >= 0 && zeroRadicand >= 0) || hasInvalidFloat(poleRadicand, zeroRadicand) {
+		return biquad.Identity(), ErrInvalidPeakParams
+	}
+
+	a := math.Sqrt(poleRadicand)
+	b := math.Sqrt(zeroRadicand)
 
 	coefficients, ok := normalizeBiquadOK(
 		nyquistGain+centerSquared+b,
@@ -72,9 +81,26 @@ func PeakOrfanidisOctaves(frequency, gain, bandwidth, sampleRate float64) (biqua
 		-2*(1-centerSquared),
 		1+centerSquared-a,
 	)
-	if !ok {
+	if !ok || !polesInsideUnitCircle(coefficients) {
 		return biquad.Identity(), ErrInvalidPeakParams
 	}
 
 	return coefficients, nil
+}
+
+// nearMultipleOfPi reports whether w lies within rounding distance of a
+// multiple of pi, where the octave-bandwidth design is singular. The tolerance
+// covers the error of forming w from frequency/sampleRate, so folded centers
+// such as 5.5 times the sample rate are rejected even though their computed
+// remainder is not exactly zero.
+func nearMultipleOfPi(w float64) bool {
+	const tolerance = 16 * 0x1p-52
+
+	return math.Abs(math.Remainder(w, math.Pi)) <= tolerance*math.Max(1, math.Abs(w))
+}
+
+// polesInsideUnitCircle reports whether both poles of the normalized section
+// lie strictly inside the unit circle (the stability triangle).
+func polesInsideUnitCircle(c biquad.Coefficients) bool {
+	return math.Abs(c.A2) < 1 && math.Abs(c.A1) < 1+c.A2
 }
