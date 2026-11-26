@@ -5,6 +5,8 @@
 // dsp/filter/biquad for runtime processing. It includes both RBJ-style
 // designers (Lowpass, Highpass, Peak, etc.) and Orfanidis-style peaking EQ
 // with prescribed DC/Nyquist gain via functional options on [Peak].
+// [PeakOrfanidisOctaves] designs an octave-bandwidth section with a
+// frequency-dependent Nyquist gain.
 // [GraphicEQ] designs a complete equalizer with complementary transitions,
 // keeping equal neighboring gains flat instead of adding overlapping boosts.
 //
