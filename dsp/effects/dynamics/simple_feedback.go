@@ -21,13 +21,14 @@ type SimpleFeedbackCompressor struct {
 }
 
 // Configure updates the coefficients while preserving feedback history.
-// Supply a positive finite sample rate and finite settings.
+// Supply a positive finite sample rate and finite settings. Thresholds
+// below the smallest normal float64 (about -6153 dB) are raised to it.
 func (c *SimpleFeedbackCompressor) Configure(sampleRate float64, settings SimpleFeedbackSettings) {
 	ratioReciprocal := 1 / settings.Ratio
 	designRatio := 1 / ratioReciprocal
 	c.attack = 1 - math.Exp(-math.Ln2/(settings.AttackMS*0.001*sampleRate*designRatio))
 	c.release = math.Exp(-math.Ln2 / (settings.ReleaseMS * 0.001 * sampleRate * designRatio))
-	c.threshold = math.Exp(settings.ThresholdDB * 0.1151292546497022842)
+	c.threshold = math.Max(math.Exp(settings.ThresholdDB*0.1151292546497022842), 0x1p-1022)
 	c.ratioFactor = 1 - designRatio
 	c.reductionScale = math.Pow(c.threshold, (1-ratioReciprocal)*designRatio)
 
@@ -48,9 +49,9 @@ func (c *SimpleFeedbackCompressor) ProcessSample(input float64) float64 {
 	compressed := input
 
 	if c.peak >= c.threshold {
-		// Near the lowest thresholds and highest ratios the separate
-		// terms can underflow and overflow even though the gain is finite.
-		if c.reductionScale < 0x1p-1022 {
+		// At extreme thresholds and high ratios the separate terms can
+		// underflow and overflow even though the gain is finite.
+		if c.reductionScale < 0x1p-1022 || c.reductionScale > 0x1p1022 {
 			compressed *= math.Pow(c.peak/c.threshold, c.ratioFactor)
 		} else {
 			compressed *= c.reductionScale * math.Pow(c.peak, c.ratioFactor)

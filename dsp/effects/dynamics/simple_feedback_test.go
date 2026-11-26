@@ -106,3 +106,31 @@ func TestSimpleFeedbackExtremeThresholdAndRatio(t *testing.T) {
 		t.Fatalf("gain at minimum threshold and max ratio = %g, want %g", got, want)
 	}
 }
+
+func TestSimpleFeedbackFiniteSettingsStayFinite(t *testing.T) {
+	for _, settings := range []SimpleFeedbackSettings{
+		{AttackMS: 1, ReleaseMS: 10, ThresholdDB: -7000, Ratio: 4, AutoMakeup: true},
+		{AttackMS: 1, ReleaseMS: 10, ThresholdDB: 80, Ratio: 100, AutoMakeup: true},
+	} {
+		var compressor SimpleFeedbackCompressor
+		compressor.Configure(48000, settings)
+
+		for _, input := range []float64{0, 1e-300, 0.5, 1e4, 1e5, 0} {
+			if got := compressor.ProcessSample(input); math.IsNaN(got) || math.IsInf(got, 0) {
+				t.Fatalf("%+v: input %g gave %g", settings, input, got)
+			}
+		}
+	}
+
+	var compressor SimpleFeedbackCompressor
+	compressor.Configure(48000, SimpleFeedbackSettings{
+		AttackMS: 1, ReleaseMS: 10, ThresholdDB: 80, Ratio: 100,
+	})
+
+	compressor.peak = compressor.threshold
+	compressor.previous = compressor.peak
+
+	if got := compressor.ProcessSample(1); math.Abs(got-1) > 1e-12 {
+		t.Fatalf("gain at a high threshold = %g, want 1", got)
+	}
+}
