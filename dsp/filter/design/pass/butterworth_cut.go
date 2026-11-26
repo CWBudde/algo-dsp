@@ -6,16 +6,30 @@ import (
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
 )
 
-// ButterworthCut keeps the normalization before the sections, as in the
-// Delphi ASIO & VST Butterworth cut filters. This retains the same section
-// state scaling when cutoff is automated.
+const (
+	// ButterworthCutFlushThreshold is the magnitude (about -600 dBFS) below
+	// which ButterworthCut returns zero.
+	ButterworthCutFlushThreshold = 1e-30
+	// ButterworthCutDivergenceLimit is the output magnitude (+80 dBFS) above
+	// which ButterworthCut clears its state and returns zero. Static filters
+	// never reach it; only state pumped up by cutoff automation does.
+	ButterworthCutDivergenceLimit = 1e4
+)
+
+// ButterworthCut follows the Delphi ASIO & VST Butterworth cut filters: the
+// same coefficients, the reversed pole-pair order and section state retained
+// while the cutoff is automated. Unlike the original, each section carries
+// its share of the gain, which keeps that retained state at signal level so
+// cutoff jumps at high orders cannot grow it without bound, and a change of
+// order clears the state.
 type ButterworthCut struct {
 	pairs [32]biquad.Section
 	order int
 	gain  float64
 }
 
-// Configure changes the cutoff and order while retaining section state.
+// Configure changes the cutoff while retaining section state. A change of
+// order clears it.
 // Supported orders are 0 through 64, with order zero passing the input.
 // A cutoff at or above Nyquist passes a low-pass and mutes a high-pass, one at
 // or below zero mutes a low-pass and passes a high-pass. A NaN cutoff or a
@@ -23,7 +37,14 @@ type ButterworthCut struct {
 func (f *ButterworthCut) Configure(cutoff, sampleRate float64, order int, highpass bool) {
 	f.gain = 1
 
-	f.order = min(max(order, 0), 64)
+	order = min(max(order, 0), 64)
+	if order != f.order {
+		// A new order moves every pole pair into a different section, where
+		// the old state no longer matches its coefficients.
+		f.Reset()
+	}
+
+	f.order = order
 	if f.order == 0 {
 		return
 	}
@@ -56,29 +77,23 @@ func (f *ButterworthCut) Configure(cutoff, sampleRate float64, order int, highpa
 		a := 2 * k * math.Sin(math.Pi*float64(2*i+1)/(2*float64(f.order)))
 		inv := 1 / (1 + a + k2)
 
-		stage := biquad.Coefficients{B0: 1, B1: 2, B2: 1, A1: 2 * (k2 - 1) * inv, A2: (1 + k2 - a) * inv}
+		g, sign := k2*inv, 1.0
 		if highpass {
-			stage.B1 = -2
-		} else {
-			f.gain *= k2
+			g, sign = inv, -1
 		}
 
-		f.gain *= inv
-		f.pairs[i].Coefficients = stage
+		f.pairs[i].Coefficients = biquad.Coefficients{B0: g, B1: 2 * sign * g, B2: g, A1: 2 * (k2 - 1) * inv, A2: (1 + k2 - a) * inv}
 	}
 
 	if f.order%2 != 0 {
 		inv := 1 / (1 + k)
 
-		stage := biquad.Coefficients{B0: 1, B1: 1, A1: (k - 1) * inv}
+		g, sign := k*inv, 1.0
 		if highpass {
-			stage.B1 = -1
-		} else {
-			f.gain *= k
+			g, sign = inv, -1
 		}
 
-		f.gain *= inv
-		f.pairs[f.order/2].Coefficients = stage
+		f.pairs[f.order/2].Coefficients = biquad.Coefficients{B0: g, B1: sign * g, A1: (k - 1) * inv}
 	}
 }
 
@@ -98,12 +113,32 @@ func (f *ButterworthCut) ProcessSample64(input float64) float64 {
 	if f.order%2 != 0 {
 		stage := &f.pairs[f.order/2]
 		state := stage.State()
-		y := x + state[0]
+		y := stage.B0*x + state[0]
 		state[0] = stage.B1*x - stage.A1*y
 		stage.SetState(state)
 
 		x = y
 	}
 
+	switch magnitude := math.Abs(x); {
+	case magnitude < ButterworthCutFlushThreshold:
+		// Deep low-pass tails would otherwise reach a float32 output as
+		// subnormals.
+		return 0
+	case !(magnitude <= ButterworthCutDivergenceLimit):
+		// Fast cutoff automation can still pump the retained state of a
+		// high-order cascade without bound; restart instead of emitting Inf.
+		f.Reset()
+
+		return 0
+	}
+
 	return x
+}
+
+// Reset clears the section history.
+func (f *ButterworthCut) Reset() {
+	for i := range f.pairs {
+		f.pairs[i].Reset()
+	}
 }

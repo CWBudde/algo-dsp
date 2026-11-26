@@ -2,6 +2,7 @@ package pass
 
 import (
 	"math"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/cwbudde/algo-dsp/dsp/filter/biquad"
@@ -91,6 +92,90 @@ func TestButterworthCutBoundaries(t *testing.T) {
 						tc.cutoff, tc.rate, highpass, i, got, want*x)
 				}
 			}
+		}
+	}
+}
+
+func TestButterworthCutOrderChangeClearsState(t *testing.T) {
+	var changed, fresh ButterworthCut
+
+	changed.Configure(1000, 48000, 4, false)
+
+	for range 64 {
+		changed.ProcessSample64(1)
+	}
+
+	changed.Configure(1000, 48000, 6, false)
+	fresh.Configure(1000, 48000, 6, false)
+
+	for i := range 64 {
+		if got, want := changed.ProcessSample64(.5), fresh.ProcessSample64(.5); got != want {
+			t.Fatalf("sample %d after order change = %g, want fresh %g", i, got, want)
+		}
+	}
+}
+
+func TestButterworthCutCutoffChangeKeepsState(t *testing.T) {
+	var changed, fresh ButterworthCut
+
+	changed.Configure(1000, 48000, 4, false)
+
+	for range 64 {
+		changed.ProcessSample64(1)
+	}
+
+	changed.Configure(2000, 48000, 4, false)
+	fresh.Configure(2000, 48000, 4, false)
+
+	if changed.ProcessSample64(0) == fresh.ProcessSample64(0) {
+		t.Fatal("cutoff change cleared the section state")
+	}
+}
+
+func TestButterworthCutCutoffAutomationStaysFinite(t *testing.T) {
+	// pluginval's Automation test changes the cutoff every 32 samples. The
+	// retained state of a high-order cascade can grow without bound then, in
+	// the original as well; the divergence limit restarts the filter.
+	for _, order := range []int{8, 16, 32, 64} {
+		for _, highpass := range []bool{false, true} {
+			random := rand.New(rand.NewPCG(uint64(order), 1))
+
+			var filter ButterworthCut
+
+			for block := range 8000 {
+				cutoff := 20 * math.Pow(1000, random.Float64())
+				if block%4 == 0 {
+					// Periodic extremes are the worst case.
+					cutoff = 20 + 19980*float64(block/4%2)
+				}
+
+				filter.Configure(cutoff, 44100, order, highpass)
+
+				for range 32 {
+					y := filter.ProcessSample(float32(2*random.Float64() - 1))
+					if math.IsNaN(float64(y)) || math.Abs(float64(y)) > ButterworthCutDivergenceLimit {
+						t.Fatalf("order %d highpass %v block %d: output %g", order, highpass, block, y)
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestButterworthCutFlushesTinyOutput(t *testing.T) {
+	// An impulse tail decays through the float32 subnormal range unless the
+	// filter flushes it.
+	var filter ButterworthCut
+
+	filter.Configure(1000, 44100, 4, false)
+
+	input := float32(1)
+	for i := range 20000 {
+		y := filter.ProcessSample(input)
+		input = 0
+
+		if y != 0 && math.Abs(float64(y)) < 0x1p-126 {
+			t.Fatalf("sample %d is a float32 subnormal: %g", i, y)
 		}
 	}
 }
