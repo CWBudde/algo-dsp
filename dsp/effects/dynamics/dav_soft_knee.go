@@ -56,6 +56,39 @@ func (c DAVSoftKneeGain) Gain(peak float64) float64 {
 	return float64(davPower2(float32(.5 * (delta - float64(root)))))
 }
 
+// FeedbackLimiterGainAndTiming returns the attenuation and the next detector
+// coefficients of the DAV Lightweight Feedback Limiter. Each cycle is
+// -1/(timeMS * 0.001 * sampleRate), rounded to float32. Apply the returned
+// attack interpolation and release pole to the next input peak update.
+// Invalid peaks, cycles or degenerate timing leave the detector frozen
+// with attack 0 and release 1.
+func (c DAVSoftKneeGain) FeedbackLimiterGainAndTiming(peak float64, attackCycle, releaseCycle float32) (gain, attack, release float64) {
+	if !(peak > 0) || math.IsInf(peak, 1) {
+		return c.Gain(peak), 0, 1
+	}
+	logPeak := davLog2(float32(min(max(peak, 0x1p-126), math.MaxFloat32)))
+	delta := .5 * float64(c.thresholdLog2-logPeak)
+	squared := delta*delta + .25*float64(c.kneeSquared)
+	root := float64(davSqrt(float32(squared)))
+	if math.IsInf(root, 1) {
+		return c.Gain(peak), 0, 1
+	}
+
+	gain = float64(davPower2(float32(delta - root)))
+	const limiterRatio = 1e10
+	denominator := (limiterRatio+1)*root + (limiterRatio-1)*delta
+	if !(denominator > 0 && attackCycle <= 0 && releaseCycle <= 0) ||
+		math.IsInf(float64(attackCycle), -1) || math.IsInf(float64(releaseCycle), -1) {
+		return gain, 0, 1
+	}
+
+	// The release rounds the time scale and both powers to float32.
+	timeScale := float32(2 * root / denominator)
+	attack = 1 - float64(davPower2(timeScale*attackCycle))
+	release = float64(davPower2(timeScale * releaseCycle))
+	return gain, attack, release
+}
+
 func davLog2(value float32) float32 {
 	return float32(davLog2Extended(value))
 }
