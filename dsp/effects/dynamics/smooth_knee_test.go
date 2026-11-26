@@ -89,6 +89,16 @@ func TestSmoothKneeDetectorHalfLifeAndMakeup(t *testing.T) {
 	}
 }
 
+func TestSmoothKneeInstantAttack(t *testing.T) {
+	var detector SmoothKneeDetector
+	detector.Configure(48000, SmoothKneeSettings{ThresholdDB: -12, Ratio: 4})
+
+	want := math.Pow(10, -0.75*12/20)
+	if got := detector.Gain(1); math.Abs(got-want) > 0.0005*want {
+		t.Fatalf("zero attack time: gain %g, want %g", got, want)
+	}
+}
+
 func TestSmoothKneeSilenceAndClip(t *testing.T) {
 	var detector SmoothKneeDetector
 	detector.Configure(44100, SmoothKneeSettings{

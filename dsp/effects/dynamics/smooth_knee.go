@@ -3,8 +3,9 @@ package dynamics
 import "math"
 
 // SmoothKneeSettings configures a peak-following soft-knee detector. AttackMS
-// and ReleaseMS express half-lives in milliseconds. Ratio must be positive
-// and may be smaller than one. KneeDB is the depth of the curve at threshold.
+// and ReleaseMS express half-lives in milliseconds; zero makes that direction
+// follow the key instantly. Ratio must be positive and may be smaller than
+// one. KneeDB is the depth of the curve at threshold.
 type SmoothKneeSettings struct {
 	AttackMS, ReleaseMS float64
 	ThresholdDB, KneeDB float64
@@ -29,7 +30,8 @@ const (
 // Configure recalculates coefficients without discarding the envelope history.
 // The caller supplies a positive sample rate and finite settings.
 func (d *SmoothKneeDetector) Configure(sampleRate float64, settings SmoothKneeSettings) {
-	d.attack = 0
+	// A zero half-life is the limit of the formula below: an instant attack.
+	d.attack = 1
 	if settings.AttackMS > 0 {
 		d.attack = 1 - float64(float32(smoothKneePow2(float64(float32(-1/(settings.AttackMS*0.001*sampleRate))))))
 	}
