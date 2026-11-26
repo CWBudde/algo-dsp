@@ -21,15 +21,29 @@ func DesignCoefficients(numberOfCoeffs int, transition float64) ([]float64, erro
 		return nil, err
 	}
 
-	k, q := computeTransitionParam(transition)
-	order := numberOfCoeffs*2 + 1
-
 	coeffs := make([]float64, numberOfCoeffs)
-	for i := range numberOfCoeffs {
-		coeffs[i] = computeCoefficient(i, k, q, order)
+	designCoefficients(coeffs, transition)
+	return coeffs, nil
+}
+
+// DesignCoefficientsTo writes polyphase Hilbert allpass coefficients into dst.
+// The length of dst is the coefficient count. A valid design allocates no
+// memory. Invalid count or bandwidth leaves dst unchanged.
+func DesignCoefficientsTo(dst []float64, transition float64) error {
+	if err := validateDesignParams(len(dst), transition); err != nil {
+		return err
 	}
 
-	return coeffs, nil
+	designCoefficients(dst, transition)
+	return nil
+}
+
+func designCoefficients(dst []float64, transition float64) {
+	k, q := computeTransitionParam(transition)
+	order := len(dst)*2 + 1
+	for i := range dst {
+		dst[i] = computeCoefficient(i, k, q, order)
+	}
 }
 
 // AttenuationFromOrderTBW computes stopband attenuation in dB for the given
