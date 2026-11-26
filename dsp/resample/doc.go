@@ -1,5 +1,6 @@
 // Package resample provides rational sample-rate conversion using polyphase FIR
-// filtering with anti-aliasing defaults.
+// filtering with anti-aliasing defaults, and streaming 2× conversion using
+// polyphase allpass IIR filters.
 //
 // Quality modes:
 //   - QualityFast: lower CPU, lower attenuation
@@ -23,4 +24,5 @@
 //     integer delay compensation, and length-exact bounded finite tail flushing
 //   - FrameCount / FramePosition for overflow-checked duration and coordinates
 //   - Upsample2x / Downsample2x convenience wrappers
+//   - NewAllpassUpsampler2x32 / NewAllpassDownsampler2x32 for sample-by-sample IIR conversion
 package resample
