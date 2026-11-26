@@ -13,6 +13,7 @@ type DAVSoftKneeCompressorGain struct {
 	thresholdLog2 float32
 	kneeSquared   float32
 	slope         float32
+	ratio         float32
 }
 
 // NewDAVSoftKneeCompressorGain prepares a threshold and nonnegative knee in
@@ -26,16 +27,15 @@ func NewDAVSoftKneeCompressorGain(thresholdDB, kneeDB, ratio float64) (DAVSoftKn
 		return DAVSoftKneeCompressorGain{}, fmt.Errorf("invalid DAV compressor curve: threshold %g dB, knee %g dB, ratio %g",
 			thresholdDB, kneeDB, ratio)
 	}
-
-	return DAVSoftKneeCompressorGain{thresholdLog2: threshold, kneeSquared: squared, slope: slope}, nil
+	return DAVSoftKneeCompressorGain{
+		thresholdLog2: threshold, kneeSquared: squared, slope: slope, ratio: float32(ratio),
+	}, nil
 }
 
 // Gain evaluates the transfer curve for a nonnegative linear peak. Zero and
 // infinity use the corresponding limiting gains. Results below the floating
 // point range underflow to zero.
 func (c DAVSoftKneeCompressorGain) Gain(peak float64) float64 {
-	delta := 0.
-
 	if c.slope != 0 {
 		switch {
 		case !(peak > 0):
@@ -51,14 +51,47 @@ func (c DAVSoftKneeCompressorGain) Gain(peak float64) float64 {
 
 			return 0
 		}
+	}
+	delta, root := c.curveTerms(peak)
+	return davPower2Extended(delta - root)
+}
 
+func (c DAVSoftKneeCompressorGain) curveTerms(peak float64) (delta, root float64) {
+	if c.slope != 0 {
 		logPeak := davLog2Extended(float32(min(max(peak, 0x1p-126), math.MaxFloat32)))
 		delta = float64(c.slope) * (logPeak - float64(c.thresholdLog2))
 	}
+	return delta, davCompressorRoot(delta*delta + float64(c.kneeSquared))
+}
 
-	root := davCompressorRoot(delta*delta + float64(c.kneeSquared))
+// FeedbackLikeGainAndTiming returns the attenuation, attack interpolation,
+// and release pole of the DAV Smooth Multiband Compressor's Smooth detector.
+// Each cycle is -1/(timeMS * 0.001 * sampleRate) rounded to float32. Use the
+// returned coefficients to update the next detector sample. An invalid peak,
+// cycle, or uninitialized curve leaves the detector frozen.
+func (c DAVSoftKneeCompressorGain) FeedbackLikeGainAndTiming(peak float64, attackCycle, releaseCycle float32) (gain, attack, release float64) {
+	if !(peak > 0) || math.IsInf(peak, 1) || !(c.ratio > 0) {
+		return c.Gain(peak), 0, 1
+	}
+	delta, root := c.curveTerms(peak)
+	gain = davPower2Extended(delta - root)
+	if !(attackCycle <= 0 && releaseCycle <= 0) ||
+		math.IsInf(float64(attackCycle), -1) || math.IsInf(float64(releaseCycle), -1) {
+		return gain, 0, 1
+	}
 
-	return davPower2Extended(delta - root)
+	ratio := float64(c.ratio)
+	// At a zero-width knee exactly on the corner, use the center slope.
+	scale := 2 / (ratio + 1)
+	if root != 0 {
+		denominator := (ratio+1)*root + (ratio-1)*delta
+		if !(denominator > 0) {
+			return gain, 0, 1
+		}
+		scale = 2 * root / denominator
+	}
+	return gain, 1 - davPower2Extended(scale*float64(attackCycle)),
+		davPower2Extended(scale * float64(releaseCycle))
 }
 
 func davCompressorCurveInputs(thresholdDB, kneeDB float64) (threshold, kneeSquared float32, valid bool) {
