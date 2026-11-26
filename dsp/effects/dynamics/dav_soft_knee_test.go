@@ -28,6 +28,7 @@ func TestDAVSoftKneeGain(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		if got := math.Float32bits(float32(curve.Gain(tc.peak))); got != tc.bits {
 			t.Errorf("threshold=%g knee=%g peak=%g: gain bits %08x, want %08x", tc.threshold, tc.knee, tc.peak, got, tc.bits)
 		}
@@ -40,15 +41,18 @@ func TestDAVSoftKneeGainBoundaries(t *testing.T) {
 			t.Errorf("accepted invalid threshold/knee %v", settings)
 		}
 	}
+
 	curve, err := NewDAVSoftKneeGain(0, 6)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for _, peak := range []float64{0, -1, math.NaN()} {
 		if gain := curve.Gain(peak); gain != 1 {
 			t.Errorf("peak %g: gain %g, want unity", peak, gain)
 		}
 	}
+
 	if gain := curve.Gain(math.Inf(1)); gain != 0 {
 		t.Errorf("infinite peak: gain %g, want zero", gain)
 	}
