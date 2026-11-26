@@ -57,6 +57,10 @@ func (c DAVSoftKneeGain) Gain(peak float64) float64 {
 }
 
 func davLog2(value float32) float32 {
+	return float32(davLog2Extended(value))
+}
+
+func davLog2Extended(value float32) float64 {
 	const (
 		p4 = float64(float32(-8.21343513178931783e-2))
 		p3 = float64(float32(6.49732456739820052e-1))
@@ -69,7 +73,7 @@ func davLog2(value float32) float32 {
 	mantissa := float64(math.Float32frombits(bits&0x007fffff | 0x3f800000))
 	exponent := int(bits>>23) - 128
 
-	return float32(float64(exponent) + ((((p4*mantissa+p3)*mantissa+p2)*mantissa+p1)*mantissa + p0))
+	return float64(exponent) + ((((p4*mantissa+p3)*mantissa+p2)*mantissa+p1)*mantissa + p0)
 }
 
 func davSqrt(value float32) float32 {
@@ -77,31 +81,40 @@ func davSqrt(value float32) float32 {
 		return float32(math.Sqrt(float64(value)))
 	}
 
-	bits := (math.Float32bits(value)-0x00800000)>>1 + 0x20000000
-	seed := float64(math.Float32frombits(bits))
+	seed := davSqrtSeed(value)
 	squared := float64(value)
 	step := float64(float32(seed + squared/seed))
 
 	return float32(.25*step + squared/step)
 }
 
+func davSqrtSeed(value float32) float64 {
+	bits := (math.Float32bits(value)-0x00800000)>>1 + 0x20000000
+
+	return float64(math.Float32frombits(bits))
+}
+
 func davPower2(value float32) float32 {
+	return float32(davPower2Extended(float64(value)))
+}
+
+func davPower2Extended(value float64) float64 {
 	const (
 		p1 = float64(float32(6.93292707161004662e-1))
 		p2 = float64(float32(2.42162975514835621e-1))
 		p3 = float64(float32(5.48668824216034384e-2))
 	)
 
-	if value < -150 {
+	if value < -1075 {
 		return 0
 	}
 
-	if value > 128 {
-		return float32(math.Inf(1))
+	if value > 1024 {
+		return math.Inf(1)
 	}
 
-	exponent := math.RoundToEven(float64(value))
-	residual := float64(float32(float64(value) - exponent))
+	exponent := math.RoundToEven(value)
+	residual := value - exponent
 
-	return float32(math.Ldexp(1+residual*(p1+residual*(p2+residual*p3)), int(exponent)))
+	return math.Ldexp(1+residual*(p1+residual*(p2+residual*p3)), int(exponent))
 }
