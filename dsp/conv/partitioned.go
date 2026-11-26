@@ -78,7 +78,7 @@ type partStageT[F algofft.Float, C algofft.Complex] struct {
 // startPos is the offset into the full kernel,
 // latency is the system latency in samples,
 // count is the number of IR blocks in this stage.
-func newPartStage[F algofft.Float, C algofft.Complex](irOrder, startPos, latency, count int) (*partStageT[F, C], error) {
+func newPartStage[F algofft.Float, C algofft.Complex](irOrder, startPos, latency, count int, queueOutput bool) (*partStageT[F, C], error) {
 	partSize := 1 << irOrder
 	fftSize := 1 << (irOrder + 1) // zero-padded to 2*partSize
 
@@ -93,7 +93,7 @@ func newPartStage[F algofft.Float, C algofft.Complex](irOrder, startPos, latency
 	}
 
 	var inputSpectra [][]C
-	if count > 1 {
+	if count > 1 && !queueOutput {
 		inputSpectra = make([][]C, count)
 		for i := range inputSpectra {
 			inputSpectra[i] = make([]C, fftSize)
@@ -155,20 +155,20 @@ func (s *partStageT[F, C]) process(inputBuf []F, outputBuf []F) {
 	clear(s.signalBuf)
 	packReal(s.signalBuf, inputBuf[inputStart:inputStart+s.fftSize])
 
-	if len(s.irSpectra) == 1 {
+	if s.inputSpectra == nil {
 		s.fft.Forward(s.signalFreq, s.signalBuf)
-		// Single-block fast path: multiply in-place, IFFT.
-		irSpec := s.irSpectra[0]
-		for i := range s.signalBuf {
-			s.signalBuf[i] = s.signalFreq[i] * irSpec[i]
-		}
+		// Queue each partition with the kernel active at this stage boundary.
+		for blockIdx, irSpec := range s.irSpectra {
+			for i := range s.signalBuf {
+				s.signalBuf[i] = s.signalFreq[i] * irSpec[i]
+			}
+			s.fft.Inverse(s.signalBuf, s.signalBuf)
+			unpackReal(s.convTime, s.signalBuf)
 
-		s.fft.Inverse(s.signalBuf, s.signalBuf)
-		unpackReal(s.convTime, s.signalBuf)
-
-		outPos := s.outputPos + s.latency - s.partSize
-		if outPos >= 0 && outPos+s.partSize <= len(outputBuf) {
-			addBlockInPlace(outputBuf[outPos:outPos+s.partSize], s.convTime[:s.partSize])
+			outPos := s.outputPos + s.latency - s.partSize + blockIdx*s.partSize
+			if outPos >= 0 && outPos+s.partSize <= len(outputBuf) {
+				addBlockInPlace(outputBuf[outPos:outPos+s.partSize], s.convTime[:s.partSize])
+			}
 		}
 	} else {
 		// A partition k contributes after k stage periods. Keep the input
@@ -237,6 +237,12 @@ func bitCountToBits(n int) int {
 func NewPartitionedConvolutionT[F algofft.Float, C algofft.Complex](
 	kernel []F, minBlockOrder, maxBlockOrder int,
 ) (*PartitionedConvolutionT[F, C], error) {
+	return newPartitionedConvolution[F, C](kernel, minBlockOrder, maxBlockOrder, false)
+}
+
+func newPartitionedConvolution[F algofft.Float, C algofft.Complex](
+	kernel []F, minBlockOrder, maxBlockOrder int, queueOutput bool,
+) (*PartitionedConvolutionT[F, C], error) {
 	if len(kernel) == 0 {
 		return nil, ErrEmptyImpulseResponse
 	}
@@ -257,7 +263,7 @@ func NewPartitionedConvolutionT[F algofft.Float, C algofft.Complex](
 	kernelLen := len(kernel)
 	kernelLenPadded := ((kernelLen + minBlockSize - 1) / minBlockSize) * minBlockSize
 
-	stages, err := partitionIR[F, C](kernel, kernelLenPadded, minBlockOrder, maxBlockOrder, latency)
+	stages, err := partitionIR[F, C](kernel, kernelLenPadded, minBlockOrder, maxBlockOrder, latency, queueOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +298,7 @@ func NewPartitionedConvolutionT[F algofft.Float, C algofft.Complex](
 
 // partitionIR builds the stage list for the given kernel configuration.
 func partitionIR[F algofft.Float, C algofft.Complex](
-	kernel []F, kernelLenPadded, minBlockOrder, maxBlockOrder, latency int,
+	kernel []F, kernelLenPadded, minBlockOrder, maxBlockOrder, latency int, queueOutput bool,
 ) ([]*partStageT[F, C], error) {
 	minBlockSize := 1 << minBlockOrder
 
@@ -320,7 +326,7 @@ func partitionIR[F algofft.Float, C algofft.Complex](
 	for order := minBlockOrder; order < maxIROrd; order++ {
 		count := 1 + ((resIRSize >> order) & 1)
 
-		stage, err := newPartStage[F, C](order, startPos, latency, count)
+		stage, err := newPartStage[F, C](order, startPos, latency, count, queueOutput)
 		if err != nil {
 			return nil, err
 		}
@@ -341,7 +347,7 @@ func partitionIR[F algofft.Float, C algofft.Complex](
 		count = max(1, 1+resIRSize/(1<<maxIROrd))
 	}
 
-	stage, err := newPartStage[F, C](maxIROrd, startPos, latency, count)
+	stage, err := newPartStage[F, C](maxIROrd, startPos, latency, count, queueOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -364,6 +370,31 @@ func NewPartitionedConvolution(kernel []float64, minBlockOrder, maxBlockOrder in
 // NewPartitionedConvolution32 creates a float32 partitioned convolution.
 func NewPartitionedConvolution32(kernel []float32, minBlockOrder, maxBlockOrder int) (*PartitionedConvolution32, error) {
 	return NewPartitionedConvolutionT[float32, complex64](kernel, minBlockOrder, maxBlockOrder)
+}
+
+// NewPartitionedConvolution32WithKernelUpdates creates a float32 convolver
+// that evaluates and queues every partition's output at its stage boundary.
+// This preserves each queued partition's original kernel across ReplaceKernel
+// calls at the cost of additional inverse transforms.
+func NewPartitionedConvolution32WithKernelUpdates(
+	kernel []float32, minBlockOrder, maxBlockOrder int,
+) (*PartitionedConvolution32, error) {
+	return newPartitionedConvolution[float32, complex64](kernel, minBlockOrder, maxBlockOrder, true)
+}
+
+// ReplaceKernel updates the impulse response without resetting input history,
+// queued output, or partition scheduling. The new kernel must have the same
+// length as the current kernel. Use the same goroutine as ProcessBlock.
+func (p *PartitionedConvolutionT[F, C]) ReplaceKernel(kernel []F) error {
+	if len(kernel) != p.kernelLen {
+		return fmt.Errorf("%w: kernel length %d != %d", ErrLengthMismatch, len(kernel), p.kernelLen)
+	}
+	for _, stage := range p.stages {
+		if err := stage.calculateIRSpectra(kernel); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ProcessBlock convolves an arbitrary-length block of input samples.
