@@ -137,12 +137,6 @@ func davPower2(value float32) float32 {
 }
 
 func davPower2Extended(value float64) float64 {
-	const (
-		p1 = float64(float32(6.93292707161004662e-1))
-		p2 = float64(float32(2.42162975514835621e-1))
-		p3 = float64(float32(5.48668824216034384e-2))
-	)
-
 	if value < -1075 {
 		return 0
 	}
@@ -153,6 +147,14 @@ func davPower2Extended(value float64) float64 {
 
 	exponent := math.RoundToEven(value)
 	residual := value - exponent
+	return math.Ldexp(davPower2Residual(residual), int(exponent))
+}
 
-	return math.Ldexp(1+residual*(p1+residual*(p2+residual*p3)), int(exponent))
+func davPower2Residual(x float64) float64 {
+	const (
+		p1 = float64(float32(6.93292707161004662e-1))
+		p2 = float64(float32(2.42162975514835621e-1))
+		p3 = float64(float32(5.48668824216034384e-2))
+	)
+	return 1 + x*(p1+x*(p2+x*p3))
 }

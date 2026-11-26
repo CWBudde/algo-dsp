@@ -59,6 +59,28 @@ func (c DAVSoftKneeCompressorGain) Gain(peak float64) float64 {
 	return davPower2Extended(delta - root)
 }
 
+// SpectralGateGain evaluates the binary32 gain used to build a DAV spectral
+// gate's filter. The original exponent-word packing wraps below the binary32
+// exponent range, which can yield signed finite coefficients. The filter
+// discards gains outside [-1, 1]. Ordinary compressor callers should use Gain.
+func (c DAVSoftKneeCompressorGain) SpectralGateGain(peak float64) float32 {
+	if !(c.ratio > 0 && peak > 0 && peak <= math.MaxFloat64) {
+		return 0
+	}
+	delta, root := c.curveTerms(peak)
+	exponent := delta - root
+	whole := math.RoundToEven(exponent)
+	if !(whole >= math.MinInt32 && whole <= math.MaxInt32) {
+		return 0
+	}
+	packed := math.Float32frombits(uint32(int64(whole)+127) << 23)
+	gain := float32(float64(packed) * davPower2Residual(exponent-whole))
+	if gain >= -1 && gain <= 1 {
+		return gain
+	}
+	return 0
+}
+
 func (c DAVSoftKneeCompressorGain) curveTerms(peak float64) (delta, root float64) {
 	if c.slope != 0 {
 		logPeak := davLog2Extended(float32(min(max(peak, 0x1p-126), math.MaxFloat32)))
