@@ -49,3 +49,48 @@ func TestButterworthCutResponse(t *testing.T) {
 		}
 	}
 }
+
+func TestButterworthCutBoundaries(t *testing.T) {
+	nan, inf := math.NaN(), math.Inf(1)
+
+	for _, tc := range []struct {
+		cutoff, rate float64
+		lp, hp       float32
+	}{
+		{nan, 48000, 1, 1},
+		{1000, nan, 1, 1},
+		{1000, inf, 1, 1},
+		{1000, -inf, 1, 1},
+		{1000, 0, 1, 1},
+		{1000, -48000, 1, 1},
+		{24000, 48000, 1, 0},
+		{inf, 48000, 1, 0},
+		{0, 48000, 0, 1},
+		{-1000, 48000, 0, 1},
+		{-inf, 48000, 0, 1},
+	} {
+		for _, highpass := range []bool{false, true} {
+			want := tc.lp
+			if highpass {
+				want = tc.hp
+			}
+
+			var filter ButterworthCut
+			// Leave state behind that a broken design could amplify.
+			filter.Configure(1000, 48000, 5, highpass)
+
+			for range 16 {
+				filter.ProcessSample(1)
+			}
+
+			filter.Configure(tc.cutoff, tc.rate, 5, highpass)
+
+			for i, x := range []float32{1, -0.5, 0.25} {
+				if got := filter.ProcessSample(x); got != want*x {
+					t.Errorf("cutoff %g rate %g highpass %t sample %d: got %g, want %g",
+						tc.cutoff, tc.rate, highpass, i, got, want*x)
+				}
+			}
+		}
+	}
+}

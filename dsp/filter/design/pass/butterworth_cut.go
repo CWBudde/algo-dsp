@@ -17,6 +17,9 @@ type ButterworthCut struct {
 
 // Configure changes the cutoff and order while retaining section state.
 // Supported orders are 0 through 64, with order zero passing the input.
+// A cutoff at or above Nyquist passes a low-pass and mutes a high-pass, one at
+// or below zero mutes a low-pass and passes a high-pass. A NaN cutoff or a
+// non-finite or non-positive sample rate bypasses the filter.
 func (f *ButterworthCut) Configure(cutoff, sampleRate float64, order int, highpass bool) {
 	f.gain = 1
 
@@ -25,9 +28,21 @@ func (f *ButterworthCut) Configure(cutoff, sampleRate float64, order int, highpa
 		return
 	}
 
-	if cutoff >= sampleRate/2 {
+	switch {
+	case math.IsNaN(cutoff) || !(sampleRate > 0) || math.IsInf(sampleRate, 0):
+		f.order = 0
+
+		return
+	case cutoff >= sampleRate/2:
 		f.order = 0
 		if highpass {
+			f.gain = 0
+		}
+
+		return
+	case cutoff <= 0:
+		f.order = 0
+		if !highpass {
 			f.gain = 0
 		}
 
