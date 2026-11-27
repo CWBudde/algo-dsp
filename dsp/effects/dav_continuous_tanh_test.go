@@ -30,3 +30,13 @@ func TestDAVContinuousTanh4(t *testing.T) {
 		t.Fatal("NaN must propagate")
 	}
 }
+
+func BenchmarkDAVContinuousTanh4(b *testing.B) {
+	input := float32(.1)
+
+	b.ReportAllocs()
+
+	for b.Loop() {
+		input = DAVContinuousTanh4(input*3 + .2)
+	}
+}
