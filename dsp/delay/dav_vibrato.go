@@ -31,6 +31,7 @@ func NewDAVVibrato32(maxDelaySamples int) (*DAVVibrato32, error) {
 	if err := line.ReserveDelay(maxDelaySamples); err != nil {
 		return nil, err
 	}
+
 	return line, nil
 }
 
@@ -40,12 +41,14 @@ func (v *DAVVibrato32) ReserveDelay(maxDelaySamples int) error {
 	if maxDelaySamples < 0 || maxDelaySamples > math.MaxInt-davVibratoPadding {
 		return fmt.Errorf("invalid DAV vibrato capacity %d", maxDelaySamples)
 	}
+
 	capacity := maxDelaySamples + davVibratoPadding
 	if capacity > len(v.buffer) {
 		next := make([]float32, capacity)
 		copy(next, v.buffer)
 		v.buffer = next
 	}
+
 	return nil
 }
 
@@ -57,19 +60,24 @@ func (v *DAVVibrato32) Configure(rate, depth, speed float64) error {
 		speed >= 0 && speed <= davVibratoClock/2) {
 		return errors.New("invalid DAV vibrato settings")
 	}
+
 	span := math.RoundToEven(depth * depth * .25 * rate)
 	if span > float64(len(v.buffer)-davVibratoPadding) {
 		return errors.New("DAV vibrato delay exceeds reserved capacity")
 	}
+
 	size := int(span)
 	if size > v.size {
 		clear(v.buffer[v.size+davVibratoPadding : size+davVibratoPadding])
 	}
+
 	v.size = size
 	if v.position >= size+davVibratoPadding {
 		v.position = davVibratoOverlap
 	}
+
 	v.stepSine, v.stepCosine = math.Sincos(2 * math.Pi * speed / davVibratoClock)
+
 	return nil
 }
 
@@ -93,20 +101,24 @@ func (v *DAVVibrato32) ProcessSample(input float32) float32 {
 	fraction := float64(float32(tap - float64(integer)))
 	index := v.position + integer
 	period := v.size + davVibratoOverlap
+
 	end := v.size + davVibratoPadding
 	if index >= end {
 		index -= period
 	} else if index < davVibratoOverlap {
 		index += period
 	}
+
 	neighbors := v.buffer[index-davVibratoOverlap : index]
 	output := interp.Hermite4(fraction,
 		float64(neighbors[0]), float64(neighbors[1]), float64(neighbors[2]), float64(neighbors[3]))
 	v.buffer[v.position] = input
+
 	v.position++
 	if v.position == end {
 		copy(v.buffer[:davVibratoOverlap], v.buffer[period:end])
 		v.position = davVibratoOverlap
 	}
+
 	return float32(output)
 }

@@ -13,16 +13,20 @@ func DAVContinuousTanh4(input float32) float32 {
 		c          = float64(float32(.0559538423222786241))
 		d          = float64(float32(.00960540553453761992))
 	)
+
 	x := float64(input)
 	if math.IsNaN(x) {
 		return input
 	}
+
 	if math.Abs(x) >= 32 {
 		return float32(math.Copysign(1, x))
 	}
+
 	exponent := float64(float32(twiceLog2E * x))
 	integral := math.RoundToEven(exponent)
 	fraction := exponent - integral
 	power := float64(float32(math.Ldexp(1+fraction*(a+fraction*(b+fraction*(c+fraction*d))), int(integral))))
+
 	return float32((power - 1) / (power + 1))
 }
