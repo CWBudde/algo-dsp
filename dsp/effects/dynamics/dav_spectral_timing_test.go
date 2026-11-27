@@ -31,6 +31,7 @@ func TestDAVSpectralGateTiming(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			if a, r := math.Float64bits(attack), math.Float64bits(release); a != tc.attack || r != tc.release {
 				t.Fatalf("timing words (%016x, %016x), want (%016x, %016x)", a, r, tc.attack, tc.release)
 			}
@@ -44,6 +45,7 @@ func TestDAVSpectralGateTimingInvalidDomain(t *testing.T) {
 			t.Errorf("invalid timing %v accepted", in)
 		}
 	}
+
 	a, r, err := DAVSpectralGateTiming(1, 1, math.SmallestNonzeroFloat64)
 	if a != 1 || r != 0 || err != nil {
 		t.Fatalf("small detector rate gives (%v, %v, %v), want (1, 0, nil)", a, r, err)

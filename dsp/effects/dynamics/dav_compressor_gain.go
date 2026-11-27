@@ -194,14 +194,18 @@ func davCompressorTiming(attackMS, releaseMS, sampleRate float64, power2 func(fl
 
 func davSpectralGatePole(exponent float32) float32 {
 	value := float64(exponent)
+
 	whole := math.RoundToEven(value)
 	if !(whole >= math.MinInt32 && whole <= math.MaxInt32) {
 		return davPower2(exponent)
 	}
+
 	packed := math.Float32frombits(uint32(int64(whole)+127) << 23)
+
 	pole := float32(float64(packed) * davPower2Residual(value-whole))
 	if math.Abs(float64(pole)) <= math.MaxFloat32 {
 		return pole
 	}
+
 	return davPower2(exponent)
 }
