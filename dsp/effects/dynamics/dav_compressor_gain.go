@@ -164,17 +164,52 @@ func davCompressorRoot(value float64) float64 {
 // release pole for the compressor's detector loop. Times are in milliseconds
 // and sampleRate is the effective detector rate, including oversampling.
 func DAVCompressorTiming(attackMS, releaseMS, sampleRate float64) (attack, release float64, err error) {
+	return davCompressorTiming("compressor", attackMS, releaseMS, sampleRate, davPower2)
+}
+
+// DAVSpectralGateTiming returns the attack interpolation and release pole used
+// by the legacy DAV spectral gate. Supply the detector rate in FFT hops per
+// second and times in milliseconds. The original binary32 exponent packing
+// can produce signed poles outside [0, 1] at short times and low detector rates.
+// Nonfinite packed poles use the ordinary finite exponential result.
+func DAVSpectralGateTiming(attackMS, releaseMS, sampleRate float64) (attack, release float64, err error) {
+	return davCompressorTiming("spectral gate", attackMS, releaseMS, sampleRate, davSpectralGatePole)
+}
+
+// davCompressorTiming is shared by the compressor and spectral gate timing
+// helpers; label names the calling effect in validation errors.
+func davCompressorTiming(
+	label string, attackMS, releaseMS, sampleRate float64, power2 func(float32) float32,
+) (attack, release float64, err error) {
 	if !(attackMS > 0 && attackMS <= math.MaxFloat32 &&
 		releaseMS > 0 && releaseMS <= math.MaxFloat32 &&
 		sampleRate > 0 && sampleRate <= math.MaxFloat32) {
-		return 0, 0, fmt.Errorf("invalid DAV compressor timing: attack %g ms, release %g ms, rate %g Hz",
-			attackMS, releaseMS, sampleRate)
+		return 0, 0, fmt.Errorf("invalid DAV %s timing: attack %g ms, release %g ms, rate %g Hz",
+			label, attackMS, releaseMS, sampleRate)
 	}
 
 	pole := func(ms float64) float64 {
 		exponent := float32(-1 / (float64(float32(ms)) * .001 * sampleRate))
-		return float64(davPower2(exponent))
+		return float64(power2(exponent))
 	}
 
 	return 1 - pole(attackMS), pole(releaseMS), nil
+}
+
+func davSpectralGatePole(exponent float32) float32 {
+	value := float64(exponent)
+
+	whole := math.RoundToEven(value)
+	if !(whole >= math.MinInt32 && whole <= math.MaxInt32) {
+		return davPower2(exponent)
+	}
+
+	packed := math.Float32frombits(uint32(int64(whole)+127) << 23)
+
+	pole := float32(float64(packed) * davPower2Residual(value-whole))
+	if math.Abs(float64(pole)) <= math.MaxFloat32 {
+		return pole
+	}
+
+	return davPower2(exponent)
 }
