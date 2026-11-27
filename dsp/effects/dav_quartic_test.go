@@ -23,6 +23,7 @@ func TestDAVQuarticSaturationExactValues(t *testing.T) {
 		if got != test.bits {
 			t.Errorf("input %g: got %#x, want %#x", test.input, got, test.bits)
 		}
+
 		got = math.Float64bits(DAVQuarticSaturation(-test.input))
 		if want := test.bits | 1<<63; got != want {
 			t.Errorf("input %g: got %#x, want %#x", -test.input, got, want)
@@ -36,11 +37,13 @@ func TestDAVQuarticSaturationBoundaries(t *testing.T) {
 			t.Errorf("input magnitude %g: got %g and %g, want 1 and -1", input, positive, negative)
 		}
 	}
+
 	for _, zero := range []float64{0, math.Copysign(0, -1)} {
 		if got := math.Float64bits(DAVQuarticSaturation(zero)); got != 0 {
 			t.Errorf("input zero: got bits %#x, want positive zero", got)
 		}
 	}
+
 	if !math.IsNaN(DAVQuarticSaturation(math.NaN())) {
 		t.Error("expected NaN propagation")
 	}
