@@ -162,6 +162,7 @@ func (s *partStageT[F, C]) process(inputBuf []F, outputBuf []F) {
 			for i := range s.signalBuf {
 				s.signalBuf[i] = s.signalFreq[i] * irSpec[i]
 			}
+
 			s.fft.Inverse(s.signalBuf, s.signalBuf)
 			unpackReal(s.convTime, s.signalBuf)
 
@@ -389,11 +390,13 @@ func (p *PartitionedConvolutionT[F, C]) ReplaceKernel(kernel []F) error {
 	if len(kernel) != p.kernelLen {
 		return fmt.Errorf("%w: kernel length %d != %d", ErrLengthMismatch, len(kernel), p.kernelLen)
 	}
+
 	for _, stage := range p.stages {
 		if err := stage.calculateIRSpectra(kernel); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 

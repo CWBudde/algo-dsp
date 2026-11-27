@@ -344,26 +344,34 @@ func BenchmarkPartitionedConvolution(b *testing.B) {
 
 func TestPartitionedReplaceKernel(t *testing.T) {
 	initial := make([]float32, 512)
+
 	replacement := make([]float32, len(initial))
 	for i := range initial {
 		initial[i], replacement[i] = 1, 2
 	}
+
 	c, err := NewPartitionedConvolution32WithKernelUpdates(initial, 6, 13)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	var input, output [640]float32
+
 	input[16] = 1
+
 	const edit = 91
 	if err := c.ProcessBlock(input[:edit], output[:edit]); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := c.ReplaceKernel(replacement); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := c.ReplaceKernel(replacement[:2]); !errors.Is(err, ErrLengthMismatch) {
 		t.Fatalf("different-length replacement error = %v", err)
 	}
+
 	if err := c.ProcessBlock(input[edit:], output[edit:]); err != nil {
 		t.Fatal(err)
 	}
@@ -373,11 +381,13 @@ func TestPartitionedReplaceKernel(t *testing.T) {
 	for i := 80; i < 592; i++ {
 		want[i] = 2
 	}
+
 	for _, start := range []int{80, 144, 208, 336, 464} {
 		for i := start; i < start+48; i++ {
 			want[i] = 1
 		}
 	}
+
 	for i := range want {
 		if difference := math.Abs(float64(output[i] - want[i])); difference > 1e-5 {
 			t.Errorf("output[%d] = %g, want %g", i, output[i], want[i])
