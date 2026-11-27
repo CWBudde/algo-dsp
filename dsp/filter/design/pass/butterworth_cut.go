@@ -8,7 +8,8 @@ import (
 
 const (
 	// ButterworthCutFlushThreshold is the magnitude (about -600 dBFS) below
-	// which ButterworthCut returns zero.
+	// which ButterworthCut.ProcessSample returns zero. ProcessSample64 keeps
+	// its full precision.
 	ButterworthCutFlushThreshold = 1e-30
 	// ButterworthCutDivergenceLimit is the output magnitude (+80 dBFS) above
 	// which ButterworthCut clears its state and returns zero. Static filters
@@ -100,7 +101,14 @@ func (f *ButterworthCut) Configure(cutoff, sampleRate float64, order int, highpa
 // ProcessSample applies the x87 path's reverse order for the pole pairs,
 // followed by the first-order stage when the order is odd.
 func (f *ButterworthCut) ProcessSample(input float32) float32 {
-	return float32(f.ProcessSample64(float64(input)))
+	y := f.ProcessSample64(float64(input))
+	if math.Abs(y) < ButterworthCutFlushThreshold {
+		// Deep low-pass tails would otherwise reach the float32 output as
+		// subnormals.
+		return 0
+	}
+
+	return float32(y)
 }
 
 // ProcessSample64 applies the same filter and shares its state with ProcessSample.
@@ -120,12 +128,7 @@ func (f *ButterworthCut) ProcessSample64(input float64) float64 {
 		x = y
 	}
 
-	switch magnitude := math.Abs(x); {
-	case magnitude < ButterworthCutFlushThreshold:
-		// Deep low-pass tails would otherwise reach a float32 output as
-		// subnormals.
-		return 0
-	case !(magnitude <= ButterworthCutDivergenceLimit):
+	if !(math.Abs(x) <= ButterworthCutDivergenceLimit) {
 		// Fast cutoff automation can still pump the retained state of a
 		// high-order cascade without bound; restart instead of emitting Inf.
 		f.Reset()

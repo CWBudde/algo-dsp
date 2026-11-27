@@ -179,3 +179,19 @@ func TestButterworthCutFlushesTinyOutput(t *testing.T) {
 		}
 	}
 }
+
+func TestButterworthCutProcessSample64KeepsTinyOutput(t *testing.T) {
+	// Only the float32 path flushes; float64 values far above its own
+	// underflow pass unchanged.
+	var filter ButterworthCut
+
+	filter.Configure(1000, 44100, 0, false)
+
+	if got := filter.ProcessSample64(1e-31); got != 1e-31 {
+		t.Fatalf("ProcessSample64(1e-31) = %g, want 1e-31", got)
+	}
+
+	if got := filter.ProcessSample(1e-31); got != 0 {
+		t.Fatalf("ProcessSample(1e-31) = %g, want 0", got)
+	}
+}
