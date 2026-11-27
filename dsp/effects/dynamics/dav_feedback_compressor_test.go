@@ -66,6 +66,31 @@ func TestDAVFeedbackLikeTimingInvalidInputs(t *testing.T) {
 	}
 }
 
+func TestDAVFeedbackLikeTimingExtremeRatios(t *testing.T) {
+	const attackCycle, releaseCycle = float32(-.05), float32(-.01)
+
+	for _, tc := range []struct {
+		threshold, ratio, peak float64
+		attack, release        float64
+	}{
+		// A hard knee far below the peak keeps the unit time scale.
+		{-math.MaxFloat32, math.MaxFloat32, .5,
+			1 - davPower2Extended(float64(attackCycle)), davPower2Extended(float64(releaseCycle))},
+		// Expansion with a vanishing ratio reacts instantly.
+		{-math.MaxFloat32, 1e-30, .5, 1, 0},
+	} {
+		curve, err := NewDAVSoftKneeCompressorGain(tc.threshold, 0, tc.ratio)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, attack, release := curve.FeedbackLikeGainAndTiming(tc.peak, attackCycle, releaseCycle)
+		if math.Abs(attack-tc.attack) > 1e-12 || math.Abs(release-tc.release) > 1e-12 {
+			t.Errorf("ratio %g: attack %g release %g, want %g %g", tc.ratio, attack, release, tc.attack, tc.release)
+		}
+	}
+}
+
 func ExampleDAVSoftKneeCompressorGain_FeedbackLikeGainAndTiming() {
 	curve, _ := NewDAVSoftKneeCompressorGain(-10, 3, 4)
 

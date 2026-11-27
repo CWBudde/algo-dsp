@@ -90,7 +90,14 @@ func (c DAVSoftKneeCompressorGain) FeedbackLikeGainAndTiming(peak float64, attac
 	// At a zero-width knee exactly on the corner, use the center slope.
 	scale := 2 / (ratio + 1)
 	if root != 0 {
+		// Both groupings equal (ratio+1)*root + (ratio-1)*delta. The direct
+		// form can lose about log2(ratio) or log2(1/ratio) bits to
+		// cancellation, so extreme ratios use nonnegative terms instead.
 		denominator := (ratio+1)*root + (ratio-1)*delta
+		if !(ratio > 0x1p-26 && ratio < 0x1p26) {
+			denominator = ratio*max(root+delta, 0) + max(root-delta, 0)
+		}
+
 		if !(denominator > 0) {
 			return gain, 0, 1
 		}
