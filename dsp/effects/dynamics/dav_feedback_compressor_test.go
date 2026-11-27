@@ -74,8 +74,10 @@ func TestDAVFeedbackLikeTimingExtremeRatios(t *testing.T) {
 		attack, release        float64
 	}{
 		// A hard knee far below the peak keeps the unit time scale.
-		{-math.MaxFloat32, math.MaxFloat32, .5,
-			1 - davPower2Extended(float64(attackCycle)), davPower2Extended(float64(releaseCycle))},
+		{
+			-math.MaxFloat32, math.MaxFloat32, .5,
+			1 - davPower2Extended(float64(attackCycle)), davPower2Extended(float64(releaseCycle)),
+		},
 		// Expansion with a vanishing ratio reacts instantly.
 		{-math.MaxFloat32, 1e-30, .5, 1, 0},
 	} {
