@@ -66,16 +66,20 @@ func (c DAVSoftKneeGain) FeedbackLimiterGainAndTiming(peak float64, attackCycle,
 	if !(peak > 0) || math.IsInf(peak, 1) {
 		return c.Gain(peak), 0, 1
 	}
+
 	logPeak := davLog2(float32(min(max(peak, 0x1p-126), math.MaxFloat32)))
 	delta := .5 * float64(c.thresholdLog2-logPeak)
 	squared := delta*delta + .25*float64(c.kneeSquared)
+
 	root := float64(davSqrt(float32(squared)))
 	if math.IsInf(root, 1) {
 		return c.Gain(peak), 0, 1
 	}
 
 	gain = float64(davPower2(float32(delta - root)))
+
 	const limiterRatio = 1e10
+
 	denominator := (limiterRatio+1)*root + (limiterRatio-1)*delta
 	if !(denominator > 0 && attackCycle <= 0 && releaseCycle <= 0) ||
 		math.IsInf(float64(attackCycle), -1) || math.IsInf(float64(releaseCycle), -1) {
@@ -86,6 +90,7 @@ func (c DAVSoftKneeGain) FeedbackLimiterGainAndTiming(peak float64, attackCycle,
 	timeScale := float32(2 * root / denominator)
 	attack = 1 - float64(davPower2(timeScale*attackCycle))
 	release = float64(davPower2(timeScale * releaseCycle))
+
 	return gain, attack, release
 }
 
