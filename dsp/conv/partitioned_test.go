@@ -394,3 +394,35 @@ func TestPartitionedReplaceKernel(t *testing.T) {
 		}
 	}
 }
+
+func TestPartitionedReplaceKernelRequiresKernelUpdates(t *testing.T) {
+	kernel64 := make([]float64, 512)
+	kernel32 := make([]float32, 512)
+
+	c64, err := NewPartitionedConvolution(kernel64, 6, 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c64.ReplaceKernel(kernel64); !errors.Is(err, ErrKernelUpdatesUnsupported) {
+		t.Fatalf("float64 default ReplaceKernel error = %v", err)
+	}
+
+	c32, err := NewPartitionedConvolution32(kernel32, 6, 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c32.ReplaceKernel(kernel32); !errors.Is(err, ErrKernelUpdatesUnsupported) {
+		t.Fatalf("float32 default ReplaceKernel error = %v", err)
+	}
+
+	u64, err := NewPartitionedConvolutionWithKernelUpdates(kernel64, 6, 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := u64.ReplaceKernel(kernel64); err != nil {
+		t.Fatalf("float64 kernel-update ReplaceKernel error = %v", err)
+	}
+}

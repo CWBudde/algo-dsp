@@ -12,6 +12,9 @@ var (
 	ErrInvalidBlockOrder    = errors.New("conv: invalid block order")
 	ErrEmptyImpulseResponse = errors.New("conv: empty impulse response")
 	ErrStageIndexOutOfRange = errors.New("conv: stage index out of range")
+	// ErrKernelUpdatesUnsupported is returned by ReplaceKernel on a convolver
+	// that was not created with a WithKernelUpdates constructor.
+	ErrKernelUpdatesUnsupported = errors.New("conv: kernel updates require a WithKernelUpdates convolver")
 )
 
 // PartitionedConvolutionT implements non-uniformly partitioned overlap-add
@@ -43,6 +46,10 @@ type PartitionedConvolutionT[F algofft.Float, C algofft.Complex] struct {
 	inputHistSize  int
 	outputHistSize int
 	blockPos       int
+
+	// kernelUpdates is set when every partition's output is queued at its
+	// stage boundary, which ReplaceKernel requires.
+	kernelUpdates bool
 
 	stages []*partStageT[F, C]
 }
@@ -293,6 +300,7 @@ func newPartitionedConvolution[F algofft.Float, C algofft.Complex](
 		inputHistSize:   inputHistSize,
 		outputHistSize:  outputHistSize,
 		blockPos:        0,
+		kernelUpdates:   queueOutput,
 		stages:          stages,
 	}, nil
 }
@@ -373,6 +381,16 @@ func NewPartitionedConvolution32(kernel []float32, minBlockOrder, maxBlockOrder 
 	return NewPartitionedConvolutionT[float32, complex64](kernel, minBlockOrder, maxBlockOrder)
 }
 
+// NewPartitionedConvolutionWithKernelUpdates creates a float64 convolver
+// that evaluates and queues every partition's output at its stage boundary.
+// This preserves each queued partition's original kernel across ReplaceKernel
+// calls at the cost of additional inverse transforms.
+func NewPartitionedConvolutionWithKernelUpdates(
+	kernel []float64, minBlockOrder, maxBlockOrder int,
+) (*PartitionedConvolution, error) {
+	return newPartitionedConvolution[float64, complex128](kernel, minBlockOrder, maxBlockOrder, true)
+}
+
 // NewPartitionedConvolution32WithKernelUpdates creates a float32 convolver
 // that evaluates and queues every partition's output at its stage boundary.
 // This preserves each queued partition's original kernel across ReplaceKernel
@@ -386,7 +404,17 @@ func NewPartitionedConvolution32WithKernelUpdates(
 // ReplaceKernel updates the impulse response without resetting input history,
 // queued output, or partition scheduling. The new kernel must have the same
 // length as the current kernel. Use the same goroutine as ProcessBlock.
+//
+// Only convolvers created with NewPartitionedConvolutionWithKernelUpdates or
+// NewPartitionedConvolution32WithKernelUpdates support kernel replacement.
+// The default constructors keep pending input spectra in a frequency-domain
+// delay line, so a replacement would retroactively apply the new kernel to
+// already-pending output; they return ErrKernelUpdatesUnsupported instead.
 func (p *PartitionedConvolutionT[F, C]) ReplaceKernel(kernel []F) error {
+	if !p.kernelUpdates {
+		return ErrKernelUpdatesUnsupported
+	}
+
 	if len(kernel) != p.kernelLen {
 		return fmt.Errorf("%w: kernel length %d != %d", ErrLengthMismatch, len(kernel), p.kernelLen)
 	}
