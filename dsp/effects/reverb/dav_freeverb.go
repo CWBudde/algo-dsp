@@ -81,6 +81,9 @@ type davFreeverbAllpass32 struct {
 
 func (a *davFreeverbAllpass32) process(input float32) float32 {
 	delayed := zeroDAVFreeverbSubnormal(a.delay.buffer[a.delay.pos])
+	// The released Win32 build feeds back the input, not the delayed sample
+	// as classic Freeverb (and reverbAllpass) does. This is deliberate: the
+	// network reproduces the measured DAV binary, not the textbook recurrence.
 	a.delay.write(float32(float64(input) + float64(input)*float64(a.feedback)))
 
 	return delayed - input
