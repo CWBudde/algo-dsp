@@ -23,12 +23,14 @@ func NewPreisach(resolution int) (*Preisach, error) {
 	if resolution < 2 || resolution > 32768 {
 		return nil, fmt.Errorf("Preisach resolution %d is outside [2, 32768]", resolution)
 	}
+
 	cells := (resolution - 1) * resolution / 2
 	p := &Preisach{
 		rows:  make([]int, resolution-1),
 		scale: float32(1 / float64(cells)),
 	}
 	p.Reset()
+
 	return p, nil
 }
 
@@ -51,12 +53,15 @@ func (p *Preisach) ProcessSample(input float32) float32 {
 	if math.IsNaN(float64(input)) {
 		input = 0
 	}
+
 	input = min(max(input, -1), 1)
 	resolution := len(p.rows) + 1
+
 	step := int(math.RoundToEven(float64(input) * float64(resolution)))
 	if step == p.lastStep {
 		return p.output
 	}
+
 	p.lastStep = step
 
 	x, y := (resolution+step)/2, (resolution-step)/2
@@ -72,15 +77,19 @@ func (p *Preisach) ProcessSample(input float32) float32 {
 		// Above the switch row, clearing a suffix preserves each positive
 		// prefix. At and below it, every relay is positive.
 		positive := 0
+
 		for i, prefix := range p.rows[:split] {
 			p.rows[i] = min(prefix, x)
 			positive += p.rows[i]
 		}
+
 		for i := split; i < len(p.rows); i++ {
 			p.rows[i] = len(p.rows) - i
 			positive += p.rows[i]
 		}
+
 		p.output = float32(2*float64(p.scale)*float64(positive) - 1)
 	}
+
 	return p.output
 }
