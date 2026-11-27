@@ -30,12 +30,23 @@ func NewDAVSoftKneeUpwardGain(thresholdDB, kneeDB, ratio float64) (DAVSoftKneeUp
 }
 
 // Gain maps a nonnegative linear peak to amplification. Nonpositive peaks
-// use the smallest normal binary32 input. NaN returns unity. The result
-// saturates at the largest finite binary32 gain when the original exponent
-// construction would overflow.
+// use the smallest normal binary32 input. NaN returns unity. Positive
+// infinity uses the limiting gain: unity for ratios below one and the
+// saturated gain for ratios above one. The result saturates at the largest
+// finite binary32 gain when the original exponent construction would
+// overflow.
 func (c DAVSoftKneeUpwardGain) Gain(peak float64) float64 {
 	if math.IsNaN(peak) {
 		return 1
+	}
+
+	if math.IsInf(peak, 1) {
+		switch {
+		case c.slope > 0:
+			return 1
+		case c.slope < 0:
+			return math.MaxFloat32
+		}
 	}
 
 	logPeak := davLog2Extended(float32(min(max(peak, 0x1p-126), math.MaxFloat32)))

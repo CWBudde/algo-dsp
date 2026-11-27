@@ -17,6 +17,9 @@ func TestDAVSoftKneeUpwardGain(t *testing.T) {
 		{.9, -20, 0, 100, math.MaxFloat32},
 		{1e-24, -10, 2, .01, math.MaxFloat32},
 		{math.NaN(), -10, 2, 5, 1},
+		{math.Inf(1), -10, 2, .5, 1},
+		{math.Inf(1), -10, 2, 5, math.MaxFloat32},
+		{math.Inf(1), -10, 2, 1, 0x1.42508a1c204fep+0},
 	} {
 		c, err := NewDAVSoftKneeUpwardGain(tc.threshold, tc.knee, tc.ratio)
 		if err != nil {
