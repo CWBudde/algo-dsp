@@ -27,6 +27,7 @@ func NewDAVSoftKneeCompressorGain(thresholdDB, kneeDB, ratio float64) (DAVSoftKn
 		return DAVSoftKneeCompressorGain{}, fmt.Errorf("invalid DAV compressor curve: threshold %g dB, knee %g dB, ratio %g",
 			thresholdDB, kneeDB, ratio)
 	}
+
 	return DAVSoftKneeCompressorGain{
 		thresholdLog2: threshold, kneeSquared: squared, slope: slope, ratio: float32(ratio),
 	}, nil
@@ -52,7 +53,9 @@ func (c DAVSoftKneeCompressorGain) Gain(peak float64) float64 {
 			return 0
 		}
 	}
+
 	delta, root := c.curveTerms(peak)
+
 	return davPower2Extended(delta - root)
 }
 
@@ -61,6 +64,7 @@ func (c DAVSoftKneeCompressorGain) curveTerms(peak float64) (delta, root float64
 		logPeak := davLog2Extended(float32(min(max(peak, 0x1p-126), math.MaxFloat32)))
 		delta = float64(c.slope) * (logPeak - float64(c.thresholdLog2))
 	}
+
 	return delta, davCompressorRoot(delta*delta + float64(c.kneeSquared))
 }
 
@@ -73,7 +77,9 @@ func (c DAVSoftKneeCompressorGain) FeedbackLikeGainAndTiming(peak float64, attac
 	if !(peak > 0) || math.IsInf(peak, 1) || !(c.ratio > 0) {
 		return c.Gain(peak), 0, 1
 	}
+
 	delta, root := c.curveTerms(peak)
+
 	gain = davPower2Extended(delta - root)
 	if !(attackCycle <= 0 && releaseCycle <= 0) ||
 		math.IsInf(float64(attackCycle), -1) || math.IsInf(float64(releaseCycle), -1) {
@@ -88,8 +94,10 @@ func (c DAVSoftKneeCompressorGain) FeedbackLikeGainAndTiming(peak float64, attac
 		if !(denominator > 0) {
 			return gain, 0, 1
 		}
+
 		scale = 2 * root / denominator
 	}
+
 	return gain, 1 - davPower2Extended(scale*float64(attackCycle)),
 		davPower2Extended(scale * float64(releaseCycle))
 }

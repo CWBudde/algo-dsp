@@ -25,14 +25,17 @@ func TestDAVFeedbackLikeGainAndTiming(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		gain, attack, release := curve.FeedbackLikeGainAndTiming(tc.peak,
 			math.Float32frombits(tc.attackCycle), math.Float32frombits(tc.releaseCycle))
 		if bits := math.Float64bits(gain); bits != tc.gain || gain != curve.Gain(tc.peak) {
 			t.Errorf("ratio %g peak %g: gain %016x, want %016x", tc.ratio, tc.peak, bits, tc.gain)
 		}
+
 		if bits := math.Float64bits(attack); bits != tc.attack {
 			t.Errorf("ratio %g peak %g: attack %016x, want %016x", tc.ratio, tc.peak, bits, tc.attack)
 		}
+
 		if bits := math.Float64bits(release); bits != tc.release {
 			t.Errorf("ratio %g peak %g: release %016x, want %016x", tc.ratio, tc.peak, bits, tc.release)
 		}
@@ -44,6 +47,7 @@ func TestDAVFeedbackLikeTimingInvalidInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for _, tc := range []struct {
 		peak            float64
 		attack, release float32
@@ -64,7 +68,9 @@ func TestDAVFeedbackLikeTimingInvalidInputs(t *testing.T) {
 
 func ExampleDAVSoftKneeCompressorGain_FeedbackLikeGainAndTiming() {
 	curve, _ := NewDAVSoftKneeCompressorGain(-10, 3, 4)
+
 	const sampleRate = 48000
+
 	attackCycle := float32(-1 / (5 * .001 * sampleRate))
 	releaseCycle := float32(-1 / (50 * .001 * sampleRate))
 	gain, attack, release := curve.FeedbackLikeGainAndTiming(.5, attackCycle, releaseCycle)
