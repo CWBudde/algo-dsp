@@ -1494,9 +1494,9 @@ Exit criteria:
 
 ### Phase 46: Constant-Q Transform (In Progress, post-v1.0)
 
-Status: in progress. 46.1–46.5 are merged (#32, #36–#39) and not yet released: the v0.13.0
-tag is pending (tick the exit criterion below once `just tag-release v0.13.0` succeeds); 46.6, a
-bounded-work stepper that algo-transcribe's front end (its item 2.1) needs, follows as v0.13.1. Consumer: `github.com/cwbudde/algo-transcribe`, a pure-Go port of Spotify's
+Status: in progress. 46.1–46.5 shipped in v0.13.0; 46.6, the bounded-work stepper that
+algo-transcribe's front end (its item 2.1) needs, ships in v0.14.0 (gorelease requires a minor
+bump for the added API). Open: algo-transcribe consuming the releases. Consumer: `github.com/cwbudde/algo-transcribe`, a pure-Go port of Spotify's
 basic-pitch, whose front end is an nnAudio `CQT2010v2` constant-Q transform (see that repo's
 `docs/port-spec.md` §3.1 for the exact configuration and derived numbers). The CQT and the
 `firwin2` design it needs are generic DSP and belong here; the model-specific parts (normalized
@@ -1874,9 +1874,9 @@ bounded-work stepper for per-step time budgets follows as a later item.
 >    same machine, not 6.07 ms (measured under load), and `BenchmarkNewBasicPitch` makes 184
 >    allocations on `ed24ea5` too, not 166. Left as recorded.
 >
-> Residual gap: the v0.13.1 tag. The CHANGELOG entry is under Unreleased; tag with
-> `just tag-release v0.13.1` after v0.13.0 (still pending) and this merge, then tick the exit
-> criterion below.
+> Released in v0.14.0 rather than v0.13.1: the API is additive, but gorelease requires a minor
+> bump for added exported API. v0.13.0 was tagged on its release commit `ed24ea5` after #41 had
+> already merged on top of it.
 
 Exit criteria:
 
@@ -1890,9 +1890,9 @@ Exit criteria:
 - [x] 46.4: no Python project or generated fixture remains for `dsp/cqt` and `design.Firwin2`.
 - [x] 46.5: CQT chroma drives `harmony` key estimation on synthetic cadences and `motif` chroma
       motifs through beat pooling; melody's defaults are unchanged.
-- [ ] v0.13.0 is tagged with `just tag-release` and algo-transcribe consumes it.
-- [ ] 46.6: stepped output is bit-identical to `ProcessInto` for every budget, 0 allocs per step, and
-      the longest 50,000-unit step is recorded native and js/wasm; released as v0.13.1.
+- [ ] v0.13.0 is tagged (done, on `ed24ea5`) and algo-transcribe consumes it.
+- [x] 46.6: stepped output is bit-identical to `ProcessInto` for every budget, 0 allocs per step, and
+      the longest 50,000-unit step is recorded native and js/wasm; released as v0.14.0.
 
 ---
 
@@ -2046,6 +2046,7 @@ Quarter-end success criteria:
 | 0.23    | 2026-10-10 | Claude  | Added Phase 46 (post-v1.0): `dsp/cqt`, an nnAudio `CQT2010v2`-compatible multi-rate constant-Q transform, and `design.Firwin2`, for the basic-pitch port in `algo-transcribe`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 0.24    | 2026-10-10 | Claude  | Phase 46 reshape before the first release: added 46.2 (shared primitives), 46.3 (generic CQT with `NNAudio()`/`BasicPitch()` presets, stft-aligned API), 46.4 (Go-only tests, Python fixtures removed) and 46.5 (CQT chroma and melody option for `measure/music`). v0.13.0 is tagged after 46.5.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 0.25    | 2026-10-11 | Claude  | 46.2–46.5 merged, v0.13.0 release prepared (tag pending); added 46.6 (`cqt.Stepper`, bounded-work CQT for per-step budgets) for v0.13.1.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 0.26    | 2026-10-12 | Claude  | v0.13.0 tagged on `ed24ea5`; 46.6 merged (#41) and released as v0.14.0, a minor bump because gorelease requires one for the added `cqt.Stepper` API.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 ---
 

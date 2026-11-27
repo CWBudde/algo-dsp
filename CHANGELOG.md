@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [v0.14.0] - 2026-10-12
+
 ### Added
 
 - `dsp/cqt`: bounded-work stepping. `(*Transform).NewStepper(dst, x)` and
