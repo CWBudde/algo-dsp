@@ -16,6 +16,9 @@ func TestDAVLevelingGain(t *testing.T) {
 		{19, .67, 49, 0x1.bfa86ap-5, 0x1.bfa811a70ec3bp-5},
 		{.05, 1, 10, 0x1.01f356p+0, 0x1.01f51c2513cbfp+0},
 		{1, .05, 1, 1, 1},
+		{math.Inf(1), .5, 10, 0, 0},
+		{math.Inf(1), 1, 49, 0, 0},
+		{math.Inf(1), .5, 1, 1, 1},
 	} {
 		c, err := NewDAVLevelingGain(tc.knee, tc.ratio)
 		if err != nil {

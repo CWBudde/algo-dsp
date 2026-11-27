@@ -27,8 +27,13 @@ func NewDAVLevelingGain(knee, ratio float64) (DAVLevelingGain, error) {
 }
 
 // Gain evaluates the release curve with its original binary32 polynomial and
-// rounding boundaries.
+// rounding boundaries. A positive infinite peak returns the curve's limit:
+// zero, or unity at ratio one.
 func (g DAVLevelingGain) Gain(peak float64) float64 {
+	if math.IsInf(peak, 1) {
+		return g.infiniteGain()
+	}
+
 	d := g.overThreshold(peak)
 	tanh := float64(float32(davLevelingTanh(d)))
 	adjusted := float32(d - g.kneeSquared*tanh)
@@ -38,10 +43,23 @@ func (g DAVLevelingGain) Gain(peak float64) float64 {
 
 // LegacyGain evaluates the earlier release's curve with double precision
 // after its original binary32 detector boundary and an exact power function.
+// A positive infinite peak returns the same limit as Gain.
 func (g DAVLevelingGain) LegacyGain(peak float64) float64 {
+	if math.IsInf(peak, 1) {
+		return g.infiniteGain()
+	}
+
 	d := g.overThreshold(peak)
 	adjusted := d - g.kneeSquared*davLevelingTanh(d)
 	return math.Pow(1+adjusted, g.exponent)
+}
+
+func (g DAVLevelingGain) infiniteGain() float64 {
+	if g.exponent == 0 {
+		return 1
+	}
+
+	return 0
 }
 
 func (g DAVLevelingGain) overThreshold(peak float64) float64 {
