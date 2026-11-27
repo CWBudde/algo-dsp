@@ -118,3 +118,78 @@ func TestDAVVibrato32MinimumDepth(t *testing.T) {
 		}
 	}
 }
+
+// TestDAVVibrato32ResizeKeepsNewestHistory checks that a retuned line matches
+// one that ran at the new span all along, for write positions across the ring.
+func TestDAVVibrato32ResizeKeepsNewestHistory(t *testing.T) {
+	configure := func(line *DAVVibrato32, size int) {
+		t.Helper()
+
+		// A depth of one gives a span of a quarter of the sample rate, rounded.
+		if err := line.Configure(float64(4*size+1), 1, 3000); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, sizes := range [][2]int{{30, 5}, {30, 27}, {30, 29}, {5, 30}, {27, 30}, {29, 30}, {0, 7}, {7, 0}} {
+		from, to := sizes[0], sizes[1]
+		for count := range 3*(max(from, to)+davVibratoPadding) + 1 {
+			retuned, err := NewDAVVibrato32(max(from, to))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			reference, err := NewDAVVibrato32(to)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			configure(retuned, from)
+			configure(reference, to)
+
+			// Only the samples the old span can hold are nonzero, so a wider
+			// span must not see anything older either. The first four stay
+			// zero: before its first wrap the line keeps them only in the
+			// overlap slots, which a wider span cannot reproduce.
+			kept := min(from, to) + davVibratoOverlap
+
+			for i := range count {
+				var input float32
+				if i >= max(count-kept, davVibratoOverlap) {
+					input = float32(i + 1)
+				}
+
+				retuned.ProcessSample(input)
+				reference.ProcessSample(input)
+			}
+
+			configure(retuned, to)
+
+			for i := range 2 * (to + davVibratoPadding) {
+				input := float32(-i)
+				if got, want := retuned.ProcessSample(input), reference.ProcessSample(input); got != want {
+					t.Fatalf("%d->%d after %d samples: output %d = %g, want %g", from, to, count, i, got, want)
+				}
+			}
+		}
+	}
+}
+
+func BenchmarkDAVVibrato32ProcessSample(b *testing.B) {
+	line, err := NewDAVVibrato32(12000)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	if err := line.Configure(48000, .5, 5); err != nil {
+		b.Fatal(err)
+	}
+
+	var output float32
+
+	b.ReportAllocs()
+
+	for b.Loop() {
+		output = line.ProcessSample(output*.5 + .25)
+	}
+}

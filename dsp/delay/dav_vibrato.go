@@ -53,8 +53,9 @@ func (v *DAVVibrato32) ReserveDelay(maxDelaySamples int) error {
 }
 
 // Configure sets the sample rate in Hz, depth in [0, 1], and LFO speed in Hz.
-// It preserves the oscillator phase and overlapping delay history. Newly
-// accessible delay storage starts at zero. Invalid values leave state intact.
+// It preserves the oscillator phase and the newest delay history that fits the
+// new span. Older positions that a wider span adds start at zero unless the
+// line still holds those samples. Invalid values leave state intact.
 func (v *DAVVibrato32) Configure(rate, depth, speed float64) error {
 	if !(rate > 0 && rate <= math.MaxFloat32 && depth >= 0 && depth <= 1 &&
 		speed >= 0 && speed <= davVibratoClock/2) {
@@ -66,19 +67,49 @@ func (v *DAVVibrato32) Configure(rate, depth, speed float64) error {
 		return errors.New("DAV vibrato delay exceeds reserved capacity")
 	}
 
-	size := int(span)
-	if size > v.size {
-		clear(v.buffer[v.size+davVibratoPadding : size+davVibratoPadding])
-	}
-
-	v.size = size
-	if v.position >= size+davVibratoPadding {
-		v.position = davVibratoOverlap
-	}
-
+	v.resize(int(span))
 	v.stepSine, v.stepCosine = math.Sincos(2 * math.Pi * speed / davVibratoClock)
 
 	return nil
+}
+
+// resize changes the active span to size samples without allocating. It
+// repacks the ring so the newest history keeps its age: buffer[4:position]
+// holds the newest samples, buffer[position:end] the older ones, and
+// buffer[:4] the four samples that precede buffer[4] in the ring.
+func (v *DAVVibrato32) resize(size int) {
+	end, nextEnd := v.size+davVibratoPadding, size+davVibratoPadding
+
+	switch {
+	case size == v.size:
+	case v.position < davVibratoOverlap:
+		// First pass after a reset: everything past the write position is zero.
+		if nextEnd > end {
+			clear(v.buffer[end:nextEnd])
+		}
+	case size > v.size:
+		// Move the older samples to the end of the wider ring and zero the gap.
+		// The overlap slots hold the samples that precede buffer[4], so they
+		// also fill the slots just before the wrap.
+		older := end - v.position
+		copy(v.buffer[nextEnd-older:nextEnd], v.buffer[v.position:end])
+		clear(v.buffer[v.position : nextEnd-older])
+
+		count := min(davVibratoOverlap, nextEnd-v.position)
+		copy(v.buffer[nextEnd-count:nextEnd], v.buffer[davVibratoOverlap-count:davVibratoOverlap])
+	case v.position < nextEnd:
+		// The newest samples stay in place; keep the youngest of the older ones.
+		copy(v.buffer[v.position:nextEnd], v.buffer[end-nextEnd+v.position:end])
+	default:
+		// The write position falls outside the narrower ring: move the newest
+		// period samples to its start and wrap as ProcessSample does.
+		period := size + davVibratoOverlap
+		copy(v.buffer[davVibratoOverlap:nextEnd], v.buffer[v.position-period:v.position])
+		copy(v.buffer[:davVibratoOverlap], v.buffer[period:nextEnd])
+		v.position = davVibratoOverlap
+	}
+
+	v.size = size
 }
 
 // ClearHistory clears the delay while preserving its write position and phase.
