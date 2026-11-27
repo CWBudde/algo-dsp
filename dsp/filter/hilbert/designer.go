@@ -23,6 +23,7 @@ func DesignCoefficients(numberOfCoeffs int, transition float64) ([]float64, erro
 
 	coeffs := make([]float64, numberOfCoeffs)
 	designCoefficients(coeffs, transition)
+
 	return coeffs, nil
 }
 
@@ -35,11 +36,13 @@ func DesignCoefficientsTo(dst []float64, transition float64) error {
 	}
 
 	designCoefficients(dst, transition)
+
 	return nil
 }
 
 func designCoefficients(dst []float64, transition float64) {
 	k, q := computeTransitionParam(transition)
+
 	order := len(dst)*2 + 1
 	for i := range dst {
 		dst[i] = computeCoefficient(i, k, q, order)

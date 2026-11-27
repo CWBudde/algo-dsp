@@ -383,24 +383,29 @@ func TestDesignCoefficientsTo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		if err := DesignCoefficientsTo(values[:], width); err != nil {
 			t.Fatal(err)
 		}
+
 		for i, got := range values {
 			if got != want[i] {
 				t.Errorf("width %g, coefficient %d = %.16g, want %.16g", width, i, got, want[i])
 			}
 		}
 	}
+
 	before := values
 	for _, width := range []float64{0, .5, math.NaN(), math.Inf(1)} {
 		if err := DesignCoefficientsTo(values[:], width); err == nil || values != before {
 			t.Errorf("invalid width %g mutated destination: %v", width, err)
 		}
 	}
+
 	if err := DesignCoefficientsTo(nil, .1); err == nil {
 		t.Fatal("empty destination accepted")
 	}
+
 	if allocs := testing.AllocsPerRun(100, func() {
 		_ = DesignCoefficientsTo(values[:], .01)
 	}); allocs != 0 {
@@ -413,6 +418,7 @@ func ExampleDesignCoefficientsTo() {
 	if err := DesignCoefficientsTo(coefficients[:], .1); err != nil {
 		panic(err)
 	}
+
 	fmt.Printf("%.6f %.6f\n", coefficients[0], coefficients[7])
 	// Output: 0.023097 0.909477
 }

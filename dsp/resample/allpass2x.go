@@ -118,6 +118,7 @@ func (stages *allpassStages32) setCoefficients(coefficients []float64) error {
 	if count < 1 || count > cap(*stages) {
 		return fmt.Errorf("resample: allpass coefficient count %d outside 1..%d", count, cap(*stages))
 	}
+
 	for i, coefficient := range coefficients {
 		if !(-1 < coefficient && coefficient < 1) {
 			return fmt.Errorf("resample: allpass coefficient %d must be finite with magnitude below one: %g", i, coefficient)
@@ -128,10 +129,13 @@ func (stages *allpassStages32) setCoefficients(coefficients []float64) error {
 	if count != len(*stages) {
 		clear(next)
 	}
+
 	for i, coefficient := range coefficients {
 		next[i].coefficient = coefficient
 	}
+
 	*stages = next
+
 	return nil
 }
 

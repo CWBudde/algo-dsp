@@ -218,48 +218,63 @@ func TestAllpass2xSetCoefficients(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	down, err := NewAllpassDownsampler2x32(2, .25)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	set := func(coefficients []float64) {
 		t.Helper()
+
 		if err := up.SetCoefficients(coefficients); err != nil {
 			t.Fatal(err)
 		}
+
 		if err := down.SetCoefficients(coefficients); err != nil {
 			t.Fatal(err)
 		}
 	}
 	set([]float64{.25})
+
 	if a, b := up.ProcessSample(1); a != .25 || b != 1 {
 		t.Fatalf("first upsample = (%g,%g)", a, b)
 	}
+
 	if got := down.ProcessSample(.5, 1); got != .375 {
 		t.Fatalf("first downsample = %g", got)
 	}
+
 	for _, invalid := range [][]float64{nil, {0, 0, 0}, {.75, 1}, {math.NaN()}, {math.Inf(1)}} {
 		if up.SetCoefficients(invalid) == nil || down.SetCoefficients(invalid) == nil {
 			t.Errorf("accepted invalid coefficients %v", invalid)
 		}
 	}
+
 	set([]float64{.5})
+
 	if a, b := up.ProcessSample(0); a != .875 || b != 0 {
 		t.Fatalf("upsampler lost history on update: (%g,%g)", a, b)
 	}
+
 	if got := down.ProcessSample(0, 0); got != .4375 {
 		t.Fatalf("downsampler lost history on update: %g", got)
 	}
+
 	set([]float64{.5, .75})
+
 	if a, b := up.ProcessSample(0); a != 0 || b != 0 {
 		t.Fatalf("upsampler history survived count change: (%g,%g)", a, b)
 	}
+
 	if got := down.ProcessSample(0, 0); got != 0 {
 		t.Fatalf("downsampler history survived count change: %g", got)
 	}
+
 	if a, b := up.ProcessSample(1); a != .5 || b != .75 {
 		t.Fatalf("expanded upsamples = (%g,%g)", a, b)
 	}
+
 	if got := down.ProcessSample(1, 1); got != .625 {
 		t.Fatalf("expanded downsample = %g", got)
 	}
@@ -279,10 +294,13 @@ func TestAllpass2xSetCoefficientsKeepFloat64Precision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if err := up.SetCoefficients([]float64{.9}); err != nil {
 		t.Fatal(err)
 	}
+
 	first, _ := up.ProcessSample(1)
+
 	second, _ := up.ProcessSample(0)
 	if want := float32(1 - .9*float64(float32(.9))); first != .9 || second != want {
 		t.Fatalf("impulse = (%g,%g), want (%g,%g)", first, second, float32(.9), want)
@@ -294,9 +312,11 @@ func ExampleAllpassUpsampler2x32_SetCoefficients() {
 	if err != nil {
 		panic(err)
 	}
+
 	if err := up.SetCoefficients([]float64{.25}); err != nil {
 		panic(err)
 	}
+
 	first, second := up.ProcessSample(1)
 	fmt.Println(first, second)
 	// Output: 0.25 1
@@ -307,9 +327,11 @@ func ExampleAllpassDownsampler2x32_SetCoefficients() {
 	if err != nil {
 		panic(err)
 	}
+
 	if err := down.SetCoefficients([]float64{.25}); err != nil {
 		panic(err)
 	}
+
 	fmt.Println(down.ProcessSample(.5, 1))
 	// Output: 0.375
 }
