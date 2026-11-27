@@ -3,6 +3,7 @@ package dynamics
 import (
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -41,8 +42,11 @@ func TestDAVSpectralGateTiming(t *testing.T) {
 
 func TestDAVSpectralGateTimingInvalidDomain(t *testing.T) {
 	for _, in := range [][3]float64{{0, 1, 10}, {1, -1, 10}, {1, 1, 0}, {1, math.NaN(), 10}, {1, 1, math.Inf(1)}} {
-		if _, _, err := DAVSpectralGateTiming(in[0], in[1], in[2]); err == nil {
+		_, _, err := DAVSpectralGateTiming(in[0], in[1], in[2])
+		if err == nil {
 			t.Errorf("invalid timing %v accepted", in)
+		} else if !strings.HasPrefix(err.Error(), "invalid DAV spectral gate timing:") {
+			t.Errorf("invalid timing %v gives error %q, want spectral gate label", in, err)
 		}
 	}
 

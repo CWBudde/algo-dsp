@@ -164,7 +164,7 @@ func davCompressorRoot(value float64) float64 {
 // release pole for the compressor's detector loop. Times are in milliseconds
 // and sampleRate is the effective detector rate, including oversampling.
 func DAVCompressorTiming(attackMS, releaseMS, sampleRate float64) (attack, release float64, err error) {
-	return davCompressorTiming(attackMS, releaseMS, sampleRate, davPower2)
+	return davCompressorTiming("compressor", attackMS, releaseMS, sampleRate, davPower2)
 }
 
 // DAVSpectralGateTiming returns the attack interpolation and release pole used
@@ -173,15 +173,19 @@ func DAVCompressorTiming(attackMS, releaseMS, sampleRate float64) (attack, relea
 // can produce signed poles outside [0, 1] at short times and low detector rates.
 // Nonfinite packed poles use the ordinary finite exponential result.
 func DAVSpectralGateTiming(attackMS, releaseMS, sampleRate float64) (attack, release float64, err error) {
-	return davCompressorTiming(attackMS, releaseMS, sampleRate, davSpectralGatePole)
+	return davCompressorTiming("spectral gate", attackMS, releaseMS, sampleRate, davSpectralGatePole)
 }
 
-func davCompressorTiming(attackMS, releaseMS, sampleRate float64, power2 func(float32) float32) (attack, release float64, err error) {
+// davCompressorTiming is shared by the compressor and spectral gate timing
+// helpers; label names the calling effect in validation errors.
+func davCompressorTiming(
+	label string, attackMS, releaseMS, sampleRate float64, power2 func(float32) float32,
+) (attack, release float64, err error) {
 	if !(attackMS > 0 && attackMS <= math.MaxFloat32 &&
 		releaseMS > 0 && releaseMS <= math.MaxFloat32 &&
 		sampleRate > 0 && sampleRate <= math.MaxFloat32) {
-		return 0, 0, fmt.Errorf("invalid DAV compressor timing: attack %g ms, release %g ms, rate %g Hz",
-			attackMS, releaseMS, sampleRate)
+		return 0, 0, fmt.Errorf("invalid DAV %s timing: attack %g ms, release %g ms, rate %g Hz",
+			label, attackMS, releaseMS, sampleRate)
 	}
 
 	pole := func(ms float64) float64 {
