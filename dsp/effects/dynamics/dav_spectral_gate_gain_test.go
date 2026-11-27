@@ -28,6 +28,7 @@ func TestDAVSpectralGateGain(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		got := math.Float32bits(c.SpectralGateGain(float64(tc.peak)))
 		if got != tc.word {
 			t.Errorf("peak %g threshold %g knee %g ratio %g: gain bits %08x, want %08x",
@@ -41,11 +42,13 @@ func TestDAVSpectralGateGainRejectsNonfinite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for _, peak := range []float64{math.Inf(-1), -1, 0, math.NaN(), math.Inf(1)} {
 		if got := c.SpectralGateGain(peak); got != 0 {
 			t.Errorf("invalid peak %g produced %g", peak, got)
 		}
 	}
+
 	if got := (DAVSoftKneeCompressorGain{}).SpectralGateGain(.25); got != 0 {
 		t.Errorf("uninitialized transfer produced %g", got)
 	}

@@ -67,17 +67,22 @@ func (c DAVSoftKneeCompressorGain) SpectralGateGain(peak float64) float32 {
 	if !(c.ratio > 0 && peak > 0 && peak <= math.MaxFloat64) {
 		return 0
 	}
+
 	delta, root := c.curveTerms(peak)
 	exponent := delta - root
+
 	whole := math.RoundToEven(exponent)
 	if !(whole >= math.MinInt32 && whole <= math.MaxInt32) {
 		return 0
 	}
+
 	packed := math.Float32frombits(uint32(int64(whole)+127) << 23)
+
 	gain := float32(float64(packed) * davPower2Residual(exponent-whole))
 	if gain >= -1 && gain <= 1 {
 		return gain
 	}
+
 	return 0
 }
 

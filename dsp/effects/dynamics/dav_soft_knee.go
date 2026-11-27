@@ -147,6 +147,7 @@ func davPower2Extended(value float64) float64 {
 
 	exponent := math.RoundToEven(value)
 	residual := value - exponent
+
 	return math.Ldexp(davPower2Residual(residual), int(exponent))
 }
 
@@ -156,5 +157,6 @@ func davPower2Residual(x float64) float64 {
 		p2 = float64(float32(2.42162975514835621e-1))
 		p3 = float64(float32(5.48668824216034384e-2))
 	)
+
 	return 1 + x*(p1+x*(p2+x*p3))
 }
