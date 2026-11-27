@@ -45,12 +45,15 @@ func (d *DAVBode32) Configure(speed float64, order int, transition float64) erro
 		if err := hilbert.DesignCoefficientsTo(design[:order], transition); err != nil {
 			return err
 		}
+
 		if d.order == 0 {
 			d.cosine = -1
 		}
+
 		if d.order != order {
 			d.history = [2]davBodeHistory{}
 		}
+
 		d.order, d.transition, d.coefficients = order, transition, design
 	}
 
@@ -59,6 +62,7 @@ func (d *DAVBode32) Configure(speed float64, order int, transition float64) erro
 		d.speed = speed
 		d.stepSine, d.stepCosine = float32(sine), float32(cosine)
 	}
+
 	return nil
 }
 
@@ -78,15 +82,18 @@ func (d *DAVBode32) ProcessSample(input float32) (up, down float32) {
 	state := &d.history[d.phase]
 	previous := d.previous
 	d.previous = input
+
 	d.phase ^= 1
 	for i, coefficient := range d.coefficients[:d.order] {
 		sample := input
+
 		switch {
 		case i == 1:
 			sample = previous
 		case i >= 2:
 			sample = state.output[i-2]
 		}
+
 		state.output[i] = float32((float64(sample)+float64(state.output[i]))*coefficient -
 			float64(state.input[i]))
 		state.input[i] = sample
@@ -99,6 +106,7 @@ func (d *DAVBode32) ProcessSample(input float32) (up, down float32) {
 			re, im = im, re
 		}
 	}
+
 	re *= d.cosine
 	im *= d.sine
 
@@ -107,6 +115,7 @@ func (d *DAVBode32) ProcessSample(input float32) (up, down float32) {
 	d.sine, d.cosine = float32(sine), float32(cosine)
 
 	const sqrtHalf32 = float64(float32(.7071067811865475244))
+
 	return float32((float64(re) - float64(im)) * sqrtHalf32),
 		float32((float64(re) + float64(im)) * sqrtHalf32)
 }
