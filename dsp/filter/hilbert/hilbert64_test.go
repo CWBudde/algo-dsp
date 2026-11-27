@@ -1,6 +1,7 @@
 package hilbert
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -373,4 +374,51 @@ func estimateImageRejectionDB(t *testing.T, freqHz float64) float64 {
 	image := math.Hypot(imageR, imageI)
 
 	return 20 * math.Log10(wanted/image)
+}
+
+func TestDesignCoefficientsTo(t *testing.T) {
+	var values [8]float64
+	for _, width := range []float64{.0001, .1, .25, .4999} {
+		want, err := DesignCoefficients(len(values), width)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := DesignCoefficientsTo(values[:], width); err != nil {
+			t.Fatal(err)
+		}
+
+		for i, got := range values {
+			if got != want[i] {
+				t.Errorf("width %g, coefficient %d = %.16g, want %.16g", width, i, got, want[i])
+			}
+		}
+	}
+
+	before := values
+	for _, width := range []float64{0, .5, math.NaN(), math.Inf(1)} {
+		if err := DesignCoefficientsTo(values[:], width); err == nil || values != before {
+			t.Errorf("invalid width %g mutated destination: %v", width, err)
+		}
+	}
+
+	if err := DesignCoefficientsTo(nil, .1); err == nil {
+		t.Fatal("empty destination accepted")
+	}
+
+	if allocs := testing.AllocsPerRun(100, func() {
+		_ = DesignCoefficientsTo(values[:], .01)
+	}); allocs != 0 {
+		t.Errorf("allocated %g per design", allocs)
+	}
+}
+
+func ExampleDesignCoefficientsTo() {
+	var coefficients [8]float64
+	if err := DesignCoefficientsTo(coefficients[:], .1); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%.6f %.6f\n", coefficients[0], coefficients[7])
+	// Output: 0.023097 0.909477
 }
