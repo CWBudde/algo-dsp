@@ -42,6 +42,7 @@ func (d *davFreeverbDelay32) reset() {
 
 func (d *davFreeverbDelay32) write(input float32) {
 	d.buffer[d.pos] = input
+
 	d.pos++
 	if d.pos == len(d.buffer) {
 		d.pos = 0
@@ -52,6 +53,7 @@ func zeroDAVFreeverbSubnormal(value float32) float32 {
 	if math.Float32bits(value)&0x7f800000 == 0 {
 		return 0
 	}
+
 	return value
 }
 
@@ -68,6 +70,7 @@ func (c *davFreeverbComb32) process(input float32) float32 {
 	filtered := float64(delayed)*float64(c.dampB) + float64(c.filterStore)*float64(c.dampA)
 	c.filterStore = zeroDAVFreeverbSubnormal(float32(filtered))
 	c.delay.write(float32(float64(input) + filtered*float64(c.feedback)))
+
 	return delayed
 }
 
@@ -79,6 +82,7 @@ type davFreeverbAllpass32 struct {
 func (a *davFreeverbAllpass32) process(input float32) float32 {
 	delayed := zeroDAVFreeverbSubnormal(a.delay.buffer[a.delay.pos])
 	a.delay.write(float32(float64(input) + float64(input)*float64(a.feedback)))
+
 	return delayed - input
 }
 
@@ -91,16 +95,19 @@ func NewDAVFreeverb32(combCapacity, allpassCapacity [][2]int) (*DAVFreeverb32, e
 	}
 
 	r := new(DAVFreeverb32)
+
 	for i, lengths := range combCapacity {
 		for channel, length := range lengths {
 			r.combs[i][channel].delay.buffer = make([]float32, 0, length)
 		}
 	}
+
 	for i, lengths := range allpassCapacity {
 		for channel, length := range lengths {
 			r.allpasses[i][channel].delay.buffer = make([]float32, 0, length)
 		}
 	}
+
 	return r, nil
 }
 
@@ -108,11 +115,13 @@ func davFreeverbValidSizes(lengths [][2]int) bool {
 	if len(lengths) == 0 || len(lengths) > davFreeverbMaxStages {
 		return false
 	}
+
 	for _, pair := range lengths {
 		if pair[0] <= 0 || pair[1] <= 0 {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -124,6 +133,7 @@ func (r *DAVFreeverb32) SetGeometry(combLengths, allpassLengths [][2]int) error 
 	if !davFreeverbValidSizes(combLengths) || !davFreeverbValidSizes(allpassLengths) {
 		return errDAVFreeverbGeometry
 	}
+
 	for i, lengths := range combLengths {
 		for channel, length := range lengths {
 			if length > cap(r.combs[i][channel].delay.buffer) {
@@ -131,6 +141,7 @@ func (r *DAVFreeverb32) SetGeometry(combLengths, allpassLengths [][2]int) error 
 			}
 		}
 	}
+
 	for i, lengths := range allpassLengths {
 		for channel, length := range lengths {
 			if length > cap(r.allpasses[i][channel].delay.buffer) {
@@ -144,6 +155,7 @@ func (r *DAVFreeverb32) SetGeometry(combLengths, allpassLengths [][2]int) error 
 			r.combs[i][channel].delay.setLength(length)
 		}
 	}
+
 	for i := len(combLengths); i < r.numCombs; i++ {
 		for channel := range r.combs[i] {
 			delay := r.combs[i][channel].delay
@@ -151,11 +163,13 @@ func (r *DAVFreeverb32) SetGeometry(combLengths, allpassLengths [][2]int) error 
 			r.combs[i][channel] = davFreeverbComb32{delay: delay}
 		}
 	}
+
 	for i, lengths := range allpassLengths {
 		for channel, length := range lengths {
 			r.allpasses[i][channel].delay.setLength(length)
 		}
 	}
+
 	for i := len(allpassLengths); i < r.numPasses; i++ {
 		for channel := range r.allpasses[i] {
 			delay := r.allpasses[i][channel].delay
@@ -163,7 +177,9 @@ func (r *DAVFreeverb32) SetGeometry(combLengths, allpassLengths [][2]int) error 
 			r.allpasses[i][channel] = davFreeverbAllpass32{delay: delay}
 		}
 	}
+
 	r.numCombs, r.numPasses = len(combLengths), len(allpassLengths)
+
 	return nil
 }
 
@@ -174,13 +190,16 @@ func (r *DAVFreeverb32) SetCombFeedback(feedback, damping float32) error {
 	if !(feedback >= 0 && feedback <= 1 && damping >= 0 && damping <= 1) {
 		return errDAVFreeverbFeedback
 	}
+
 	dampB := 1 - damping
+
 	for i := range r.numCombs {
 		for channel := range r.combs[i] {
 			stage := &r.combs[i][channel]
 			stage.feedback, stage.dampA, stage.dampB = feedback, damping, dampB
 		}
 	}
+
 	return nil
 }
 
@@ -190,6 +209,7 @@ func (r *DAVFreeverb32) SetAllpassFeedback(feedback [][2]float32) error {
 	if len(feedback) != r.numPasses {
 		return errDAVFreeverbFeedback
 	}
+
 	for _, pair := range feedback {
 		for _, value := range pair {
 			if !(value >= 0 && value <= 1) {
@@ -197,11 +217,13 @@ func (r *DAVFreeverb32) SetAllpassFeedback(feedback [][2]float32) error {
 			}
 		}
 	}
+
 	for i, pair := range feedback {
 		for channel, value := range pair {
 			r.allpasses[i][channel].feedback = value
 		}
 	}
+
 	return nil
 }
 
@@ -215,6 +237,7 @@ func (r *DAVFreeverb32) Reset() {
 			stage.filterStore = 0
 		}
 	}
+
 	for i := range r.numPasses {
 		for channel := range r.allpasses[i] {
 			r.allpasses[i][channel].delay.reset()
@@ -229,9 +252,11 @@ func (r *DAVFreeverb32) ProcessSample(input float32) (left, right float32) {
 		left += r.combs[i][0].process(input)
 		right += r.combs[i][1].process(input)
 	}
+
 	for i := range r.numPasses {
 		left = r.allpasses[i][0].process(left)
 		right = r.allpasses[i][1].process(right)
 	}
+
 	return left, right
 }
