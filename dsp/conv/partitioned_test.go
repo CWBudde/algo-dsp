@@ -341,3 +341,88 @@ func BenchmarkPartitionedConvolution(b *testing.B) {
 		_ = pc.ProcessBlock(input, output)
 	}
 }
+
+func TestPartitionedReplaceKernel(t *testing.T) {
+	initial := make([]float32, 512)
+
+	replacement := make([]float32, len(initial))
+	for i := range initial {
+		initial[i], replacement[i] = 1, 2
+	}
+
+	c, err := NewPartitionedConvolution32WithKernelUpdates(initial, 6, 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var input, output [640]float32
+
+	input[16] = 1
+
+	const edit = 91
+	if err := c.ProcessBlock(input[:edit], output[:edit]); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.ReplaceKernel(replacement); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.ReplaceKernel(replacement[:2]); !errors.Is(err, ErrLengthMismatch) {
+		t.Fatalf("different-length replacement error = %v", err)
+	}
+
+	if err := c.ProcessBlock(input[edit:], output[edit:]); err != nil {
+		t.Fatal(err)
+	}
+	// The first transform already queued contributions from each partition.
+	// Each range that straddles the next stage boundary uses both kernels.
+	var want [640]float32
+	for i := 80; i < 592; i++ {
+		want[i] = 2
+	}
+
+	for _, start := range []int{80, 144, 208, 336, 464} {
+		for i := start; i < start+48; i++ {
+			want[i] = 1
+		}
+	}
+
+	for i := range want {
+		if difference := math.Abs(float64(output[i] - want[i])); difference > 1e-5 {
+			t.Errorf("output[%d] = %g, want %g", i, output[i], want[i])
+		}
+	}
+}
+
+func TestPartitionedReplaceKernelRequiresKernelUpdates(t *testing.T) {
+	kernel64 := make([]float64, 512)
+	kernel32 := make([]float32, 512)
+
+	c64, err := NewPartitionedConvolution(kernel64, 6, 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c64.ReplaceKernel(kernel64); !errors.Is(err, ErrKernelUpdatesUnsupported) {
+		t.Fatalf("float64 default ReplaceKernel error = %v", err)
+	}
+
+	c32, err := NewPartitionedConvolution32(kernel32, 6, 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c32.ReplaceKernel(kernel32); !errors.Is(err, ErrKernelUpdatesUnsupported) {
+		t.Fatalf("float32 default ReplaceKernel error = %v", err)
+	}
+
+	u64, err := NewPartitionedConvolutionWithKernelUpdates(kernel64, 6, 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := u64.ReplaceKernel(kernel64); err != nil {
+		t.Fatalf("float64 kernel-update ReplaceKernel error = %v", err)
+	}
+}
