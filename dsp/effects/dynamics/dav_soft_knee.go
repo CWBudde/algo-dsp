@@ -1,0 +1,107 @@
+package dynamics
+
+import (
+	"fmt"
+	"math"
+)
+
+// DAVSoftKneeGain is the float32 transfer curve used by the Delphi ASIO & VST
+// Lightweight Soft Knee Limiter. It maps a positive linear peak estimate to
+// attenuation. Detection, envelope timing and makeup gain belong to the caller.
+type DAVSoftKneeGain struct {
+	thresholdLog2 float32
+	kneeSquared   float32
+}
+
+// NewDAVSoftKneeGain prepares the curve for a threshold and a nonnegative knee
+// in dB. A zero knee selects the hard transition.
+func NewDAVSoftKneeGain(thresholdDB, kneeDB float64) (DAVSoftKneeGain, error) {
+	const dbToLog2 = float64(float32(1.6609640474436811739351597147447e-1))
+
+	threshold := float32(float64(float32(thresholdDB)) * dbToLog2)
+	knee := 2 * float64(float32(kneeDB)) * dbToLog2
+
+	squared := float32(knee * knee)
+	if !(kneeDB >= 0) || math.IsInf(float64(squared), 0) ||
+		math.IsNaN(float64(threshold)) || math.IsInf(float64(threshold), 0) {
+		return DAVSoftKneeGain{}, fmt.Errorf("invalid DAV soft knee: threshold %g dB, knee %g dB", thresholdDB, kneeDB)
+	}
+
+	return DAVSoftKneeGain{thresholdLog2: threshold, kneeSquared: squared}, nil
+}
+
+// Gain returns the linear attenuation for peak. A nonpositive peak returns
+// unity and positive infinity returns zero. The compatibility curve rounds
+// the intermediate values at the same float32 boundaries as the reference.
+func (c DAVSoftKneeGain) Gain(peak float64) float64 {
+	if !(peak > 0) {
+		return 1
+	}
+
+	if math.IsInf(peak, 1) {
+		return 0
+	}
+
+	logPeak := davLog2(float32(min(max(peak, 0x1p-126), math.MaxFloat32)))
+	delta := float64(c.thresholdLog2 - logPeak)
+	squared := delta*delta + float64(c.kneeSquared)
+
+	root := davSqrt(float32(squared))
+	if math.IsInf(float64(root), 1) {
+		// Keep the normal float32 path and handle extremely large settings
+		// with finite float64 intermediates.
+		return math.Exp2(.5 * (delta - math.Sqrt(squared)))
+	}
+
+	return float64(davPower2(float32(.5 * (delta - float64(root)))))
+}
+
+func davLog2(value float32) float32 {
+	const (
+		p4 = float64(float32(-8.21343513178931783e-2))
+		p3 = float64(float32(6.49732456739820052e-1))
+		p2 = float64(float32(-2.13417801862571777))
+		p1 = float64(float32(4.08642207062728868))
+		p0 = float64(float32(-1.51984215742349793))
+	)
+
+	bits := math.Float32bits(value)
+	mantissa := float64(math.Float32frombits(bits&0x007fffff | 0x3f800000))
+	exponent := int(bits>>23) - 128
+
+	return float32(float64(exponent) + ((((p4*mantissa+p3)*mantissa+p2)*mantissa+p1)*mantissa + p0))
+}
+
+func davSqrt(value float32) float32 {
+	if value < 0x1p-126 || math.IsInf(float64(value), 1) {
+		return float32(math.Sqrt(float64(value)))
+	}
+
+	bits := (math.Float32bits(value)-0x00800000)>>1 + 0x20000000
+	seed := float64(math.Float32frombits(bits))
+	squared := float64(value)
+	step := float64(float32(seed + squared/seed))
+
+	return float32(.25*step + squared/step)
+}
+
+func davPower2(value float32) float32 {
+	const (
+		p1 = float64(float32(6.93292707161004662e-1))
+		p2 = float64(float32(2.42162975514835621e-1))
+		p3 = float64(float32(5.48668824216034384e-2))
+	)
+
+	if value < -150 {
+		return 0
+	}
+
+	if value > 128 {
+		return float32(math.Inf(1))
+	}
+
+	exponent := math.RoundToEven(float64(value))
+	residual := float64(float32(float64(value) - exponent))
+
+	return float32(math.Ldexp(1+residual*(p1+residual*(p2+residual*p3)), int(exponent)))
+}
