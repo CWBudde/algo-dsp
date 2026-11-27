@@ -24,11 +24,13 @@ func TestDAVSoftKneeCompressorGain(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		if got := c.Gain(tc.peak); got != tc.want {
 			t.Errorf("peak %g, threshold %g, knee %g, ratio %g: got %x, want %x",
 				tc.peak, tc.threshold, tc.knee, tc.ratio, got, tc.want)
 		}
 	}
+
 	if _, err := NewDAVSoftKneeCompressorGain(-10, 2, 0); err == nil {
 		t.Error("accepted zero ratio")
 	}
@@ -46,6 +48,7 @@ func TestDAVCompressorTiming(t *testing.T) {
 			t.Errorf("got (%x, %x, %v), want (%x, %x, nil)", attack, release, err, tc.wantAttack, tc.wantRelease)
 		}
 	}
+
 	if _, _, err := DAVCompressorTiming(1, 20, 0); err == nil {
 		t.Error("accepted zero sample rate")
 	}
