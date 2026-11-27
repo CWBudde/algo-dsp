@@ -24,16 +24,20 @@ func TestDAVLevelingGain(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		if got := c.Gain(tc.peak); got != tc.gain {
 			t.Errorf("peak %g, knee %g, ratio %g: got %x, want %x", tc.peak, tc.knee, tc.ratio, got, tc.gain)
 		}
+
 		if got := c.LegacyGain(tc.peak); math.Abs(got-tc.legacy) > 2e-16 {
 			t.Errorf("legacy peak %g, knee %g, ratio %g: got %x, want %x", tc.peak, tc.knee, tc.ratio, got, tc.legacy)
 		}
 	}
+
 	if _, err := NewDAVLevelingGain(1.01, 1); err == nil {
 		t.Error("accepted knee above one")
 	}
+
 	if _, err := NewDAVLevelingGain(.5, .99); err == nil {
 		t.Error("accepted ratio below one")
 	}

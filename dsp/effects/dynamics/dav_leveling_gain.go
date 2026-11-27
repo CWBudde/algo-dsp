@@ -20,7 +20,9 @@ func NewDAVLevelingGain(knee, ratio float64) (DAVLevelingGain, error) {
 	if !(knee >= 0 && knee <= 1 && ratio >= 1) || math.IsInf(ratio, 1) {
 		return DAVLevelingGain{}, fmt.Errorf("invalid DAV leveling gain: knee %g, ratio %g", knee, ratio)
 	}
+
 	corner := 1 - knee
+
 	return DAVLevelingGain{
 		threshold: corner * corner, kneeSquared: knee * knee, exponent: 1/ratio - 1,
 	}, nil
@@ -38,6 +40,7 @@ func (g DAVLevelingGain) Gain(peak float64) float64 {
 	tanh := float64(float32(davLevelingTanh(d)))
 	adjusted := float32(d - g.kneeSquared*tanh)
 	logPeak := davLog2(float32(1 + float64(adjusted)))
+
 	return float64(davPower2(float32(float64(logPeak) * g.exponent)))
 }
 
@@ -51,6 +54,7 @@ func (g DAVLevelingGain) LegacyGain(peak float64) float64 {
 
 	d := g.overThreshold(peak)
 	adjusted := d - g.kneeSquared*davLevelingTanh(d)
+
 	return math.Pow(1+adjusted, g.exponent)
 }
 
@@ -66,6 +70,7 @@ func (g DAVLevelingGain) overThreshold(peak float64) float64 {
 	if !(peak > g.threshold) {
 		return 0
 	}
+
 	return float64(float32(min(peak-g.threshold, math.MaxFloat32)))
 }
 
