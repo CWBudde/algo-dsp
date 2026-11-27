@@ -20,6 +20,7 @@ type DAVSoftKneeCompressorGain struct {
 // the threshold.
 func NewDAVSoftKneeCompressorGain(thresholdDB, kneeDB, ratio float64) (DAVSoftKneeCompressorGain, error) {
 	threshold, squared, valid := davCompressorCurveInputs(thresholdDB, kneeDB)
+
 	slope := float32(.5 * (1/float64(float32(ratio)) - 1))
 	if !(ratio > 0 && ratio <= math.MaxFloat32) || !valid || math.IsInf(float64(slope), 0) {
 		return DAVSoftKneeCompressorGain{}, fmt.Errorf("invalid DAV compressor curve: threshold %g dB, knee %g dB, ratio %g",
@@ -54,17 +55,21 @@ func (c DAVSoftKneeCompressorGain) Gain(peak float64) float64 {
 		logPeak := davLog2Extended(float32(min(max(peak, 0x1p-126), math.MaxFloat32)))
 		delta = float64(c.slope) * (logPeak - float64(c.thresholdLog2))
 	}
+
 	root := davCompressorRoot(delta*delta + float64(c.kneeSquared))
+
 	return davPower2Extended(delta - root)
 }
 
 func davCompressorCurveInputs(thresholdDB, kneeDB float64) (threshold, kneeSquared float32, valid bool) {
 	const dbToLog2 = float64(float32(1.6609640474436811739351597147447e-1))
+
 	threshold = float32(float64(float32(thresholdDB)) * dbToLog2)
 	knee := float64(float32(kneeDB)) * dbToLog2
 	kneeSquared = float32(knee * knee)
 	valid = kneeDB >= 0 && !math.IsInf(float64(kneeSquared), 0) &&
 		!math.IsNaN(float64(threshold)) && !math.IsInf(float64(threshold), 0)
+
 	return threshold, kneeSquared, valid
 }
 
@@ -73,8 +78,10 @@ func davCompressorRoot(value float64) float64 {
 	if rounded < 0x1p-126 || math.IsInf(float64(rounded), 1) {
 		return math.Sqrt(value)
 	}
+
 	seed := davSqrtSeed(rounded)
 	step := seed + value/seed
+
 	return .25*step + value/step
 }
 

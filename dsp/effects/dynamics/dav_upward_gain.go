@@ -23,6 +23,7 @@ func NewDAVSoftKneeUpwardGain(thresholdDB, kneeDB, ratio float64) (DAVSoftKneeUp
 		return DAVSoftKneeUpwardGain{}, fmt.Errorf("invalid DAV upward gain: threshold %g dB, knee %g dB, ratio %g",
 			thresholdDB, kneeDB, ratio)
 	}
+
 	return DAVSoftKneeUpwardGain{
 		thresholdLog2: threshold, kneeSquared: squared, slope: 1 - float32(ratio),
 	}, nil
@@ -36,8 +37,10 @@ func (c DAVSoftKneeUpwardGain) Gain(peak float64) float64 {
 	if math.IsNaN(peak) {
 		return 1
 	}
+
 	logPeak := davLog2Extended(float32(min(max(peak, 0x1p-126), math.MaxFloat32)))
 	delta := float64(c.slope) * (float64(c.thresholdLog2) - logPeak)
 	root := davCompressorRoot(delta*delta + float64(c.kneeSquared))
+
 	return min(davPower2Extended(delta+root), math.MaxFloat32)
 }
